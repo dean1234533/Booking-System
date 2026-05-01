@@ -24,10 +24,10 @@ import PersonIcon       from "@mui/icons-material/Person";
 import PhoneIcon        from "@mui/icons-material/Phone";
 import EmailIcon        from "@mui/icons-material/Email";
 import ContentCutIcon   from "@mui/icons-material/ContentCut";
-import { formatDate, formatTime, formatCurrency, isRefundEligible } from "../Stripe+Utils/formatters.js";
+import { formatDate, formatTime, formatCurrency, isRefundEligible } from "../stripe/formatters.js";
 import { cancelBooking } from "../firebase/firestore";
-import { requestRefund } from "../Stripe+Utils/stripeClient.js";
-import { sendCancellationEmail } from "../Stripe+Utils/emailService.js";
+import { requestRefund } from "../stripe/stripeClient.js";
+import { sendCancellationEmail } from "../stripe/emailService.js";
 
 export default function BookingCard({ booking, onCancelled }) {
   const [open,       setOpen]       = useState(false);

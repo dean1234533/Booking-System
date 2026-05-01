@@ -15,7 +15,7 @@ import {
   Box,
   Avatar,
 } from "@mui/material";
-import { truncate } from "../Stripe+Utils/formatters.js";
+import { truncate } from "../stripe/formatters.js";
 
 export default function BarberCard({ barber }) {
   const navigate = useNavigate();

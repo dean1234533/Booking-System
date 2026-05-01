@@ -11,10 +11,10 @@ import {
   Button, Paper, Divider, Alert, CircularProgress, Grid,
 } from "@mui/material";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { stripePromise, createPaymentIntent } from "../Stripe+Utils/stripeClient.js";
+import { stripePromise, createPaymentIntent } from "../stripe/stripeClient.js";
 import { getSlot, getBarber, createBooking, bookSlot } from "../firebase/firestore";
-import { sendConfirmationEmail } from "../Stripe+Utils/emailService.js";
-import { formatDate, formatTime, formatCurrency } from "../Stripe+Utils/formatters.js";
+import { sendConfirmationEmail } from "../stripe/emailService.js";
+import { formatDate, formatTime, formatCurrency } from "../stripe/formatters.js";
 
 const GENDER_OPTIONS = ["Prefer not to say", "Male", "Female", "Non-binary", "Other"];
 

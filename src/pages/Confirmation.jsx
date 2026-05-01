@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { getBooking, getBarber } from "../firebase/firestore";
-import { formatDate, formatTime, formatCurrency } from "../Stripe+Utils/formatters.js";
+import { formatDate, formatTime, formatCurrency } from "../stripe/formatters.js";
 
 export default function Confirmation() {
   const { bookingId } = useParams();

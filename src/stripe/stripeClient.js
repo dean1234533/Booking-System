@@ -1,25 +1,23 @@
 // src/stripe/stripeClient.js
-// Calls Firebase Cloud Functions for all Stripe operations.
-// The secret key never touches the browser — it lives in the Cloud Function.
+// Calls Vercel serverless functions for all Stripe operations.
+// Works locally with "vercel dev" and in production automatically.
 
 import { loadStripe } from "@stripe/stripe-js";
 
 export const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-// Base URL for your deployed Cloud Functions.
-// Add this to your .env file once you have deployed:
-//   VITE_FUNCTIONS_URL=https://us-central1-YOUR_PROJECT.cloudfunctions.net
-const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL;
+// In development (vercel dev): calls http://localhost:3000/api/...
+// In production (Vercel):      calls https://your-app.vercel.app/api/...
+// No env variable needed — /api/ always resolves to the right place.
+const API_BASE = "/api";
 
 // ─── Create Payment Intent ────────────────────────────────────────────────────
-// Called from BookingForm before showing the Stripe payment element.
-// amount is in pounds (e.g. 10 for £10) — the Cloud Function converts to pence.
 export async function createPaymentIntent({ amount, bookingMeta }) {
-  const response = await fetch(`${FUNCTIONS_URL}/createPaymentIntent`, {
-    method: "POST",
+  const response = await fetch(`${API_BASE}/createPaymentIntent`, {
+    method:  "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      amount,
+    body:    JSON.stringify({
+      amount,           // in pounds — server converts to pence
       currency: "gbp",
       metadata: bookingMeta,
     }),
@@ -35,13 +33,11 @@ export async function createPaymentIntent({ amount, bookingMeta }) {
 }
 
 // ─── Request Refund ───────────────────────────────────────────────────────────
-// Called from BookingCard in the Dashboard when a barber cancels a booking.
-// The Cloud Function checks the 24hr window and issues the refund if eligible.
 export async function requestRefund({ paymentIntentId, slotDate }) {
-  const response = await fetch(`${FUNCTIONS_URL}/requestRefund`, {
-    method: "POST",
+  const response = await fetch(`${API_BASE}/requestRefund`, {
+    method:  "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ paymentIntentId, slotDate }),
+    body:    JSON.stringify({ paymentIntentId, slotDate }),
   });
 
   if (!response.ok) {

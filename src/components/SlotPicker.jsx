@@ -14,7 +14,7 @@ import {
   Alert,
 } from "@mui/material";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import { formatDate, formatTime } from "../Stripe+Utils/formatters.js";
+import { formatDate, formatTime } from "../stripe/formatters.js";
 
 // Group slots by date string for display
 function groupByDate(slots) {

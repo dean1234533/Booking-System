@@ -15,7 +15,7 @@ import PhoneIcon      from "@mui/icons-material/Phone";
 import SlotPicker     from "../components/SlotPicker";
 import { getBarber }  from "../firebase/firestore";
 import { useSlots }   from "../hooks/useSlots.js";
-import { formatCurrency } from "../Stripe+Utils/formatters.js";
+import { formatCurrency } from "../stripe/formatters.js";
 
 export default function BarberProfile() {
   const { id } = useParams();

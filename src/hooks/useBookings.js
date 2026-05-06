@@ -1,31 +1,21 @@
-// src/hooks/useBookings.js
-// Fetches all bookings for the signed-in barber. Used in Dashboard.
-
-import { useState, useEffect } from "react";
-import { getBookingsForBarber } from "../firebase/firestore";
+import { useState, useEffect, useCallback } from "react";
+import { getBookingsForBarber } from "../firebase/firestore"; // Must match the export name above
 
 export function useBookings(barberId) {
   const [bookings, setBookings] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Expose refetch so Dashboard can refresh after a cancellation
-  async function refetch() {
+  const fetchBookings = useCallback(async () => {
     if (!barberId) return;
     setLoading(true);
-    try {
-      const data = await getBookingsForBarber(barberId);
-      setBookings(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+    const data = await getBookingsForBarber(barberId);
+    setBookings(data);
+    setLoading(false);
+  }, [barberId]);
 
   useEffect(() => {
-    refetch();
-  }, [barberId]); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchBookings();
+  }, [fetchBookings]);
 
-  return { bookings, loading, error, refetch };
+  return { bookings, loading, refetch: fetchBookings };
 }

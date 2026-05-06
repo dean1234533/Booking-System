@@ -1,11 +1,4 @@
-import React from "react";
-
-// src/components/Nav.jsx
-// Top navigation bar — visible on every page.
-// Shows barber dashboard link and sign out when a barber is logged in.
-// Clients just see the shop name and a home link.
-
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   AppBar,
@@ -20,18 +13,24 @@ import {
   Divider,
 } from "@mui/material";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
-import { useAuth } from "../components/AuthContext";
-import { signOutBarber } from "../firebase/auth";
+
+import { useAuth } from "../context/AuthContext";
+import { auth } from "../firebase/config";
+import { signOut } from "firebase/auth";
 
 export default function Nav() {
   const { barber } = useAuth();
-  const navigate   = useNavigate();
+  const navigate = useNavigate();
   const [anchor, setAnchor] = useState(null);
 
   async function handleSignOut() {
-    await signOutBarber();
-    setAnchor(null);
-    navigate("/");
+    try {
+      await signOut(auth);
+      setAnchor(null);
+      navigate("/");
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    }
   }
 
   return (
@@ -46,7 +45,7 @@ export default function Nav() {
       }}
     >
       <Toolbar sx={{ justifyContent: "space-between", px: { xs: 2, sm: 4 } }}>
-
+        
         {/* Logo */}
         <Box
           component={Link}
@@ -61,14 +60,13 @@ export default function Nav() {
         >
           <ContentCutIcon sx={{ color: "secondary.main", fontSize: 22 }} />
           <Typography variant="h6" fontWeight={700} letterSpacing="-0.02em">
-            The Barber Book
+            The Cutting Edge
           </Typography>
         </Box>
 
-        {/* Right side */}
+        {/* User Section */}
         <Box display="flex" alignItems="center" gap={1}>
           {barber ? (
-            // Barber is signed in — show avatar menu
             <>
               <Button
                 component={Link}
@@ -90,7 +88,7 @@ export default function Nav() {
                     fontWeight: 700,
                   }}
                 >
-                  {barber.displayName?.[0]?.toUpperCase() ?? "B"}
+                  {barber.displayName?.[0]?.toUpperCase() ?? barber.email?.[0]?.toUpperCase() ?? "B"}
                 </Avatar>
               </IconButton>
 
@@ -104,9 +102,9 @@ export default function Nav() {
               >
                 <Box px={2} py={1}>
                   <Typography variant="body2" fontWeight={600}>
-                    {barber.displayName}
+                    {barber.displayName || "Barber"}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary" noWrap display="block">
                     {barber.email}
                   </Typography>
                 </Box>
@@ -121,7 +119,6 @@ export default function Nav() {
               </Menu>
             </>
           ) : (
-            // No barber signed in — show barber login link only
             <Button
               component={Link}
               to="/login"
@@ -133,7 +130,6 @@ export default function Nav() {
             </Button>
           )}
         </Box>
-
       </Toolbar>
     </AppBar>
   );

@@ -1,21 +1,18 @@
-import React from "react";
-
-// src/pages/Login.jsx
-// Barber-only login page. Redirects to /dashboard on success.
-
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Box, Container, Typography, TextField,
   Button, Alert, CircularProgress, Paper, Divider,
 } from "@mui/material";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
+// Import from the centralized auth file
 import { signInBarber } from "../firebase/auth";
 
 export default function Login() {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const from      = location.state?.from?.pathname ?? "/Dashboard";
+  // Ensure this matches your route path (usually lowercase /dashboard)
+  const from      = location.state?.from?.pathname ?? "/dashboard";
 
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
@@ -28,9 +25,11 @@ export default function Login() {
     setError(null);
 
     try {
-      await signInBarber({ email, password });
+      // FIXED: Pass email and password as separate strings, not an object
+      await signInBarber(email, password); 
       navigate(from, { replace: true });
     } catch (err) {
+      console.error("Login Error:", err.code);
       setError("Invalid email or password. Please try again.");
     } finally {
       setLoading(false);
@@ -72,9 +71,8 @@ export default function Login() {
             fullWidth
             size="large"
             disabled={loading}
-            startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
           >
-            {loading ? "Signing in…" : "Sign In"}
+            {loading ? <CircularProgress size={24} color="inherit" /> : "Sign In"}
           </Button>
         </Box>
 

@@ -1,107 +1,134 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  setDoc, // Changed from updateDoc
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
+import { db, storage } from "./config";
+import { 
+  doc, updateDoc, getDoc, collection, 
+  getDocs, query, orderBy, addDoc, deleteDoc, where, setDoc 
 } from "firebase/firestore";
-import { db, COLLECTIONS } from "./config";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import imageCompression from "browser-image-compression";
 
-// --- BARBERS ---
+// --- BARBER PROFILE & LISTING ---
+export const getAllBarbers = async () => {
+  const snap = await getDocs(collection(db, "barbers"));
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
 
-export async function getAllBarbers() {
-  const snap = await getDocs(
-    query(collection(db, COLLECTIONS.BARBERS), orderBy("createdAt", "asc"))
-  );
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
+export const getBarber = async (uid) => {
+  if (!uid) return null;
+  const docRef = doc(db, "barbers", uid);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+};
 
-export async function getBarber(barberId) {
-  const snap = await getDoc(doc(db, COLLECTIONS.BARBERS, barberId));
-  if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() };
-}
+export const updateBarber = async (uid, data) => {
+  const docRef = doc(db, "barbers", uid);
+  return await setDoc(docRef, data, { merge: true });
+};
 
-// FIX: Using setDoc with merge allows creation of new profiles
-export async function updateBarber(barberId, fields) {
-  const docRef = doc(db, COLLECTIONS.BARBERS, barberId);
-  await setDoc(docRef, fields, { merge: true });
-}
-
-export async function deleteBarber(barberId) {
-  const slotsSnap = await getDocs(
-    query(collection(db, COLLECTIONS.SLOTS), where("barberId", "==", barberId))
-  );
-  const deleteSlots = slotsSnap.docs.map((d) => deleteDoc(d.ref));
-  await Promise.all(deleteSlots);
-  await deleteDoc(doc(db, COLLECTIONS.BARBERS, barberId));
-}
-
-// --- SLOTS ---
-
-export async function addSlot({ barberId, date, time }) {
-  const ref = await addDoc(collection(db, COLLECTIONS.SLOTS), {
-    barberId,
-    date,
-    time,
-    status: "open",
-    bookingId: null,
-    createdAt: serverTimestamp(),
+/**
+ * STRIPE CONNECT HELPER
+ * Saves the barber's unique Stripe Account ID (acct_...) after onboarding.
+ */
+export const saveBarberStripeId = async (barberId, stripeId) => {
+  const barberRef = doc(db, "barbers", barberId);
+  return await updateDoc(barberRef, {
+    stripeAccountId: stripeId,
+    stripeEnabled: true // Flag to show "Payment Ready" in UI
   });
-  return ref.id;
-}
+};
 
-export async function getOpenSlots(barberId) {
-  const snap = await getDocs(
-    query(
-      collection(db, COLLECTIONS.SLOTS),
-      where("barberId", "==", barberId),
-      where("status", "==", "open"),
-      orderBy("date", "asc")
-    )
-  );
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
+export const uploadBarberImage = async (file, uid) => {
+  if (!file) return null;
+  const options = { maxSizeMB: 0.2, maxWidthOrHeight: 600, useWebWorker: true, fileType: "image/jpeg" };
+  try {
+    const compressedFile = await imageCompression(file, options);
+    const storageRef = ref(storage, `barbers/${uid}/profile.jpg`);
+    const snapshot = await uploadBytes(storageRef, compressedFile);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    await updateDoc(doc(db, "barbers", uid), { profilePic: downloadURL });
+    return downloadURL;
+  } catch (error) {
+    console.error("Upload failed:", error);
+    throw error;
+  }
+};
 
-export async function getAllSlotsForBarber(barberId) {
-  const snap = await getDocs(
-    query(
-      collection(db, COLLECTIONS.SLOTS),
-      where("barberId", "==", barberId),
-      orderBy("date", "asc")
-    )
-  );
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
+// --- SLOT MANAGEMENT ---
+export const getOpenSlots = async (barberId) => {
+  if (!barberId) return [];
+  const slotsRef = collection(db, "barbers", barberId, "slots");
+  const q = query(slotsRef, orderBy("date", "asc"));
+  const snap = await getDocs(q);
+  return snap.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(slot => slot.isBooked === false);
+};
 
-export async function deleteSlot(slotId) {
-  await deleteDoc(doc(db, COLLECTIONS.SLOTS, slotId));
-}
+export const getProfessionalSlots = async (barberId) => {
+  if (!barberId) return [];
+  const slotsRef = collection(db, "barbers", barberId, "slots");
+  const q = query(slotsRef, orderBy("date", "asc"));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
 
-// --- BOOKINGS ---
+export const getSlot = async (barberId, slotId) => {
+  if (!barberId || !slotId) return null;
+  const snap = await getDoc(doc(db, "barbers", barberId, "slots", slotId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+};
 
-export async function createBooking(data) {
-  const ref = await addDoc(collection(db, COLLECTIONS.BOOKINGS), {
-    ...data,
-    depositPaid: true,
-    createdAt: serverTimestamp(),
+export const addSlot = async (slotData) => {
+  const slotsRef = collection(db, "barbers", slotData.barberId, "slots");
+  return await addDoc(slotsRef, { ...slotData, isBooked: false, status: "open" });
+};
+
+export const deleteSlot = async (barberId, slotId) => {
+  await deleteDoc(doc(db, "barbers", barberId, "slots", slotId));
+};
+
+// --- BOOKINGS & CANCELLATION ---
+export const getBooking = async (id) => {
+  if (!id) return null;
+  const snap = await getDoc(doc(db, "bookings", id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+};
+
+export const getBookingsForBarber = async (barberId) => {
+  if (!barberId) return [];
+  const q = query(collection(db, "bookings"), where("barberId", "==", barberId));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const createBooking = async (bookingData) => {
+  // 1. Create the booking document
+  const docRef = await addDoc(collection(db, "bookings"), {
+    ...bookingData,
+    status: "confirmed",
+    createdAt: new Date().toISOString()
   });
-  return ref.id;
-}
+  
+  // 2. Mark the slot as taken
+  const slotRef = doc(db, "barbers", bookingData.barberId, "slots", bookingData.slotId);
+  await updateDoc(slotRef, { isBooked: true, status: "booked" });
+  
+  return docRef.id;
+};
 
-export async function getBookingsForBarber(barberId) {
-  const snap = await getDocs(
-    query(
-      collection(db, COLLECTIONS.BOOKINGS),
-      where("barberId", "==", barberId),
-      orderBy("slotDate", "asc")
-    )
-  );
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-}
+export const cancelBooking = async (bookingId, slotId, barberId) => {
+  // 1. Mark booking as cancelled
+  await updateDoc(doc(db, "bookings", bookingId), { 
+    status: "cancelled", 
+    cancelled: true 
+  });
+  // 2. Open the slot back up
+  if (barberId && slotId) {
+    await updateDoc(doc(db, "barbers", barberId, "slots", slotId), { 
+      isBooked: false, 
+      status: "open" 
+    });
+  }
+};
+
+// Aliases for compatibility
+export const bookSlot = createBooking;

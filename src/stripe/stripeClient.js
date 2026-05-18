@@ -1,49 +1,44 @@
-// src/stripe/stripeClient.js
-// Calls Vercel serverless functions for all Stripe operations.
-// Works locally with "vercel dev" and in production automatically.
+import { loadStripe } from '@stripe/stripe-js';
 
-import { loadStripe } from "@stripe/stripe-js";
+/**
+ * ✅ FRONTEND STRIPE CLIENT
+ * This file initializes Stripe for your browser.
+ * It MUST be exported as 'stripePromise' to match your BookingForm.jsx import.
+ */
 
-export const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const publicKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
-// In development (vercel dev): calls http://localhost:3000/api/...
-// In production (Vercel):      calls https://your-app.vercel.app/api/...
-// No env variable needed — /api/ always resolves to the right place.
-const API_BASE = "/api";
-
-// ─── Create Payment Intent ────────────────────────────────────────────────────
-export async function createPaymentIntent({ amount, bookingMeta }) {
-  const response = await fetch(`${API_BASE}/createPaymentIntent`, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({
-      amount,           // in pounds — server converts to pence
-      currency: "gbp",
-      metadata: bookingMeta,
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error ?? "Failed to create payment intent");
-  }
-
-  const { clientSecret } = await response.json();
-  return clientSecret;
+if (!publicKey) {
+  console.error("VITE_STRIPE_PUBLISHABLE_KEY is missing from your .env file!");
 }
 
-// ─── Request Refund ───────────────────────────────────────────────────────────
-export async function requestRefund({ paymentIntentId, slotDate }) {
-  const response = await fetch(`${API_BASE}/requestRefund`, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ paymentIntentId, slotDate }),
-  });
+export const stripePromise = loadStripe(publicKey);
 
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error ?? "Failed to process refund");
+/**
+ * ✅ ADDED: requestRefund function
+ * This sends the refund request to your server-side API.
+ */
+export async function requestRefund({ paymentIntentId, stripeAccountId, date, time }) {
+  try {
+    const response = await fetch("/api/cancel-refund", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        paymentIntentId, 
+        stripeAccountId, 
+        date, 
+        time 
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Refund failed");
+    }
+
+    return await response.json();
+  } catch (err) {
+    console.error("Stripe Client Refund Error:", err);
+    throw err;
   }
-
-  return await response.json(); // { refunded: true | false }
 }

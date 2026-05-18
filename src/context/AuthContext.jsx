@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "../firebase/config";
 
 export const AuthContext = createContext(null);
@@ -8,8 +8,17 @@ export const AuthProvider = ({ children }) => {
   const [barber, setBarber] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      // Optional: Add a window.location.href = "/login" here if 
+      // your router doesn't automatically handle the redirect.
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
   useEffect(() => {
-    // This listens to Firebase and updates the 'barber' state globally
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setBarber(user);
       setLoading(false);
@@ -17,8 +26,15 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // Memoize the value to optimize performance
+  const value = useMemo(() => ({
+    barber,
+    loading,
+    logout
+  }), [barber, loading]);
+
   return (
-    <AuthContext.Provider value={{ barber, loading }}>
+    <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   );

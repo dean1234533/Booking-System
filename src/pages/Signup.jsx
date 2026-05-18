@@ -1,136 +1,198 @@
-import React from "react";
-
-// src/pages/Signup.jsx
-// Barber signup page — creates Firebase Auth account + Firestore barber doc.
-
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Box, Container, Typography, TextField, Button,
-  Alert, CircularProgress, Paper, Divider, Grid,
+  Alert, CircularProgress, Paper, Grid, MenuItem,
+  Switch, Divider
 } from "@mui/material";
-import ContentCutIcon from "@mui/icons-material/ContentCut";
+import {
+  Storefront as StoreIcon,
+  Person as PersonIcon
+} from "@mui/icons-material";
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase/config";
 import { signUpBarber } from "../firebase/auth";
 
+/**
+ * Marketplace-Only Signup Component
+ * For the main platform home page.
+ */
 export default function Signup() {
   const navigate = useNavigate();
 
+  // Marketplace defaults
+  const [isOwner, setIsOwner] = useState(true);
+  const activeBrandColor = "#C9A84C"; // Your platform gold
+  const logoPath = "/images/Logo.png";
+  
   const [form, setForm] = useState({
-    name:      "",
-    email:     "",
-    phone:     "",
-    specialty: "",
-    bio:       "",
-    password:  "",
-    confirm:   "",
+    name:            "",
+    email:           "",
+    phone:           "",
+    specialty:       "",
+    password:        "",
+    confirm:         "",
+    shopId:          "",
+    businessName:    "",
+    vercelUrl:       "",
   });
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+
+  const [shops,        setShops]        = useState([]);
+  const [loadingShops, setLoadingShops] = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState(null);
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Fetch available shops only if user switches to "Staff" mode
+  useEffect(() => {
+    if (!isOwner) {
+      async function fetchShops() {
+        try {
+          setLoadingShops(true);
+          const q    = query(collection(db, "barbers"), where("role", "==", "owner"));
+          const snap = await getDocs(q);
+          const list = snap.docs.map(d => ({
+            id: d.id,
+            displayLabel: d.data().businessName || d.data().displayName || "Unnamed Shop",
+          }));
+          setShops(list);
+        } catch (err) {
+          setError("Could not load shop list.");
+        } finally {
+          setLoadingShops(false);
+        }
+      }
+      fetchShops();
+    }
+  }, [isOwner]);
 
   function handleChange(e) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  async function waitForBarberDoc(uid, expectedRole, maxAttempts = 10) {
+    for (let i = 0; i < maxAttempts; i++) {
+      const snap = await getDoc(doc(db, "barbers", uid));
+      if (snap.exists() && snap.data().role === expectedRole) return snap.data();
+      await new Promise(r => setTimeout(r, 300));
+    }
+    throw new Error("Account setup took too long.");
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (form.password !== form.confirm) {
-      setError("Passwords do not match.");
-      return;
-    }
-    if (form.password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
+    if (form.password !== form.confirm) return setError("Passwords do not match.");
+    if (!isOwner && !form.shopId) return setError("Please select a shop to join.");
 
     setLoading(true);
     setError(null);
 
     try {
-      await signUpBarber({
-        name:      form.name,
-        email:     form.email,
-        password:  form.password,
-        phone:     form.phone,
-        specialty: form.specialty,
-        bio:       form.bio,
+      const role = isOwner ? "owner" : "staff";
+      const user = await signUpBarber({
+        ...form,
+        role,
+        shopId: isOwner ? "self" : form.shopId,
+        brandColor: activeBrandColor,
+        vercelUrl: isOwner && form.vercelUrl
+          ? (form.vercelUrl.startsWith("http") ? form.vercelUrl : `https://${form.vercelUrl}`)
+          : "",
       });
+
+      await waitForBarberDoc(user.uid, role);
+
+      if (isOwner) {
+        const response = await fetch("/api/connect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, barberId: user.uid, businessName: form.businessName }),
+        });
+        const { url } = await response.json();
+        if (url) { window.location.href = url; return; }
+      }
+
       navigate("/dashboard");
     } catch (err) {
-      if (err.code === "auth/email-already-in-use") {
-        setError("An account with this email already exists.");
-      } else {
-        setError("Failed to create account. Please try again.");
-      }
+      setError(err.message || "Failed to create account.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: { xs: 6, md: 8 } }}>
-      <Box textAlign="center" mb={4}>
-        <ContentCutIcon sx={{ fontSize: 36, color: "secondary.main", mb: 1 }} />
-        <Typography variant="h4" fontWeight={700}>Create Your Profile</Typography>
-        <Typography variant="body2" color="text.secondary" mt={0.5}>
-          Set up your barber account to start accepting bookings.
-        </Typography>
-      </Box>
-
-      <Paper variant="outlined" sx={{ p: 4, borderRadius: 3 }}>
-        <Box component="form" onSubmit={handleSubmit}>
-          {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
-
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TextField label="Full Name" name="name" value={form.name}
-                onChange={handleChange} fullWidth required />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField label="Email Address" name="email" type="email" value={form.email}
-                onChange={handleChange} fullWidth required />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField label="Phone Number" name="phone" type="tel" value={form.phone}
-                onChange={handleChange} fullWidth required />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField label="Specialty" name="specialty" value={form.specialty}
-                onChange={handleChange} fullWidth required
-                placeholder="e.g. Skin fades, Afro hair, Colour & highlights" />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField label="Bio" name="bio" value={form.bio}
-                onChange={handleChange} fullWidth multiline rows={3}
-                placeholder="Tell clients a bit about yourself and your experience…" />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField label="Password" name="password" type="password" value={form.password}
-                onChange={handleChange} fullWidth required />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField label="Confirm Password" name="confirm" type="password" value={form.confirm}
-                onChange={handleChange} fullWidth required />
-            </Grid>
-          </Grid>
-
-          <Button
-            type="submit" variant="contained" fullWidth size="large"
-            disabled={loading} sx={{ mt: 3 }}
-            startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
-          >
-            {loading ? "Creating Account…" : "Create Account"}
-          </Button>
+    <Box sx={{ bgcolor: "#F8F9FA", minHeight: "100vh", pt: { xs: 2, md: 4 }, pb: { xs: 6, md: 10 } }}>
+      <Container maxWidth="sm">
+        <Box textAlign="center" mb={4}>
+          <Box 
+            component="img"
+            src={logoPath}
+            alt="BOOK-EH-TRIM Logo"
+            sx={{ 
+              height: 120, 
+              width: 'auto', 
+              mb: 2, 
+              mx: 'auto', 
+              display: 'block',
+              filter: 'drop-shadow(0px 4px 10px rgba(0,0,0,0.1))'
+            }}
+          />
+          <Typography variant="h4" fontWeight={900}>
+            {isOwner ? "Start Your Shop" : "Join a Shop"}
+          </Typography>
         </Box>
 
-        <Divider sx={{ my: 3 }} />
+        <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 6, borderTop: `6px solid ${activeBrandColor}`, boxShadow: "0 20px 60px rgba(0,0,0,0.05)" }}>
+          <Box component="form" onSubmit={handleSubmit}>
+            {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-        <Typography variant="body2" color="text.secondary" textAlign="center">
-          Already have an account?{" "}
-          <Link to="/login" style={{ color: "inherit", fontWeight: 600 }}>
-            Sign in
-          </Link>
-        </Typography>
-      </Paper>
-    </Container>
+            <Box sx={{ mb: 4, p: 2, bgcolor: "#F0F2F5", borderRadius: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                {isOwner ? <StoreIcon /> : <PersonIcon />}
+                <Typography variant="body2" fontWeight={800}>{isOwner ? "Shop Owner" : "Staff Barber"}</Typography>
+              </Box>
+              <Switch checked={isOwner} onChange={(e) => setIsOwner(e.target.checked)} />
+            </Box>
+
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                {isOwner ? (
+                  <TextField label="Business Name" name="businessName" fullWidth required onChange={handleChange} />
+                ) : (
+                  <TextField
+                    select fullWidth label="Select Shop"
+                    name="shopId" value={form.shopId} onChange={handleChange}
+                    required disabled={loadingShops}
+                  >
+                    {loadingShops ? (
+                      <MenuItem disabled><CircularProgress size={20} sx={{ mr: 2 }} /> Loading...</MenuItem>
+                    ) : (
+                      shops.map(shop => <MenuItem key={shop.id} value={shop.id}>{shop.displayLabel}</MenuItem>)
+                    )}
+                  </TextField>
+                )}
+              </Grid>
+
+              <Grid item xs={12}><TextField label="Full Name" name="name" fullWidth required onChange={handleChange} /></Grid>
+              <Grid item xs={12}><TextField label="Email" name="email" type="email" fullWidth required onChange={handleChange} /></Grid>
+              <Grid item xs={12}><TextField label="Specialty" name="specialty" fullWidth placeholder="e.g. Fades & Beard Trims" onChange={handleChange} /></Grid>
+              <Grid item xs={6}><TextField label="Password" name="password" type="password" fullWidth required onChange={handleChange} /></Grid>
+              <Grid item xs={6}><TextField label="Confirm" name="confirm" type="password" fullWidth required onChange={handleChange} /></Grid>
+            </Grid>
+
+            <Button type="submit" variant="contained" fullWidth size="large" disabled={loading} sx={{ mt: 4, bgcolor: activeBrandColor }}>
+              {loading ? <CircularProgress size={24} color="inherit" /> : isOwner ? "Continue" : "Register"}
+            </Button>
+          </Box>
+          <Divider sx={{ my: 3 }} />
+          <Typography variant="body2" textAlign="center">
+            Already have an account? <Link to="/login" style={{ color: activeBrandColor, textDecoration: 'none', fontWeight: 'bold' }}>Login</Link>
+          </Typography>
+        </Paper>
+      </Container>
+    </Box>
   );
 }

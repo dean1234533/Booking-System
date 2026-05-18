@@ -1,24 +1,8 @@
-import React from "react";
-
-// src/components/BookingCard.jsx
-// Shows a single booking in the barber Dashboard.
-// Barber can cancel (and optionally refund) from here.
-
-import { useState } from "react";
+import React, { useState } from "react";
 import {
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  Chip,
-  Button,
-  Divider,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
+  Card, CardContent, Typography, Box, Chip, Button, Divider,
+  CircularProgress, Dialog, DialogTitle, DialogContent,
+  DialogContentText, DialogActions, Alert
 } from "@mui/material";
 import PersonIcon       from "@mui/icons-material/Person";
 import PhoneIcon        from "@mui/icons-material/Phone";
@@ -28,11 +12,18 @@ import { formatDate, formatTime, formatCurrency, isRefundEligible } from "../str
 import { cancelBooking } from "../firebase/firestore";
 import { requestRefund } from "../stripe/stripeClient.js";
 import { sendCancellationEmail } from "../stripe/emailService.js";
+import { useAuth } from "../context/AuthContext";
 
 export default function BookingCard({ booking, onCancelled }) {
+  const { barber: authBarber } = useAuth();
   const [open,       setOpen]       = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [error,      setError]      = useState(null);
+
+  // --- DYNAMIC BRANDING & DATA SYNC ---
+  // Ensure deposit is a Number to avoid formatting errors
+  const depositValue = Number(booking?.depositAmount) || 10;
+  const brandColor = booking.brandColor || authBarber?.brandColor || "#C9A84C";
 
   const refundable = isRefundEligible(booking.slotDate);
 
@@ -40,7 +31,6 @@ export default function BookingCard({ booking, onCancelled }) {
     setCancelling(true);
     setError(null);
     try {
-      // Issue Stripe refund if eligible
       let refunded = false;
       if (refundable) {
         const result = await requestRefund({
@@ -50,21 +40,21 @@ export default function BookingCard({ booking, onCancelled }) {
         refunded = result.refunded;
       }
 
-      // Cancel in Firestore + reopen slot
       await cancelBooking(booking.id, booking.slotId);
 
-      // Notify client by email
       await sendCancellationEmail({
         clientName:  booking.clientName,
         clientEmail: booking.clientEmail,
         barberName:  booking.barberName,
+        businessName: booking.businessName || authBarber?.businessName,
+        brandColor:   brandColor,
         date:        formatDate(booking.slotDate),
         time:        formatTime(booking.slotTime),
         refunded,
       });
 
       setOpen(false);
-      onCancelled?.(); // trigger refetch in Dashboard
+      onCancelled?.(); 
     } catch (err) {
       setError("Something went wrong. Please try again.");
       console.error(err);
@@ -75,102 +65,147 @@ export default function BookingCard({ booking, onCancelled }) {
 
   return (
     <>
-      <Card variant="outlined" sx={{ borderRadius: 3 }}>
+      <Card 
+        variant="outlined" 
+        sx={{ 
+          borderRadius: 3, 
+          transition: 'all 0.3s ease', 
+          '&:hover': { 
+            borderColor: brandColor,
+            boxShadow: `0 4px 12px ${brandColor}15`
+          } 
+        }}
+      >
         <CardContent sx={{ p: 3 }}>
 
-          {/* Date + time header */}
           <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
             <Box>
-              <Typography variant="subtitle1" fontWeight={700}>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ letterSpacing: '-0.01em' }}>
                 {formatDate(booking.slotDate)}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" fontWeight={500}>
                 {formatTime(booking.slotTime ?? booking.time)}
               </Typography>
             </Box>
             <Chip
-              label={`Deposit: ${formatCurrency(booking.depositAmount)}`}
+              label={`${formatCurrency(depositValue)}`}
               size="small"
-              sx={{ bgcolor: "rgba(201,168,76,0.15)", color: "#8B6914", fontWeight: 600 }}
+              sx={{ 
+                bgcolor: `${brandColor}12`, 
+                color: brandColor, 
+                fontWeight: 800,
+                border: `1px solid ${brandColor}30`,
+                borderRadius: 1.5
+              }}
             />
           </Box>
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* Client details */}
-          <Box display="flex" flexDirection="column" gap={1} mb={2}>
-            <Box display="flex" alignItems="center" gap={1}>
-              <PersonIcon fontSize="small" sx={{ color: "text.secondary" }} />
-              <Typography variant="body2">
+          <Box display="flex" flexDirection="column" gap={1.2} mb={3}>
+            <Box display="flex" alignItems="center" gap={1.5}>
+              <PersonIcon fontSize="small" sx={{ color: brandColor }} />
+              <Typography variant="body2" fontWeight={700}>
                 {booking.clientName}
                 {booking.gender && (
-                  <Typography component="span" variant="body2" color="text.secondary">
-                    {" "}· {booking.gender}
+                  <Typography component="span" variant="caption" sx={{ ml: 1, opacity: 0.6, fontWeight: 400 }}>
+                    • {booking.gender}
                   </Typography>
                 )}
               </Typography>
             </Box>
-            <Box display="flex" alignItems="center" gap={1}>
-              <PhoneIcon fontSize="small" sx={{ color: "text.secondary" }} />
-              <Typography variant="body2">{booking.clientPhone}</Typography>
+            
+            <Box display="flex" alignItems="center" gap={1.5}>
+              <PhoneIcon fontSize="small" sx={{ color: "text.secondary", opacity: 0.7 }} />
+              <Typography variant="body2" fontWeight={500}>{booking.clientPhone}</Typography>
             </Box>
-            <Box display="flex" alignItems="center" gap={1}>
-              <EmailIcon fontSize="small" sx={{ color: "text.secondary" }} />
-              <Typography variant="body2">{booking.clientEmail}</Typography>
+            
+            <Box display="flex" alignItems="center" gap={1.5}>
+              <EmailIcon fontSize="small" sx={{ color: "text.secondary", opacity: 0.7 }} />
+              <Typography variant="body2" fontWeight={500}>{booking.clientEmail}</Typography>
             </Box>
-            <Box display="flex" alignItems="center" gap={1}>
-              <ContentCutIcon fontSize="small" sx={{ color: "text.secondary" }} />
-              <Typography variant="body2">{booking.haircutStyle}</Typography>
+
+            <Box 
+              sx={{ 
+                mt: 1, 
+                p: 1.5, 
+                bgcolor: 'grey.50', 
+                borderRadius: 2, 
+                display: 'flex', 
+                alignItems: 'flex-start', 
+                gap: 1.5,
+                border: '1px dashed',
+                borderColor: 'grey.200'
+              }}
+            >
+              <ContentCutIcon fontSize="small" sx={{ color: brandColor, mt: 0.2 }} />
+              <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary', lineHeight: 1.4 }}>
+                "{booking.haircutStyle || "No notes provided"}"
+              </Typography>
             </Box>
           </Box>
 
-          {/* Cancel button */}
-          {!booking.cancelled && (
+          {!booking.cancelled ? (
             <Button
               variant="outlined"
               color="error"
-              size="small"
+              size="medium"
               fullWidth
               onClick={() => setOpen(true)}
+              sx={{ 
+                borderRadius: 2, 
+                fontWeight: 800, 
+                textTransform: 'none',
+                borderWidth: 2,
+                '&:hover': { borderWidth: 2 }
+              }}
             >
               Cancel Booking
             </Button>
-          )}
-
-          {booking.cancelled && (
-            <Chip label="Cancelled" color="error" size="small" variant="outlined" />
+          ) : (
+            <Chip 
+              label="CANCELLED" 
+              color="error" 
+              size="small" 
+              variant="filled" 
+              sx={{ width: '100%', fontWeight: 900, borderRadius: 2 }} 
+            />
           )}
 
         </CardContent>
       </Card>
 
-      {/* Confirm cancel dialog */}
-      <Dialog open={open} onClose={() => !cancelling && setOpen(false)}>
-        <DialogTitle>Cancel this booking?</DialogTitle>
+      <Dialog 
+        open={open} 
+        onClose={() => !cancelling && setOpen(false)} 
+        PaperProps={{ sx: { borderRadius: 4, p: 1 } }}
+      >
+        <DialogTitle fontWeight={800} fontSize="1.3rem">Cancel Appointment?</DialogTitle>
         <DialogContent>
-          <DialogContentText>
+          <DialogContentText sx={{ color: 'text.primary', mb: 2 }}>
             {refundable
-              ? "This appointment is more than 24 hours away. The client will receive a full refund of their deposit."
+              ? "This appointment is eligible for a refund. The deposit will be returned to the client automatically."
               : "This appointment is within 24 hours. The deposit is non-refundable."}
           </DialogContentText>
-          {error && (
-            <Typography color="error" variant="body2" mt={1}>
-              {error}
-            </Typography>
-          )}
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </DialogContent>
-        <DialogActions sx={{ p: 2, gap: 1 }}>
-          <Button onClick={() => setOpen(false)} disabled={cancelling}>
-            Keep Booking
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button 
+            onClick={() => setOpen(false)} 
+            disabled={cancelling} 
+            sx={{ color: 'text.secondary', fontWeight: 700 }}
+          >
+            Go Back
           </Button>
           <Button
             onClick={handleCancel}
             color="error"
             variant="contained"
             disabled={cancelling}
+            sx={{ borderRadius: 2.5, px: 3, fontWeight: 800, textTransform: 'none' }}
             startIcon={cancelling ? <CircularProgress size={16} color="inherit" /> : null}
           >
-            {cancelling ? "Cancelling…" : "Yes, Cancel"}
+            {cancelling ? "Cancelling..." : "Confirm Cancellation"}
           </Button>
         </DialogActions>
       </Dialog>

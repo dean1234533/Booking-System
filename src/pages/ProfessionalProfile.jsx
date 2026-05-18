@@ -6,36 +6,74 @@ import {
 } from "@mui/material";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
 import SlotPicker from "../components/SlotPicker";
-import { getBarber } from "../firebase/firestore"; 
+import { db } from "../firebase/config";
+import { doc, getDoc, collectionGroup, query, where, getDocs } from "firebase/firestore"; 
 import { useSlots } from "../hooks/useSlots.js";
 import { formatCurrency } from "../stripe/formatters.js";
 
 export default function ProfessionalProfile() {
-  const { id } = useParams();
+  const { id: barberId } = useParams();
   const [provider, setProvider] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Custom hook to fetch available slots for this specific professional
-  const { slots, loading: slotsLoading, error: slotsError } = useSlots(id);
+  // --- UPDATED: Pass expanded parameters to the hook ---
+  const { 
+    slots, 
+    loading: slotsLoading, 
+    error: slotsError 
+  } = useSlots(barberId, provider?.isStaff, provider?.shopId);
 
   useEffect(() => {
     async function fetchProfile() {
+      if (!barberId) return;
       try {
-        const data = await getBarber(id);
-        if (!data) {
-          setError("Profile not found.");
+        setLoading(true);
+        let profileData = null;
+
+        // 1. Try fetching as a top-level barber (Owner)
+        const ownerSnap = await getDoc(doc(db, "barbers", barberId));
+        if (ownerSnap.exists()) {
+          const data = ownerSnap.data();
+          profileData = { 
+            id: ownerSnap.id, 
+            ...data, 
+            isStaff: false, 
+            shopId: ownerSnap.id 
+          };
+        }
+
+        // 2. Fallback: Search via collectionGroup (Staff)
+        if (!profileData) {
+          const q = query(collectionGroup(db, "staff"), where("uid", "==", barberId));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            const docData = snap.docs[0].data();
+            const pathParts = snap.docs[0].ref.path.split('/');
+            const parentShopId = pathParts[1]; 
+            profileData = { 
+              id: snap.docs[0].id, 
+              ...docData, 
+              isStaff: true, 
+              shopId: parentShopId 
+            };
+          }
+        }
+
+        if (profileData) {
+          setProvider(profileData);
         } else {
-          setProvider(data);
+          setError("Profile not found.");
         }
       } catch (err) {
+        console.error("Fetch Profile Error:", err);
         setError("Failed to load profile.");
       } finally {
         setLoading(false);
       }
     }
     fetchProfile();
-  }, [id]);
+  }, [barberId]);
 
   if (loading) return (
     <Container sx={{ py: 8 }}>
@@ -54,27 +92,22 @@ export default function ProfessionalProfile() {
   return (
     <Container maxWidth="md" sx={{ py: { xs: 5, md: 8 } }}>
       <Grid container spacing={5}>
-        {/* Left Side: Bio & Services */}
         <Grid item xs={12} md={4}>
           <Box textAlign={{ xs: "center", md: "left" }}>
-            {provider.photoURL ? (
-              <Avatar 
-                src={provider.photoURL} 
-                sx={{ width: 140, height: 140, mb: 2, border: "3px solid", borderColor: "secondary.main", mx: { xs: "auto", md: 0 } }} 
-              />
-            ) : (
-              <Avatar 
-                sx={{ width: 140, height: 140, bgcolor: "primary.main", fontSize: 48, mb: 2, mx: { xs: "auto", md: 0 }, border: "3px solid", borderColor: "secondary.main" }}
-              >
-                {provider.name?.[0]}
-              </Avatar>
-            )}
+            <Avatar 
+              src={provider.profilePic || provider.photoURL} 
+              sx={{ 
+                width: 140, height: 140, mb: 2, border: "3px solid", 
+                borderColor: "secondary.main", mx: { xs: "auto", md: 0 } 
+              }} 
+            >
+              {provider.name?.[0]}
+            </Avatar>
 
             <Typography variant="h4" fontWeight={700} gutterBottom>
               {provider.name}
             </Typography>
             
-            {/* Professional Tag (e.g., Hair Stylist) */}
             <Chip 
               label={provider.businessType || "Professional"} 
               variant="outlined" 
@@ -93,7 +126,6 @@ export default function ProfessionalProfile() {
               {provider.bio || "No bio available."}
             </Typography>
 
-            {/* Service Menu Section */}
             {provider.services?.length > 0 && (
               <Box sx={{ mt: 4 }}>
                 <Typography variant="subtitle1" fontWeight={700} mb={1}>
@@ -130,7 +162,6 @@ export default function ProfessionalProfile() {
           </Box>
         </Grid>
 
-        {/* Right Side: Booking Calendar */}
         <Grid item xs={12} md={8}>
           <Typography variant="h5" fontWeight={700} mb={3}>
             Select a Time
@@ -139,6 +170,9 @@ export default function ProfessionalProfile() {
             slots={slots} 
             loading={slotsLoading} 
             error={slotsError} 
+            barberId={barberId}
+            shopId={provider.shopId}
+            isStaff={provider.isStaff}
             depositAmount={provider.depositAmount}
           />
         </Grid>

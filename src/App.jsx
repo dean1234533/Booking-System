@@ -43,8 +43,20 @@ function AppShell() {
   
   const lastIdentifiedId = useRef(null);
 
-  const platformDomains = ['bookehtrim.co.uk', 'www.bookehtrim.co.uk', 'localhost'];
-  const isPlatformDomain = platformDomains.includes(hostname);
+  // ── Add any domain that belongs to YOUR platform here, not your barber clients ──
+  // Cloudflare Pages preview domains and your main domain all go in this list.
+  const platformDomains = [
+    'bookehtrim.co.uk',
+    'www.bookehtrim.co.uk',
+    'bookehtrim.pages.dev',      // Cloudflare Pages preview domain
+    'bookehtrim.vercel.app',     // keep if you still have Vercel previews
+    'localhost',
+    '127.0.0.1',
+  ];
+
+  const isPlatformDomain = platformDomains.some(
+    d => hostname === d || hostname.endsWith(`.${d}`)
+  );
 
   const identifyTenant = useCallback(async () => {
     const path = location.pathname;
@@ -87,6 +99,9 @@ function AppShell() {
       if (targetId) {
         data = await getBarberById(targetId);
       } else if (!isPlatformDomain) {
+        // Custom domain visit — getBarberByDomain now checks both
+        // customDomain (new Cloudflare field) and vercelUrl (legacy) so
+        // existing barbers keep working without any data migration.
         data = await getBarberByDomain(hostname);
       }
 
@@ -119,7 +134,7 @@ function AppShell() {
             businessLogo: data.businessLogo || data.logoUrl || data.logo,
           });
         }
-        lastIdentifiedId.current = targetId;
+        lastIdentifiedId.current = targetId || hostname;
       } else if (!isAuthPath) {
         // Only clear if we aren't on an auth path
         setTenantBarber(null);

@@ -19,14 +19,35 @@ export const getBarber = async (uid) => {
 
 export const getBarberById = getBarber;
 
-export const getBarberByDomain = async (domain) => {
-  if (!domain) return null;
-  const q = query(collection(db, "barbers"), where("vercelUrl", "==", domain));
-  const snap = await getDocs(q);
-  if (!snap.empty) {
-    const docData = snap.docs[0];
-    return { id: docData.id, ...docData.data() };
+export const getBarberByDomain = async (rawDomain) => {
+  if (!rawDomain) return null;
+
+  // Normalise: strip protocol prefix and trailing slash so queries always match.
+  // Stored values like "my-shop.co.uk" will match "https://my-shop.co.uk/" etc.
+  const domain = rawDomain
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "")
+    .toLowerCase();
+
+  // 1. Check customDomain field first — new field used for Cloudflare Pages barbers
+  const customSnap = await getDocs(
+    query(collection(db, "barbers"), where("customDomain", "==", domain))
+  );
+  if (!customSnap.empty) {
+    const d = customSnap.docs[0];
+    return { id: d.id, ...d.data() };
   }
+
+  // 2. Fall back to vercelUrl — legacy field, keeps all existing barbers working
+  //    without any data migration needed
+  const vercelSnap = await getDocs(
+    query(collection(db, "barbers"), where("vercelUrl", "==", domain))
+  );
+  if (!vercelSnap.empty) {
+    const d = vercelSnap.docs[0];
+    return { id: d.id, ...d.data() };
+  }
+
   return null;
 };
 
@@ -34,16 +55,10 @@ export const getAllBarbers = async () => {
   const snap = await getDocs(collection(db, "barbers"));
   const rawData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-  // 🧪 DEBUG LOG: Use this to see exactly what "junk" is still in your DB
   console.log("🔍 FIREBASE RAW DATA:");
   console.table(rawData.map(b => ({ id: b.id, name: b.name, business: b.businessName })));
 
   return rawData.filter(barber => {
-    /**
-     * NUCLEAR FILTER: 
-     * Removes "bob", "gim", or any ghost docs that don't have a real name.
-     * Logic: Must have a name longer than 1 char AND not be a system string.
-     */
     const hasValidName = 
       barber.name && 
       barber.name.trim().length > 1 && 
@@ -56,7 +71,6 @@ export const getAllBarbers = async () => {
       barber.businessName !== "undefined" && 
       barber.businessName !== "null";
 
-    // If it's a "ghost" with just default data, this returns false and hides the card.
     return hasValidName || hasValidBusiness;
   });
 };
@@ -172,14 +186,12 @@ export const createBooking = async (bookingData) => {
 export const cancelBooking = async (bookingId, slotId, barberId) => {
   if (!bookingId) return;
 
-  // 1. Mark the booking as cancelled
   const bookingRef = doc(db, "bookings", bookingId);
   await updateDoc(bookingRef, {
     status: "cancelled",
     cancelledAt: new Date().toISOString()
   });
 
-  // 2. Re-open the slot in the root 'slots' collection
   if (slotId) {
     try {
       const slotRef = doc(db, "slots", slotId);

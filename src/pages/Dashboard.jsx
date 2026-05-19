@@ -32,7 +32,7 @@ import {
 import { db } from "../firebase/config";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-import DashboardHeader    from "../components/dashboard/DashboardHeader.jsx";
+import DashboardHeader    from "../components/dashboard/DashboardHeader";
 import ManualBookingDialog from "../components/dashboard/ManualBookingDialog";
 import ScheduleTab  from "../components/dashboard/tabs/ScheduleTab";
 import BookingsTab  from "../components/dashboard/tabs/BookingsTab";

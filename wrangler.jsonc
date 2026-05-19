@@ -1,18 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "booking-system",
-  "main": "src/worker.js", // <-- Tell wrangler to execute your backend script
+  "main": "src/worker.js", // <-- CRITICAL: This tells Cloudflare to run your API script first!
   "compatibility_date": "2026-05-19",
   "assets": {
-    "directory": "dist", // <-- Serves your compiled Vite frontend layout
+    "directory": "dist",  // <-- This serves your built Vite frontend files
     "not_found_handling": "single-page-application"
   },
   "compatibility_flags": [
     "nodejs_compat"
   ],
   "vars": {
-    "ACCOUNT_ID": "your_cloudflare_account_id",
+    "ACCOUNT_ID": "your_actual_account_id",
     "PROJECT_NAME": "booking-system",
-    "API_TOKEN": "PASTE_THE_TOKEN_YOU_JUST_CREATED_HERE" // <-- Securely injects your API key
+    "API_TOKEN": "your_new_api_token"
   }
 }

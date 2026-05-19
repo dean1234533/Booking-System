@@ -1,79 +1,106 @@
-// 1. Core Cloudflare API Domain Helper Function
-async function addDomainToPages(domainName, env) {
-  const { ACCOUNT_ID, API_TOKEN, PROJECT_NAME } = env;
-  const domain = domainName.trim().toLowerCase();
+// ── Helper Logic (Kept exactly from your code) ───────────────────────────────
+const SUPPORTED_TLDS = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
 
-  const cfApiUrl =
-    `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}` +
-    `/pages/projects/${PROJECT_NAME}/domains`;
-
-  let cfResponse;
-  try {
-    cfResponse = await fetch(cfApiUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: domain }),
-    });
-  } catch (err) {
-    return {
-      success: false,
-      error: `Network error reaching Cloudflare API: ${err.message}`,
-    };
-  }
-
-  const cfData = await cfResponse.json();
-
-  if (!cfResponse.ok || !cfData.success) {
-    const details =
-      cfData.errors?.map((e) => `[${e.code}] ${e.message}`).join("; ") ??
-      "Unknown error from Cloudflare API.";
-    return { success: false, error: "Cloudflare API request failed.", details };
-  }
-
-  return { success: true, result: cfData.result };
+function extractTLD(domain) {
+  const parts = domain.split(".");
+  if (parts.length >= 3) return parts.slice(-2).join(".");
+  return parts.slice(-1)[0];
 }
 
-// 2. Main Worker Fetch Request Handler
+function isValidDomain(domain) {
+  return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z]{2,})+$/i.test(domain);
+}
+
+// ── Cloudflare Registrar availability check logic ───────────────────────────────
+async function checkDomainAvailability(domainQuery, env) {
+  // Cloudflare Workers use 'env' bindings instead of process.env
+  const CF_API_TOKEN = env.API_TOKEN; 
+  const CF_ACCOUNT_ID = env.ACCOUNT_ID;
+
+  if (!domainQuery) {
+    return new Response(JSON.stringify({ error: "domain query parameter is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const clean = domainQuery.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+  if (!isValidDomain(clean)) {
+    return new Response(JSON.stringify({ error: "Invalid domain format" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const tld = extractTLD(clean);
+  if (!SUPPORTED_TLDS.includes(tld)) {
+    return new Response(JSON.stringify({
+      error: `Unsupported TLD: .${tld}`,
+      supported: SUPPORTED_TLDS,
+    }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  try {
+    const cfRes = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/registrar/domains/${clean}/availability`,
+      {
+        headers: {
+          Authorization: `Bearer ${CF_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!cfRes.ok) {
+      const err = await cfRes.json();
+      console.error("[check-domain] Cloudflare error:", err);
+      return new Response(JSON.stringify({ error: "Cloudflare availability check failed" }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const data = await cfRes.json();
+    const result = data.result ?? {};
+
+    return new Response(JSON.stringify({
+      domain:    clean,
+      available: result.available ?? false,
+      price:     result.price      ?? null,
+      currency:  "USD",
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+
+  } catch (err) {
+    console.error("[check-domain] Unexpected error:", err);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+
+// ── Main Cloudflare Worker Core Routing ──────────────────────────────────────────
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Route: Check Domain Availability 
+    // 1. Route match for checking a domain availability
     if (url.pathname === '/api/check-domain') {
-      const domain = url.searchParams.get('domain');
-      if (!domain) {
-        return new Response(JSON.stringify({ error: 'No domain provided' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        });
+      if (request.method !== "GET") {
+        return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
       }
-
-      // Return successful response to frontend
-      return new Response(JSON.stringify({ success: true, domain }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
+      const domainParam = url.searchParams.get('domain');
+      return await checkDomainAvailability(domainParam, env);
     }
 
-    // Route: Add Custom Domain Linkage
-    if (url.pathname === '/api/add-custom-domain') {
-      try {
-        const { domainName } = await request.json();
-        const cfResult = await addDomainToPages(domainName, env);
-        return new Response(JSON.stringify(cfResult), {
-          headers: { 'Content-Type': 'application/json' }
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ success: false, error: err.message }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-    }
-
-    // Fallback: Serve static frontend files from Vite (dist)
+    // 2. Fallback: If it's not an API call, serve the compiled Vite client assets
     return env.ASSETS.fetch(request);
   }
 };

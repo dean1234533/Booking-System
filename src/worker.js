@@ -1,4 +1,4 @@
-import { addDomainToPages } from '../functions/add-custom-domain.js';
+import { addDomainToPages } from './functions/add-custom-domain.js';
 
 export default {
   async fetch(request, env, ctx) {

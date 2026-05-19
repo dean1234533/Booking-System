@@ -12,6 +12,7 @@ import {
   Payments as PaymentsIcon,
   Palette as PaletteIcon,
   Nfc as NfcIcon,
+  Language as LanguageIcon,   // ← Domain tab icon
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -32,7 +33,7 @@ import {
 import { db } from "../firebase/config";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-import DashboardHeader    from "../components/dashboard/DashboardHeader";
+import DashboardHeader     from "../components/dashboard/DashboardHeader";
 import ManualBookingDialog from "../components/dashboard/ManualBookingDialog";
 import ScheduleTab  from "../components/dashboard/tabs/ScheduleTab";
 import BookingsTab  from "../components/dashboard/tabs/BookingsTab";
@@ -42,6 +43,7 @@ import ReviewsTab   from "../components/dashboard/tabs/ReviewsTab";
 import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
 import DesignTab    from "../components/dashboard/tabs/DesignTab";
 import PayTab       from "../components/dashboard/tabs/PayTab";
+import DomainTab    from "../components/dashboard/tabs/DomainTab";   // ← NEW
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -80,8 +82,10 @@ export default function Dashboard() {
     openingHours: "", vercelUrl: "", customDomain: "", aboutUs: "",
     profilePic: "", logoUrl: "", heroImage: "", heroImageMobile: "",
     stripeConnected: false,
-    instagramUrl: "", tiktokUrl: "", facebookUrl: "",   // ← tiktokUrl added
+    instagramUrl: "", tiktokUrl: "", facebookUrl: "",
     privacyPolicy: "", termsConditions: "",
+    domainStatus: "",       // ← "pending" | "active" — set by provision-domain.js
+    customHostnameId: "",   // ← Cloudflare custom hostname ID
   });
 
   const [bookings,    setBookings]    = useState([]);
@@ -93,25 +97,25 @@ export default function Dashboard() {
   const [newService, setNewService]   = useState({ name: "", price: "" });
 
   // ── Manual booking dialog ─────────────────────────────────────────────────
-  const [manualDialogOpen,        setManualDialogOpen]        = useState(false);
-  const [selectedSlotForManual,   setSelectedSlotForManual]   = useState(null);
+  const [manualDialogOpen,      setManualDialogOpen]      = useState(false);
+  const [selectedSlotForManual, setSelectedSlotForManual] = useState(null);
 
   // ── Image previews ────────────────────────────────────────────────────────
-  const [profileFile,          setProfileFile]          = useState(null);
-  const [profilePreview,       setProfilePreview]       = useState("");
-  const [logoFile,             setLogoFile]             = useState(null);
-  const [logoPreview,          setLogoPreview]          = useState("");
-  const [heroFileDesktop,      setHeroFileDesktop]      = useState(null);
-  const [heroPreviewDesktop,   setHeroPreviewDesktop]   = useState("");
-  const [heroFileMobile,       setHeroFileMobile]       = useState(null);
-  const [heroPreviewMobile,    setHeroPreviewMobile]    = useState("");
+  const [profileFile,        setProfileFile]        = useState(null);
+  const [profilePreview,     setProfilePreview]     = useState("");
+  const [logoFile,           setLogoFile]           = useState(null);
+  const [logoPreview,        setLogoPreview]        = useState("");
+  const [heroFileDesktop,    setHeroFileDesktop]    = useState(null);
+  const [heroPreviewDesktop, setHeroPreviewDesktop] = useState("");
+  const [heroFileMobile,     setHeroFileMobile]     = useState(null);
+  const [heroPreviewMobile,  setHeroPreviewMobile]  = useState("");
 
   // ── Tap-to-Pay state ──────────────────────────────────────────────────────
   const [terminalAmount,  setTerminalAmount]  = useState("");
   const [terminalService, setTerminalService] = useState("");
   const [terminalNote,    setTerminalNote]    = useState("");
-  const [terminalStatus,  setTerminalStatus]  = useState("idle"); // idle|loading|awaiting|paid|error
-  const [terminalSession, setTerminalSession] = useState(null);   // { url, sessionId }
+  const [terminalStatus,  setTerminalStatus]  = useState("idle");
+  const [terminalSession, setTerminalSession] = useState(null);
   const pollingRef = useRef(null);
 
   // ── Effects ───────────────────────────────────────────────────────────────
@@ -155,7 +159,9 @@ export default function Dashboard() {
           ...prev, ...data,
           services:        Array.isArray(data.services) ? data.services : [],
           stripeConnected: !!data.stripeConnected,
-          tiktokUrl:       data.tiktokUrl || "",   // ensure tiktokUrl is hydrated
+          tiktokUrl:       data.tiktokUrl       || "",
+          domainStatus:    data.domainStatus     || "",
+          customHostnameId:data.customHostnameId || "",
         }));
       }
       setUserRole({ isOwner, shopId: activeShopId });
@@ -217,18 +223,18 @@ export default function Dashboard() {
     try {
       let updatedData = {
         ...profile,
-        email:        barber.email    || "",
-        vercelUrl:    profile.vercelUrl    || "",
-        customDomain: profile.customDomain || "",
-        openingHours: profile.openingHours || "",
-        aboutUs:      profile.aboutUs      || "",
-        tiktokUrl:    profile.tiktokUrl    || "",
+        email:        barber.email         || "",
+        vercelUrl:    profile.vercelUrl     || "",
+        customDomain: profile.customDomain  || "",
+        openingHours: profile.openingHours  || "",
+        aboutUs:      profile.aboutUs       || "",
+        tiktokUrl:    profile.tiktokUrl     || "",
       };
       const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true };
-      if (profileFile)    { const c = await imageCompression(profileFile, options);    updatedData.profilePic      = await uploadBarberImage(c, barber.uid, "profile_pic"); }
-      if (logoFile)       { const c = await imageCompression(logoFile, options);       updatedData.logoUrl         = await uploadBarberImage(c, barber.uid, "business_logo"); }
+      if (profileFile)    { const c = await imageCompression(profileFile, options);     updatedData.profilePic      = await uploadBarberImage(c, barber.uid, "profile_pic"); }
+      if (logoFile)       { const c = await imageCompression(logoFile, options);        updatedData.logoUrl         = await uploadBarberImage(c, barber.uid, "business_logo"); }
       if (heroFileDesktop){ const c = await imageCompression(heroFileDesktop, options); updatedData.heroImage       = await uploadBarberImage(c, barber.uid, "hero_banner_desktop"); }
-      if (heroFileMobile) { const c = await imageCompression(heroFileMobile, options); updatedData.heroImageMobile = await uploadBarberImage(c, barber.uid, "hero_banner_mobile"); }
+      if (heroFileMobile) { const c = await imageCompression(heroFileMobile, options);  updatedData.heroImageMobile = await uploadBarberImage(c, barber.uid, "hero_banner_mobile"); }
 
       await updateBarber(barber.uid, updatedData);
       if (!userRole.isOwner && userRole.shopId) {
@@ -285,50 +291,29 @@ export default function Dashboard() {
   }
 
   // ── Bookings ──────────────────────────────────────────────────────────────
-
-  /**
-   * Mark booking as completed.
-   * ✅ Restores the slot to "open" so it's available for new bookings.
-   * ✅ NO email sent — email sending removed from dashboard actions.
-   * ✅ Sends a WhatsApp review link (not an email).
-   */
   async function handleCompleteBooking(booking) {
     try {
-      // 1. Mark booking as completed
       await updateDoc(doc(db, "bookings", booking.id), { status: "completed" });
-
-      // 2. Restore the slot to available
       if (booking.slotId) {
         await updateDoc(doc(db, "slots", booking.slotId), {
-          isBooked:        false,
-          status:          "open",
-          manualBookingId: null,
+          isBooked: false, status: "open", manualBookingId: null,
         });
       }
-
-      // 3. Send WhatsApp review link (not an email)
       const host = (profile.customDomain || profile.vercelUrl || window.location.host)
         .replace(/^https?:\/\//, "");
       const reviewLink = `https://${host}/review/${userRole.shopId}`;
       const message    = `Hey ${booking.customerName || "there"}, thanks for visiting! I'd love a review: ${reviewLink}`;
       const phone      = booking.customerPhone || booking.phone;
-
       if (phone) {
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
       } else {
         await navigator.clipboard.writeText(message);
         setToast("Completed! Review link copied.");
       }
-
       await loadData();
     } catch { setToast("Error updating booking"); }
   }
 
-  /**
-   * Cancel a booking.
-   * ✅ Processes Stripe refund if applicable.
-   * ✅ NO cancel email sent — email sending removed from dashboard actions.
-   */
   async function handleCancelBooking(booking) {
     if (!window.confirm(
       `Are you sure you want to cancel ${booking.customerName || "this"} booking?` +
@@ -336,8 +321,6 @@ export default function Dashboard() {
     )) return;
     try {
       setDataLoading(true);
-
-      // 1. Stripe refund (payment-related, not an email)
       if (booking.paymentIntentId) {
         try {
           const r = await fetch("/api/cancel-refund", {
@@ -354,17 +337,10 @@ export default function Dashboard() {
           if (!r.ok) setToast(`Stripe Refund Warning: ${result.error || "Failed to process automatic refund."}`);
         } catch (e) { console.error("[handleCancelBooking] Stripe error:", e); }
       }
-
-      // 2. Mark booking cancelled
       await updateDoc(doc(db, "bookings", booking.id), { status: "cancelled" });
-
-      // 3. Remove the slot
       if (booking.slotId) {
         try { await deleteDoc(doc(db, "slots", booking.slotId)); } catch {}
       }
-
-      // ℹ️  Cancel email intentionally NOT sent from the dashboard.
-
       setToast("Booking successfully cancelled.");
       await loadData();
     } catch (err) {
@@ -397,7 +373,6 @@ export default function Dashboard() {
       const currentOrigin = domainField
         ? (domainField.startsWith("http") ? domainField : `https://${domainField}`)
         : window.location.origin;
-
       const res  = await fetch("/api/connect", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
@@ -472,20 +447,26 @@ export default function Dashboard() {
   // ── Tab config ────────────────────────────────────────────────────────────
   const brandColor = profile.brandColor || "#C9A84C";
 
+  // Tab order (owner):  Schedule · Bookings · Profile · Services · Reviews · Finance · Design · Domain · Pay
+  // Tab order (staff):  Schedule · Bookings · Profile · Services · Finance · Pay
   const tabs = [
-    { label: "Schedule", icon: <AccessTimeIcon /> },
-    { label: "Bookings", icon: <StoreIcon /> },
-    { label: "Profile",  icon: <PersonIcon /> },
-    { label: "Services", icon: <ListIcon /> },
-    ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }] : []),
-    { label: "Finance",  icon: <PaymentsIcon /> },
-    ...(userRole.isOwner ? [{ label: "Design",  icon: <PaletteIcon /> }] : []),
-    { label: "Pay",      icon: <NfcIcon /> },
+    { label: "Schedule", icon: <AccessTimeIcon /> },   // 0
+    { label: "Bookings", icon: <StoreIcon /> },         // 1
+    { label: "Profile",  icon: <PersonIcon /> },        // 2
+    { label: "Services", icon: <ListIcon /> },          // 3
+    ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }] : []),  // 4 (owner)
+    { label: "Finance",  icon: <PaymentsIcon /> },      // 5 owner / 4 staff
+    ...(userRole.isOwner ? [{ label: "Design",  icon: <PaletteIcon /> }]  : []), // 6 (owner)
+    ...(userRole.isOwner ? [{ label: "Domain",  icon: <LanguageIcon /> }] : []), // 7 (owner)
+    { label: "Pay",      icon: <NfcIcon /> },           // 8 owner / 5 staff
   ];
 
-  const financeTabIndex = userRole.isOwner ? 5 : 4;
-  const designTabIndex  = 6; // owner only
-  const payTabIndex     = userRole.isOwner ? 7 : 5;
+  // Named index constants — single source of truth
+  const IDX_REVIEWS = 4;               // owner only
+  const IDX_FINANCE = userRole.isOwner ? 5 : 4;
+  const IDX_DESIGN  = 6;               // owner only
+  const IDX_DOMAIN  = 7;               // owner only
+  const IDX_PAY     = userRole.isOwner ? 8 : 5;
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (authLoading || (dataLoading && !barber)) {
@@ -581,13 +562,13 @@ export default function Dashboard() {
 
         {/* ── 4 Reviews (owner only) ── */}
         {userRole.isOwner && (
-          <TabPanel value={tab} index={4}>
+          <TabPanel value={tab} index={IDX_REVIEWS}>
             <ReviewsTab reviews={reviews} />
           </TabPanel>
         )}
 
         {/* ── 5 Finance ── */}
-        <TabPanel value={tab} index={financeTabIndex}>
+        <TabPanel value={tab} index={IDX_FINANCE}>
           <FinanceTab
             profile={profile} setProfile={setProfile} userRole={userRole}
             stripeLoading={stripeLoading} handleConnectStripe={handleConnectStripe}
@@ -596,10 +577,10 @@ export default function Dashboard() {
 
         {/* ── 6 Design (owner only) ── */}
         {userRole.isOwner && (
-          <TabPanel value={tab} index={designTabIndex}>
+          <TabPanel value={tab} index={IDX_DESIGN}>
             <DesignTab
               profile={profile} setProfile={setProfile}
-              logoPreview={logoPreview}       setLogoFile={setLogoFile}       setLogoPreview={setLogoPreview}
+              logoPreview={logoPreview}             setLogoFile={setLogoFile}             setLogoPreview={setLogoPreview}
               heroPreviewDesktop={heroPreviewDesktop} setHeroFileDesktop={setHeroFileDesktop} setHeroPreviewDesktop={setHeroPreviewDesktop}
               heroPreviewMobile={heroPreviewMobile}   setHeroFileMobile={setHeroFileMobile}   setHeroPreviewMobile={setHeroPreviewMobile}
               handleImageChange={handleImageChange}
@@ -607,11 +588,22 @@ export default function Dashboard() {
           </TabPanel>
         )}
 
-        {/* ── 7 Pay ── */}
-        <TabPanel value={tab} index={payTabIndex}>
+        {/* ── 7 Domain (owner only) ── */}
+        {userRole.isOwner && (
+          <TabPanel value={tab} index={IDX_DOMAIN}>
+            <DomainTab
+              profile={profile}
+              barber={barber}
+              brandColor={brandColor}
+            />
+          </TabPanel>
+        )}
+
+        {/* ── 8 Pay ── */}
+        <TabPanel value={tab} index={IDX_PAY}>
           <PayTab
             profile={profile} barber={barber}
-            setTab={setTab} financeTabIndex={financeTabIndex} brandColor={brandColor}
+            setTab={setTab} financeTabIndex={IDX_FINANCE} brandColor={brandColor}
             terminalAmount={terminalAmount}   setTerminalAmount={setTerminalAmount}
             terminalService={terminalService} setTerminalService={setTerminalService}
             terminalNote={terminalNote}       setTerminalNote={setTerminalNote}

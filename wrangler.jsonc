@@ -10,6 +10,12 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  "observability": {
+    "logs": {
+      "enabled": false,
+      "invocation_logs": true
+    }
+  },
   "vars": {
     "ACCOUNT_ID": "your_actual_account_id",
     "PROJECT_NAME": "booking-system",

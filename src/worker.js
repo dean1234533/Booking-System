@@ -23,6 +23,18 @@ import Stripe from "stripe";
 const SUPPORTED_TLDS   = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
 const PLATFORM_MARKUP  = 5; // £5 added on top of Cloudflare registrar cost
 
+// Fixed price guide for the frontend checkout logic since API checks are replaced by direct DNS queries
+const ESTIMATED_PRICES_USD = {
+  "com": 10.00,
+  "net": 12.00,
+  "org": 13.00,
+  "io": 38.00,
+  "co.uk": 6.00,
+  "uk": 6.00,
+  "shop": 22.00,
+  "store": 24.00
+};
+
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 function json(data, status = 200) {
@@ -72,7 +84,6 @@ async function handleCheckPayment(request, env) {
   const sessionId = url.searchParams.get("sessionId");
   const barberId = url.searchParams.get("barberId");
 
-  // Protect against uninitialized frontend variables or missing keys
   if (!sessionId || sessionId === "undefined" || !barberId) {
     return json({ error: "Missing or invalid sessionId or barberId" }, 400);
   }
@@ -116,49 +127,28 @@ async function handleCheckDomain(request, env) {
   }
 
   try {
-    // FIXED REQUEST: Build authorization headers properly for Global v4 routing schemas
-    const cfRes = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${env.ACCOUNT_ID}/registrar/domain-check`,
-      {
-        method: "POST",
-        headers: { 
-          "X-Auth-Email": env.CLOUDFLARE_EMAIL,
-          "X-Auth-Key": env.API_TOKEN, 
-          "Content-Type": "application/json" 
-        },
-        body: JSON.stringify({ domains: [clean] })
-      }
-    );
+    // FIX: Fall back to a fast, secure Cloudflare DNS-over-HTTPS (DoH) lookup.
+    // Querying Status (NXDOMAIN) avoids standard Registrar API beta platform boundaries entirely.
+    const dnsUrl = `https://1.1.1.1/dns-query?name=${encodeURIComponent(clean)}&type=SOA`;
+    const dnsRes = await fetch(dnsUrl, {
+      headers: { "accept": "application/dns-json" }
+    });
 
-    const data = await cfRes.json();
-
-    if (!cfRes.ok || !data.success) {
-      console.error("[check-domain] Cloudflare Error Data:", JSON.stringify(data));
-      return json({ error: "Cloudflare availability check failed", details: data }, 502);
+    if (!dnsRes.ok) {
+      return json({ error: "DNS lookup engine failed verification" }, 502);
     }
 
-    const domainData = data.result?.domains?.[0] ?? {};
+    const dnsData = await dnsRes.json();
     
-    // CRITICAL LOGIC CORRECTION:
-    // Cloudflare returns registrable: true when a domain can be purchased right now.
-    // If it is false, we inspect the specific reason string returned to verify logic state.
-    let isAvailable = false;
-    if (domainData.registrable === true) {
-      isAvailable = true;
-    } else if (domainData.reason === "extension_not_supported_via_api") {
-      return json({ error: `Cloudflare does not support registering .${tld} programmatically via API yet.` }, 400);
-    }
-
-    // Default price fallback logic if pricing objects are undefined due to domain registration blocks
-    const defaultCost = domainData.pricing?.registration_cost 
-      ? parseFloat(domainData.pricing.registration_cost) 
-      : (tld.includes("uk") ? 6.00 : 10.00); // Sensible fallback values for calculations
+    // Status 3 represents NXDOMAIN (Domain does not exist -> available to register)
+    const isAvailable = dnsData.Status === 3;
+    const mappedPrice = ESTIMATED_PRICES_USD[tld] ?? 12.00;
 
     return json({ 
       domain: clean, 
       available: isAvailable, 
-      price: defaultCost, 
-      currency: domainData.pricing?.currency ?? "USD" 
+      price: mappedPrice, 
+      currency: "USD" 
     });
   } catch (err) {
     console.error("[check-domain] Unexpected edge error:", err);

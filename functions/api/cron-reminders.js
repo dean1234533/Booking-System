@@ -66,12 +66,73 @@ function nowUKTimeStr() {
   }).format(new Date());
 }
 
-// ─── Main Handler ─────────────────────────────────────────────────────────────
+// ─── Shared Core Business Logic Handlers ─────────────────────────────────────
 
-export async function onRequestGet(context) {
-  const { request, env } = context;
-  const url = new URL(request.url);
-  
+async function checkDomainAvailability(domainParam, env) {
+  const CF_API_TOKEN  = env.API_TOKEN;
+  const CF_ACCOUNT_ID = env.ACCOUNT_ID;
+
+  if (!domainParam) {
+    return new Response(JSON.stringify({ error: "domain query parameter is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const clean = domainParam.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+  const SUPPORTED_TLDS = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
+  const extractTLD = (d) => {
+    const parts = d.split(".");
+    if (parts.length >= 3) return parts.slice(-2).join(".");
+    return parts.slice(-1)[0];
+  };
+  const isValidDomain = (d) => /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z]{2,})+$/i.test(d);
+
+  if (!isValidDomain(clean)) {
+    return new Response(JSON.stringify({ error: "Invalid domain format" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const tld = extractTLD(clean);
+  if (!SUPPORTED_TLDS.includes(tld)) {
+    return new Response(JSON.stringify({ error: `Unsupported TLD: .${tld}`, supported: SUPPORTED_TLDS }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  try {
+    const cfRes = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/registrar/domains/${clean}/availability`,
+      { headers: { Authorization: `Bearer ${CF_API_TOKEN}`, "Content-Type": "application/json" } }
+    );
+
+    if (!cfRes.ok) {
+      return new Response(JSON.stringify({ error: "Cloudflare availability check failed" }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const data = await cfRes.json();
+    const result = data.result ?? {};
+
+    return new Response(JSON.stringify({
+      domain:    clean,
+      available: result.available ?? false,
+      price:     result.price      ?? null,
+      currency:  "USD",
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 });
+  }
+}
+
+// Your native reminder function handler logic
+async function processCronReminders(url, request, env) {
   // Auth: accept Bearer token from headers or ?secret= query param
   const authHeader = request.headers.get("authorization");
   const querySecret = url.searchParams.get("secret");
@@ -207,3 +268,30 @@ export async function onRequestGet(context) {
     });
   }
 }
+
+// ─── Main Cloudflare Worker Routing Entrypoint ─────────────────────────────────
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    // GET /api/check-domain?domain=deansbarbershop.com
+    if (url.pathname === '/api/check-domain') {
+      if (request.method !== "GET") {
+        return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+      }
+      const domain = url.searchParams.get('domain');
+      return await checkDomainAvailability(domain, env);
+    }
+
+    // GET /api/cron-reminders (or whatever path your cron triggers)
+    if (url.pathname === '/api/cron-reminders') {
+      if (request.method !== "GET") {
+        return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+      }
+      return await processCronReminders(url, request, env);
+    }
+
+    // Fallback: Serves static compiled Vite frontend files from your assets ('dist')
+    return env.ASSETS.fetch(request);
+  }
+};

@@ -1,13 +1,3 @@
-/**
- * GET /api/check-domain?domain=deansbarbershop.com
- *
- * Checks domain availability via the Cloudflare Registrar API.
- * All Cloudflare credentials stay strictly server-side.
- */
-
-const CF_API_TOKEN  = process.env.CLOUDFLARE_API_TOKEN;
-const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-
 // Simple allowlist of TLDs we support purchasing
 const SUPPORTED_TLDS = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
 
@@ -22,29 +12,37 @@ function isValidDomain(domain) {
   return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z]{2,})+$/i.test(domain);
 }
 
-export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const { domain } = req.query;
+// ── Cloudflare Worker Function Handler ───────────────────────────────────────
+async function checkDomainAvailability(domainParam, env) {
+  // Pull credentials securely from the Cloudflare Worker env context
+  const CF_API_TOKEN  = env.API_TOKEN;
+  const CF_ACCOUNT_ID = env.ACCOUNT_ID;
 
   // ── Input validation ──────────────────────────────────────────────────────
-  if (!domain) {
-    return res.status(400).json({ error: "domain query parameter is required" });
+  if (!domainParam) {
+    return new Response(JSON.stringify({ error: "domain query parameter is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 
-  const clean = domain.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const clean = domainParam.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
 
   if (!isValidDomain(clean)) {
-    return res.status(400).json({ error: "Invalid domain format" });
+    return new Response(JSON.stringify({ error: "Invalid domain format" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 
   const tld = extractTLD(clean);
   if (!SUPPORTED_TLDS.includes(tld)) {
-    return res.status(400).json({
+    return new Response(JSON.stringify({
       error: `Unsupported TLD: .${tld}`,
       supported: SUPPORTED_TLDS,
+    }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
     });
   }
 
@@ -63,7 +61,10 @@ export default async function handler(req, res) {
     if (!cfRes.ok) {
       const err = await cfRes.json();
       console.error("[check-domain] Cloudflare error:", err);
-      return res.status(502).json({ error: "Cloudflare availability check failed" });
+      return new Response(JSON.stringify({ error: "Cloudflare availability check failed" }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" }
+      });
     }
 
     const data = await cfRes.json();
@@ -71,14 +72,42 @@ export default async function handler(req, res) {
     // Cloudflare returns result.available (bool) and result.price (annual USD)
     const result = data.result ?? {};
 
-    return res.status(200).json({
+    return new Response(JSON.stringify({
       domain:    clean,
       available: result.available ?? false,
-      price:     result.price     ?? null, // annual price in USD
+      price:     result.price      ?? null, // annual price in USD
       currency:  "USD",
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
     console.error("[check-domain] Unexpected error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 }
+
+// ── Main Cloudflare Worker Routing Entrypoint ─────────────────────────────────
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    // GET /api/check-domain?domain=deansbarbershop.com
+    if (url.pathname === '/api/check-domain') {
+      if (request.method !== "GET") {
+        return new Response(JSON.stringify({ error: "Method not allowed" }), { 
+          status: 405,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      const domain = url.searchParams.get('domain');
+      return await checkDomainAvailability(domain, env);
+    }
+
+    // Fallback: Serves static compiled Vite frontend files from your assets ('dist')
+    return env.ASSETS.fetch(request);
+  }
+};

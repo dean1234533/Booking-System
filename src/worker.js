@@ -57,8 +57,9 @@ async function checkDomainAvailability(domainQuery, env) {
 
     if (!cfRes.ok) {
       const err = await cfRes.json();
-      console.error("[check-domain] Cloudflare error:", err);
-      return new Response(JSON.stringify({ error: "Cloudflare availability check failed" }), {
+      // UPDATED LOG: Stringifies the error object so the exact Cloudflare reason is printed to your dashboard logs
+      console.error("[check-domain] Cloudflare error payload:", JSON.stringify(err));
+      return new Response(JSON.stringify({ error: "Cloudflare availability check failed", details: err }), {
         status: 502,
         headers: { "Content-Type": "application/json" }
       });
@@ -101,6 +102,6 @@ export default {
     }
 
     // 2. Fallback: If it's not an API call, serve the compiled Vite client assets
-    return env.ASSETS.fetch(request);
+    return fetch(request);
   }
 };

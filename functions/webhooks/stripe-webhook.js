@@ -12,7 +12,7 @@
  */
 
 import Stripe                from "stripe";
-import { provisionDomain }   from "./provision-domain.js";
+import { provisionDomain }   from "../api/provision-domain.js";
 import { getRawBody }        from "../utils/rawBody.js"; // helper — see note below
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);

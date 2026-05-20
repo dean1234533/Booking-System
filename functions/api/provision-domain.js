@@ -20,9 +20,9 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
-const CF_API_TOKEN  = process.env.CLOUDFLARE_API_TOKEN;
-const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-const CF_ZONE_ID    = process.env.CLOUDFLARE_ZONE_ID;   // Your main SaaS zone
+const CF_API_TOKEN  = process.env.API_TOKEN;
+const CF_ACCOUNT_ID = process.env.ACCOUNT_ID;
+const CF_ZONE_ID    = process.env.ZONE_ID;   // Your main SaaS zone
 
 // ── Cloudflare helpers ────────────────────────────────────────────────────────
 

@@ -13,6 +13,7 @@
   "vars": {
     "ACCOUNT_ID": "your_actual_account_id",
     "PROJECT_NAME": "booking-system",
-    "API_TOKEN": "your_new_api_token"
+    "API_TOKEN": "your_new_api_token",
+    "ZONE_ID":"your_new_zone_id"
   }
 }

@@ -23,7 +23,7 @@ import Stripe from "stripe";
 const SUPPORTED_TLDS   = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
 const PLATFORM_MARKUP  = 5; // £5 added on top of Cloudflare registrar cost
 
-// Fixed price guide for the frontend checkout logic since API checks are replaced by direct DNS queries
+// Base pricing book used for calculation strategies
 const ESTIMATED_PRICES_USD = {
   "com": 10.00,
   "net": 12.00,
@@ -127,8 +127,6 @@ async function handleCheckDomain(request, env) {
   }
 
   try {
-    // FIX: Fall back to a fast, secure Cloudflare DNS-over-HTTPS (DoH) lookup.
-    // Querying Status (NXDOMAIN) avoids standard Registrar API beta platform boundaries entirely.
     const dnsUrl = `https://1.1.1.1/dns-query?name=${encodeURIComponent(clean)}&type=SOA`;
     const dnsRes = await fetch(dnsUrl, {
       headers: { "accept": "application/dns-json" }
@@ -139,16 +137,26 @@ async function handleCheckDomain(request, env) {
     }
 
     const dnsData = await dnsRes.json();
-    
-    // Status 3 represents NXDOMAIN (Domain does not exist -> available to register)
     const isAvailable = dnsData.Status === 3;
-    const mappedPrice = ESTIMATED_PRICES_USD[tld] ?? 12.00;
+    
+    // Mapped internal calculation configurations
+    const baseCostUsd = ESTIMATED_PRICES_USD[tld] ?? 12.00;
+    
+    // DYNAMIC RESOLUTION: Assign currency based on the extension type matching
+    const currency = (tld === "uk" || tld === "co.uk") ? "GBP" : "USD";
+
+    // If currency is GBP, convert the base USD pricing estimation into local currency metrics
+    let finalPrice = baseCostUsd;
+    if (currency === "GBP") {
+      const usdToGbp = parseFloat(env.USD_TO_GBP_RATE ?? "0.79");
+      finalPrice = parseFloat((baseCostUsd * usdToGbp).toFixed(2));
+    }
 
     return json({ 
       domain: clean, 
       available: isAvailable, 
-      price: mappedPrice, 
-      currency: "USD" 
+      price: finalPrice, 
+      currency: currency 
     });
   } catch (err) {
     console.error("[check-domain] Unexpected edge error:", err);

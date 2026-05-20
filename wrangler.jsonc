@@ -10,9 +10,11 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "vars": {
-    "ACCOUNT_ID": "your_actual_account_id",
-    "PROJECT_NAME": "booking-system",
-    "ZONE_ID":"your_new_zone_id"
+  "observability": {
+    "logs": {
+      "enabled": false,
+      "invocation_logs": true
+    }
   }
+  // The entire "vars" block is gone from here so Cloudflare reads your real values from your dashboard!
 }

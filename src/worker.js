@@ -116,9 +116,17 @@ async function handleCheckDomain(request, env) {
   }
 
   try {
+    // Replaced legacy GET endpoint with the valid Cloudflare Registrar POST endpoint
     const cfRes = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${env.ACCOUNT_ID}/registrar/domains/${clean}/availability`,
-      { headers: { Authorization: `Bearer ${env.API_TOKEN}`, "Content-Type": "application/json" } }
+      `https://api.cloudflare.com/client/v4/accounts/${env.ACCOUNT_ID}/registrar/domain-check`,
+      {
+        method: "POST",
+        headers: { 
+          Authorization: `Bearer ${env.API_TOKEN}`, 
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify({ domains: [clean] })
+      }
     );
 
     if (!cfRes.ok) {
@@ -127,10 +135,16 @@ async function handleCheckDomain(request, env) {
       return json({ error: "Cloudflare availability check failed", details: err }, 502);
     }
 
-    const data   = await cfRes.json();
-    const result = data.result ?? {};
-
-    return json({ domain: clean, available: result.available ?? false, price: result.price ?? null, currency: "USD" });
+    const data = await cfRes.json();
+    const domainData = data.result?.domains?.[0] ?? {};
+    
+    // Map back cleanly into your existing frontend payload expectations
+    return json({ 
+      domain: clean, 
+      available: domainData.registrable ?? false, 
+      price: domainData.pricing?.registration_cost ? parseFloat(domainData.pricing.registration_cost) : null, 
+      currency: domainData.pricing?.currency ?? "USD" 
+    });
   } catch (err) {
     console.error("[check-domain] Unexpected error:", err);
     return json({ error: "Internal server error" }, 500);

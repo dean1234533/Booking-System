@@ -1,7 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "booking-system",
-  "main": "src/worker.js", // <-- CRITICAL: This tells Cloudflare to run your API script first!
   "compatibility_date": "2026-05-19",
   "assets": {
     "directory": "dist",  // <-- This serves your built Vite frontend files

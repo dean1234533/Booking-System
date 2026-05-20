@@ -89,6 +89,13 @@ async function checkDomainAvailability(domainQuery, env) {
 
 // ── Main Cloudflare Worker Core Routing ──────────────────────────────────────────
 export default {
+  "observability": {
+    "logs": {
+      "enabled": false,
+      "invocation_logs": true
+    }
+  },
+
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 

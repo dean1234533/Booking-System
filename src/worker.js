@@ -140,10 +140,15 @@ async function handleCheckDomain(request, env) {
     const data = await cfRes.json();
     const domainData = data.result?.domains?.[0] ?? {};
     
+    // COMPATIBILITY FIX: Fall back to checking the explicit text status if 'registrable' is missing
+    const isAvailable = domainData.registrable === true || 
+                        domainData.available === true ||
+                        domainData.status === "AVAILABLE";
+
     // Map back cleanly into your existing frontend payload expectations
     return json({ 
       domain: clean, 
-      available: domainData.registrable ?? false, 
+      available: isAvailable, 
       price: domainData.pricing?.registration_cost ? parseFloat(domainData.pricing.registration_cost) : null, 
       currency: domainData.pricing?.currency ?? "USD" 
     });

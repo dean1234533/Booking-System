@@ -5,9 +5,10 @@
  * Handles all /api/* routes, then falls back to serving your Vite SPA.
  *
  * Environment variables (set in Cloudflare Dashboard → Settings → Variables):
- * API_TOKEN                    — Cloudflare Global API Key (Required for Account Registrar API)
- * ACCOUNT_ID                   — Cloudflare account ID
- * ZONE_ID                      — Zone ID of your main SaaS domain
+ * API_TOKEN        — Cloudflare Global API Key (Required for Account Registrar API)
+ * CLOUDFLARE_EMAIL — Cloudflare account login email (Required for Global API authorization)
+ * ACCOUNT_ID       — Cloudflare account ID
+ * ZONE_ID          — Zone ID of your main SaaS domain
  * STRIPE_SECRET_KEY            — Stripe secret key (sk_live_...)
  * STRIPE_WEBHOOK_SECRET        — Stripe webhook signing secret (whsec_...)
  * VITE_FIREBASE_PROJECT_ID     — Firebase project ID
@@ -116,13 +117,14 @@ async function handleCheckDomain(request, env) {
   }
 
   try {
-    // Replaced legacy GET endpoint with the valid Cloudflare Registrar POST endpoint
+    // SOLUTION 2: Authorization headers optimized for Cloudflare Global API Key routing
     const cfRes = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${env.ACCOUNT_ID}/registrar/domain-check`,
       {
         method: "POST",
         headers: { 
-          Authorization: `Bearer ${env.API_TOKEN}`, 
+          "X-Auth-Email": env.CLOUDFLARE_EMAIL,
+          "X-Auth-Key": env.API_TOKEN, 
           "Content-Type": "application/json" 
         },
         body: JSON.stringify({ domains: [clean] })
@@ -293,7 +295,11 @@ async function registerDomain(domain, env) {
     `https://api.cloudflare.com/client/v4/accounts/${env.ACCOUNT_ID}/registrar/domains`,
     {
       method:  "POST",
-      headers: { Authorization: `Bearer ${env.API_TOKEN}`, "Content-Type": "application/json" },
+      headers: { 
+        "X-Auth-Email": env.CLOUDFLARE_EMAIL,
+        "X-Auth-Key": env.API_TOKEN, 
+        "Content-Type": "application/json" 
+      },
       body:    JSON.stringify({ name: domain, auto_renew: true, years: 1 }),
     }
   );
@@ -309,7 +315,11 @@ async function addCustomHostname(domain, env) {
     `https://api.cloudflare.com/client/v4/zones/${env.ZONE_ID}/custom_hostnames`,
     {
       method:  "POST",
-      headers: { Authorization: `Bearer ${env.API_TOKEN}`, "Content-Type": "application/json" },
+      headers: { 
+        "X-Auth-Email": env.CLOUDFLARE_EMAIL,
+        "X-Auth-Key": env.API_TOKEN, 
+        "Content-Type": "application/json" 
+      },
       body:    JSON.stringify({
         hostname: domain,
         ssl: { method: "http", type: "dv", settings: { min_tls_version: "1.2", http2: "on" } },

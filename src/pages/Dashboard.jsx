@@ -89,9 +89,9 @@ export default function Dashboard() {
   });
 
   const [bookings,    setBookings]    = useState([]);
-  const [slots,       setSlots]       = useState([]);
-  const [reviews,     setReviews]     = useState([]);
-  const [newSlot,     setNewSlot]     = useState({
+  const [slots,        setSlots]       = useState([]);
+  const [reviews,      setReviews]     = useState([]);
+  const [newSlot,      setNewSlot]     = useState({
     date: new Date().toISOString().split("T")[0], time: "", repeat: "none"
   });
   const [newService, setNewService]   = useState({ name: "", price: "" });
@@ -102,12 +102,12 @@ export default function Dashboard() {
 
   // ── Image previews ────────────────────────────────────────────────────────
   const [profileFile,        setProfileFile]        = useState(null);
-  const [profilePreview,     setProfilePreview]     = useState("");
-  const [logoFile,           setLogoFile]           = useState(null);
+  const [profilePreview,      setProfilePreview]     = useState("");
+  const [logoFile,            setLogoFile]           = useState(null);
   const [logoPreview,        setLogoPreview]        = useState("");
   const [heroFileDesktop,    setHeroFileDesktop]    = useState(null);
   const [heroPreviewDesktop, setHeroPreviewDesktop] = useState("");
-  const [heroFileMobile,     setHeroFileMobile]     = useState(null);
+  const [heroFileMobile,      setHeroFileMobile]     = useState(null);
   const [heroPreviewMobile,  setHeroPreviewMobile]  = useState("");
 
   // ── Tap-to-Pay state ──────────────────────────────────────────────────────
@@ -131,7 +131,9 @@ export default function Dashboard() {
     const acct = params.get("acct");
     (async () => {
       try {
-        if (acct) await updateDoc(doc(db, "barbers", barber.uid), { stripeAccountId: acct });
+        if (acct && acct !== "undefined") {
+          await updateDoc(doc(db, "barbers", barber.uid), { stripeAccountId: acct });
+        }
         const res  = await fetch(`/api/check-stripe?userId=${barber.uid}`);
         const data = await res.json();
         if (data.connected) {
@@ -387,6 +389,7 @@ export default function Dashboard() {
 
   // ── Tap-to-Pay ────────────────────────────────────────────────────────────
   const startPolling = (sessionId) => {
+    if (!sessionId || sessionId === "undefined") return;
     if (pollingRef.current) clearInterval(pollingRef.current);
     pollingRef.current = setInterval(async () => {
       try {
@@ -453,7 +456,7 @@ export default function Dashboard() {
     { label: "Schedule", icon: <AccessTimeIcon /> },   // 0
     { label: "Bookings", icon: <StoreIcon /> },         // 1
     { label: "Profile",  icon: <PersonIcon /> },        // 2
-    { label: "Services", icon: <ListIcon /> },          // 3
+    { label: "Services", icon: <ListIcon /> },           // 3
     ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }] : []),  // 4 (owner)
     { label: "Finance",  icon: <PaymentsIcon /> },      // 5 owner / 4 staff
     ...(userRole.isOwner ? [{ label: "Design",  icon: <PaletteIcon /> }]  : []), // 6 (owner)

@@ -65,6 +65,12 @@ async function readRawBody(request) {
 
 // ── Route handlers ────────────────────────────────────────────────────────────
 
+// POST /api/quick-charge
+async function handleQuickCharge(request, env) {
+  // Placeholder handler to catch the request and stop the 500/fallback error
+  return json({ message: "Quick charge endpoint reached successfully" });
+}
+
 // GET /api/check-domain?domain=example.com
 async function handleCheckDomain(request, env) {
   if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
@@ -335,6 +341,9 @@ export default {
 
     // ── API routing ───────────────────────────────────────────────────────
     switch (url.pathname) {
+      case "/api/quick-charge":
+        return handleQuickCharge(request, env);
+
       case "/api/check-domain":
         return handleCheckDomain(request, env);
 

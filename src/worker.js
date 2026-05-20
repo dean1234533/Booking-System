@@ -5,7 +5,7 @@
  * Handles all /api/* routes, then falls back to serving your Vite SPA.
  *
  * Environment variables (set in Cloudflare Dashboard → Settings → Variables):
- * API_TOKEN                    — Cloudflare API token (Registrar + Custom Hostnames)
+ * API_TOKEN                    — Cloudflare Global API Key (Required for Account Registrar API)
  * ACCOUNT_ID                   — Cloudflare account ID
  * ZONE_ID                      — Zone ID of your main SaaS domain
  * STRIPE_SECRET_KEY            — Stripe secret key (sk_live_...)
@@ -64,6 +64,32 @@ async function readRawBody(request) {
 }
 
 // ── Route handlers ────────────────────────────────────────────────────────────
+
+// GET /api/check-payment?sessionId=cs_live_...&barberId=123
+async function handleCheckPayment(request, env) {
+  const url = new URL(request.url);
+  const sessionId = url.searchParams.get("sessionId");
+  const barberId = url.searchParams.get("barberId");
+
+  // Protect against uninitialized frontend variables or missing keys
+  if (!sessionId || sessionId === "undefined" || !barberId) {
+    return json({ error: "Missing or invalid sessionId or barberId" }, 400);
+  }
+
+  try {
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    
+    return json({ 
+      status: session.status, 
+      payment_status: session.payment_status,
+      metadata: session.metadata 
+    });
+  } catch (err) {
+    console.error("[check-payment] Stripe verification error:", err);
+    return json({ error: err.message }, 500);
+  }
+}
 
 // POST /api/quick-charge
 async function handleQuickCharge(request, env) {
@@ -341,6 +367,9 @@ export default {
 
     // ── API routing ───────────────────────────────────────────────────────
     switch (url.pathname) {
+      case "/api/check-payment":
+        return handleCheckPayment(request, env);
+
       case "/api/quick-charge":
         return handleQuickCharge(request, env);
 

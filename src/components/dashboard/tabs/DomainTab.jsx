@@ -235,7 +235,7 @@ export default function DomainTab({ profile, barber, brandColor }) {
                   <Typography fontWeight={700} fontSize={16}>{result.domain}</Typography>
                   {result.available && result.price && (
                     <Typography variant="caption" color="text.secondary">
-                      ${result.price} USD / yr (approx. £{estimateGbp(result.price)} inc. platform fee)
+                        £{estimateGbp(result.price)} inc. platform fee / yr
                     </Typography>
                   )}
                 </Box>

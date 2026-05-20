@@ -16,5 +16,4 @@
       "invocation_logs": true
     }
   }
-  // The entire "vars" block is gone from here so Cloudflare reads your real values from your dashboard!
 }

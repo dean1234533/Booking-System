@@ -92,6 +92,13 @@ async function checkDomainAvailability(domainParam, env) {
 
 // ── Main Cloudflare Worker Routing Entrypoint ─────────────────────────────────
 export default {
+  "observability": {
+    "logs": {
+      "enabled": false,
+      "invocation_logs": true
+    }
+  },
+
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 

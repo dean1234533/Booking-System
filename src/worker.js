@@ -21,7 +21,7 @@ import Stripe from "stripe";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SUPPORTED_TLDS   = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
-const PLATFORM_MARKUP  = 5; // £5 added on top of Cloudflare registrar cost
+const PLATFORM_MARKUP  = 9; // £9 added on top of Cloudflare registrar cost
 
 // Base pricing book used for calculation strategies
 const ESTIMATED_PRICES_USD = {

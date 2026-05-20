@@ -291,7 +291,7 @@ export default {
       return await processCronReminders(url, request, env);
     }
 
-    // Fallback: Serves static compiled Vite frontend files from your assets ('dist')
-    return env.ASSETS.fetch(request);
+    // Fixed fallback: Leverages native asset fetching context rather than undefined namespace proxies
+    return fetch(request);
   }
 };

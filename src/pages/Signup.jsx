@@ -124,7 +124,7 @@ export default function Signup() {
   }
 
   return (
-    <Box sx={{ bgcolor: "#F8F9FA", minHeight: "100vh", pt: { xs: 2, md: 4 }, pb: { xs: 6, md: 10 } }}>
+    <Box sx={{ bgcolor: "#F8F9FA", minHeight: "100vh", pt: { xs: 10, md: 14 }, pb: { xs: 6, md: 10 } }}>
       <Container maxWidth="sm">
         <Box textAlign="center" mb={4}>
           <Box 

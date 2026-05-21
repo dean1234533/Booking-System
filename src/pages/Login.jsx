@@ -48,7 +48,7 @@ export default function Login() {
 
   return (
     /* Removed top padding to pull the content to the top of the viewport */
-    <Container maxWidth="xs" sx={{ pt: { xs: 2, md: 4 }, pb: { xs: 6, md: 10 } }}>
+   <Container maxWidth="xs" sx={{ pt: { xs: 10, md: 14 }, pb: { xs: 6, md: 10 } }}>
       <Box textAlign="center" mb={4} display="flex" flexDirection="column" alignItems="center">
         <Box 
           component="img"

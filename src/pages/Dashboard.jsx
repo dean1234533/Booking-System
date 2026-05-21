@@ -487,7 +487,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const IDX_FINANCE = userRole.isOwner ? 5 : 4;
   const IDX_DESIGN  = 6;  // owner only
   const IDX_DOMAIN  = 7;  // owner only
-  const IDX_PAY     = userRole.isOwner ? 8 : 5;
+  const IDX_PAY = userRole.isOwner ? (initialTenant ? 7 : 8) : 5;
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (authLoading || (dataLoading && !barber)) {

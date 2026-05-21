@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import {
-  Box, Paper, Typography, Grid, Alert, Chip, Divider, Stack, Button
+  Box, Paper, Typography, Grid, Alert, Chip, Divider, Stack, Button, TextField
 } from "@mui/material";
 import {
   CalendarMonth as CalendarIcon,
@@ -11,43 +11,99 @@ import {
 export default function BookingsTab({
   bookings, isMobile, brandColor, handleCompleteBooking, handleCancelBooking
 }) {
-  if (bookings.length === 0) {
-    return (
-      <Paper sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
-        <Typography variant="h6">No current bookings</Typography>
-      </Paper>
-    );
-  }
+  // Default to today's date
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [selectedDate, setSelectedDate] = useState(todayStr);
 
-  // Group by date
-  const bookingsByDay = bookings
-    .slice()
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .reduce((groups, booking) => {
-      const day = booking.date || "Unknown Date";
-      if (!groups[day]) groups[day] = [];
-      groups[day].push(booking);
-      return groups;
-    }, {});
+  // All unique dates that have bookings — for showing count chips
+  const allDates = [...new Set(bookings.map(b => b.date).filter(Boolean))].sort();
+
+  // Filter bookings to selected date only
+  const filtered = bookings
+    .filter(b => b.date === selectedDate)
+    .sort((a, b) => a.time?.localeCompare(b.time));
 
   return (
     <>
-      {Object.entries(bookingsByDay).map(([date, dayBookings]) => (
-        <Box key={date} sx={{ mb: 4 }}>
+      {/* ── Date picker row ── */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3, flexWrap: "wrap" }}>
+        <TextField
+          type="date"
+          size="small"
+          label="Select Date"
+          value={selectedDate}
+          onChange={e => setSelectedDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          sx={{
+            minWidth: 180,
+            "& .MuiOutlinedInput-root.Mui-focused fieldset": { borderColor: brandColor },
+            "& .MuiInputLabel-root.Mui-focused": { color: brandColor },
+          }}
+        />
+
+        {/* Quick-jump chips for dates that have bookings */}
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          {allDates.map(date => {
+            const count = bookings.filter(b => b.date === date).length;
+            const isSelected = date === selectedDate;
+            return (
+              <Chip
+                key={date}
+                size="small"
+                label={`${new Date(date + "T00:00:00").toLocaleDateString("en-GB", {
+                  day: "numeric", month: "short"
+                })} (${count})`}
+                onClick={() => setSelectedDate(date)}
+                sx={{
+                  fontWeight: 700,
+                  fontSize: 11,
+                  cursor: "pointer",
+                  bgcolor: isSelected ? brandColor : "transparent",
+                  color: isSelected ? "#fff" : brandColor,
+                  border: `1px solid ${brandColor}`,
+                  "&:hover": { bgcolor: brandColor, color: "#fff" },
+                }}
+              />
+            );
+          })}
+        </Box>
+      </Box>
+
+      {/* ── No bookings on selected date ── */}
+      {filtered.length === 0 && (
+        <Paper sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
+          <CalendarIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />
+          <Typography variant="h6" color="text.secondary">
+            No bookings on{" "}
+            {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", {
+              weekday: "long", day: "numeric", month: "long"
+            })}
+          </Typography>
+          <Typography variant="body2" color="text.disabled" mt={0.5}>
+            Use the date picker above or tap a chip to jump to a date with bookings.
+          </Typography>
+        </Paper>
+      )}
+
+      {/* ── Bookings for selected date ── */}
+      {filtered.length > 0 && (
+        <Box>
           {/* Day header */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
             <CalendarIcon fontSize="small" sx={{ color: brandColor }} />
             <Typography variant="subtitle1" fontWeight={800} sx={{ color: brandColor }}>
-              {new Date(date + "T00:00:00").toLocaleDateString("en-GB", {
+              {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", {
                 weekday: "long", day: "numeric", month: "long", year: "numeric"
               })}
             </Typography>
-            <Chip size="small"
-              label={`${dayBookings.length} booking${dayBookings.length > 1 ? "s" : ""}`}
-              sx={{ height: 20, fontSize: 10 }} />
+            <Chip
+              size="small"
+              label={`${filtered.length} booking${filtered.length > 1 ? "s" : ""}`}
+              sx={{ height: 20, fontSize: 10 }}
+            />
           </Box>
 
-          {dayBookings.map(b => (
+          {filtered.map(b => (
             <Paper key={b.id} sx={{ p: 2.5, mb: 2, borderRadius: 3, borderLeft: `5px solid ${brandColor}` }}>
               <Grid container alignItems="flex-start" spacing={1}>
                 {/* Header row */}
@@ -118,7 +174,7 @@ export default function BookingsTab({
             </Paper>
           ))}
         </Box>
-      ))}
+      )}
     </>
   );
 }

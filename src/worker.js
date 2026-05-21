@@ -22,19 +22,19 @@ import Stripe from "stripe";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SUPPORTED_TLDS   = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
-const PLATFORM_MARKUP  = 9; // £9 added on top of base cost (Adjusted for healthier margins!)
+const SUPPORTED_TLDS  = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
+const PLATFORM_MARKUP = 9; // £9 added on top of base cost
 
-// Porkbun base pricing estimates (used for showing the price to users on search)
+// Porkbun base pricing estimates in USD (used for calculating the final GBP price)
 const ESTIMATED_PRICES_USD = {
-  "com": 10.50,
-  "net": 11.50,
-  "org": 12.50,
-  "io": 39.00,
-  "co.uk": 6.50,
-  "uk": 6.50,
-  "shop": 4.00,
-  "store": 5.00
+  "com":   10.50,
+  "net":   11.50,
+  "org":   12.50,
+  "io":    39.00,
+  "co.uk":  6.50,
+  "uk":     6.50,
+  "shop":   4.00,
+  "store":  5.00,
 };
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -62,10 +62,10 @@ function firestoreBase(projectId) {
 function toFirestoreFields(obj) {
   const fields = {};
   for (const [key, val] of Object.entries(obj)) {
-    if (typeof val === "string")  fields[key] = { stringValue: val };
+    if (typeof val === "string")       fields[key] = { stringValue: val };
     else if (typeof val === "boolean") fields[key] = { booleanValue: val };
     else if (typeof val === "number")  fields[key] = { integerValue: String(val) };
-    else if (val === null) fields[key] = { nullValue: null };
+    else if (val === null)             fields[key] = { nullValue: null };
   }
   return fields;
 }
@@ -75,25 +75,34 @@ async function readRawBody(request) {
   return { raw: buffer, text: new TextDecoder().decode(buffer) };
 }
 
+// ── Shared pricing helper — single source of truth ───────────────────────────
+// Both check-domain and create-domain-checkout use this so displayed price
+// always matches the Stripe checkout price exactly.
+
+function calcFinalPriceGbp(tld, usdToGbpRate) {
+  const baseCostUsd = ESTIMATED_PRICES_USD[tld] ?? 12.00;
+  const rate        = parseFloat(usdToGbpRate ?? "0.79");
+  return parseFloat((baseCostUsd * rate + PLATFORM_MARKUP).toFixed(2));
+}
+
 // ── Route handlers ────────────────────────────────────────────────────────────
 
 async function handleCheckPayment(request, env) {
-  const url = new URL(request.url);
+  const url       = new URL(request.url);
   const sessionId = url.searchParams.get("sessionId");
-  const barberId = url.searchParams.get("barberId");
+  const barberId  = url.searchParams.get("barberId");
 
   if (!sessionId || sessionId === "undefined" || !barberId) {
     return json({ error: "Missing or invalid sessionId or barberId" }, 400);
   }
 
   try {
-    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+    const stripe  = new Stripe(env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.retrieve(sessionId);
-    
-    return json({ 
-      status: session.status, 
+    return json({
+      status:         session.status,
       payment_status: session.payment_status,
-      metadata: session.metadata 
+      metadata:       session.metadata,
     });
   } catch (err) {
     console.error("[check-payment] Stripe verification error:", err);
@@ -124,29 +133,24 @@ async function handleCheckDomain(request, env) {
   }
 
   try {
-    // Ultra-fast DoH check bypassing registrar platform blocks completely
+    // Ultra-fast DoH check — bypasses registrar platform blocks completely
     const dnsUrl = `https://1.1.1.1/dns-query?name=${encodeURIComponent(clean)}&type=SOA`;
-    const dnsRes = await fetch(dnsUrl, { headers: { "accept": "application/dns-json" } });
+    const dnsRes = await fetch(dnsUrl, { headers: { accept: "application/dns-json" } });
 
     if (!dnsRes.ok) return json({ error: "DNS lookup engine failed verification" }, 502);
 
-    const dnsData = await dnsRes.json();
-    const isAvailable = dnsData.Status === 3; // NXDOMAIN means it's available
-    
-    const baseCostUsd = ESTIMATED_PRICES_USD[tld] ?? 12.00;
-    const currency = (tld === "uk" || tld === "co.uk") ? "GBP" : "USD";
+    const dnsData    = await dnsRes.json();
+    const isAvailable = dnsData.Status === 3; // NXDOMAIN = available
 
-    let finalPrice = baseCostUsd;
-    if (currency === "GBP") {
-      const usdToGbp = parseFloat(env.USD_TO_GBP_RATE ?? "0.79");
-      finalPrice = parseFloat((baseCostUsd * usdToGbp).toFixed(2));
-    }
+    // ── FIX: always return the final GBP price including markup so the
+    //         displayed price matches the Stripe checkout price exactly. ──
+    const finalPrice = calcFinalPriceGbp(tld, env.USD_TO_GBP_RATE);
 
-    return json({ 
-      domain: clean, 
-      available: isAvailable, 
-      price: finalPrice, 
-      currency: currency 
+    return json({
+      domain:    clean,
+      available: isAvailable,
+      price:     finalPrice,
+      currency:  "GBP",
     });
   } catch (err) {
     console.error("[check-domain] Unexpected error:", err);
@@ -162,25 +166,19 @@ async function handleCreateDomainCheckout(request, env) {
   try { body = await request.json(); }
   catch { return json({ error: "Invalid JSON body" }, 400); }
 
-  const { domain, barberId, priceUsd } = body ?? {};
+  const { domain, barberId } = body ?? {};
 
   if (!domain || !barberId) {
     return json({ error: "domain and barberId are required" }, 400);
   }
 
-  // ── FIX: DISCONNECT INCOMING PARENT VARIABLES TO ENFORCE AN ABSOLUTE £9.00 TIER ──
   const targetExtension = domain.toLowerCase().trim();
-  let priceGbpPence;
 
-  if (targetExtension.endsWith(".uk") || targetExtension.endsWith(".co.uk")) {
-    priceGbpPence = 900; // Hard-locks the processing schema to exactly £9.00
-  } else {
-    const usdToGbp = parseFloat(env.USD_TO_GBP_RATE ?? "0.79");
-    const safePriceUsd = parseFloat(priceUsd ?? "12.00");
-    const priceGbp = safePriceUsd * usdToGbp + PLATFORM_MARKUP;
-    priceGbpPence = Math.round(priceGbp * 100);
-  }
-  // ─────────────────────────────────────────────────────────────────────────────────
+  // ── FIX: derive price server-side from the TLD using the same formula as
+  //         check-domain — never trust the price sent from the frontend. ──
+  const tld          = extractTLD(targetExtension);
+  const finalPriceGbp = calcFinalPriceGbp(tld, env.USD_TO_GBP_RATE);
+  const priceGbpPence = Math.round(finalPriceGbp * 100);
 
   const origin = env.APP_ORIGIN ?? "https://yoursaas.com";
 
@@ -191,8 +189,8 @@ async function handleCreateDomainCheckout(request, env) {
       payment_method_types: ["card"],
       line_items: [{
         price_data: {
-          currency:     "gbp",
-          unit_amount:  priceGbpPence,
+          currency:    "gbp",
+          unit_amount: priceGbpPence,
           product_data: {
             name:        `Custom Domain: ${domain}`,
             description: `1-year registration and automated SSL routing setup for ${domain}.`,
@@ -200,7 +198,11 @@ async function handleCreateDomainCheckout(request, env) {
         },
         quantity: 1,
       }],
-      metadata: { type: "domain_purchase", domain, barberId, priceUsd: String(priceUsd ?? "") },
+      metadata: {
+        type:     "domain_purchase",
+        domain,
+        barberId,
+      },
       success_url: `${origin}/dashboard?domainSuccess=true&domain=${encodeURIComponent(domain)}`,
       cancel_url:  `${origin}/dashboard?domainCancelled=true`,
     });
@@ -293,15 +295,18 @@ async function handleStripeWebhook(request, env) {
 // ── AUTOMATED DOMAIN PURCHASING & NAMESERVER CONFIG (PORKBUN API) ─────────────
 
 async function registerDomain(domain, env) {
-  // 1. Post payload explicitly to Porkbun's production domain register endpoint
-  const res = await fetch(`https://api.porkbun.com/api/json/v3/domain/register/${encodeURIComponent(domain)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      apikey: env.PORKBUN_API_KEY,
-      secretapikey: env.PORKBUN_SECRET_KEY
-    })
-  });
+  // 1. Register the domain via Porkbun's production API
+  const res = await fetch(
+    `https://api.porkbun.com/api/json/v3/domain/register/${encodeURIComponent(domain)}`,
+    {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        apikey:       env.PORKBUN_API_KEY,
+        secretapikey: env.PORKBUN_SECRET_KEY,
+      }),
+    }
+  );
 
   const data = await res.json();
   if (!res.ok || data.status !== "SUCCESS") {
@@ -310,25 +315,28 @@ async function registerDomain(domain, env) {
 
   console.log(`[provision-domain] Purchased ${domain} successfully. Forcing Cloudflare nameservers...`);
 
-  // 2. Force the newly bought domain to instantly use your Cloudflare Nameservers
-  const nsRes = await fetch(`https://api.porkbun.com/api/json/v3/domain/updateNameservers/${encodeURIComponent(domain)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      apikey: env.PORKBUN_API_KEY,
-      secretapikey: env.PORKBUN_SECRET_KEY,
-      nameservers: [
-        "byron.ns.cloudflare.com", // CRITICAL: Swap with your exact Cloudflare nameserver 1
-        "sierra.ns.cloudflare.com"    // CRITICAL: Swap with your exact Cloudflare nameserver 2
-      ]
-    })
-  });
+  // 2. Point the domain at your Cloudflare nameservers immediately
+  const nsRes = await fetch(
+    `https://api.porkbun.com/api/json/v3/domain/updateNameservers/${encodeURIComponent(domain)}`,
+    {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        apikey:       env.PORKBUN_API_KEY,
+        secretapikey: env.PORKBUN_SECRET_KEY,
+        nameservers: [
+          "byron.ns.cloudflare.com",  // CRITICAL: swap with your exact Cloudflare NS 1
+          "sierra.ns.cloudflare.com", // CRITICAL: swap with your exact Cloudflare NS 2
+        ],
+      }),
+    }
+  );
 
   const nsData = await nsRes.json();
   if (!nsRes.ok || nsData.status !== "SUCCESS") {
-    console.warn(`[provision-domain] Nameserver force-update warning: ${nsData.message || JSON.stringify(nsData)}`);
+    console.warn(`[provision-domain] Nameserver update warning: ${nsData.message || JSON.stringify(nsData)}`);
   } else {
-    console.log(`[provision-domain] Nameservers successfully matched to Cloudflare for ${domain}`);
+    console.log(`[provision-domain] Nameservers matched to Cloudflare for ${domain}`);
   }
 
   return data;
@@ -341,17 +349,22 @@ async function addCustomHostname(domain, env) {
     `https://api.cloudflare.com/client/v4/zones/${env.ZONE_ID}/custom_hostnames`,
     {
       method:  "POST",
-      headers: { 
+      headers: {
         "X-Auth-Email": env.CLOUDFLARE_EMAIL,
-        "X-Auth-Key": env.API_TOKEN, 
-        "Content-Type": "application/json" 
+        "X-Auth-Key":   env.API_TOKEN,
+        "Content-Type": "application/json",
       },
-      body:    JSON.stringify({
+      body: JSON.stringify({
         hostname: domain,
-        ssl: { method: "http", type: "dv", settings: { min_tls_version: "1.2", http2: "on" } },
+        ssl: {
+          method:   "http",
+          type:     "dv",
+          settings: { min_tls_version: "1.2", http2: "on" },
+        },
       }),
     }
   );
+
   const data = await res.json();
   if (!res.ok || !data.success) {
     throw new Error(`Cloudflare Custom Hostname linking failed: ${JSON.stringify(data.errors ?? data)}`);
@@ -360,7 +373,7 @@ async function addCustomHostname(domain, env) {
 }
 
 async function updateFirestoreDomain(barberId, domain, customHostnameId, env) {
-  const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+  const base   = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
   const params = `updateMask.fieldPaths=customDomain&updateMask.fieldPaths=customHostnameId&updateMask.fieldPaths=domainStatus`;
   await fetch(`${base}/barbers/${barberId}?${params}`, {
     method:  "PATCH",
@@ -374,7 +387,7 @@ async function updateFirestoreDomain(barberId, domain, customHostnameId, env) {
 async function provisionDomain(domain, barberId, env) {
   console.log(`[provision-domain] Initializing background workers for ${domain}`);
 
-  // 1. AUTOMATICALLY buy the domain and assign nameservers via Porkbun API
+  // 1. Buy the domain and assign nameservers via Porkbun
   try {
     await registerDomain(domain, env);
     console.log(`[provision-domain] Porkbun successfully processed order for: ${domain}`);
@@ -386,15 +399,19 @@ async function provisionDomain(domain, barberId, env) {
     }
   }
 
-  // 2. AUTOMATICALLY build SSL and connect it to your main Cloudflare custom hostname zone
+  // 2. Create SSL custom hostname in Cloudflare
   const hostnameResult = await addCustomHostname(domain, env);
   console.log(`[provision-domain] Cloudflare Custom hostname active: ${hostnameResult?.id}`);
 
-  // 3. AUTOMATICALLY update Firestore
+  // 3. Sync domain details back to Firestore
   await updateFirestoreDomain(barberId, domain, hostnameResult.id, env);
   console.log(`[provision-domain] Firebase synced for barber ${barberId}`);
 
-  return { domain, customHostnameId: hostnameResult.id, sslStatus: hostnameResult.ssl?.status ?? "initializing" };
+  return {
+    domain,
+    customHostnameId: hostnameResult.id,
+    sslStatus:        hostnameResult.ssl?.status ?? "initializing",
+  };
 }
 
 // ── Main Worker export ────────────────────────────────────────────────────────

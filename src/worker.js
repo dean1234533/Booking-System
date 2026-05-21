@@ -164,23 +164,23 @@ async function handleCreateDomainCheckout(request, env) {
 
   const { domain, barberId, priceUsd } = body ?? {};
 
-  if (!domain || !barberId || !priceUsd) {
-    return json({ error: "domain, barberId, and priceUsd are required" }, 400);
+  if (!domain || !barberId) {
+    return json({ error: "domain and barberId are required" }, 400);
   }
 
-  // ── FIX: INTERCEPT AND HARDCODE UK BASE DOMAINS TO AN ABSOLUTE £9.00 RATE ─────
+  // ── FIX: DISCONNECT INCOMING PARENT VARIABLES TO ENFORCE AN ABSOLUTE £9.00 TIER ──
   const targetExtension = domain.toLowerCase().trim();
   let priceGbpPence;
 
   if (targetExtension.endsWith(".uk") || targetExtension.endsWith(".co.uk")) {
-    priceGbpPence = 900; // Directly locks baseline processing to exactly £9.00
+    priceGbpPence = 900; // Hard-locks the processing schema to exactly £9.00
   } else {
-    // Graceful processing fallback framework for core high-tier variations (.io/.org)
     const usdToGbp = parseFloat(env.USD_TO_GBP_RATE ?? "0.79");
-    const priceGbp = priceUsd * usdToGbp + PLATFORM_MARKUP;
+    const safePriceUsd = parseFloat(priceUsd ?? "12.00");
+    const priceGbp = safePriceUsd * usdToGbp + PLATFORM_MARKUP;
     priceGbpPence = Math.round(priceGbp * 100);
   }
-  // ──────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────────
 
   const origin = env.APP_ORIGIN ?? "https://yoursaas.com";
 
@@ -200,7 +200,7 @@ async function handleCreateDomainCheckout(request, env) {
         },
         quantity: 1,
       }],
-      metadata: { type: "domain_purchase", domain, barberId, priceUsd: String(priceUsd) },
+      metadata: { type: "domain_purchase", domain, barberId, priceUsd: String(priceUsd ?? "") },
       success_url: `${origin}/dashboard?domainSuccess=true&domain=${encodeURIComponent(domain)}`,
       cancel_url:  `${origin}/dashboard?domainCancelled=true`,
     });

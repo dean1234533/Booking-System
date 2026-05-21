@@ -53,9 +53,18 @@ export default function BarberCard({ barber, isMarketplace }) {
   return (
     <Card 
       sx={{ 
-        height: "100%", display: "flex", flexDirection: "column", borderRadius: 4, overflow: "hidden",
-        transition: "all 0.3s ease", border: "1px solid", borderColor: "divider",
-        "&:hover": { transform: "translateY(-8px)", boxShadow: `0 20px 40px ${brandColor}25` }
+        height: "100%", 
+        display: "flex", 
+        flexDirection: "column", 
+        borderRadius: 4, 
+        overflow: "hidden",
+        transition: "all 0.3s ease", 
+        border: "1px solid", 
+        borderColor: brandColor, // 🌟 DYNAMIC FIX: Outer card border now mirrors the shop's exact brand color tint!
+        "&:hover": { 
+          transform: "translateY(-8px)", 
+          boxShadow: `0 20px 40px ${brandColor}25` 
+        }
       }}
     >
       <CardActionArea onClick={handleNavigation} sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch" }}>
@@ -81,8 +90,14 @@ export default function BarberCard({ barber, isMarketplace }) {
             <Avatar 
               src={shopLogo}
               sx={{ 
-                position: 'absolute', bottom: -20, left: 20, width: 60, height: 60, 
-                border: '4px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', bgcolor: 'white'
+                position: 'absolute', 
+                bottom: -20, 
+                left: 20, 
+                width: 60, 
+                height: 60, 
+                border: `4px solid ${brandColor}`, // 🌟 DYNAMIC FIX: Boundary outline highlights the shop brand color framework
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
+                bgcolor: 'white'
               }}
             />
           )}

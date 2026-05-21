@@ -173,15 +173,12 @@ async function handleCreateDomainCheckout(request, env) {
   let priceGbpPence;
 
   if (targetExtension.endsWith(".uk") || targetExtension.endsWith(".co.uk")) {
-    priceGbpPence = 900; // Hard-locks the processing schema to exactly £9.00
-  } else {
-    const usdToGbp = parseFloat(env.USD_TO_GBP_RATE ?? "0.79");
-    const safePriceUsd = parseFloat(priceUsd ?? "12.00");
-    const priceGbp = safePriceUsd * usdToGbp + PLATFORM_MARKUP;
-    priceGbpPence = Math.round(priceGbp * 100);
-  }
-  // ─────────────────────────────────────────────────────────────────────────────────
-
+  const usdToGbp = parseFloat(env.USD_TO_GBP_RATE ?? "0.79");
+  const safePriceUsd = parseFloat(priceUsd ?? "6.50");
+  const priceGbp = (safePriceUsd * usdToGbp) + PLATFORM_MARKUP;
+  priceGbpPence = Math.round(priceGbp * 100);
+}
+  
   const origin = env.APP_ORIGIN ?? "https://yoursaas.com";
 
   try {

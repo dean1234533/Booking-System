@@ -41,7 +41,7 @@ const reminderTime = (timeStr) => {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ScheduleTab({
-  slots, newSlot, setNewSlot,
+  slots = [], newSlot, setNewSlot,
   handleAddSlot, handleDeleteSlot, handleRestoreSlot, openManualBooking,
   brandColor,
 }) {

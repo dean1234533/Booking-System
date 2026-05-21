@@ -116,76 +116,79 @@ export default function BookingsTab({
             />
           </Box>
 
-          {filtered.map(b => (
-            <Paper key={b.id} sx={{ p: 2.5, mb: 2, borderRadius: 3, borderLeft: `5px solid ${brandColor}` }}>
-              <Grid container alignItems="flex-start" spacing={1}>
-                {/* Header row */}
-                <Grid item xs={12}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Typography fontWeight={800} variant="subtitle1">
-                        {b.customerName || b.name || "Client"}
-                      </Typography>
-                      {b.source === "manual" && (
-                        <Chip size="small" label="📞 Phone booking"
-                          sx={{ height: 20, fontSize: 10, bgcolor: `${brandColor}20`, color: brandColor, fontWeight: 700 }} />
-                      )}
-                    </Box>
-                    <Chip size="small" label={`${b.date} @ ${b.time}`}
-                      sx={{ bgcolor: brandColor, color: "white", fontWeight: 700, fontSize: 11 }} />
-                  </Box>
-                </Grid>
-
-                {/* Detail rows */}
-                <Grid item xs={12}>
-                  <Divider sx={{ my: 1 }} />
-                  <Grid container spacing={1}>
-                    {[
-                      ["📧 Email",   b.email    || b.customerEmail],
-                      ["📱 Phone",   b.phone    || b.customerPhone],
-                      ["✂️ Service", b.serviceName || b.haircutStyle],
-                      ["👤 Gender",  b.gender],
-                      ["💰 Deposit", b.depositAmount ? `£${Number(b.depositAmount).toFixed(2)}` : null],
-                      ["🪪 Ref",      b.id?.slice(-8).toUpperCase()],
-                    ].filter(([, val]) => val).map(([label, value]) => (
-                      <Grid item xs={12} sm={6} key={label}>
-                        <Box display="flex" gap={1} alignItems="center">
-                          <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ minWidth: 80 }}>
-                            {label}
-                          </Typography>
-                          <Typography variant="caption" fontWeight={800}>{value}</Typography>
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Grid>
-
-                {/* Notes */}
-                {(b.notes || b.additionalInfo) && (
+          {filtered.map(b => {
+            const isManualBooking = b.source === "manual" || !!b.manualBookingId;
+            return (
+              <Paper key={b.id} sx={{ p: 2.5, mb: 2, borderRadius: 3, borderLeft: `5px solid ${brandColor}` }}>
+                <Grid container alignItems="flex-start" spacing={1}>
+                  {/* Header row */}
                   <Grid item xs={12}>
-                    <Box sx={{ mt: 1, p: 1.5, bgcolor: "#f8f9fa", borderRadius: 1 }}>
-                      <Typography variant="caption" color="text.secondary" fontWeight={700}>📝 Notes</Typography>
-                      <Typography variant="caption" display="block">{b.notes || b.additionalInfo}</Typography>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Typography fontWeight={800} variant="subtitle1">
+                          {b.customerName || b.name || "Reserved Slot"}
+                        </Typography>
+                        {isManualBooking && (
+                          <Chip size="small" label="📞 Phone booking"
+                            sx={{ height: 20, fontSize: 10, bgcolor: `${brandColor}20`, color: brandColor, fontWeight: 700 }} />
+                        )}
+                      </Box>
+                      <Chip size="small" label={`${b.date} @ ${b.time}`}
+                        sx={{ bgcolor: brandColor, color: "white", fontWeight: 700, fontSize: 11 }} />
                     </Box>
                   </Grid>
-                )}
 
-                {/* Actions */}
-                <Grid item xs={12} sx={{ mt: 1 }}>
-                  <Stack direction="row" spacing={1} justifyContent={isMobile ? "flex-start" : "flex-end"}>
-                    <Button variant="outlined" color="error" size="small"
-                      startIcon={<CancelIcon />} onClick={() => handleCancelBooking(b)}>
-                      Cancel
-                    </Button>
-                    <Button variant="contained" color="success" size="small"
-                      startIcon={<CheckCircleIcon />} onClick={() => handleCompleteBooking(b)}>
-                      Complete
-                    </Button>
-                  </Stack>
+                  {/* Detail rows */}
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }} />
+                    <Grid container spacing={1}>
+                      {[
+                        ["📧 Email",    b.email    || b.customerEmail],
+                        ["📱 Phone",    b.phone    || b.customerPhone],
+                        ["✂️ Service",  b.serviceName || b.haircutStyle || (b.status === "booked" ? "Standard Session" : null)],
+                        ["👤 Gender",   b.gender],
+                        ["💰 Deposit",  b.depositAmount ? `£${Number(b.depositAmount).toFixed(2)}` : null],
+                        ["🪪 Ref",      b.id?.slice(-8).toUpperCase()],
+                      ].filter(([, val]) => val).map(([label, value]) => (
+                        <Grid item xs={12} sm={6} key={label}>
+                          <Box display="flex" gap={1} alignItems="center">
+                            <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ minWidth: 80 }}>
+                              {label}
+                            </Typography>
+                            <Typography variant="caption" fontWeight={800}>{value}</Typography>
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Grid>
+
+                  {/* Notes */}
+                  {(b.notes || b.additionalInfo) && (
+                    <Grid item xs={12}>
+                      <Box sx={{ mt: 1, p: 1.5, bgcolor: "#f8f9fa", borderRadius: 1 }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight={700}>📝 Notes</Typography>
+                        <Typography variant="caption" display="block">{b.notes || b.additionalInfo}</Typography>
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {/* Actions */}
+                  <Grid item xs={12} sx={{ mt: 1 }}>
+                    <Stack direction="row" spacing={1} justifyContent={isMobile ? "flex-start" : "flex-end"}>
+                      <Button variant="outlined" color="error" size="small"
+                        startIcon={<CancelIcon />} onClick={() => handleCancelBooking(b)}>
+                        Cancel
+                      </Button>
+                      <Button variant="contained" color="success" size="small"
+                        startIcon={<CheckCircleIcon />} onClick={() => handleCompleteBooking(b)}>
+                        Complete
+                      </Button>
+                    </Stack>
+                  </Grid>
                 </Grid>
-              </Grid>
-            </Paper>
-          ))}
+              </Paper>
+            );
+          })}
         </Box>
       )}
     </>

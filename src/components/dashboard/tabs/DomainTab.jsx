@@ -24,6 +24,7 @@ import {
   Box, Button, Chip, CircularProgress, Divider,
   Grid, InputAdornment, Paper, TextField,
   Typography, Alert, Stepper, Step, StepLabel,
+  Stack, // <--- ADD THIS LINE HERE
 } from "@mui/material";
 import {
   Search          as SearchIcon,

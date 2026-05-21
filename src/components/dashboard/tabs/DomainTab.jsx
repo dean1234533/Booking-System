@@ -11,6 +11,11 @@
  *   <TabPanel value={tab} index={domainTabIndex}>
  *     <DomainTab profile={profile} barber={barber} brandColor={brandColor} />
  *   </TabPanel>
+ *
+ * Pricing note:
+ *   The server (/api/check-domain) returns the final GBP price including the
+ *   platform markup. This component uses that value directly — no client-side
+ *   price calculation needed.
  */
 
 import React, { useState, useEffect } from "react";
@@ -33,9 +38,9 @@ import {
 
 function DomainStatusBadge({ status }) {
   const map = {
-    active:      { label: "Active",      color: "success", icon: <CheckCircleIcon fontSize="inherit" /> },
-    pending:     { label: "Pending SSL", color: "warning", icon: <PendingIcon fontSize="inherit" /> },
-    provisioning:{ label: "Provisioning",color: "info",    icon: <PendingIcon fontSize="inherit" /> },
+    active:       { label: "Active",       color: "success", icon: <CheckCircleIcon fontSize="inherit" /> },
+    pending:      { label: "Pending SSL",  color: "warning", icon: <PendingIcon fontSize="inherit" /> },
+    provisioning: { label: "Provisioning", color: "info",    icon: <PendingIcon fontSize="inherit" /> },
   };
   const cfg = map[status] ?? { label: status, color: "default", icon: null };
   return (
@@ -67,14 +72,14 @@ const STEPS = ["Search domain", "Purchase", "Automatically connected"];
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DomainTab({ profile, barber, brandColor }) {
-  const [query,        setQuery]        = useState("");
-  const [searching,    setSearching]    = useState(false);
-  const [result,       setResult]       = useState(null);   // { domain, available, price }
-  const [searchError,  setSearchError]  = useState("");
-  const [purchasing,   setPurchasing]   = useState(false);
-  const [purchaseError,setPurchaseError]= useState("");
+  const [query,         setQuery]         = useState("");
+  const [searching,     setSearching]     = useState(false);
+  const [result,        setResult]        = useState(null); // { domain, available, price, currency }
+  const [searchError,   setSearchError]   = useState("");
+  const [purchasing,    setPurchasing]    = useState(false);
+  const [purchaseError, setPurchaseError] = useState("");
 
-  // On mount — if we just returned from a successful Stripe checkout, show a toast-style alert
+  // On mount — if we just returned from a successful Stripe checkout, show a banner
   const [justPurchased, setJustPurchased] = useState(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -100,6 +105,7 @@ export default function DomainTab({ profile, barber, brandColor }) {
       const res  = await fetch(`/api/check-domain?domain=${encodeURIComponent(clean)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Availability check failed");
+      // data.price is already the final GBP price including platform markup
       setResult(data);
     } catch (err) {
       setSearchError(err.message);
@@ -122,7 +128,8 @@ export default function DomainTab({ profile, barber, brandColor }) {
         body: JSON.stringify({
           domain:   result.domain,
           barberId: barber.uid,
-          priceUsd: result.price,
+          // Note: server derives the price server-side from the TLD —
+          // we do not send a price to prevent client-side tampering.
         }),
       });
       const data = await res.json();
@@ -141,10 +148,10 @@ export default function DomainTab({ profile, barber, brandColor }) {
   const connectedDomain = profile.customDomain || null;
   const domainStatus    = profile.domainStatus  || "active";
 
-  // Estimate GBP price (mirrors server logic: USD × 0.79 + £5 markup)
-  function estimateGbp(usd) {
-    return ((usd ?? 0) * 0.79 + 5).toFixed(2);
-  }
+  // The server returns the final GBP price directly — no client-side calculation needed.
+  const displayPrice = result?.price != null
+    ? `£${Number(result.price).toFixed(2)}`
+    : null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -167,8 +174,8 @@ export default function DomainTab({ profile, barber, brandColor }) {
           {/* Success banner after Stripe redirect */}
           {justPurchased && (
             <Alert severity="success" sx={{ mb: 2 }} onClose={() => setJustPurchased(false)}>
-              🎉 Payment received! Your domain is being provisioned — this usually takes 2–5 minutes.
-              SSL activation can take up to 24 hours.
+              🎉 Payment received! Your domain is being provisioned — this usually takes
+              2–5 minutes. SSL activation can take up to 24 hours.
             </Alert>
           )}
 
@@ -230,12 +237,18 @@ export default function DomainTab({ profile, barber, brandColor }) {
                 bgcolor:     result.available ? "#F0FFF4" : "#FFF5F5",
               }}
             >
-              <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+                flexWrap="wrap"
+                gap={1}
+              >
                 <Box>
                   <Typography fontWeight={700} fontSize={16}>{result.domain}</Typography>
-                  {result.available && result.price && (
+                  {result.available && displayPrice && (
                     <Typography variant="caption" color="text.secondary">
-                        £{estimateGbp(result.price)} inc. platform fee / yr
+                      {displayPrice} inc. platform fee / yr
                     </Typography>
                   )}
                 </Box>
@@ -263,9 +276,15 @@ export default function DomainTab({ profile, barber, brandColor }) {
                   >
                     {purchasing
                       ? "Redirecting to checkout…"
-                      : `Purchase & Connect — £${estimateGbp(result.price)} / yr`}
+                      : `Purchase & Connect — ${displayPrice} / yr`}
                   </Button>
-                  <Typography variant="caption" color="text.secondary" display="block" mt={1} textAlign="center">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                    mt={1}
+                    textAlign="center"
+                  >
                     Secured by Stripe. Domain renews automatically each year.
                   </Typography>
                 </>

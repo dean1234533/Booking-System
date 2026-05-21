@@ -168,10 +168,21 @@ async function handleCreateDomainCheckout(request, env) {
     return json({ error: "domain, barberId, and priceUsd are required" }, 400);
   }
 
-  const usdToGbp     = parseFloat(env.USD_TO_GBP_RATE ?? "0.79");
-  const priceGbp     = priceUsd * usdToGbp + PLATFORM_MARKUP;
-  const priceGbpPence= Math.round(priceGbp * 100);
-  const origin       = env.APP_ORIGIN ?? "https://yoursaas.com";
+  // ── FIX: INTERCEPT AND HARDCODE UK BASE DOMAINS TO AN ABSOLUTE £9.00 RATE ─────
+  const targetExtension = domain.toLowerCase().trim();
+  let priceGbpPence;
+
+  if (targetExtension.endsWith(".uk") || targetExtension.endsWith(".co.uk")) {
+    priceGbpPence = 900; // Directly locks baseline processing to exactly £9.00
+  } else {
+    // Graceful processing fallback framework for core high-tier variations (.io/.org)
+    const usdToGbp = parseFloat(env.USD_TO_GBP_RATE ?? "0.79");
+    const priceGbp = priceUsd * usdToGbp + PLATFORM_MARKUP;
+    priceGbpPence = Math.round(priceGbp * 100);
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
+  const origin = env.APP_ORIGIN ?? "https://yoursaas.com";
 
   try {
     const stripe  = new Stripe(env.STRIPE_SECRET_KEY);

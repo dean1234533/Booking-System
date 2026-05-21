@@ -233,45 +233,6 @@ export default function TenantHome({ tenant: initialTenant }) {
             </Box>
           </Box>
  
-          {/* ── Shop social links — shown in hero if owner has filled them in ── */}
-          {ownerHasSocial && (
-            <Stack
-              direction="row"
-              spacing={1.5}
-              justifyContent="center"
-              alignItems="center"
-              sx={{ mt: 4 }}
-            >
-              <Typography variant="caption" sx={{
-                color: "rgba(255,255,255,0.55)",
-                fontWeight: 700,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                fontSize: "0.65rem",
-                mr: 0.5,
-              }}>
-                Follow Us
-              </Typography>
-              <SocialButton
-                href={ownerInstagram}
-                label="Instagram"
-                icon={<InstagramIcon sx={{ fontSize: 20 }} />}
-                hoverColor="#E1306C"
-              />
-              <SocialButton
-                href={ownerTikTok}
-                label="TikTok"
-                icon={<TikTokIcon size={20} />}
-                hoverColor="#69C9D0"
-              />
-              <SocialButton
-                href={ownerFacebook}
-                label="Facebook"
-                icon={<FacebookIcon sx={{ fontSize: 20 }} />}
-                hoverColor="#1877F2"
-              />
-            </Stack>
-          )}
         </Container>
       </Box>
  

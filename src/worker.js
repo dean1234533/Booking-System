@@ -27,14 +27,14 @@ const PLATFORM_MARKUP = 9; // £9 added on top of base cost
 
 // Porkbun base pricing estimates in USD (used for calculating the final GBP price)
 const ESTIMATED_PRICES_USD = {
-  "com":   10.50,
-  "net":   11.50,
-  "org":   12.50,
-  "io":    39.00,
-  "co.uk":  6.50,
-  "uk":     6.50,
-  "shop":   4.00,
-  "store":  5.00,
+  "com":    11.08,
+  "net":    12.52,
+  "org":    10.74,
+  "io":     27.12,
+  "co.uk":   5.66,
+  "uk":      5.66,
+  "shop":    4.00,
+  "store":   5.00,
 };
 
 // ── Shared helpers ────────────────────────────────────────────────────────────

@@ -2,20 +2,21 @@
  * DomainTab.jsx
  *
  * Tab component that lets a barber:
- *  1. Search for a domain and check availability (via /api/check-domain)
- *  2. Purchase & connect it (via /api/create-domain-checkout → Stripe)
- *  3. See the live status of an already-connected domain
+ * 1. Search for a domain and check availability (via /api/check-domain)
+ * 2. Purchase & connect it (via /api/create-domain-checkout → Stripe)
+ * 3. See the live status of an already-connected domain
+ * 4. NEW: Connect a domain they already own directly to Cloudflare
  *
  * Drop into Dashboard.jsx alongside the other Tab components and add:
- *   <Tab label="Domain" icon={<LanguageIcon />} iconPosition="start" />
- *   <TabPanel value={tab} index={domainTabIndex}>
- *     <DomainTab profile={profile} barber={barber} brandColor={brandColor} />
- *   </TabPanel>
+ * <Tab label="Domain" icon={<LanguageIcon />} iconPosition="start" />
+ * <TabPanel value={tab} index={domainTabIndex}>
+ * <DomainTab profile={profile} barber={barber} brandColor={brandColor} />
+ * </TabPanel>
  *
  * Pricing note:
- *   The server (/api/check-domain) returns the final GBP price including the
- *   platform markup. This component uses that value directly — no client-side
- *   price calculation needed.
+ * The server (/api/check-domain) returns the final GBP price including the
+ * platform markup. This component uses that value directly — no client-side
+ * price calculation needed.
  */
 
 import React, { useState, useEffect } from "react";
@@ -32,6 +33,7 @@ import {
   OpenInNew       as OpenInNewIcon,
   ShoppingCart    as CartIcon,
   HourglassBottom as PendingIcon,
+  Link            as LinkIcon,
 } from "@mui/icons-material";
 
 // ── Domain status badge ───────────────────────────────────────────────────────
@@ -78,6 +80,12 @@ export default function DomainTab({ profile, barber, brandColor }) {
   const [searchError,   setSearchError]   = useState("");
   const [purchasing,    setPurchasing]    = useState(false);
   const [purchaseError, setPurchaseError] = useState("");
+
+  // ── States for Connecting Existing Domains ──
+  const [existingDomain, setExistingDomain] = useState("");
+  const [linking, setLinking]               = useState(false);
+  const [linkError, setLinkError]           = useState("");
+  const [linkSuccess, setLinkSuccess]       = useState(false);
 
   // On mount — if we just returned from a successful Stripe checkout, show a banner
   const [justPurchased, setJustPurchased] = useState(false);
@@ -140,6 +148,43 @@ export default function DomainTab({ profile, barber, brandColor }) {
       setPurchaseError(err.message);
     } finally {
       setPurchasing(false);
+    }
+  }
+
+  // ── Existing Domain Linker Handler ─────────────────────────────────────────
+
+  async function handleLinkExisting(e) {
+    e?.preventDefault();
+    const clean = existingDomain.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!clean || !barber?.uid) return;
+
+    setLinking(true);
+    setLinkError("");
+    setLinkSuccess(false);
+
+    try {
+      // Direct integration endpoint to run addCustomHostname + updateFirestoreDomain on your worker
+      const res = await fetch("/api/connect-existing-domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: clean,
+          barberId: barber.uid
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not connect your custom domain");
+      
+      setLinkSuccess(true);
+      setExistingDomain("");
+      // Safely check if parent context exposes a refresh sequence, otherwise gracefully alerts setup
+      if (typeof window !== "undefined") {
+        setTimeout(() => window.location.reload(), 3000);
+      }
+    } catch (err) {
+      setLinkError(err.message);
+    } finally {
+      setLinking(false);
     }
   }
 
@@ -239,7 +284,7 @@ export default function DomainTab({ profile, barber, brandColor }) {
             >
               <Box
                 display="flex"
-                alignItems="center"
+                alignWidth="center"
                 justifyContent="space-between"
                 flexWrap="wrap"
                 gap={1}
@@ -300,80 +345,141 @@ export default function DomainTab({ profile, barber, brandColor }) {
         </Paper>
       </Grid>
 
-      {/* ── Right column: current domain status ── */}
+      {/* ── Right column: current domain status + connect existing ── */}
       <Grid item xs={12} md={5}>
-        <Paper sx={{ p: 3, borderRadius: 3, bgcolor: "#F8F9FA", height: "100%" }}>
-          <Typography variant="subtitle1" fontWeight={800} mb={2}>
-            Your Connected Domain
-          </Typography>
+        <Stack spacing={3} sx={{ height: "100%" }}>
+          
+          {/* Section: Live Status Badge System */}
+          <Paper sx={{ p: 3, borderRadius: 3, bgcolor: "#F8F9FA" }}>
+            <Typography variant="subtitle1" fontWeight={800} mb={2}>
+              Your Connected Domain
+            </Typography>
 
-          {connectedDomain ? (
-            <>
+            {connectedDomain ? (
+              <>
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  p={2}
+                  mb={2}
+                  sx={{ bgcolor: "#fff", borderRadius: 2, border: "1px solid #E0E0E0" }}
+                >
+                  <Box>
+                    <Typography fontWeight={700}>{connectedDomain}</Typography>
+                    <Box mt={0.5}>
+                      <DomainStatusBadge status={domainStatus} />
+                    </Box>
+                  </Box>
+                  <Button
+                    size="small"
+                    endIcon={<OpenInNewIcon fontSize="small" />}
+                    component="a"
+                    href={`https://${connectedDomain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Visit
+                  </Button>
+                </Box>
+
+                {domainStatus === "pending" && (
+                  <Alert severity="info" icon={<PendingIcon />}>
+                    Your SSL certificate is being issued by Cloudflare. This usually takes
+                    a few minutes but can take up to 24 hours.
+                  </Alert>
+                )}
+
+                {domainStatus === "active" && (
+                  <Alert severity="success" icon={<CheckCircleIcon />}>
+                    Your domain is live and secured with SSL. Visitors to{" "}
+                    <strong>{connectedDomain}</strong> will see your booking site.
+                  </Alert>
+                )}
+              </>
+            ) : (
               <Box
                 display="flex"
+                flexDirection="column"
                 alignItems="center"
-                justifyContent="space-between"
-                p={2}
-                mb={2}
-                sx={{ bgcolor: "#fff", borderRadius: 2, border: "1px solid #E0E0E0" }}
+                justifyContent="center"
+                py={4}
+                sx={{ color: "text.disabled", textAlign: "center" }}
               >
-                <Box>
-                  <Typography fontWeight={700}>{connectedDomain}</Typography>
-                  <Box mt={0.5}>
-                    <DomainStatusBadge status={domainStatus} />
-                  </Box>
-                </Box>
-                <Button
-                  size="small"
-                  endIcon={<OpenInNewIcon fontSize="small" />}
-                  component="a"
-                  href={`https://${connectedDomain}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Visit
-                </Button>
+                <LanguageIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
+                <Typography variant="body2">No domain connected yet.</Typography>
+                <Typography variant="caption">
+                  Search for one on the left to get started.
+                </Typography>
               </Box>
+            )}
 
-              {domainStatus === "pending" && (
-                <Alert severity="info" icon={<PendingIcon />}>
-                  Your SSL certificate is being issued by Cloudflare. This usually takes
-                  a few minutes but can take up to 24 hours.
-                </Alert>
-              )}
+            <Divider sx={{ my: 2 }} />
 
-              {domainStatus === "active" && (
-                <Alert severity="success" icon={<CheckCircleIcon />}>
-                  Your domain is live and secured with SSL. Visitors to{" "}
-                  <strong>{connectedDomain}</strong> will see your booking site.
-                </Alert>
-              )}
-            </>
-          ) : (
-            <Box
-              display="flex"
-              flexDirection="column"
-              alignItems="center"
-              justifyContent="center"
-              py={4}
-              sx={{ color: "text.disabled", textAlign: "center" }}
-            >
-              <LanguageIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
-              <Typography variant="body2">No domain connected yet.</Typography>
-              <Typography variant="caption">
-                Search for one on the left to get started.
+            <Typography variant="caption" color="text.secondary">
+              <strong>How it works:</strong> After purchase, we register the domain with
+              Cloudflare, issue a free SSL certificate, and point it at your booking site —
+              all automatically. You never touch DNS settings.
+            </Typography>
+          </Paper>
+
+          {/* Section: Connect a Domain You Already Own */}
+          <Paper sx={{ p: 3, borderRadius: 3, border: "1px solid #E0E0E0" }}>
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <LinkIcon sx={{ color: brandColor }} />
+              <Typography variant="subtitle1" fontWeight={800}>Connect Existing Domain</Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              Already own a domain from GoDaddy, Namecheap, or Google? Link it directly into your dashboard workspace.
+            </Typography>
+
+            {linkSuccess && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                🎉 Domain successfully submitted! Mapping records have synced with Cloudflare routing tables. Reloading dashboard app parameters…
+              </Alert>
+            )}
+
+            {linkError && (
+              <Alert severity="error" sx={{ mb: 2 }}>{linkError}</Alert>
+            )}
+
+            <Box component="form" onSubmit={handleLinkExisting} display="flex" flexDirection="column" gap={1.5}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Enter your domain"
+                placeholder="myestablishedshop.co.uk"
+                value={existingDomain}
+                onChange={e => setExistingDomain(e.target.value)}
+                disabled={linking || linkSuccess}
+              />
+              <Button
+                fullWidth
+                type="submit"
+                variant="outlined"
+                disabled={linking || !existingDomain.trim() || linkSuccess}
+                sx={{ 
+                  borderColor: brandColor, 
+                  color: brandColor,
+                  fontWeight: 700,
+                  "&:hover": { borderColor: brandColor, bgcolor: `${brandColor}08` }
+                }}
+              >
+                {linking ? <CircularProgress size={18} color="inherit" /> : "Connect Existing Domain"}
+              </Button>
+            </Box>
+
+            <Box mt={2} p={1.5} sx={{ bgcolor: "#F8F9FA", borderRadius: 2 }}>
+              <Typography variant="caption" color="text.primary" display="block" fontWeight={700} mb={0.5}>
+                ⚠️ Required DNS Configuration:
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ fontFamily: "monospace", fontSize: "0.75rem", lineHeight: 1.4 }}>
+                Log in to your registrar and add a CNAME record pointing your domain (or www subdomain) directly to your system platform root address.
               </Typography>
             </Box>
-          )}
+          </Paper>
 
-          <Divider sx={{ my: 2 }} />
-
-          <Typography variant="caption" color="text.secondary">
-            <strong>How it works:</strong> After purchase, we register the domain with
-            Cloudflare, issue a free SSL certificate, and point it at your booking site —
-            all automatically. You never touch DNS settings.
-          </Typography>
-        </Paper>
+        </Stack>
       </Grid>
 
     </Grid>

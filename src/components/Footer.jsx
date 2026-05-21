@@ -196,10 +196,25 @@ export default function Footer() {
             ) : (
               <>
               
-               By using {businessName}, you agree to our booking terms. Cancellations must be made within the barber's specified timeframe. 
-               {businessName} is a marketplace and is not liable for the direct actions of independent barbers using the platform.
-               Refunds: If you cancel with more than 24 hours notice, you will receive a full refund of your deposit to your original payment method — any service charges will be covered by the barber. 
-               The booking fee is non-refundable. Cancellations made with less than 24 hours notice are non-refundable.
+               By using {businessName}, you agree to be bound by the following terms and conditions:
+
+1. Booking, Cancellations & Refunds
+Barber Timeframes: Cancellations must be made within the individual barber's specified timeframe.
+
+Marketplace Liability: {businessName} operates strictly as a technology marketplace. We are not liable for the direct actions, services, disputes, or conduct of independent barbers utilizing this platform.
+
+Refund Policy: If you cancel a booking with more than 24 hours notice, you will receive a full refund of your deposit back to your original payment method. In this event, any associated payment processing or service charges will be covered entirely by the barber.
+
+Non-Refundable Policy: The booking fee is strictly non-refundable under all circumstances. Any cancellations made with less than 24 hours notice are completely non-refundable.
+
+2. Automated Custom Domain Purchases
+Third-Party Registration: Custom domain names purchased through your dashboard are registered automatically via third-party registries. All sales are final and non-refundable once processed by the registry network.
+
+Platform Markup: The total domain fee charged includes the wholesale cost of the domain name alongside a flat platform automation, configuration, and management markup.
+
+Ownership & Transfers: The user (barber) maintains operational ownership of the custom domain name. If you choose to terminate your subscription with {businessName}, the domain can be transferred out to a personal registrar account upon request, provided your marketplace account balance is fully clear and in good standing.
+
+Trademark Restrictions: Users are strictly prohibited from registering domain names that infringe upon existing corporate trademarks, copyrights, or legal brand entities. {businessName} reserves the right to unbind any domain that violates intellectual property laws.
               </>
             )}
           </Typography>

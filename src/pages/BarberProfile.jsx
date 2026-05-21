@@ -6,7 +6,7 @@ import {
   ButtonBase, Stack, Tooltip, IconButton
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import ContentCutIcon      from "@mui/icons-material/ContentCut";
+import ContentCutIcon        from "@mui/icons-material/ContentCut";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon   from "@mui/icons-material/KeyboardArrowUp";
 import InstagramIcon         from "@mui/icons-material/Instagram";
@@ -19,13 +19,16 @@ import { doc, getDoc, collectionGroup, query, where, getDocs } from "firebase/fi
 import { formatCurrency } from "../stripe/formatters";
 import { useSlots }       from "../hooks/useSlots";
 
-// ── TikTok icon (no MUI equivalent) ──────────────────────────────────────────
+// ── TikTok icon — single-line path avoids JSX whitespace rendering issues ────
 const TikTokIcon = ({ size = 22, color = "currentColor" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={color} style={{ display: "block" }}>
-    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5
-      2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27
-      0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0
-      6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z" />
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={color}
+    style={{ display: "block", flexShrink: 0 }}
+  >
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z" />
   </svg>
 );
 
@@ -36,7 +39,10 @@ function SocialLink({ href, label, icon, hoverColor }) {
   return (
     <Tooltip title={`Follow on ${label}`} arrow>
       <IconButton
-        component="a" href={url} target="_blank" rel="noopener noreferrer"
+        component="a"
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
         size="small"
         sx={{
           border: "1.5px solid",
@@ -63,11 +69,11 @@ function SocialLink({ href, label, icon, hoverColor }) {
 export default function BarberProfile({ tenant: initialTenant }) {
   const { id: barberId } = useParams();
 
-  const [barber,             setBarber]             = useState(null);
-  const [footerData,         setFooterData]         = useState(initialTenant || null);
-  const [loading,            setLoading]            = useState(true);
-  const [error,              setError]              = useState(null);
-  const [expandedSpecialty,  setExpandedSpecialty]  = useState(false);
+  const [barber,            setBarber]            = useState(null);
+  const [footerData,        setFooterData]        = useState(initialTenant || null);
+  const [loading,           setLoading]           = useState(true);
+  const [error,             setError]             = useState(null);
+  const [expandedSpecialty, setExpandedSpecialty] = useState(false);
 
   const { slots, loading: slotsLoading, error: slotsError } = useSlots(
     barberId,
@@ -169,10 +175,13 @@ export default function BarberProfile({ tenant: initialTenant }) {
           {/* ── Left: barber info ── */}
           <Grid item xs={12} md={3} lg={2.5}>
             <Box textAlign={{ xs: "center", md: "left" }}>
+
               {/* Avatar */}
               {barber.profilePic ? (
                 <Box
-                  component="img" src={barber.profilePic} alt={barber.name}
+                  component="img"
+                  src={barber.profilePic}
+                  alt={barber.name}
                   sx={{
                     width: 180, height: 180, borderRadius: "50%", objectFit: "cover",
                     mb: 2, border: "3px solid", borderColor: brandColor,
@@ -204,14 +213,18 @@ export default function BarberProfile({ tenant: initialTenant }) {
                 >
                   <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 0.5 }}>
                     <ContentCutIcon sx={{ fontSize: 16, mt: 0.3 }} />
-                    <Typography variant="body2" fontWeight={600} sx={{
-                      lineHeight: 1.6,
-                      display:              expandedSpecialty ? "block" : "-webkit-box",
-                      WebkitLineClamp:      expandedSpecialty ? "unset" : 4,
-                      WebkitBoxOrient:      "vertical",
-                      overflow:             "hidden",
-                      whiteSpace:           "normal",
-                    }}>
+                    <Typography
+                      variant="body2"
+                      fontWeight={600}
+                      sx={{
+                        lineHeight: 1.6,
+                        display:         expandedSpecialty ? "block" : "-webkit-box",
+                        WebkitLineClamp: expandedSpecialty ? "unset" : 4,
+                        WebkitBoxOrient: "vertical",
+                        overflow:        "hidden",
+                        whiteSpace:      "normal",
+                      }}
+                    >
                       {barber.specialty}
                     </Typography>
                   </Stack>
@@ -238,7 +251,8 @@ export default function BarberProfile({ tenant: initialTenant }) {
                     <ListItem key={index} sx={{ px: 0, py: 1 }}>
                       <ListItemText
                         primary={service.name}
-                        primaryTypographyProps={{ variant: "body2", fontWeight: 600 }} />
+                        primaryTypographyProps={{ variant: "body2", fontWeight: 600 }}
+                      />
                       <Typography variant="body2" fontWeight={700} color={brandColor}>
                         {formatCurrency(service.price)}
                       </Typography>
@@ -255,7 +269,11 @@ export default function BarberProfile({ tenant: initialTenant }) {
                     <Typography variant="overline" fontWeight={700} sx={{ mb: 1.5, display: "block" }}>
                       See My Work
                     </Typography>
-                    <Stack direction="row" spacing={1.5} justifyContent={{ xs: "center", md: "flex-start" }}>
+                    <Stack
+                      direction="row"
+                      spacing={1.5}
+                      justifyContent={{ xs: "center", md: "flex-start" }}
+                    >
                       <SocialLink
                         href={instagramUrl}
                         label="Instagram"
@@ -265,13 +283,14 @@ export default function BarberProfile({ tenant: initialTenant }) {
                       <SocialLink
                         href={tiktokUrl}
                         label="TikTok"
-                        icon={<TikTokIcon size={20} />}
-                        hoverColor="#000000"
+                        icon={<TikTokIcon size={20} color="currentColor" />}
+                        hoverColor="#010101"
                       />
                     </Stack>
                   </Box>
                 </>
               )}
+
             </Box>
           </Grid>
 

@@ -11,7 +11,7 @@ import {
   Info as InfoIcon,
 } from "@mui/icons-material";
 
-// TikTok SVG (no MUI icon available)
+// ── TikTok SVG (no MUI icon available) ───────────────────────────────────────
 const TikTokIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
     <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5
@@ -34,6 +34,7 @@ export default function ProfileTab({
 }) {
   return (
     <Paper sx={{ p: 3, borderRadius: 3 }}>
+
       {/* ── Profile Photo ── */}
       <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
         <Avatar
@@ -42,22 +43,31 @@ export default function ProfileTab({
         />
         <Button variant="outlined" component="label" size="small">
           Change Photo
-          <input type="file" hidden accept="image/*"
-            onChange={(e) => handleImageChange(e, setProfileFile, setProfilePreview)} />
+          <input
+            type="file" hidden accept="image/*"
+            onChange={(e) => handleImageChange(e, setProfileFile, setProfilePreview)}
+          />
         </Button>
       </Box>
 
       <Grid container spacing={2.5}>
+
         {/* Full Name */}
         <Grid item xs={12} sm={6}>
-          <TextField label="Full Name" value={profile.name || ""} fullWidth
-            onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} />
+          <TextField
+            label="Full Name"
+            value={profile.name || ""}
+            fullWidth
+            onChange={e => setProfile(p => ({ ...p, name: e.target.value }))}
+          />
         </Grid>
 
         {/* Opening Times — owner only */}
         {userRole.isOwner && (
           <Grid item xs={12} sm={6}>
-            <TextField label="Opening Times" value={safeRenderOpeningHours(profile.openingHours)}
+            <TextField
+              label="Opening Times"
+              value={safeRenderOpeningHours(profile.openingHours)}
               fullWidth multiline rows={4}
               placeholder={"e.g. Mon-Fri 9am-6pm\nSat: 10am-4pm\nSun: Closed"}
               onChange={e => setProfile(p => ({ ...p, openingHours: e.target.value }))}
@@ -66,38 +76,55 @@ export default function ProfileTab({
                   <InputAdornment position="start" sx={{ alignSelf: "flex-start", mt: 1 }}>
                     <AccessTimeIcon fontSize="small" />
                   </InputAdornment>
-                )
-              }} />
+                ),
+              }}
+            />
           </Grid>
         )}
 
         {/* Phone */}
         <Grid item xs={12} sm={6}>
-          <TextField label="Phone" value={profile.phone || ""} fullWidth
-            onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
+          <TextField
+            label="Phone"
+            value={profile.phone || ""}
+            fullWidth
+            onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))}
+          />
         </Grid>
 
         {/* Address — owner only */}
         {userRole.isOwner && (
           <Grid item xs={12} sm={6}>
-            <TextField label="Location / Address" value={profile.address || ""} fullWidth
-              onChange={e => setProfile(p => ({ ...p, address: e.target.value }))} />
+            <TextField
+              label="Location / Address"
+              value={profile.address || ""}
+              fullWidth
+              onChange={e => setProfile(p => ({ ...p, address: e.target.value }))}
+            />
           </Grid>
         )}
 
         {/* Specialty */}
         <Grid item xs={12}>
-          <TextField label="Specialty" value={profile.specialty || ""} fullWidth
-            onChange={e => setProfile(p => ({ ...p, specialty: e.target.value }))} />
+          <TextField
+            label="Specialty"
+            value={profile.specialty || ""}
+            fullWidth
+            onChange={e => setProfile(p => ({ ...p, specialty: e.target.value }))}
+          />
         </Grid>
 
         {/* Bio */}
         <Grid item xs={12}>
-          <TextField label="Personal Bio" value={profile.bio || ""} fullWidth multiline rows={2}
-            onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} />
+          <TextField
+            label="Personal Bio"
+            value={profile.bio || ""}
+            fullWidth multiline rows={2}
+            onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
+          />
         </Grid>
 
-        {/* ── Social Media — ALL barbers ── */}
+        {/* ── Social Media — ALL barbers (staff + owners) ── */}
         <Grid item xs={12}>
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle1" fontWeight={700} gutterBottom>
@@ -108,6 +135,7 @@ export default function ProfileTab({
             Add your Instagram and TikTok so customers can see your work before booking.
           </Typography>
           <Grid container spacing={2}>
+
             {/* Instagram — all barbers */}
             <Grid item xs={12} sm={6}>
               <TextField
@@ -121,7 +149,7 @@ export default function ProfileTab({
                     <InputAdornment position="start">
                       <InstagramIcon fontSize="small" sx={{ color: "#E1306C" }} />
                     </InputAdornment>
-                  )
+                  ),
                 }}
               />
             </Grid>
@@ -137,11 +165,12 @@ export default function ProfileTab({
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
+                      {/* Box is required here to wrap the custom SVG icon */}
                       <Box sx={{ display: "flex", alignItems: "center", color: "#000" }}>
                         <TikTokIcon size={18} />
                       </Box>
                     </InputAdornment>
-                  )
+                  ),
                 }}
               />
             </Grid>
@@ -160,11 +189,12 @@ export default function ProfileTab({
                       <InputAdornment position="start">
                         <FacebookIcon fontSize="small" sx={{ color: "#1877F2" }} />
                       </InputAdornment>
-                    )
+                    ),
                   }}
                 />
               </Grid>
             )}
+
           </Grid>
         </Grid>
 
@@ -177,20 +207,30 @@ export default function ProfileTab({
               Shop "About Us"
             </Typography>
             <TextField
-              label="About Our Shop" value={profile.aboutUs || ""} fullWidth multiline rows={4}
+              label="About Our Shop"
+              value={profile.aboutUs || ""}
+              fullWidth multiline rows={4}
               placeholder="Tell customers about your shop history..."
-              onChange={e => setProfile(p => ({ ...p, aboutUs: e.target.value }))} />
+              onChange={e => setProfile(p => ({ ...p, aboutUs: e.target.value }))}
+            />
           </Grid>
         )}
 
-        {/* Danger Zone */}
+        {/* ── Danger Zone ── */}
         <Grid item xs={12}>
           <Divider sx={{ my: 4 }} />
-          <Typography variant="subtitle2" color="error" gutterBottom fontWeight={700}>Danger Zone</Typography>
-          <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={handleDeleteProfile}>
+          <Typography variant="subtitle2" color="error" gutterBottom fontWeight={700}>
+            Danger Zone
+          </Typography>
+          <Button
+            variant="outlined" color="error"
+            startIcon={<DeleteIcon />}
+            onClick={handleDeleteProfile}
+          >
             Delete My Profile
           </Button>
         </Grid>
+
       </Grid>
     </Paper>
   );

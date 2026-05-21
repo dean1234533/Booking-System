@@ -12,7 +12,7 @@ import {
   Payments as PaymentsIcon,
   Palette as PaletteIcon,
   Nfc as NfcIcon,
-  Language as LanguageIcon,   // ← Domain tab icon
+  Language as LanguageIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -43,7 +43,7 @@ import ReviewsTab   from "../components/dashboard/tabs/ReviewsTab";
 import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
 import DesignTab    from "../components/dashboard/tabs/DesignTab";
 import PayTab       from "../components/dashboard/tabs/PayTab";
-import DomainTab    from "../components/dashboard/tabs/DomainTab";   // ← NEW
+import DomainTab    from "../components/dashboard/tabs/DomainTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ const addDays = (dateStr, days) => {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
-export default function Dashboard() {
+export default function Dashboard({ tenant: initialTenant = null }) {
   const { barber, logout, loading: authLoading } = useAuth();
   const navigate  = useNavigate();
   const theme     = useTheme();
@@ -82,10 +82,11 @@ export default function Dashboard() {
     openingHours: "", vercelUrl: "", customDomain: "", aboutUs: "",
     profilePic: "", logoUrl: "", heroImage: "", heroImageMobile: "",
     stripeConnected: false,
+    // ── Social links — editable by ALL barbers (staff + owners) ──
     instagramUrl: "", tiktokUrl: "", facebookUrl: "",
     privacyPolicy: "", termsConditions: "",
-    domainStatus: "",       // ← "pending" | "active" — set by provision-domain.js
-    customHostnameId: "",   // ← Cloudflare custom hostname ID
+    domainStatus: "",
+    customHostnameId: "",
   });
 
   const [bookings,    setBookings]    = useState([]);
@@ -159,11 +160,13 @@ export default function Dashboard() {
         activeShopId = isOwner ? barber.uid : (data?.shopId ?? barber.uid);
         setProfile(prev => ({
           ...prev, ...data,
-          services:        Array.isArray(data.services) ? data.services : [],
-          stripeConnected: !!data.stripeConnected,
-          tiktokUrl:       data.tiktokUrl       || "",
-          domainStatus:    data.domainStatus     || "",
-          customHostnameId:data.customHostnameId || "",
+          services:         Array.isArray(data.services) ? data.services : [],
+          stripeConnected:  !!data.stripeConnected,
+          instagramUrl:     data.instagramUrl     || "",
+          tiktokUrl:        data.tiktokUrl        || "",
+          facebookUrl:      data.facebookUrl      || "",
+          domainStatus:     data.domainStatus     || "",
+          customHostnameId: data.customHostnameId || "",
         }));
       }
       setUserRole({ isOwner, shopId: activeShopId });
@@ -230,7 +233,10 @@ export default function Dashboard() {
         customDomain: profile.customDomain  || "",
         openingHours: profile.openingHours  || "",
         aboutUs:      profile.aboutUs       || "",
+        // ── Social links — persisted for both staff and owners ──
+        instagramUrl: profile.instagramUrl  || "",
         tiktokUrl:    profile.tiktokUrl     || "",
+        facebookUrl:  profile.facebookUrl   || "",
       };
       const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true };
       if (profileFile)    { const c = await imageCompression(profileFile, options);     updatedData.profilePic      = await uploadBarberImage(c, barber.uid, "profile_pic"); }
@@ -238,10 +244,17 @@ export default function Dashboard() {
       if (heroFileDesktop){ const c = await imageCompression(heroFileDesktop, options); updatedData.heroImage       = await uploadBarberImage(c, barber.uid, "hero_banner_desktop"); }
       if (heroFileMobile) { const c = await imageCompression(heroFileMobile, options);  updatedData.heroImageMobile = await uploadBarberImage(c, barber.uid, "hero_banner_mobile"); }
 
+      // Always write to the barber's own top-level doc
       await updateBarber(barber.uid, updatedData);
+
+      // For staff: also write to the staff subcollection so BarberProfile can read it
       if (!userRole.isOwner && userRole.shopId) {
-        await updateDoc(doc(db, "barbers", userRole.shopId, "staff", barber.uid), updatedData);
+        await updateDoc(
+          doc(db, "barbers", userRole.shopId, "staff", barber.uid),
+          updatedData
+        );
       }
+
       setProfile(updatedData);
       setProfileFile(null); setLogoFile(null); setHeroFileDesktop(null); setHeroFileMobile(null);
       setProfilePreview(""); setLogoPreview(""); setHeroPreviewDesktop(""); setHeroPreviewMobile("");
@@ -298,22 +311,14 @@ export default function Dashboard() {
       await updateDoc(doc(db, "bookings", booking.id), { status: "completed" });
       if (booking.slotId) {
         await updateDoc(doc(db, "slots", booking.slotId), {
-          isBooked: false, status: "open", manualBookingId: null,
+          isBooked:        false,
+          status:          "open",
+          manualBookingId: null,
         });
       }
-      const host = (profile.customDomain || profile.vercelUrl || window.location.host)
-        .replace(/^https?:\/\//, "");
-      const reviewLink = `https://${host}/review/${userRole.shopId}`;
-      const message    = `Hey ${booking.customerName || "there"}, thanks for visiting! I'd love a review: ${reviewLink}`;
-      const phone      = booking.customerPhone || booking.phone;
-      if (phone) {
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
-      } else {
-        await navigator.clipboard.writeText(message);
-        setToast("Completed! Review link copied.");
-      }
+      setToast("✅ Booking completed — slot is available again.");
       await loadData();
-    } catch { setToast("Error updating booking"); }
+    } catch { setToast("Error completing booking."); }
   }
 
   async function handleCancelBooking(booking) {
@@ -349,6 +354,19 @@ export default function Dashboard() {
       console.error("Cancel booking failure:", err);
       setToast("Failed to process full cancellation routing.");
     } finally { setDataLoading(false); }
+  }
+
+  // ── Reviews ───────────────────────────────────────────────────────────────
+  async function handleDeleteReview(reviewId) {
+    if (!window.confirm("Delete this review? This cannot be undone.")) return;
+    try {
+      await deleteDoc(doc(db, "barbers", userRole.shopId, "reviews", reviewId));
+      setReviews(prev => prev.filter(r => r.id !== reviewId));
+      setToast("Review deleted.");
+    } catch (err) {
+      console.error("[handleDeleteReview]", err);
+      setToast("Failed to delete review.");
+    }
   }
 
   // ── Services ──────────────────────────────────────────────────────────────
@@ -448,27 +466,27 @@ export default function Dashboard() {
   };
 
   // ── Tab config ────────────────────────────────────────────────────────────
+  // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
   const brandColor = profile.brandColor || "#C9A84C";
 
-  // Tab order (owner):  Schedule · Bookings · Profile · Services · Reviews · Finance · Design · Domain · Pay
-  // Tab order (staff):  Schedule · Bookings · Profile · Services · Finance · Pay
   const tabs = [
-    { label: "Schedule", icon: <AccessTimeIcon /> },   // 0
-    { label: "Bookings", icon: <StoreIcon /> },         // 1
-    { label: "Profile",  icon: <PersonIcon /> },        // 2
-    { label: "Services", icon: <ListIcon /> },           // 3
-    ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }] : []),  // 4 (owner)
-    { label: "Finance",  icon: <PaymentsIcon /> },      // 5 owner / 4 staff
-    ...(userRole.isOwner ? [{ label: "Design",  icon: <PaletteIcon /> }]  : []), // 6 (owner)
-    ...(userRole.isOwner ? [{ label: "Domain",  icon: <LanguageIcon /> }] : []), // 7 (owner)
-    { label: "Pay",      icon: <NfcIcon /> },           // 8 owner / 5 staff
+    { label: "Schedule", icon: <AccessTimeIcon /> },
+    { label: "Bookings", icon: <StoreIcon /> },
+    { label: "Profile",  icon: <PersonIcon /> },
+    { label: "Services", icon: <ListIcon /> },
+    ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }]  : []),
+    { label: "Finance",  icon: <PaymentsIcon /> },
+    ...(userRole.isOwner ? [{ label: "Design",  icon: <PaletteIcon /> }]  : []),
+    // Domain tab: owner only AND not inside a tenant dashboard
+    ...(userRole.isOwner && !initialTenant ? [{ label: "Domain", icon: <LanguageIcon /> }] : []),
+    { label: "Pay",      icon: <NfcIcon /> },
   ];
 
-  // Named index constants — single source of truth
-  const IDX_REVIEWS = 4;               // owner only
+  // Derive tab indices dynamically based on role so panels always align
+  const IDX_REVIEWS = 4;
   const IDX_FINANCE = userRole.isOwner ? 5 : 4;
-  const IDX_DESIGN  = 6;               // owner only
-  const IDX_DOMAIN  = 7;               // owner only
+  const IDX_DESIGN  = 6;  // owner only
+  const IDX_DOMAIN  = 7;  // owner only
   const IDX_PAY     = userRole.isOwner ? 8 : 5;
 
   // ── Loading guard ─────────────────────────────────────────────────────────
@@ -486,7 +504,8 @@ export default function Dashboard() {
       <Snackbar
         open={Boolean(toast)} autoHideDuration={4000}
         onClose={() => setToast(null)} message={toast}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }} />
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      />
 
       <ManualBookingDialog
         open={manualDialogOpen}
@@ -541,7 +560,10 @@ export default function Dashboard() {
           />
         </TabPanel>
 
-        {/* ── 2 Profile ── */}
+        {/* ── 2 Profile (staff + owners) ──
+              ProfileTab contains Instagram & TikTok fields for ALL barbers.
+              Facebook is owner-only (gated inside ProfileTab via userRole.isOwner).
+              Domain tab is NOT shown to staff — see tab array above.            */}
         <TabPanel value={tab} index={2}>
           <ProfileTab
             profile={profile} setProfile={setProfile}
@@ -566,11 +588,14 @@ export default function Dashboard() {
         {/* ── 4 Reviews (owner only) ── */}
         {userRole.isOwner && (
           <TabPanel value={tab} index={IDX_REVIEWS}>
-            <ReviewsTab reviews={reviews} />
+            <ReviewsTab
+              reviews={reviews}
+              onDeleteReview={handleDeleteReview}
+            />
           </TabPanel>
         )}
 
-        {/* ── 5 Finance ── */}
+        {/* ── Finance ── */}
         <TabPanel value={tab} index={IDX_FINANCE}>
           <FinanceTab
             profile={profile} setProfile={setProfile} userRole={userRole}
@@ -578,12 +603,12 @@ export default function Dashboard() {
           />
         </TabPanel>
 
-        {/* ── 6 Design (owner only) ── */}
+        {/* ── Design (owner only) ── */}
         {userRole.isOwner && (
           <TabPanel value={tab} index={IDX_DESIGN}>
             <DesignTab
               profile={profile} setProfile={setProfile}
-              logoPreview={logoPreview}             setLogoFile={setLogoFile}             setLogoPreview={setLogoPreview}
+              logoPreview={logoPreview}               setLogoFile={setLogoFile}               setLogoPreview={setLogoPreview}
               heroPreviewDesktop={heroPreviewDesktop} setHeroFileDesktop={setHeroFileDesktop} setHeroPreviewDesktop={setHeroPreviewDesktop}
               heroPreviewMobile={heroPreviewMobile}   setHeroFileMobile={setHeroFileMobile}   setHeroPreviewMobile={setHeroPreviewMobile}
               handleImageChange={handleImageChange}
@@ -591,8 +616,8 @@ export default function Dashboard() {
           </TabPanel>
         )}
 
-        {/* ── 7 Domain (owner only) ── */}
-        {userRole.isOwner && (
+        {/* ── Domain (owner only on main dashboard — hidden in tenant context) ── */}
+        {userRole.isOwner && !initialTenant && (
           <TabPanel value={tab} index={IDX_DOMAIN}>
             <DomainTab
               profile={profile}
@@ -602,7 +627,7 @@ export default function Dashboard() {
           </TabPanel>
         )}
 
-        {/* ── 8 Pay ── */}
+        {/* ── Pay ── */}
         <TabPanel value={tab} index={IDX_PAY}>
           <PayTab
             profile={profile} barber={barber}

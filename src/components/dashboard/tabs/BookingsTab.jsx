@@ -9,19 +9,31 @@ import {
 } from "@mui/icons-material";
 
 export default function BookingsTab({
-  bookings, isMobile, brandColor, handleCompleteBooking, handleCancelBooking
+  bookings = [], isMobile, brandColor, handleCompleteBooking, handleCancelBooking
 }) {
   // Default to today's date
   const todayStr = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
 
+  // Helper to extract "YYYY-MM" from a date string
+  const getYearMonth = (dateStr) => {
+    if (!dateStr) return "";
+    return dateStr.substring(0, 7); // Extracts "YYYY-MM" from "YYYY-MM-DD"
+  };
+
+  const targetMonth = getYearMonth(selectedDate);
+
   // All unique dates that have bookings — for showing count chips
   const allDates = [...new Set(bookings.map(b => b.date).filter(Boolean))].sort();
 
-  // Filter bookings to selected date only
+  // Filter bookings to the selected MONTH only, sorted by full date then time
   const filtered = bookings
-    .filter(b => b.date === selectedDate)
-    .sort((a, b) => a.time?.localeCompare(b.time));
+    .filter(b => getYearMonth(b.date) === targetMonth)
+    .sort((a, b) => {
+      const dateCompare = a.date?.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.time?.localeCompare(b.time);
+    });
 
   return (
     <>
@@ -69,36 +81,37 @@ export default function BookingsTab({
         </Box>
       </Box>
 
-      {/* ── No bookings on selected date ── */}
+      {/* ── No bookings on selected month ── */}
       {filtered.length === 0 && (
         <Paper sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
           <CalendarIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />
           <Typography variant="h6" color="text.secondary">
-            No bookings on{" "}
+            No bookings in{" "}
             {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", {
-              weekday: "long", day: "numeric", month: "long"
+              month: "long", year: "numeric"
             })}
           </Typography>
           <Typography variant="body2" color="text.disabled" mt={0.5}>
-            Use the date picker above or tap a chip to jump to a date with bookings.
+            Use the date picker above or tap a chip to jump to a month with bookings.
           </Typography>
         </Paper>
       )}
 
-      {/* ── Bookings for selected date ── */}
+      {/* ── Bookings for selected month ── */}
       {filtered.length > 0 && (
         <Box>
-          {/* Day header */}
+          {/* Month header */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
             <CalendarIcon fontSize="small" sx={{ color: brandColor }} />
             <Typography variant="subtitle1" fontWeight={800} sx={{ color: brandColor }}>
+              Bookings for{" "}
               {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", {
-                weekday: "long", day: "numeric", month: "long", year: "numeric"
+                month: "long", year: "numeric"
               })}
             </Typography>
             <Chip
               size="small"
-              label={`${filtered.length} booking${filtered.length > 1 ? "s" : ""}`}
+              label={`${filtered.length} total slot${filtered.length > 1 ? "s" : ""}`}
               sx={{ height: 20, fontSize: 10 }}
             />
           </Box>
@@ -133,7 +146,7 @@ export default function BookingsTab({
                       ["✂️ Service", b.serviceName || b.haircutStyle],
                       ["👤 Gender",  b.gender],
                       ["💰 Deposit", b.depositAmount ? `£${Number(b.depositAmount).toFixed(2)}` : null],
-                      ["🪪 Ref",     b.id?.slice(-8).toUpperCase()],
+                      ["🪪 Ref",      b.id?.slice(-8).toUpperCase()],
                     ].filter(([, val]) => val).map(([label, value]) => (
                       <Grid item xs={12} sm={6} key={label}>
                         <Box display="flex" gap={1} alignItems="center">

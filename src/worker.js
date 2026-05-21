@@ -100,7 +100,7 @@ async function handleCheckPayment(request, env) {
     const stripe  = new Stripe(env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     return json({
-      status:       session.status,
+      status:         session.status,
       payment_status: session.payment_status,
       metadata:       session.metadata,
     });
@@ -185,7 +185,7 @@ async function handleCreateDomainCheckout(request, env) {
   try {
     const stripe  = new Stripe(env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.create({
-      mode:                  "payment",
+      mode:                 "payment",
       payment_method_types: ["card"],
       line_items: [{
         price_data: {
@@ -210,46 +210,6 @@ async function handleCreateDomainCheckout(request, env) {
     return json({ url: session.url, sessionId: session.id });
   } catch (err) {
     console.error("[create-domain-checkout] Stripe error:", err);
-    return json({ error: err.message }, 500);
-  }
-}
-
-// POST /api/connect-existing-domain
-async function handleConnectExistingDomain(request, env) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
-
-  let body;
-  try { body = await request.json(); }
-  catch { return json({ error: "Invalid JSON body" }, 400); }
-
-  const { domain, barberId } = body ?? {};
-
-  if (!domain || !barberId) {
-    return json({ error: "domain and barberId are required" }, 400);
-  }
-
-  const clean = domain.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
-
-  if (!isValidDomain(clean)) {
-    return json({ error: "Invalid domain format" }, 400);
-  }
-
-  try {
-    // 1. Skip Porkbun entirely and provision the SSL Custom Hostname right away in Cloudflare
-    const hostnameResult = await addCustomHostname(clean, env);
-    console.log(`[connect-existing] Cloudflare Custom hostname linked successfully: ${hostnameResult?.id}`);
-
-    // 2. Map domain properties straight to the barber's document structure in Firestore
-    await updateFirestoreDomain(barberId, clean, hostnameResult.id, env);
-    console.log(`[connect-existing] Firestore mapped for existing domain: ${clean}`);
-
-    return json({ 
-      success: true, 
-      domain: clean, 
-      customHostnameId: hostnameResult.id 
-    });
-  } catch (err) {
-    console.error("[connect-existing] Configuration routing error:", err);
     return json({ error: err.message }, 500);
   }
 }
@@ -480,8 +440,6 @@ export default {
         return handleCheckDomain(request, env);
       case "/api/create-domain-checkout":
         return handleCreateDomainCheckout(request, env);
-      case "/api/connect-existing-domain":  // ── ROUTER MATCH: Direct execution path linked here!
-        return handleConnectExistingDomain(request, env);
       case "/api/check-stripe":
         return handleCheckStripe(request, env);
       case "/api/stripe-webhook":

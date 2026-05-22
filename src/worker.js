@@ -97,7 +97,7 @@ async function handleConnect(request, env) {
   const { email, barberId, businessName } = body ?? {};
 
   // Normalize parameters to accept both body architectures safely
-  const userId = barberId || body ?? {}.userId;
+  const userId = barberId || body?.userId;
 
   if (!email || !userId) {
     return json({ error: "Missing email or barberId" }, 400);

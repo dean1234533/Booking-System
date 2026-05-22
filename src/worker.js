@@ -487,7 +487,13 @@ export default {
       case "/api/stripe-webhook":
         return handleStripeWebhook(request, env);
       default:
-        return env.ASSETS.fetch(request);
+  if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
+    return env.ASSETS.fetch(request);
+  }
+  return new Response("Asset routing engine not bound or file not found", { 
+    status: 404,
+    headers: { "Content-Type": "text/plain" }
+  });
     }
   },
 };

@@ -52,7 +52,12 @@ export async function onRequestPost(context) {
   try {
     // 2. Parse request body
     const body = await request.json().catch(() => ({}));
-    const { userId, email, origin } = body;
+    
+    // Support both historical 'userId' parameter and the signup layout 'barberId' key safely
+    const userId = body.barberId || body.userId;
+    const email = body.email;
+    const origin = body.origin;
+    const businessName = body.businessName;
 
     if (!userId || !email) {
       return new Response(JSON.stringify({ error: "Missing userId or email" }), {
@@ -77,6 +82,9 @@ export async function onRequestPost(context) {
       const account = await stripe.accounts.create({
         type: "standard",
         email,
+        business_profile: {
+          name: businessName || undefined,
+        },
         metadata: { barberId: userId },
       });
       accountId = account.id;

@@ -87,6 +87,66 @@ function calcFinalPriceGbp(tld, usdToGbpRate) {
 
 // ── Route handlers ────────────────────────────────────────────────────────────
 
+async function handleConnect(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON body" }, 400); }
+
+  const { email, barberId, businessName } = body ?? {};
+
+  if (!email || !barberId) {
+    return json({ error: "Missing email or barberId" }, 400);
+  }
+
+  try {
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+
+    // 1. Generate an Express Connected Account for the barber shop owner
+    const account = await stripe.accounts.create({
+      type: "express",
+      email: email,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      business_profile: {
+        name: businessName || "Barber Shop Owner",
+      },
+      metadata: { barberId }
+    });
+
+    const origin = env.APP_ORIGIN ?? "https://bookehtrim.co.uk";
+
+    // 2. Build secure custom onboarding link structure
+    const accountLink = await stripe.accountLinks.create({
+      account: account.id,
+      refresh_url: `${origin}/signup`,
+      return_url: `${origin}/dashboard?stripe_success=true`,
+      type: "account_onboarding",
+    });
+
+    // 3. Document parameters allocation inside Firestore project
+    const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+    await fetch(`${base}/barbers/${barberId}?updateMask.fieldPaths=stripeAccountId&updateMask.fieldPaths=stripeConnected`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fields: toFirestoreFields({
+          stripeAccountId: account.id,
+          stripeConnected: false
+        })
+      })
+    });
+
+    return json({ url: accountLink.url });
+  } catch (err) {
+    console.error("[connect-error]:", err);
+    return json({ error: err.message }, 500);
+  }
+}
+
 async function handleCheckPayment(request, env) {
   const url       = new URL(request.url);
   const sessionId = url.searchParams.get("sessionId");
@@ -470,7 +530,10 @@ export default {
         },
       });
     }
-switch (url.pathname) {
+
+    switch (url.pathname) {
+      case "/api/connect":
+        return handleConnect(request, env);
       case "/api/check-payment":
         return handleCheckPayment(request, env);
       case "/api/quick-charge":
@@ -486,7 +549,6 @@ switch (url.pathname) {
       case "/api/stripe-webhook":
         return handleStripeWebhook(request, env);
         
-      // ── UPDATE THE DEFAULT FALLBACK CASE TO THIS ───────────────────
       default:
         // 1. If Cloudflare is checking the SSL validation token, let it pass gracefully
         if (url.pathname.startsWith("/.well-known/cf-custom-hostname-challenge/")) {
@@ -503,7 +565,6 @@ switch (url.pathname) {
         }
 
         return new Response("Not Found", { status: 404 });
-      // ───────────────────────────────────────────────────────────────
     }
   },
 };

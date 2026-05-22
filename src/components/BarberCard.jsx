@@ -19,9 +19,10 @@ export default function BarberCard({ barber, isMarketplace }) {
   const depositValue = Number(barber?.depositAmount) || 10;
   const brandColor = barber?.brandColor || "#C9A84C";
   
+  // ── Show business name on marketplace, but isolate FIRST NAME ONLY for individual barbers ──
   const displayName = isMarketplace 
     ? (barber?.businessName || barber?.name || "Premium Shop")
-    : (barber?.name || "Master Barber");
+    : (barber?.name?.split(" ")[0] || "Master Barber");
 
   const shopLogo = isMarketplace ? (barber?.businessLogo || barber?.logoUrl) : null;
 
@@ -39,13 +40,19 @@ export default function BarberCard({ barber, isMarketplace }) {
       brandColor: brandColor
     };
 
-    const customDomain = barber.vercelUrl;
-    if (isMarketplace && customDomain) {
-      const targetUrl = customDomain.startsWith('http') ? customDomain : `https://${customDomain}`;
-      window.location.href = targetUrl;
+    // Check for both updated customDomain and legacy vercelUrl fields
+    const targetCustomDomain = barber.customDomain || barber.vercelUrl;
+    
+    if (isMarketplace && targetCustomDomain) {
+      // Clean up string string entries to prevent missing browser protocol crashes
+      const secureUrl = targetCustomDomain.startsWith('http') ? targetCustomDomain : `https://${targetCustomDomain}`;
+      window.location.href = secureUrl;
       return;
     }
 
+    // 🎯 NAVIGATION RULE REQUIREMENT:
+    // If it's the home marketplace, direct to the tenant shop home page dashboard view.
+    // If it's already inside the tenant page, direct to the single barber booking profile page.
     const path = isMarketplace ? `/shop/${id}` : `/barber/${id}`;
     navigate(path, { state: { tenant: brandingData, shopId: barber.shopId } });
   };

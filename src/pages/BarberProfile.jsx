@@ -194,7 +194,7 @@ export default function BarberProfile({ tenant: initialTenant }) {
                   fontSize: 48, mb: 2, mx: { xs: "auto", md: "0" },
                   border: "3px solid", borderColor: brandColor,
                 }}>
-                  {barber.name?.[0]?.toUpperCase()}
+                  {firstName?.[0]?.toUpperCase()}
                 </Avatar>
               )}
 
@@ -206,7 +206,7 @@ export default function BarberProfile({ tenant: initialTenant }) {
                   onClick={() => setExpandedSpecialty(!expandedSpecialty)}
                   sx={{
                     mt: 2, p: 2, width: "100%", textAlign: "left",
-                    borderRadius: "16px", bgcolor: "#2D2D5F", color: "white",
+                    borderRadius: "16px", bgcolor: brandColor, color: "white",
                     display: "block", transition: "all 0.3s ease-in-out",
                     position: "relative", overflow: "hidden",
                   }}
@@ -218,7 +218,7 @@ export default function BarberProfile({ tenant: initialTenant }) {
                       fontWeight={600}
                       sx={{
                         lineHeight: 1.6,
-                        display:         expandedSpecialty ? "block" : "-webkit-box",
+                        display:      expandedSpecialty ? "block" : "-webkit-box",
                         WebkitLineClamp: expandedSpecialty ? "unset" : 4,
                         WebkitBoxOrient: "vertical",
                         overflow:        "hidden",

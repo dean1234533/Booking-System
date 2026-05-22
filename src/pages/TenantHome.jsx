@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { 
   Box, Container, Typography, Grid, Paper, 
@@ -148,19 +147,15 @@ export default function TenantHome({ tenant: initialTenant }) {
         setFreshTenant(finalTenantData);
  
         // ── Owner object — passes through ALL their fields including social links ──
-        // instagramUrl, tiktokUrl etc. come directly from their barber document
-        // so their BarberCard will show their own personal social links
         const ownerObject = {
           ...finalTenantData,
           name:       finalTenantData.name || "Master Barber",
           profilePic: finalTenantData.profilePic || "", 
           isOwner:    true,
           shopId:     activeTenantId,
-          // Social links are already on finalTenantData — no need to re-map
         };
  
         // ── Staff — each member carries their own instagramUrl + tiktokUrl
-        // from their own staff document, so each BarberCard shows their own links
         const activeStaff = staffMembers
           .map(member => ({ ...member, shopId: activeTenantId }))
           .filter(member => member.name);
@@ -241,7 +236,7 @@ export default function TenantHome({ tenant: initialTenant }) {
         <Container>
           <Grid container spacing={2} justifyContent="center">
             {[
-              { icon: <VerifiedIcon />,         text: "LICENSED BARBERS" },
+              { icon: <VerifiedIcon />,          text: "LICENSED BARBERS" },
               { icon: <SanitizerIcon />,         text: "HYGIENE GUARANTEED" },
               { icon: <WorkspacePremiumIcon />,  text: "PREMIUM PRODUCTS" }
             ].map((signal, idx) => (
@@ -283,7 +278,7 @@ export default function TenantHome({ tenant: initialTenant }) {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {freshTenant?.hours ? (
                   ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day, i) => {
-                    const dayData  = freshTenant?.hours?.[day] || freshTenant?.hours?.[day.toLowerCase()];
+                    const dayData   = freshTenant?.hours?.[day] || freshTenant?.hours?.[day.toLowerCase()];
                     const isClosed = !dayData || dayData.isClosed || !dayData.open || !dayData.close;
                     const hourText = isClosed ? "Closed" : `${dayData.open} – ${dayData.close}`;
                     return (
@@ -333,18 +328,12 @@ export default function TenantHome({ tenant: initialTenant }) {
         <Grid container spacing={5}>
           {team.map(barber => (
             <Grid item xs={12} sm={6} md={4} key={barber.id}>
-              {/*
-                Each team member object already carries their own instagramUrl
-                and tiktokUrl from their individual Firestore document.
-                BarberCard reads these directly and renders the icons.
-                No re-mapping needed — just spread the barber object.
-              */}
+              {/* 🎯 CHANGED: isMarketplace={false} here signals the BarberCard to navigate directly to the individual booking path `/barber/:id` */}
               <BarberCard 
                 barber={{
                   ...barber,
                   businessName: barber.name,
                   logoUrl:      barber.profilePic,
-                  // instagramUrl and tiktokUrl already present on barber object
                 }} 
                 isMarketplace={false} 
               />

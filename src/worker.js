@@ -470,8 +470,7 @@ export default {
         },
       });
     }
-
-    switch (url.pathname) {
+switch (url.pathname) {
       case "/api/check-payment":
         return handleCheckPayment(request, env);
       case "/api/quick-charge":
@@ -480,20 +479,31 @@ export default {
         return handleCheckDomain(request, env);
       case "/api/create-domain-checkout":
         return handleCreateDomainCheckout(request, env);
-      case "/api/connect-existing-domain":  // ── ROUTER MATCH: Direct execution path linked here!
+      case "/api/connect-existing-domain":
         return handleConnectExistingDomain(request, env);
       case "/api/check-stripe":
         return handleCheckStripe(request, env);
       case "/api/stripe-webhook":
         return handleStripeWebhook(request, env);
+        
+      // ── UPDATE THE DEFAULT FALLBACK CASE TO THIS ───────────────────
       default:
-  if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
-    return env.ASSETS.fetch(request);
-  }
-  return new Response("Asset routing engine not bound or file not found", { 
-    status: 404,
-    headers: { "Content-Type": "text/plain" }
-  });
+        // 1. If Cloudflare is checking the SSL validation token, let it pass gracefully
+        if (url.pathname.startsWith("/.well-known/cf-custom-hostname-challenge/")) {
+          if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
+            return env.ASSETS.fetch(request);
+          }
+          // Fallback if env.ASSETS is missing but Cloudflare needs to verify the challenge path
+          return new Response("Cloudflare custom hostname validation challenge path pass-through.", { status: 200 });
+        }
+
+        // 2. Normal asset serving safety logic for standard pages/favicons
+        if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
+          return env.ASSETS.fetch(request);
+        }
+
+        return new Response("Not Found", { status: 404 });
+      // ───────────────────────────────────────────────────────────────
     }
   },
 };

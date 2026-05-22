@@ -497,27 +497,30 @@ export default {
         return handleStripeWebhook(request, env);
         
       default:
-        // 3. Cloudflare SSL Hostname Challenge Validation Pass-Through
+        // Verification safeguarding: dynamically resolve project endpoint URL
+        const firebaseTargetHost = `${env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`;
+        const targetFirebaseUrl = `https://${firebaseTargetHost}${url.pathname}${url.search}`;
+
+        // 3. Cloudflare Custom Hostname Challenge Verification Pass-Through
         if (url.pathname.startsWith("/.well-known/cf-custom-hostname-challenge/")) {
-          const challengeUrl = `https://fallback.bookehtrim.co.uk${url.pathname}${url.search}`;
-          return fetch(new Request(challengeUrl, request));
+          const challengeReq = new Request(targetFirebaseUrl, request);
+          challengeReq.headers.set("Host", firebaseTargetHost);
+          return fetch(challengeReq);
         }
 
-        // 4. SMART FIREBASE ROUTING: If traffic lands on a barber's custom client domain 
-        // (e.g. bookehnow.co.uk), proxy it directly to your verified fallback domain on Firebase
-        // so Firebase accepts and renders the React SPA assets cleanly.
-        const host = url.hostname.toLowerCase();
-        if (host !== "bookehtrim.co.uk" && host !== "fallback.bookehtrim.co.uk") {
-          const targetFirebaseUrl = `https://fallback.bookehtrim.co.uk${url.pathname}${url.search}`;
-          
-          // Clone the request parameters but target the valid Firebase host setup
-          const proxyRequest = new Request(targetFirebaseUrl, request);
-          return await fetch(proxyRequest);
-        }
-
-        // 5. Native path fallback if it's your primary main site domain
-        const mainSiteFallbackUrl = `https://fallback.bookehtrim.co.uk${url.pathname}${url.search}`;
-        return await fetch(new Request(mainSiteFallbackUrl, request));
+        // 4. BULLETPROOF MULTI-TENANT PROXY ROUTING
+        // Clone the original user request parameters but cleanly direct them to the project root
+        const proxyRequest = new Request(targetFirebaseUrl, {
+          method: request.method,
+          headers: new Headers(request.headers),
+          body: request.body
+        });
+        
+        // Securely override the Host header to perfectly align with native target validation
+        proxyRequest.headers.set("Host", firebaseTargetHost);
+        
+        // Execute the fetch against Firebase static storage and return content directly to user
+        return await fetch(proxyRequest);
     }
   },
 };

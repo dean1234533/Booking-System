@@ -2,20 +2,7 @@
  * src/worker.js
  *
  * Single Cloudflare Worker entry point.
- * Handles all /api/* routes, then falls back to serving your Vite SPA.
- *
- * Environment variables (set in Cloudflare Dashboard → Settings → Variables):
- * API_TOKEN        — Cloudflare Global API Key (Required for Custom Hostnames/SSL)
- * CLOUDFLARE_EMAIL — Cloudflare account login email
- * ACCOUNT_ID       — Cloudflare account ID
- * ZONE_ID          — Zone ID of your main SaaS domain
- * PORKBUN_API_KEY       — Your Porkbun Developer API Key (For automated purchasing)
- * PORKBUN_SECRET_KEY    — Your Porkbun Developer API Secret Key
- * STRIPE_SECRET_KEY            — Stripe secret key (sk_live_...)
- * STRIPE_WEBHOOK_SECRET        — Stripe webhook signing secret (whsec_...)
- * VITE_FIREBASE_PROJECT_ID     — Firebase project ID
- * APP_ORIGIN                   — e.g. https://yoursaas.com
- * USD_TO_GBP_RATE              — e.g. 0.79
+ * Handles all /api/* routes, then proxy-routes tenants to Firebase static hosting.
  */
 
 import Stripe from "stripe";
@@ -75,10 +62,6 @@ async function readRawBody(request) {
   return { raw: buffer, text: new TextDecoder().decode(buffer) };
 }
 
-// ── Shared pricing helper — single source of truth ───────────────────────────
-// Both check-domain and create-domain-checkout use this so displayed price
-// always matches the Stripe checkout price exactly.
-
 function calcFinalPriceGbp(tld, usdToGbpRate) {
   const baseCostUsd = ESTIMATED_PRICES_USD[tld] ?? 12.00;
   const rate        = parseFloat(usdToGbpRate ?? "0.79");
@@ -95,8 +78,6 @@ async function handleConnect(request, env) {
   catch { return json({ error: "Invalid JSON body" }, 400); }
 
   const { email, barberId, businessName } = body ?? {};
-
-  // Normalize parameters to accept both body architectures safely
   const userId = barberId || body?.userId;
 
   if (!email || !userId) {
@@ -105,8 +86,6 @@ async function handleConnect(request, env) {
 
   try {
     const stripe = new Stripe(env.STRIPE_SECRET_KEY);
-
-    // 1. Generate an Express Connected Account for the barber shop owner
     const account = await stripe.accounts.create({
       type: "express",
       email: email,
@@ -122,7 +101,6 @@ async function handleConnect(request, env) {
 
     const origin = env.APP_ORIGIN ?? "https://bookehtrim.co.uk";
 
-    // 2. Build secure custom onboarding link structure
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
       refresh_url: `${origin}/signup`,
@@ -130,7 +108,6 @@ async function handleConnect(request, env) {
       type: "account_onboarding",
     });
 
-    // 3. Document parameters allocation inside Firestore project
     const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
     await fetch(`${base}/barbers/${userId}?updateMask.fieldPaths=stripeAccountId&updateMask.fieldPaths=stripeConnected`, {
       method: "PATCH",
@@ -177,7 +154,6 @@ async function handleQuickCharge(request, env) {
   return json({ message: "Quick charge endpoint reached successfully" });
 }
 
-// GET /api/check-domain?domain=example.com
 async function handleCheckDomain(request, env) {
   if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
 
@@ -196,17 +172,14 @@ async function handleCheckDomain(request, env) {
   }
 
   try {
-    // Ultra-fast DoH check — bypasses registrar platform blocks completely
     const dnsUrl = `https://1.1.1.1/dns-query?name=${encodeURIComponent(clean)}&type=SOA`;
     const dnsRes = await fetch(dnsUrl, { headers: { accept: "application/dns-json" } });
 
     if (!dnsRes.ok) return json({ error: "DNS lookup engine failed verification" }, 502);
 
     const dnsData    = await dnsRes.json();
-    const isAvailable = dnsData.Status === 3; // NXDOMAIN = available
+    const isAvailable = dnsData.Status === 3;
 
-    // ── FIX: always return the final GBP price including markup so the
-    //         displayed price matches the Stripe checkout price exactly. ──
     const finalPrice = calcFinalPriceGbp(tld, env.USD_TO_GBP_RATE);
 
     return json({
@@ -221,7 +194,6 @@ async function handleCheckDomain(request, env) {
   }
 }
 
-// POST /api/create-domain-checkout
 async function handleCreateDomainCheckout(request, env) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -236,14 +208,11 @@ async function handleCreateDomainCheckout(request, env) {
   }
 
   const targetExtension = domain.toLowerCase().trim();
-
-  // ── FIX: derive price server-side from the TLD using the same formula as
-  //         check-domain — never trust the price sent from the frontend. ──
-  const tld          = extractTLD(targetExtension);
+  const tld           = extractTLD(targetExtension);
   const finalPriceGbp = calcFinalPriceGbp(tld, env.USD_TO_GBP_RATE);
   const priceGbpPence = Math.round(finalPriceGbp * 100);
 
-  const origin = env.APP_ORIGIN ?? "https://yoursaas.com";
+  const origin = env.APP_ORIGIN ?? "https://bookehtrim.co.uk";
 
   try {
     const stripe  = new Stripe(env.STRIPE_SECRET_KEY);
@@ -277,7 +246,6 @@ async function handleCreateDomainCheckout(request, env) {
   }
 }
 
-// POST /api/connect-existing-domain
 async function handleConnectExistingDomain(request, env) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -298,14 +266,8 @@ async function handleConnectExistingDomain(request, env) {
   }
 
   try {
-    // 1. Skip Porkbun entirely and provision the SSL Custom Hostname right away in Cloudflare
     const hostnameResult = await addCustomHostname(clean, env);
-    console.log(`[connect-existing] Cloudflare Custom hostname linked successfully: ${hostnameResult?.id}`);
-
-    // 2. Map domain properties straight to the barber's document structure in Firestore
     await updateFirestoreDomain(barberId, clean, hostnameResult.id, env);
-    console.log(`[connect-existing] Firestore mapped for existing domain: ${clean}`);
-
     return json({ 
       success: true, 
       domain: clean, 
@@ -353,7 +315,6 @@ async function handleCheckStripe(request, env) {
   }
 }
 
-// POST /api/stripe-webhook
 async function handleStripeWebhook(request, env) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -395,10 +356,9 @@ async function handleStripeWebhook(request, env) {
   return json({ received: true });
 }
 
-// ── AUTOMATED DOMAIN PURCHASING & NAMESERVER CONFIG (PORKBUN API) ─────────────
+// ── PORKBUN REGISTRATION ENGINE ───────────────────────────────────────────────
 
 async function registerDomain(domain, env) {
-  // 1. Register the domain via Porkbun's production API
   const res = await fetch(
     `https://api.porkbun.com/api/json/v3/domain/register/${encodeURIComponent(domain)}`,
     {
@@ -416,9 +376,6 @@ async function registerDomain(domain, env) {
     throw new Error(`Porkbun API automated registration failure: ${data.message || JSON.stringify(data)}`);
   }
 
-  console.log(`[provision-domain] Purchased ${domain} successfully. Forcing Cloudflare nameservers...`);
-
-  // 2. Point the domain at your Cloudflare nameservers immediately
   const nsRes = await fetch(
     `https://api.porkbun.com/api/json/v3/domain/updateNameservers/${encodeURIComponent(domain)}`,
     {
@@ -428,8 +385,8 @@ async function registerDomain(domain, env) {
         apikey:       env.PORKBUN_API_KEY,
         secretapikey: env.PORKBUN_SECRET_KEY,
         nameservers: [
-          "byron.ns.cloudflare.com",  // CRITICAL: swap with your exact Cloudflare NS 1
-          "sierra.ns.cloudflare.com", // CRITICAL: swap with your exact Cloudflare NS 2
+          "byron.ns.cloudflare.com",  
+          "sierra.ns.cloudflare.com", 
         ],
       }),
     }
@@ -438,14 +395,12 @@ async function registerDomain(domain, env) {
   const nsData = await nsRes.json();
   if (!nsRes.ok || nsData.status !== "SUCCESS") {
     console.warn(`[provision-domain] Nameserver update warning: ${nsData.message || JSON.stringify(nsData)}`);
-  } else {
-    console.log(`[provision-domain] Nameservers matched to Cloudflare for ${domain}`);
   }
 
   return data;
 }
 
-// ── Cloudflare Routing configuration engine ───────────────────────────────────
+// ── CLOUDFLARE CONFIGURATION ENGINE ───────────────────────────────────────────
 
 async function addCustomHostname(domain, env) {
   const res = await fetch(
@@ -488,27 +443,14 @@ async function updateFirestoreDomain(barberId, domain, customHostnameId, env) {
 }
 
 async function provisionDomain(domain, barberId, env) {
-  console.log(`[provision-domain] Initializing background workers for ${domain}`);
-
-  // 1. Buy the domain and assign nameservers via Porkbun
   try {
     await registerDomain(domain, env);
-    console.log(`[provision-domain] Porkbun successfully processed order for: ${domain}`);
   } catch (err) {
-    if (err.message.toLowerCase().includes("already own")) {
-      console.warn("[provision-domain] Domain already owned in Porkbun account, moving to routing.");
-    } else {
-      throw err;
-    }
+    if (!err.message.toLowerCase().includes("already own")) throw err;
   }
 
-  // 2. Create SSL custom hostname in Cloudflare
   const hostnameResult = await addCustomHostname(domain, env);
-  console.log(`[provision-domain] Cloudflare Custom hostname active: ${hostnameResult?.id}`);
-
-  // 3. Sync domain details back to Firestore
   await updateFirestoreDomain(barberId, domain, hostnameResult.id, env);
-  console.log(`[provision-domain] Firebase synced for barber ${barberId}`);
 
   return {
     domain,
@@ -517,12 +459,13 @@ async function provisionDomain(domain, barberId, env) {
   };
 }
 
-// ── Main Worker export ────────────────────────────────────────────────────────
+// ── Main Worker Export with Built-In Firebase Proxy ──────────────────────────
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // 1. Global CORS Preflight Handling
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -534,6 +477,7 @@ export default {
       });
     }
 
+    // 2. API Routing Table
     switch (url.pathname) {
       case "/api/connect":
         return handleConnect(request, env);
@@ -553,21 +497,27 @@ export default {
         return handleStripeWebhook(request, env);
         
       default:
-        // 1. If Cloudflare is checking the SSL validation token, let it pass gracefully
+        // 3. Cloudflare SSL Hostname Challenge Validation Pass-Through
         if (url.pathname.startsWith("/.well-known/cf-custom-hostname-challenge/")) {
-          if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
-            return env.ASSETS.fetch(request);
-          }
-          // Fallback if env.ASSETS is missing but Cloudflare needs to verify the challenge path
-          return new Response("Cloudflare custom hostname validation challenge path pass-through.", { status: 200 });
+          const challengeUrl = `https://fallback.bookehtrim.co.uk${url.pathname}${url.search}`;
+          return fetch(new Request(challengeUrl, request));
         }
 
-        // 2. Normal asset serving safety logic for standard pages/favicons
-        if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
-          return env.ASSETS.fetch(request);
+        // 4. SMART FIREBASE ROUTING: If traffic lands on a barber's custom client domain 
+        // (e.g. bookehnow.co.uk), proxy it directly to your verified fallback domain on Firebase
+        // so Firebase accepts and renders the React SPA assets cleanly.
+        const host = url.hostname.toLowerCase();
+        if (host !== "bookehtrim.co.uk" && host !== "fallback.bookehtrim.co.uk") {
+          const targetFirebaseUrl = `https://fallback.bookehtrim.co.uk${url.pathname}${url.search}`;
+          
+          // Clone the request parameters but target the valid Firebase host setup
+          const proxyRequest = new Request(targetFirebaseUrl, request);
+          return await fetch(proxyRequest);
         }
 
-        return new Response("Not Found", { status: 404 });
+        // 5. Native path fallback if it's your primary main site domain
+        const mainSiteFallbackUrl = `https://fallback.bookehtrim.co.uk${url.pathname}${url.search}`;
+        return await fetch(new Request(mainSiteFallbackUrl, request));
     }
   },
 };

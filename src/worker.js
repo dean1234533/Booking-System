@@ -96,7 +96,10 @@ async function handleConnect(request, env) {
 
   const { email, barberId, businessName } = body ?? {};
 
-  if (!email || !barberId) {
+  // Normalize parameters to accept both body architectures safely
+  const userId = barberId || body ?? {}.userId;
+
+  if (!email || !userId) {
     return json({ error: "Missing email or barberId" }, 400);
   }
 
@@ -114,7 +117,7 @@ async function handleConnect(request, env) {
       business_profile: {
         name: businessName || "Barber Shop Owner",
       },
-      metadata: { barberId }
+      metadata: { barberId: userId }
     });
 
     const origin = env.APP_ORIGIN ?? "https://bookehtrim.co.uk";
@@ -129,7 +132,7 @@ async function handleConnect(request, env) {
 
     // 3. Document parameters allocation inside Firestore project
     const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
-    await fetch(`${base}/barbers/${barberId}?updateMask.fieldPaths=stripeAccountId&updateMask.fieldPaths=stripeConnected`, {
+    await fetch(`${base}/barbers/${userId}?updateMask.fieldPaths=stripeAccountId&updateMask.fieldPaths=stripeConnected`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

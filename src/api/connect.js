@@ -37,9 +37,8 @@ async function updateDoc(path, obj, firestoreBase) {
 }
 
 // --- Handler ---
-export async function onRequestPost(context) {
-  const { request, env } = context;
-
+// FIXED: Changed function name to handleConnect and arguments to (request, env) to match src/worker.js calls
+export async function handleConnect(request, env) {
   // 1. Initialize Stripe inside the handler to use env
   const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
     apiVersion: "2023-10-16",

@@ -497,30 +497,43 @@ export default {
         return handleStripeWebhook(request, env);
         
       default:
-        // Verification safeguarding: dynamically resolve project endpoint URL
-        const firebaseTargetHost = `${env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`;
-        const targetFirebaseUrl = `https://${firebaseTargetHost}${url.pathname}${url.search}`;
-
-        // 3. Cloudflare Custom Hostname Challenge Verification Pass-Through
+        // 3. CLOUDFLARE SSL CHALLENGE BYPASS
+        // Let Cloudflare handle its own validation challenges at the edge natively.
         if (url.pathname.startsWith("/.well-known/cf-custom-hostname-challenge/")) {
-          const challengeReq = new Request(targetFirebaseUrl, request);
-          challengeReq.headers.set("Host", firebaseTargetHost);
-          return fetch(challengeReq);
+          return fetch(request);
         }
 
-        // 4. BULLETPROOF MULTI-TENANT PROXY ROUTING
-        // Clone the original user request parameters but cleanly direct them to the project root
-        const proxyRequest = new Request(targetFirebaseUrl, {
+        // 4. MULTI-TENANT PROXY ROUTING (GET/POST Safe)
+        const firebaseTargetHost = `${env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`;
+        const targetFirebaseUrl = `https://${firebaseTargetHost}${url.pathname}${url.search}`;
+        
+        const initOptions = {
           method: request.method,
           headers: new Headers(request.headers),
-          body: request.body
-        });
-        
-        // Securely override the Host header to perfectly align with native target validation
+        };
+
+        // Stream body data safely if request method accepts payload contents
+        if (request.method !== "GET" && request.method !== "HEAD") {
+          initOptions.body = request.body;
+        }
+
+        const proxyRequest = new Request(targetFirebaseUrl, initOptions);
         proxyRequest.headers.set("Host", firebaseTargetHost);
         
-        // Execute the fetch against Firebase static storage and return content directly to user
-        return await fetch(proxyRequest);
+        let response = await fetch(proxyRequest);
+
+        // 5. SPA ROUTING FALLBACK INTERCEPTOR
+        if (response.status === 404 && !url.pathname.includes(".")) {
+          const fallbackIndexUrl = `https://${firebaseTargetHost}/index.html`;
+          const fallbackRequest = new Request(fallbackIndexUrl, {
+            method: "GET",
+            headers: new Headers(request.headers)
+          });
+          fallbackRequest.headers.set("Host", firebaseTargetHost);
+          response = await fetch(fallbackRequest);
+        }
+        
+        return response;
     }
   },
 };

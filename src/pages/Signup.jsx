@@ -34,7 +34,8 @@ export default function Signup() {
     confirm:         "",
     shopId:          "",
     businessName:    "",
-    vercelUrl:       "",
+    customDomain:    "", // Updated from vercelUrl to support Cloudflare
+    businessType:    "barber" // Multi-industry tracking state property
   });
 
   const [shops,        setShops]        = useState([]);
@@ -98,8 +99,9 @@ export default function Signup() {
         role,
         shopId: isOwner ? "self" : form.shopId,
         brandColor: activeBrandColor,
-        vercelUrl: isOwner && form.vercelUrl
-          ? (form.vercelUrl.startsWith("http") ? form.vercelUrl : `https://${form.vercelUrl}`)
+        businessType: isOwner ? form.businessType : "barber",
+        customDomain: isOwner && form.customDomain
+          ? (form.customDomain.startsWith("http") ? form.customDomain : `https://${form.customDomain}`)
           : "",
       });
 
@@ -109,7 +111,12 @@ export default function Signup() {
         const response = await fetch("/api/connect", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: user.email, barberId: user.uid, businessName: form.businessName }),
+          body: JSON.stringify({ 
+            email: user.email, 
+            barberId: user.uid, 
+            businessName: form.businessName,
+            businessType: form.businessType 
+          }),
         });
         const { url } = await response.json();
         if (url) { window.location.href = url; return; }
@@ -141,7 +148,7 @@ export default function Signup() {
             }}
           />
           <Typography variant="h4" fontWeight={900}>
-            {isOwner ? "Start Your Shop" : "Join a Shop"}
+            {isOwner ? "Start Your Space" : "Join a Space"}
           </Typography>
         </Box>
 
@@ -152,18 +159,37 @@ export default function Signup() {
             <Box sx={{ mb: 4, p: 2, bgcolor: "#F0F2F5", borderRadius: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 {isOwner ? <StoreIcon /> : <PersonIcon />}
-                <Typography variant="body2" fontWeight={800}>{isOwner ? "Shop Owner" : "Staff Barber"}</Typography>
+                <Typography variant="body2" fontWeight={800}>{isOwner ? "Business Owner" : "Staff Provider"}</Typography>
               </Box>
               <Switch checked={isOwner} onChange={(e) => setIsOwner(e.target.checked)} />
             </Box>
 
             <Grid container spacing={2}>
+              {isOwner && (
+                <Grid item xs={12}>
+                  <TextField
+                    select 
+                    fullWidth 
+                    label="Industry Category"
+                    name="businessType" 
+                    value={form.businessType} 
+                    onChange={handleChange}
+                    required
+                  >
+                    <MenuItem value="barber">Barber / Grooming Shop</MenuItem>
+                    <MenuItem value="trainer">Personal Training / Fitness</MenuItem>
+                    <MenuItem value="photography">Photography Studio</MenuItem>
+                    <MenuItem value="tutor">Educational Tutoring</MenuItem>
+                  </TextField>
+                </Grid>
+              )}
+
               <Grid item xs={12}>
                 {isOwner ? (
-                  <TextField label="Business Name" name="businessName" fullWidth required onChange={handleChange} />
+                  <TextField label="Business Name" name="businessName" fullWidth required value={form.businessName} onChange={handleChange} />
                 ) : (
                   <TextField
-                    select fullWidth label="Select Shop"
+                    select fullWidth label="Select Shop / Space"
                     name="shopId" value={form.shopId} onChange={handleChange}
                     required disabled={loadingShops}
                   >
@@ -176,11 +202,24 @@ export default function Signup() {
                 )}
               </Grid>
 
-              <Grid item xs={12}><TextField label="Full Name" name="name" fullWidth required onChange={handleChange} /></Grid>
-              <Grid item xs={12}><TextField label="Email" name="email" type="email" fullWidth required onChange={handleChange} /></Grid>
-              <Grid item xs={12}><TextField label="Specialty" name="specialty" fullWidth placeholder="e.g. Fades & Beard Trims" onChange={handleChange} /></Grid>
-              <Grid item xs={6}><TextField label="Password" name="password" type="password" fullWidth required onChange={handleChange} /></Grid>
-              <Grid item xs={6}><TextField label="Confirm" name="confirm" type="password" fullWidth required onChange={handleChange} /></Grid>
+              {isOwner && (
+                <Grid item xs={12}>
+                  <TextField 
+                    label="Cloudflare Custom Domain" 
+                    name="customDomain" 
+                    fullWidth 
+                    placeholder="e.g. tracking.yourdomain.com"
+                    value={form.customDomain} 
+                    onChange={handleChange} 
+                  />
+                </Grid>
+              )}
+
+              <Grid item xs={12}><TextField label="Full Name" name="name" fullWidth required value={form.name} onChange={handleChange} /></Grid>
+              <Grid item xs={12}><TextField label="Email" name="email" type="email" fullWidth required value={form.email} onChange={handleChange} /></Grid>
+              <Grid item xs={12}><TextField label="Specialty" name="specialty" fullWidth placeholder="e.g. Strength Training or Fades" value={form.specialty} onChange={handleChange} /></Grid>
+              <Grid item xs={6}><TextField label="Password" name="password" type="password" fullWidth required value={form.password} onChange={handleChange} /></Grid>
+              <Grid item xs={6}><TextField label="Confirm" name="confirm" type="password" fullWidth required value={form.confirm} onChange={handleChange} /></Grid>
             </Grid>
 
             <Button type="submit" variant="contained" fullWidth size="large" disabled={loading} sx={{ mt: 4, bgcolor: activeBrandColor }}>

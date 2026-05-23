@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, matchPath } from "react-router-dom";
 import { Box, CircularProgress, ThemeProvider, createTheme, CssBaseline } from "@mui/material";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { HelmetProvider } from 'react-helmet-async';
+import { Helmet, HelmetProvider } from 'react-helmet-async';
 
 // Firebase imports
 import { getBarberByDomain, getBarberById } from "./firebase/firestore";
@@ -20,12 +20,13 @@ import TenantLogin       from "./pages/TenantLogin";
 import TenantSignup      from "./pages/TenantSignup";
 import CancelBooking     from "./pages/CancelBooking";
 import ReviewPage        from "./pages/ReviewPage"; 
+import PTBookingSite     from "./pages/PTBookingSite";
 
 // Split Nav & Footer imports
 import Nav               from "./components/Nav";
-import TenantNav          from "./components/TenantNav"; 
+import TenantNav         from "./components/TenantNav"; 
 import Footer            from "./components/Footer";
-import TenantFooter       from "./components/TenantFooter"; 
+import TenantFooter      from "./components/TenantFooter"; 
 
 function BarberRoute({ children }) {
   const { barber, loading } = useAuth();
@@ -61,6 +62,7 @@ function AppShell() {
   const identifyTenant = useCallback(async () => {
     const path = location.pathname;
     const shopMatch = matchPath("/shop/:tenantId", path);
+    const ptMatch = matchPath("/pt-booking/:tenantId", path);
     const barberMatch = matchPath("/barber/:id", path);
     const bookingMatch = matchPath("/book/:barberId/*", path);
     const reviewMatch = matchPath("/review/:shopId", path);
@@ -70,6 +72,7 @@ function AppShell() {
 
     const targetId = 
       shopMatch?.params.tenantId || 
+      ptMatch?.params.tenantId ||
       barberMatch?.params.id || 
       bookingMatch?.params.barberId || 
       reviewMatch?.params.shopId;
@@ -115,7 +118,8 @@ function AppShell() {
             setTenantBarber({
               ...data, 
               id: parentShopId, 
-              businessName: shopData.businessName || shopData.displayName || "Premium Shop",
+              businessType: shopData.businessType || data.businessType || "barber",
+              businessName: shopData.businessName || shopData.displayName || "Premium Space",
               businessLogo: shopData.businessLogo || shopData.logoUrl || shopData.logo,
               brandColor: shopData.brandColor || data.brandColor || "#C9A84C",
               address: shopData.address || "",
@@ -130,8 +134,10 @@ function AppShell() {
         } else {
           setTenantBarber({
             ...data,
-            businessName: data.businessName || data.displayName || "Premium Shop",
+            businessType: data.businessType || "barber",
+            businessName: data.businessName || data.displayName || "Premium Space",
             businessLogo: data.businessLogo || data.logoUrl || data.logo,
+            brandColor: data.brandColor || "#C9A84C"
           });
         }
         lastIdentifiedId.current = targetId || hostname;
@@ -151,32 +157,67 @@ function AppShell() {
     identifyTenant();
   }, [identifyTenant]);
 
-  const dynamicTheme = useMemo(() => createTheme({
-    palette: {
-      primary: { main: "#1A1A1A" },
-      secondary: { main: tenantBarber?.brandColor || "#C9A84C" },
-    },
-    shape: { borderRadius: 12 }
-  }), [tenantBarber]);
+  // Dynamic system style overrides matching the tenant's chosen category profile 
+  const dynamicTheme = useMemo(() => {
+    const selectedColor = tenantBarber?.brandColor || "#C9A84C";
+    return createTheme({
+      palette: {
+        primary: { main: "#1A1A1A" },
+        secondary: { main: selectedColor },
+      },
+      shape: { borderRadius: 12 },
+      components: {
+        MuiCssBaseline: {
+          styleOverrides: {
+            body: {
+              // Smooth dynamic accent coloring based on tenant profile colors
+              selection: { background: selectedColor, color: "#FFFFFF" }
+            }
+          }
+        }
+      }
+    });
+  }, [tenantBarber]);
 
   const isDashboard = location.pathname.startsWith('/dashboard');
+
+  // Compute clean title dynamically for the custom browser tab domain name context
+  const computedPageTitle = useMemo(() => {
+    if (tenantBarber) {
+      return `${tenantBarber.businessName.toUpperCase()} | Booking Portal`;
+    }
+    return "Book-eh-Trim | The Multi-Industry Appointment Booking Network";
+  }, [tenantBarber]);
 
   if (isFetchingTenant) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", bgcolor: "#000" }}>
-        <CircularProgress sx={{ color: "#C9A84C" }} />
+        <CircularProgress sx={{ color: tenantBarber?.brandColor || "#C9A84C" }} />
       </Box>
     );
   }
 
+  // Determine whether the current route uses a custom design template layout that should bypass default UI bars
+  const isAlternativeBookingLayout = location.pathname.includes("/pt-booking/");
+
   return (
     <ThemeProvider theme={dynamicTheme}>
       <CssBaseline />
+      
+      {/* Dynamic Browser Metadata Node */}
+      <Helmet>
+        <title>{computedPageTitle}</title>
+      </Helmet>
+
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         
-        {!isDashboard && (
+        {!isDashboard && !isAlternativeBookingLayout && (
           tenantBarber ? (
-            <TenantNav key={`nav-${location.pathname}`} tenant={tenantBarber} /> 
+            <TenantNav 
+              key={`nav-${location.pathname}`} 
+              tenant={tenantBarber} 
+              businessType={tenantBarber.businessType} 
+            /> 
           ) : (
             <Nav isMainSite={true} platformName="Book-eh-Trim" />
           )
@@ -184,8 +225,22 @@ function AppShell() {
 
         <Box component="main" sx={{ flex: 1 }}>
           <Routes>
-            <Route path="/" element={(!isPlatformDomain && tenantBarber) ? <TenantHome tenant={tenantBarber} /> : <Home />} />
+            <Route 
+              path="/" 
+              element={
+                (!isPlatformDomain && tenantBarber) ? (
+                  tenantBarber.businessType && tenantBarber.businessType !== "barber" ? (
+                    <PTBookingSite barber={tenantBarber} profile={tenantBarber} />
+                  ) : (
+                    <TenantHome tenant={tenantBarber} />
+                  )
+                ) : (
+                  <Home />
+                )
+              } 
+            />
             <Route path="/shop/:tenantId" element={<TenantHome tenant={tenantBarber} />} />
+            <Route path="/pt-booking/:tenantId" element={<PTBookingSite barber={tenantBarber} profile={tenantBarber} />} />
             <Route path="/barber/:id" element={<BarberProfile tenant={tenantBarber} />} />
             <Route path="/book/:barberId/:slotId" element={<BookingForm />} />
             <Route path="/confirmation/:bookingId?" element={<Confirmation />} />
@@ -198,9 +253,13 @@ function AppShell() {
           </Routes>
         </Box>
 
-        {!isDashboard && (
+        {!isDashboard && !isAlternativeBookingLayout && (
           tenantBarber ? (
-            <TenantFooter key={`footer-${location.pathname}`} tenant={tenantBarber} />
+            <TenantFooter 
+              key={`footer-${location.pathname}`} 
+              tenant={tenantBarber} 
+              businessType={tenantBarber.businessType} 
+            />
           ) : (
             <Footer isMainSite={true} />
           )

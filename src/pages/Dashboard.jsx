@@ -79,7 +79,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     name: "", businessName: "", brandColor: "#C9A84C",
     services: [], depositAmount: 10,
     specialty: "", address: "", bio: "", role: "staff",
-    openingHours: "", vercelUrl: "", customDomain: "", aboutUs: "",
+    openingHours: "",  customDomain: "", aboutUs: "",
     profilePic: "", logoUrl: "", heroImage: "", heroImageMobile: "",
     stripeConnected: false,
     // ── Social links — editable by ALL barbers (staff + owners) ──

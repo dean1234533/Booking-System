@@ -18,11 +18,12 @@ export default function BarberCard({ barber, isMarketplace }) {
   
   const depositValue = Number(barber?.depositAmount) || 10;
   const brandColor = barber?.brandColor || "#C9A84C";
+  const businessType = barber?.businessType || "barber";
   
   // ── Show business name on marketplace, but isolate FIRST NAME ONLY for individual barbers ──
   const displayName = isMarketplace 
     ? (barber?.businessName || barber?.name || "Premium Shop")
-    : (barber?.name?.split(" ")[0] || "Master Barber");
+    : (barber?.name?.split(" ")[0] || (businessType === "barber" ? "Master Barber" : "Trainer"));
 
   const shopLogo = isMarketplace ? (barber?.businessLogo || barber?.logoUrl) : null;
 
@@ -51,10 +52,33 @@ export default function BarberCard({ barber, isMarketplace }) {
     }
 
     // 🎯 NAVIGATION RULE REQUIREMENT:
-    // If it's the home marketplace, direct to the tenant shop home page dashboard view.
-    // If it's already inside the tenant page, direct to the single barber booking profile page.
-    const path = isMarketplace ? `/shop/${id}` : `/barber/${id}`;
+    // If it's the home marketplace, check the businessType to see if it routes to a multi-staff shop view
+    // or a direct dedicated professional booking channel view like /pt-booking/:id
+    let path = "";
+    if (isMarketplace) {
+      const isAlternativeType = businessType && businessType !== "barber";
+      path = isAlternativeType ? `/pt-booking/${id}` : `/shop/${id}`;
+    } else {
+      path = `/barber/${id}`;
+    }
+
     navigate(path, { state: { tenant: brandingData, shopId: barber.shopId } });
+  };
+
+  // ── Dynamic text helper to determine industry-specific badging ──
+  const getOverlineText = () => {
+    if (isMarketplace) {
+      return businessType === "barber" ? "Featured Shop" : "Featured Trainer";
+    }
+    return businessType === "barber" ? "Professional Barber" : "Personal Trainer";
+  };
+
+  // ── Dynamic action string label text context helper ──
+  const getActionLabel = () => {
+    if (isMarketplace) {
+      return businessType === "barber" ? "VIEW SHOP →" : "VIEW PROFILE →";
+    }
+    return "BOOK NOW →";
   };
 
   return (
@@ -113,7 +137,7 @@ export default function BarberCard({ barber, isMarketplace }) {
         <CardContent sx={{ flex: 1, p: 3, pt: (shopLogo && isMarketplace) ? 4 : 3 }}>
           <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
             <Typography variant="overline" color={brandColor} fontWeight={700} sx={{ display: 'block' }}>
-              {isMarketplace ? "Featured Shop" : "Professional Barber"}
+              {getOverlineText()}
             </Typography>
           </Box>
 
@@ -146,8 +170,8 @@ export default function BarberCard({ barber, isMarketplace }) {
                 }}
               >
                 {isMarketplace 
-                  ? (barber.aboutUs || barber.about || barber.businessAbout || `Welcome to ${displayName}. Experience top-tier grooming services.`)
-                  : (barber.bio || `Master barber providing professional grooming services tailored to your style.`)
+                  ? (barber.aboutUs || barber.about || barber.businessAbout || `Welcome to ${displayName}. Experience top-tier professional services.`)
+                  : (barber.bio || `Providing professional tailored services structured around your specific requirements and schedule.`)
                 }
               </Typography>
             </Box>
@@ -163,7 +187,7 @@ export default function BarberCard({ barber, isMarketplace }) {
               )}
             </Box>
             <Typography variant="caption" fontWeight={900} sx={{ color: brandColor }}>
-              {isMarketplace ? "VIEW SHOP →" : "BOOK NOW →"}
+              {getActionLabel()}
             </Typography>
           </Box>
         </CardContent>

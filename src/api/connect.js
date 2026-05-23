@@ -12,10 +12,11 @@ function toFirestoreFields(obj) {
   return fields;
 }
 
+// Explicit conversion handles types correctly when values arrive from the REST API
 function fromFirestoreFields(fields = {}) {
   const out = {};
   for (const [key, val] of Object.entries(fields)) {
-    out[key] = val.stringValue ?? val.booleanValue ?? val.integerValue ?? null;
+    out[key] = val.stringValue ?? val.booleanValue ?? (val.integerValue ? Number(val.integerValue) : null) ?? null;
   }
   return out;
 }
@@ -57,6 +58,7 @@ export async function handleConnect(request, env) {
     const email = body.email;
     const origin = body.origin;
     const businessName = body.businessName;
+    const businessType = body.businessType || "barber"; // Graceful multi-industry routing fallback
 
     if (!userId || !email) {
       return new Response(JSON.stringify({ error: "Missing userId or email" }), {
@@ -78,13 +80,20 @@ export async function handleConnect(request, env) {
     if (existingStripeId) {
       accountId = existingStripeId;
     } else {
+      // 🌟 Multi-Industry Payload Validation Protection
       const account = await stripe.accounts.create({
         type: "standard",
         email,
         business_profile: {
-          name: businessName || undefined,
+          name: businessName || barber?.businessName || barber?.name || "Premium Business Space",
+          // Map Merchant Category Codes (MCC) safely depending on user profiles
+          mcc: businessType === "barber" ? "7230" : "7299", // 7230 = Barber Shops, 7299 = Misc Personal Services / Personal Trainers
+          product_description: `Appointment management and booking services for ${businessName || "Professional Services"}.`
         },
-        metadata: { barberId: userId },
+        metadata: { 
+          barberId: userId,
+          businessType: businessType 
+        },
       });
       accountId = account.id;
 

@@ -52,7 +52,7 @@ function toFirestoreFields(obj) {
     if (typeof val === "string")       fields[key] = { stringValue: val };
     else if (typeof val === "boolean") fields[key] = { booleanValue: val };
     else if (typeof val === "number")  fields[key] = { integerValue: String(val) };
-    else if (val === null)             fields[key] = { nullValue: null };
+    else if (val === null)              fields[key] = { nullValue: null };
   }
   return fields;
 }
@@ -503,8 +503,10 @@ export default {
           return fetch(request);
         }
 
-        // 4. MULTI-TENANT PROXY ROUTING (GET/POST Safe)
-        const firebaseTargetHost = `${env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`;
+        // 4. MULTI-TENANT PROXY ROUTING VIA RAW FIREBASE PRODUCTION ADDRESS
+        // Directly pointing to the canonical Firebase production host breaks the loop 
+        // caused when targeting proxied domain configurations locally.
+        const firebaseTargetHost = "booking-system-cdce0.web.app";
         const targetFirebaseUrl = `https://${firebaseTargetHost}${url.pathname}${url.search}`;
         
         const initOptions = {
@@ -520,6 +522,11 @@ export default {
         const proxyRequest = new Request(targetFirebaseUrl, initOptions);
         proxyRequest.headers.set("Host", firebaseTargetHost);
         
+        // Retain tracking metadata parameter contexts for backend multi-tenant resolution
+        const activeTenant = url.searchParams.get("tenant") || url.hostname;
+        proxyRequest.headers.set("X-Forwarded-Host", activeTenant);
+        proxyRequest.headers.set("X-SaaS-Tenant", activeTenant);
+        
         let response = await fetch(proxyRequest);
 
         // 5. SPA ROUTING FALLBACK INTERCEPTOR
@@ -530,6 +537,7 @@ export default {
             headers: new Headers(request.headers)
           });
           fallbackRequest.headers.set("Host", firebaseTargetHost);
+          fallbackRequest.headers.set("X-Forwarded-Host", activeTenant);
           response = await fetch(fallbackRequest);
         }
         

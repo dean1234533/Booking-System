@@ -82,7 +82,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     openingHours: "",  customDomain: "", aboutUs: "",
     profilePic: "", logoUrl: "", heroImage: "", heroImageMobile: "",
     stripeConnected: false,
-    businessType: "barber", // 🌟 Default standard property fallback definition
+    businessType: "barber",
     // ── Social links — editable by ALL barbers (staff + owners) ──
     instagramUrl: "", tiktokUrl: "", facebookUrl: "",
     privacyPolicy: "", termsConditions: "",
@@ -163,7 +163,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           ...prev, ...data,
           services:         Array.isArray(data.services) ? data.services : [],
           stripeConnected:  !!data.stripeConnected,
-          businessType:     data.businessType     || "barber", // 🌟 Binds fetched database choice cleanly
+          businessType:     data.businessType     || "barber",
           instagramUrl:     data.instagramUrl     || "",
           tiktokUrl:        data.tiktokUrl        || "",
           facebookUrl:      data.facebookUrl      || "",
@@ -231,11 +231,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       let updatedData = {
         ...profile,
         email:        barber.email         || "",
-        vercelUrl:    profile.vercelUrl     || "",
         customDomain: profile.customDomain  || "",
         openingHours: profile.openingHours  || "",
         aboutUs:      profile.aboutUs       || "",
-        businessType: profile.businessType  || "barber", // 🌟 Persists layout industry choice systematically
+        businessType: profile.businessType  || "barber",
         // ── Social links — persisted for both staff and owners ──
         instagramUrl: profile.instagramUrl  || "",
         tiktokUrl:    profile.tiktokUrl     || "",
@@ -392,7 +391,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const handleConnectStripe = async () => {
     setStripeLoading(true);
     try {
-      const domainField   = profile.customDomain || profile.vercelUrl || "";
+      const domainField   = profile.customDomain || "";
       const currentOrigin = domainField
         ? (domainField.startsWith("http") ? domainField : `https://${domainField}`)
         : window.location.origin;
@@ -437,9 +436,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         body: JSON.stringify({
           amount:      Math.round(Number(terminalAmount) * 100),
           currency:    "gbp",
-          description: terminalService || terminalNote || (profile.businessType === "barber" ? "Haircut" : "Training Session"),
+          description: terminalService || terminalNote || "Haircut",
           barberId:    barber.uid,
-          barberName:  profile.name || profile.businessName || "Professional",
+          barberName:  profile.name || profile.businessName || "Barber",
           note:        terminalNote,
         }),
       });
@@ -456,7 +455,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     setTerminalStatus("idle"); setTerminalSession(null);
   };
 
-  const handleCancelTerminal_Reset = () => {
+  const handleResetTerminal = () => {
     if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     setTerminalStatus("idle"); setTerminalSession(null);
     setTerminalAmount(""); setTerminalService(""); setTerminalNote("");
@@ -562,7 +561,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 2 Profile (staff + owners) ── */}
+        {/* ── 2 Profile ── */}
         <TabPanel value={tab} index={2}>
           <ProfileTab
             profile={profile} setProfile={setProfile}
@@ -584,7 +583,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 4 Reviews (owner only) ── */}
+        {/* ── 4 Reviews ── */}
         {userRole.isOwner && (
           <TabPanel value={tab} index={IDX_REVIEWS}>
             <ReviewsTab
@@ -602,7 +601,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── Design (owner only) ── */}
+        {/* ── Design ── */}
         {userRole.isOwner && (
           <TabPanel value={tab} index={IDX_DESIGN}>
             <DesignTab
@@ -615,7 +614,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
-        {/* ── Domain (owner only on main dashboard — hidden in tenant context) ── */}
+        {/* ── Domain ── */}
         {userRole.isOwner && !initialTenant && (
           <TabPanel value={tab} index={IDX_DOMAIN}>
             <DomainTab
@@ -637,7 +636,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             terminalStatus={terminalStatus}   terminalSession={terminalSession}
             handleCreateTerminalCharge={handleCreateTerminalCharge}
             handleCancelTerminal={handleCancelTerminal}
-            handleResetTerminal={handleCancelTerminal_Reset}
+            handleResetTerminal={handleResetTerminal}
             handleCopyPayLink={handleCopyPayLink}
           />
         </TabPanel>

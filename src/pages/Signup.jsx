@@ -59,6 +59,7 @@ export default function Signup() {
           const list = snap.docs.map(d => ({
             id: d.id,
             displayLabel: d.data().businessName || d.data().displayName || "Unnamed Shop",
+            businessType: d.data().businessType || "barber"
           }));
           setShops(list);
         } catch (err) {
@@ -94,12 +95,28 @@ export default function Signup() {
 
     try {
       const role = isOwner ? "owner" : "staff";
+      
+      // Look up selected parent shop businessType configuration dynamically if registering staff
+      let resolvedBusinessType = form.businessType;
+      if (!isOwner) {
+        const selectedShopObj = shops.find(s => s.id === form.shopId);
+        if (selectedShopObj && selectedShopObj.businessType) {
+          resolvedBusinessType = selectedShopObj.businessType;
+        } else {
+          // Direct fallback fetch from firestore context if lookup misses state array entries
+          const shopDocSnap = await getDoc(doc(db, "barbers", form.shopId));
+          if (shopDocSnap.exists()) {
+            resolvedBusinessType = shopDocSnap.data().businessType || "barber";
+          }
+        }
+      }
+
       const user = await signUpBarber({
         ...form,
         role,
         shopId: isOwner ? "self" : form.shopId,
         brandColor: activeBrandColor,
-        businessType: isOwner ? form.businessType : "barber",
+        businessType: resolvedBusinessType,
         customDomain: isOwner && form.customDomain
           ? (form.customDomain.startsWith("http") ? form.customDomain : `https://${form.customDomain}`)
           : "",
@@ -115,7 +132,7 @@ export default function Signup() {
             email: user.email, 
             barberId: user.uid, 
             businessName: form.businessName,
-            businessType: form.businessType 
+            businessType: resolvedBusinessType 
           }),
         });
         const { url } = await response.json();

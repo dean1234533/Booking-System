@@ -79,7 +79,14 @@ export const updateBarber = async (uid, data, isStaff = false, shopId = null) =>
   const docRef = (isStaff && shopId && shopId !== uid)
     ? doc(db, "barbers", shopId, "staff", uid)
     : doc(db, "barbers", uid);
-  return await setDoc(docRef, data, { merge: true });
+    
+  // Ensure businessType field updates are safely processed 
+  const mergedData = {
+    ...data,
+    businessType: data?.businessType || "barber"
+  };
+  
+  return await setDoc(docRef, mergedData, { merge: true });
 };
 
 // ─── SLOT MANAGEMENT (TYPE-AGNOSTIC) ──────────────────────────────

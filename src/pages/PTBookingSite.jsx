@@ -1,6 +1,5 @@
 import React from 'react';
-import '../styles/PTBookingSite.css';
-
+import '/css/PTBookingSite.css'
 export default function PTBookingSite({ profile, barber, reviews = [], bookingWidgetMount }) {
   // Graceful fallbacks using profile keys or clean professional strings
   const businessName = barber?.shopName || "DB FITNESS";

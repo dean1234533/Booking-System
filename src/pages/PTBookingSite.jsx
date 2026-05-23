@@ -135,7 +135,6 @@ export default function PTBookingSite({ profile, barber, reviews = [], bookingWi
       <section id="reviews" className="bg-zinc-950 py-24 text-white">
         <div className="mx-auto max-w-6xl px-4 md:px-8">
           <div className="text-center mb-16">
-            {/* 3D Gold Star Text Shadows */}
             <div className="text-amber-400 text-5xl font-black tracking-tight select-none [text-shadow:0_3px_0_#b45309,0_6px_8px_rgba(0,0,0,0.4)]">
               ★ ★ ★ ★ ★
             </div>

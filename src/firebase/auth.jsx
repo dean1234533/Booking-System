@@ -12,13 +12,13 @@ import { auth, db } from "./config";
 import { doc, setDoc, deleteDoc, serverTimestamp, getDoc } from "firebase/firestore";
 
 /**
- * Updated to handle roles, shop linkage, and Vercel URLs
+ * Updated to support business types and custom domains instead of Vercel URLs
  */
 export async function signUpBarber(data) {
   const { 
     email, password, name, phone, specialty, 
     bio, role, shopId, businessName, brandColor,
-    vercelUrl 
+    businessType, customDomain 
   } = data;
 
   // 1. Create Auth Account
@@ -36,6 +36,7 @@ export async function signUpBarber(data) {
     bio: bio || "",
     role: role || "staff",
     shopId: role === "owner" ? user.uid : shopId, 
+    businessType: businessType || "barber", // 🌟 Saves your chosen business category successfully here
     services: [],
     photoURL: "",
     brandColor: brandColor || "#C9A84C",
@@ -43,8 +44,8 @@ export async function signUpBarber(data) {
   };
 
   if (role === "owner") {
-    profileData.businessName = businessName || "My Barber Shop";
-    profileData.vercelUrl = vercelUrl || ""; // Store the Vercel Link
+    profileData.businessName = businessName || "My Business Space";
+    profileData.customDomain = customDomain || ""; // 🌟 Replaced vercelUrl with customDomain completely
   }
 
   // 3. Save to main 'barbers' collection
@@ -58,6 +59,7 @@ export async function signUpBarber(data) {
       specialty: specialty,
       role: "staff",
       shopId: shopId,
+      businessType: businessType || "barber", // Forward industry category context downstream to staff nodes
       photoURL: ""
     });
   }

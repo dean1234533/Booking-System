@@ -82,6 +82,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     openingHours: "",  customDomain: "", aboutUs: "",
     profilePic: "", logoUrl: "", heroImage: "", heroImageMobile: "",
     stripeConnected: false,
+    businessType: "barber", // 🌟 Default standard property fallback definition
     // ── Social links — editable by ALL barbers (staff + owners) ──
     instagramUrl: "", tiktokUrl: "", facebookUrl: "",
     privacyPolicy: "", termsConditions: "",
@@ -162,6 +163,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           ...prev, ...data,
           services:         Array.isArray(data.services) ? data.services : [],
           stripeConnected:  !!data.stripeConnected,
+          businessType:     data.businessType     || "barber", // 🌟 Binds fetched database choice cleanly
           instagramUrl:     data.instagramUrl     || "",
           tiktokUrl:        data.tiktokUrl        || "",
           facebookUrl:      data.facebookUrl      || "",
@@ -233,6 +235,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         customDomain: profile.customDomain  || "",
         openingHours: profile.openingHours  || "",
         aboutUs:      profile.aboutUs       || "",
+        businessType: profile.businessType  || "barber", // 🌟 Persists layout industry choice systematically
         // ── Social links — persisted for both staff and owners ──
         instagramUrl: profile.instagramUrl  || "",
         tiktokUrl:    profile.tiktokUrl     || "",
@@ -434,9 +437,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         body: JSON.stringify({
           amount:      Math.round(Number(terminalAmount) * 100),
           currency:    "gbp",
-          description: terminalService || terminalNote || "Haircut",
+          description: terminalService || terminalNote || (profile.businessType === "barber" ? "Haircut" : "Training Session"),
           barberId:    barber.uid,
-          barberName:  profile.name || profile.businessName || "Barber",
+          barberName:  profile.name || profile.businessName || "Professional",
           note:        terminalNote,
         }),
       });
@@ -453,7 +456,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     setTerminalStatus("idle"); setTerminalSession(null);
   };
 
-  const handleResetTerminal = () => {
+  const handleCancelTerminal_Reset = () => {
     if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     setTerminalStatus("idle"); setTerminalSession(null);
     setTerminalAmount(""); setTerminalService(""); setTerminalNote("");
@@ -466,7 +469,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   };
 
   // ── Tab config ────────────────────────────────────────────────────────────
-  // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
   const brandColor = profile.brandColor || "#C9A84C";
 
   const tabs = [
@@ -560,10 +562,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 2 Profile (staff + owners) ──
-              ProfileTab contains Instagram & TikTok fields for ALL barbers.
-              Facebook is owner-only (gated inside ProfileTab via userRole.isOwner).
-              Domain tab is NOT shown to staff — see tab array above.            */}
+        {/* ── 2 Profile (staff + owners) ── */}
         <TabPanel value={tab} index={2}>
           <ProfileTab
             profile={profile} setProfile={setProfile}
@@ -638,7 +637,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             terminalStatus={terminalStatus}   terminalSession={terminalSession}
             handleCreateTerminalCharge={handleCreateTerminalCharge}
             handleCancelTerminal={handleCancelTerminal}
-            handleResetTerminal={handleResetTerminal}
+            handleResetTerminal={handleCancelTerminal_Reset}
             handleCopyPayLink={handleCopyPayLink}
           />
         </TabPanel>

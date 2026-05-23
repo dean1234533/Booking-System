@@ -8,7 +8,7 @@ import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { getBarberByDomain, getBarberById } from "./firebase/firestore";
 
 // Page/Component imports
-import Home              from "./pages/Home";            
+import Home              from "./pages/Home";           
 import TenantHome        from "./pages/TenantHome";      
 import BarberProfile     from "./pages/BarberProfile";
 import BookingForm       from "./pages/BookingForm";
@@ -102,9 +102,8 @@ function AppShell() {
       if (targetId) {
         data = await getBarberById(targetId);
       } else if (!isPlatformDomain) {
-        // Custom domain visit — getBarberByDomain now checks both
-        // customDomain (new Cloudflare field) and vercelUrl (legacy) so
-        // existing barbers keep working without any data migration.
+        // Custom domain visit — getBarberByDomain checks both
+        // customDomain (new Cloudflare field) and vercelUrl (legacy)
         data = await getBarberByDomain(hostname);
       }
 
@@ -198,7 +197,10 @@ function AppShell() {
   }
 
   // Determine whether the current route uses a custom design template layout that should bypass default UI bars
-  const isAlternativeBookingLayout = location.pathname.includes("/pt-booking/");
+  // 🌟 UPDATE: Bypasses standard layouts if route includes pt-booking OR if the loaded domain is explicitly classified as non-barber
+  const isAlternativeBookingLayout = 
+    location.pathname.includes("/pt-booking/") || 
+    (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber" && !isPlatformDomain);
 
   return (
     <ThemeProvider theme={dynamicTheme}>
@@ -239,7 +241,17 @@ function AppShell() {
                 )
               } 
             />
-            <Route path="/shop/:tenantId" element={<TenantHome tenant={tenantBarber} />} />
+            {/* 🌟 UPDATE: Intercepts custom industry route parameters to load the correct workspace profile layout cleanly */}
+            <Route 
+              path="/shop/:tenantId" 
+              element={
+                tenantBarber?.businessType && tenantBarber.businessType !== "barber" ? (
+                  <PTBookingSite barber={tenantBarber} profile={tenantBarber} />
+                ) : (
+                  <TenantHome tenant={tenantBarber} />
+                )
+              } 
+            />
             <Route path="/pt-booking/:tenantId" element={<PTBookingSite barber={tenantBarber} profile={tenantBarber} />} />
             <Route path="/barber/:id" element={<BarberProfile tenant={tenantBarber} />} />
             <Route path="/book/:barberId/:slotId" element={<BookingForm />} />

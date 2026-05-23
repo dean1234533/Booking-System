@@ -29,7 +29,10 @@ const ESTIMATED_PRICES_USD = {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*" 
+    },
   });
 }
 
@@ -498,17 +501,22 @@ export default {
         
       default:
         // 3. CLOUDFLARE SSL CHALLENGE BYPASS
-        // Let Cloudflare handle its own validation challenges at the edge natively.
         if (url.pathname.startsWith("/.well-known/cf-custom-hostname-challenge/")) {
           return fetch(request);
         }
 
-        // 4. MULTI-TENANT PROXY ROUTING VIA RAW FIREBASE PRODUCTION ADDRESS
-        // Directly pointing to the canonical Firebase production host breaks the loop 
-        // caused when targeting proxied domain configurations locally.
+        // 4. MULTI-TENANT PROXY RESOLUTION VIA RAW FIREBASE PRODUCTION ADDRESS
         const firebaseTargetHost = "booking-system-cdce0.web.app";
         const targetFirebaseUrl = `https://${firebaseTargetHost}${url.pathname}${url.search}`;
         
+        // Isolate the custom incoming tenant hostname before updating headers
+        const incomingHost = url.hostname;
+        const fallbackHost = "fallback.bookehtrim.co.uk";
+        
+        // Use the query param value, or the clean incoming host if it's an actual customer domain
+        const activeTenant = url.searchParams.get("tenant") || 
+                             (incomingHost !== fallbackHost ? incomingHost : "bookehnow.co.uk");
+
         const initOptions = {
           method: request.method,
           headers: new Headers(request.headers),
@@ -520,10 +528,9 @@ export default {
         }
 
         const proxyRequest = new Request(targetFirebaseUrl, initOptions);
-        proxyRequest.headers.set("Host", firebaseTargetHost);
         
-        // Retain tracking metadata parameter contexts for backend multi-tenant resolution
-        const activeTenant = url.searchParams.get("tenant") || url.hostname;
+        // Force header updates so Firebase recognizes its own canonical deployment host
+        proxyRequest.headers.set("Host", firebaseTargetHost);
         proxyRequest.headers.set("X-Forwarded-Host", activeTenant);
         proxyRequest.headers.set("X-SaaS-Tenant", activeTenant);
         
@@ -538,6 +545,7 @@ export default {
           });
           fallbackRequest.headers.set("Host", firebaseTargetHost);
           fallbackRequest.headers.set("X-Forwarded-Host", activeTenant);
+          fallbackRequest.headers.set("X-SaaS-Tenant", activeTenant);
           response = await fetch(fallbackRequest);
         }
         

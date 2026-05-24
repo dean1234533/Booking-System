@@ -1,180 +1,125 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-export default function PTBookingSite({ profile, barber, reviews = [], bookingWidgetMount }) {
-  // Graceful fallbacks using profile keys or clean professional strings
-  const businessName = barber?.shopName || "DB FITNESS";
-  const heroTitle = profile?.heroTitle || "Stronger. Leaner. Unstoppable.";
-  const heroSubtitle = profile?.heroSubtitle || "Tailored high-performance outdoor functional resistance training packages in East London.";
-  const aboutText = profile?.aboutUs || "We strip away the intimidation of crowded commercial gym floors to construct true functional athleticism in the open air.";
-  
-  // Custom video anchor links configured in the customizer tab
-  const mainVideoUrl = profile?.instagramVideoUrl || "https://www.instagram.com";
-  const aboutVideoUrl = profile?.aboutVideoUrl || "https://www.instagram.com";
+// FADE-IN COMPONENT
+const FadeIn = ({ children }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setIsVisible(true); },
+      { threshold: 0.1 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => { if (ref.current) observer.unobserve(ref.current); };
+  }, []);
 
   return (
-    <div className="bg-zinc-50 text-zinc-900 antialiased font-sans scroll-smooth min-h-screen">
-      
-      {/* STICKY STYLED NAVIGATION */}
-      <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between p-4 md:px-8">
-          <a href="#" className="flex items-center gap-2 font-extrabold tracking-tight text-xl">
-            <span className="bg-red-600 px-2 py-0.5 text-white rounded">PT</span> {businessName.toUpperCase()}
-          </a>
-          
-          <nav className="hidden space-x-8 text-sm font-semibold text-zinc-600 md:flex">
-            <a href="#" className="transition-colors hover:text-red-600">Home</a>
-            <a href="#about" className="transition-colors hover:text-red-600">About</a>
-            <a href="#services" className="transition-colors hover:text-red-600">Services</a>
-            <a href="#reviews" className="transition-colors hover:text-red-600">Reviews</a>
-          </nav>
+    <div ref={ref} className={`transition-all duration-1000 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+      {children}
+    </div>
+  );
+};
 
-          <div>
-            <a 
-              href="#booking-section" 
-              className="inline-block rounded bg-red-600 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white select-none transition-all duration-75 active:translate-y-[2px] active:shadow-none shadow-[0_4px_0_#991b1b]"
-            >
-              Book Consultation
-            </a>
-          </div>
+export default function PTBookingSite({ profile, barber, reviews = [], bookingWidgetMount }) {
+  const businessName = barber?.shopName || "DB FITNESS";
+  const heroTitle = profile?.heroTitle || "Stronger. Leaner. Unstoppable.";
+  const heroSubtitle = profile?.heroSubtitle || "Tailored high-performance outdoor functional resistance training packages.";
+  
+  const SocialIcon = ({ d, url }) => (
+    <a href={url || "#"} target="_blank" rel="noopener noreferrer" className="hover:text-red-600 transition-colors p-2">
+      <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24"><path d={d}/></svg>
+    </a>
+  );
+
+  return (
+    <div className="bg-white text-zinc-900 antialiased font-sans scroll-smooth min-h-screen overflow-x-hidden">
+      
+      {/* HEADER */}
+      <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b border-zinc-100">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 md:px-6 py-4">
+          <a href="#" className="font-bold text-lg md:text-xl tracking-tight uppercase truncate">{businessName}</a>
+          <a href="#booking-section" className="rounded-full bg-zinc-900 px-5 py-2 text-[10px] md:text-xs font-bold uppercase text-white hover:bg-red-600 transition-all whitespace-nowrap">Book Now</a>
         </div>
       </header>
 
-      {/* HERO SECTION WITH EXTRACTED INSTAGRAM VIDEO REDIRECTS */}
-      <section className="relative flex min-h-[85vh] items-center justify-center bg-zinc-900 text-white overflow-hidden">
-        <div className="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920')] bg-cover bg-center opacity-30"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent"></div>
-        
-        <div className="relative z-10 mx-auto max-w-4xl px-4 text-center md:px-8">
-          <span className="inline-block rounded bg-red-600/20 px-3 py-1 text-xs font-bold uppercase tracking-widest text-red-400 border border-red-600/30 mb-4">
-            Outdoor Performance Coaching
-          </span>
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl leading-tight">
-            {heroTitle}
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-base text-zinc-300 md:text-lg">
-            {heroSubtitle}
-          </p>
-          
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <a 
-              href="#booking-section" 
-              className="w-full rounded bg-red-600 px-8 py-4 text-sm font-bold uppercase tracking-wider text-white transition-all duration-75 active:translate-y-[2px] active:shadow-none shadow-[0_5px_0_#991b1b] sm:w-auto text-center"
-            >
-              Get Started Free
-            </a>
-            <a 
-              href={mainVideoUrl} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="flex w-full items-center justify-center gap-2 rounded bg-zinc-800 px-8 py-4 text-sm font-bold uppercase tracking-wider text-white border border-zinc-700 transition-all duration-75 active:translate-y-[2px] active:shadow-none shadow-[0_5px_0_#374151] sm:w-auto"
-            >
-              <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              Watch Training Video
-            </a>
-          </div>
+      {/* HERO */}
+      <section className="relative min-h-[70vh] flex items-center justify-center bg-zinc-950 text-white p-6 text-center">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920')] bg-cover bg-center opacity-30"></div>
+        <div className="relative z-10 max-w-3xl">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tighter mb-6 leading-[1.1]">{heroTitle}</h1>
+          <p className="text-base md:text-lg text-zinc-300 mb-10 max-w-lg mx-auto">{heroSubtitle}</p>
+          <a href="#booking-section" className="inline-block w-full sm:w-auto rounded-full bg-red-600 px-10 py-4 font-bold uppercase tracking-widest hover:bg-red-700 transition-all">Get Started</a>
         </div>
       </section>
 
-      {/* SCROLL FADE-IN ANIMATED ABOUT US COMPONENT */}
-      <section id="about" className="mx-auto max-w-7xl px-4 py-24 md:px-8 transition-all duration-1000 transform motion-safe:opacity-100">
-        <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-red-600">The Program</span>
-            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">
-              Meet Your Personal Trainer
-            </h2>
-            <p className="mt-6 text-zinc-600 leading-relaxed text-base">
-              {aboutText}
-            </p>
+      {/* TRUST STATS */}
+      <FadeIn>
+        <section className="py-12 bg-zinc-50 border-b border-zinc-100">
+          <div className="mx-auto max-w-5xl px-6 grid grid-cols-3 gap-4 md:gap-8 text-center">
+            <div><div className="text-2xl md:text-3xl font-black text-red-600">100+</div><div className="text-[9px] md:text-xs uppercase font-bold text-zinc-500">Clients</div></div>
+            <div><div className="text-2xl md:text-3xl font-black text-red-600">5.0</div><div className="text-[9px] md:text-xs uppercase font-bold text-zinc-500">Rating</div></div>
+            <div><div className="text-2xl md:text-3xl font-black text-red-600">Pro</div><div className="text-[9px] md:text-xs uppercase font-bold text-zinc-500">Certified</div></div>
           </div>
-          
-          {/* LINKED INSTAGRAM VIDEO POST WITH PLACEHOLDER COVER */}
-          <div className="relative aspect-video overflow-hidden rounded-xl bg-zinc-200 shadow-xl border border-zinc-200">
-            <a href={aboutVideoUrl} target="_blank" rel="noopener noreferrer" className="group absolute inset-0 block">
-              <img 
-                src="https://images.unsplash.com/photo-1548690312-e3b507d8c110?q=80&w=800" 
-                alt="Instagram Session Cover" 
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-              />
-              <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/40 group-hover:bg-zinc-950/50 transition-colors">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition-transform group-hover:scale-110">
-                  <svg className="h-6 w-6 fill-white" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+        </section>
+      </FadeIn>
+
+      {/* VIDEO GRID */}
+      <FadeIn>
+        <section className="py-16 md:py-24 max-w-7xl mx-auto px-6">
+          <h2 className="text-2xl md:text-3xl font-extrabold mb-10 md:mb-12 text-center md:text-left">Latest Sessions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="group rounded-2xl overflow-hidden bg-zinc-100 aspect-[9/16] relative shadow-lg">
+                <img src={`https://picsum.photos/seed/${i}/400/800`} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" alt="Training" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <span className="bg-white/20 px-6 py-2 rounded-full backdrop-blur-md text-white font-bold text-sm">Watch</span>
                 </div>
               </div>
-            </a>
+            ))}
           </div>
-        </div>
-      </section>
+        </section>
+      </FadeIn>
 
-      {/* SERVICES DISPLAY SECTION */}
-      <section id="services" className="bg-zinc-100 py-24">
-        <div className="mx-auto max-w-7xl px-4 md:px-8">
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-red-600">Training Capabilities</span>
-            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">Expertise Options</h2>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-xl bg-white p-8 border border-zinc-200 shadow-sm">
-              <h3 className="text-lg font-bold uppercase tracking-tight text-zinc-900">Strength Build</h3>
-              <p className="mt-3 text-sm text-zinc-600 leading-relaxed">Hypertrophy mechanics and structural output improvements via outdoor loaded setups.</p>
-            </div>
-            <div className="rounded-xl bg-white p-8 border border-zinc-200 shadow-sm">
-              <h3 className="text-lg font-bold uppercase tracking-tight text-zinc-900">Fat Loss & Conditioning</h3>
-              <p className="mt-3 text-sm text-zinc-600 leading-relaxed">High metabolic stress circuits built dynamically to shed fat efficiently.</p>
-            </div>
-            <div className="rounded-xl bg-white p-8 border border-zinc-200 shadow-sm">
-              <h3 className="text-lg font-bold uppercase tracking-tight text-zinc-900">Mobility Metrics</h3>
-              <p className="mt-3 text-sm text-zinc-600 leading-relaxed">Joint workspace expansions, core integration work, and corrective postural fixes.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* DYNAMIC REVIEWS SECTION WITH 3D STARS */}
-      <section id="reviews" className="bg-zinc-950 py-24 text-white">
-        <div className="mx-auto max-w-6xl px-4 md:px-8">
-          <div className="text-center mb-16">
-            <div className="text-amber-400 text-5xl font-black tracking-tight select-none [text-shadow:0_3px_0_#b45309,0_6px_8px_rgba(0,0,0,0.4)]">
-              ★ ★ ★ ★ ★
-            </div>
-            <h2 className="mt-6 text-3xl font-extrabold tracking-tight sm:text-4xl">Verified Client Transformations</h2>
-          </div>
-
-          {reviews.length === 0 ? (
-            <p className="text-center text-zinc-500 text-sm italic">No reviews loaded yet.</p>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2">
+      {/* REVIEWS */}
+      <FadeIn>
+        <section id="reviews" className="bg-zinc-950 py-16 md:py-24 text-white px-6">
+          <div className="mx-auto max-w-4xl">
+            <h2 className="text-3xl font-extrabold text-center mb-12">Client Success</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {reviews.map((rev) => (
-                <div key={rev.id} className="rounded-xl bg-zinc-900 p-8 border border-zinc-800 flex flex-col justify-between">
-                  <div>
-                    <div className="text-amber-400 text-sm">{"★".repeat(rev.rating || 5)}</div>
-                    <p className="mt-4 text-zinc-300 italic text-sm leading-relaxed">"{rev.comment}"</p>
-                  </div>
-                  <span className="mt-6 block text-xs font-bold uppercase tracking-wider text-zinc-500">
-                    — {rev.customerName || "Anonymous Trainer Client"}
-                  </span>
+                <div key={rev.id} className="p-6 md:p-8 bg-zinc-900 rounded-2xl border border-zinc-800">
+                  <div className="text-amber-400 mb-4">★★★★★</div>
+                  <p className="text-zinc-300 italic text-sm md:text-base">"{rev.comment}"</p>
+                  <p className="mt-6 font-bold text-xs">— {rev.customerName || "Client"}</p>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      </section>
-
-      {/* CORE SCHEDULING INTERFACE LAYER */}
-      <section id="booking-section" className="bg-white py-24 border-t border-zinc-200">
-        <div className="mx-auto max-w-4xl px-4 md:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-extrabold tracking-tight">Claim Your Time Slot</h2>
-            <p className="text-zinc-500 mt-2">Sync directly to calendar workflows by scheduling below.</p>
           </div>
-          
-          <div className="p-2 border border-zinc-200 rounded-2xl bg-zinc-50">
+        </section>
+      </FadeIn>
+
+      {/* BOOKING */}
+      <section id="booking-section" className="py-16 md:py-24 px-6">
+        <div className="mx-auto max-w-xl text-center">
+          <h2 className="text-2xl md:text-3xl font-extrabold mb-8">Claim Your Slot</h2>
+          <div className="p-2 border border-zinc-200 rounded-3xl bg-zinc-50 shadow-inner">
             {bookingWidgetMount}
           </div>
         </div>
       </section>
 
+      {/* FOOTER */}
+      <footer className="bg-zinc-100 py-12 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col items-center gap-6">
+          <div className="font-bold text-lg uppercase">{businessName}</div>
+          <div className="flex gap-2 text-zinc-500">
+            <SocialIcon d="M12 2.163c3.2 0 3.6.01 4.8.07 3.3.15 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8 0 3.2-.1 3.5-.1 4.8-.1 3.3-1.6 4.8-4.9 4.9-1.3.1-1.6.1-4.8.1-3.2 0-3.5-.1-4.8-.1-3.3-.1-4.8-1.6-4.9-4.9-.1-1.3-.1-1.6-.1-4.8 0-3.2.1-3.5.1-4.8.1-3.3 1.6-4.8 4.9-4.9 1.3-.06 1.6-.07 4.8-.07zm0-2.163c-3.26 0-3.67.01-4.95.07-4.36.2-6.79 2.62-6.99 6.98-.06 1.28-.07 1.69-.07 4.95 0 3.26.01 3.67.07 4.95.2 4.36 2.62 6.79 6.99 6.99 1.28.06 1.69.07 4.95.07 3.26 0 3.67-.01 4.95-.07 4.36-.2 6.79-2.62 6.99-6.99.06-1.28.07-1.69.07-4.95 0-3.26-.01-3.67-.07-4.95-.2-4.36-2.62-6.79-6.99-6.99-1.28-.06-1.69-.07-4.95-.07zm0 5.838c-3.4 0-6.16 2.76-6.16 6.16 0 3.4 2.76 6.16 6.16 6.16 3.4 0 6.16-2.76 6.16-6.16 0-3.4-2.76-6.16-6.16-6.16zm0 10.162c-2.2 0-4-1.8-4-4 0-2.2 1.8-4 4-4 2.2 0 4 1.8 4 4 0 2.2-1.8 4-4 4zm6.4-11.8c-.8 0-1.4.6-1.4 1.4 0 .8.6 1.4 1.4 1.4.8 0 1.4-.6 1.4-1.4 0-.8-.6-1.4-1.4-1.4z" url={profile?.instagramUrl} />
+            <SocialIcon d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.78 0 2.89 2.89 0 0 1 2.89-2.89h.7V8.5h-.7a6.39 6.39 0 1 0 6.39 6.39V8.5h3.45z" url={profile?.tiktokUrl} />
+            <SocialIcon d="M24 12.07c0-6.63-5.37-12-12-12s-12 5.37-12 12c0 5.99 4.38 10.97 10.12 11.87v-8.39H7.08v-3.48h3.04V9.41c0-3.02 1.8-4.67 4.54-4.67 1.31 0 2.68.24 2.68.24v2.95h-1.51c-1.49 0-1.96.93-1.96 1.88v2.24h3.32l-.53 3.48h-2.79v8.39C19.62 23.04 24 18.06 24 12.07z" url={profile?.facebookUrl} />
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

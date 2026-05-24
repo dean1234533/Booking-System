@@ -22,6 +22,7 @@ import TenantSignup      from "./pages/TenantSignup";
 import CancelBooking     from "./pages/CancelBooking";
 import ReviewPage        from "./pages/ReviewPage"; 
 import PTBookingSite     from "./pages/PTBookingSite";
+import DecoratorTemplate from "./pages/DecoratorTemplate"; // 🌟 ADDED IMPORT
 
 // Split Nav & Footer imports
 import Nav               from "./components/Nav";
@@ -45,13 +46,11 @@ function AppShell() {
   
   const lastIdentifiedId = useRef(null);
 
-  // ── Add any domain that belongs to YOUR platform here, not your barber clients ──
-  // Cloudflare Pages preview domains and your main domain all go in this list.
   const platformDomains = [
     'bookehtrim.co.uk',
     'www.bookehtrim.co.uk',
-    'bookehtrim.pages.dev',      // Cloudflare Pages preview domain
-    'bookehtrim.vercel.app',     // keep if you still have Vercel previews
+    'bookehtrim.pages.dev',
+    'bookehtrim.vercel.app',
     'localhost',
     '127.0.0.1',
   ];
@@ -68,7 +67,6 @@ function AppShell() {
     const bookingMatch = matchPath("/book/:barberId/*", path);
     const reviewMatch = matchPath("/review/:shopId", path);
     
-    // Detect if we are on login or signup to preserve context
     const isAuthPath = matchPath("/login", path) || matchPath("/signup", path);
 
     const targetId = 
@@ -79,13 +77,11 @@ function AppShell() {
       reviewMatch?.params.shopId;
 
     try {
-      // 1. If we are on an Auth path and already have a tenant, don't clear it
       if (isAuthPath && tenantBarber) {
         setIsFetchingTenant(false);
         return;
       }
 
-      // 2. Handle Main Platform Landing
       if (isPlatformDomain && path === "/" && !targetId) {
         setTenantBarber(null);
         lastIdentifiedId.current = null;
@@ -93,7 +89,6 @@ function AppShell() {
         return;
       }
 
-      // 3. Prevent redundant fetches but allow updates if ID changes
       if (targetId && targetId === lastIdentifiedId.current && tenantBarber) {
         setIsFetchingTenant(false);
         return;
@@ -103,8 +98,6 @@ function AppShell() {
       if (targetId) {
         data = await getBarberById(targetId);
       } else if (!isPlatformDomain) {
-        // Custom domain visit — getBarberByDomain checks both
-        // customDomain (new Cloudflare field) and vercelUrl (legacy)
         data = await getBarberByDomain(hostname);
       }
 
@@ -142,7 +135,6 @@ function AppShell() {
         }
         lastIdentifiedId.current = targetId || hostname;
       } else if (!isAuthPath) {
-        // Only clear if we aren't on an auth path
         setTenantBarber(null);
         lastIdentifiedId.current = null;
       }
@@ -157,7 +149,6 @@ function AppShell() {
     identifyTenant();
   }, [identifyTenant]);
 
-  // Dynamic system style overrides matching the tenant's chosen category profile 
   const dynamicTheme = useMemo(() => {
     const selectedColor = tenantBarber?.brandColor || "#C9A84C";
     return createTheme({
@@ -170,7 +161,6 @@ function AppShell() {
         MuiCssBaseline: {
           styleOverrides: {
             body: {
-              // Smooth dynamic accent coloring based on tenant profile colors
               selection: { background: selectedColor, color: "#FFFFFF" }
             }
           }
@@ -181,7 +171,6 @@ function AppShell() {
 
   const isDashboard = location.pathname.startsWith('/dashboard');
 
-  // Compute clean title dynamically for the custom browser tab domain name context
   const computedPageTitle = useMemo(() => {
     if (tenantBarber) {
       return `${tenantBarber.businessName.toUpperCase()} | Booking Portal`;
@@ -197,17 +186,20 @@ function AppShell() {
     );
   }
 
-  // Determine whether the current route uses a custom design template layout that should bypass default UI bars
-  // 🌟 UPDATE: Bypasses standard layouts if route includes pt-booking OR if the loaded domain is explicitly classified as non-barber
   const isAlternativeBookingLayout = 
     location.pathname.includes("/pt-booking/") || 
     (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber" && !isPlatformDomain);
 
+  // Helper to choose the right component based on business type
+  const renderTenantHome = (tenant) => {
+    if (tenant.businessType === "trainer") return <PTBookingSite barber={tenant} profile={tenant} />;
+    if (tenant.businessType === "decorator") return <DecoratorTemplate tenantData={tenant} />;
+    return <TenantHome tenant={tenant} />;
+  };
+
   return (
     <ThemeProvider theme={dynamicTheme}>
       <CssBaseline />
-      
-      {/* Dynamic Browser Metadata Node */}
       <Helmet>
         <title>{computedPageTitle}</title>
       </Helmet>
@@ -228,32 +220,10 @@ function AppShell() {
 
         <Box component="main" sx={{ flex: 1 }}>
           <Routes>
-            <Route 
-              path="/" 
-              element={
-                (!isPlatformDomain && tenantBarber) ? (
-                  tenantBarber.businessType && tenantBarber.businessType !== "barber" ? (
-                    <PTBookingSite barber={tenantBarber} profile={tenantBarber} />
-                  ) : (
-                    <TenantHome tenant={tenantBarber} />
-                  )
-                ) : (
-                  <Home />
-                )
-              } 
-            />
-            {/* 🌟 UPDATE: Intercepts custom industry route parameters to load the correct workspace profile layout cleanly */}
-            <Route 
-              path="/shop/:tenantId" 
-              element={
-                tenantBarber?.businessType && tenantBarber.businessType !== "barber" ? (
-                  <PTBookingSite barber={tenantBarber} profile={tenantBarber} />
-                ) : (
-                  <TenantHome tenant={tenantBarber} />
-                )
-              } 
-            />
+            <Route path="/" element={(!isPlatformDomain && tenantBarber) ? renderTenantHome(tenantBarber) : <Home />} />
+            <Route path="/shop/:tenantId" element={tenantBarber ? renderTenantHome(tenantBarber) : <TenantHome tenant={tenantBarber} />} />
             <Route path="/pt-booking/:tenantId" element={<PTBookingSite barber={tenantBarber} profile={tenantBarber} />} />
+            <Route path="/decorator/:tenantId" element={<DecoratorTemplate tenantData={tenantBarber} />} />
             <Route path="/barber/:id" element={<BarberProfile tenant={tenantBarber} />} />
             <Route path="/book/:barberId/:slotId" element={<BookingForm />} />
             <Route path="/confirmation/:bookingId?" element={<Confirmation />} />

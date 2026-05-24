@@ -15,46 +15,42 @@ import { signUpBarber } from "../firebase/auth";
 
 /**
  * Marketplace-Only Signup Component
- * For the main platform home page.
  */
 export default function Signup() {
   const navigate = useNavigate();
 
-  // Marketplace defaults
   const [isOwner, setIsOwner] = useState(true);
-  const activeBrandColor = "#C9A84C"; // Your platform gold
+  const activeBrandColor = "#C9A84C"; 
   const logoPath = "/images/Logo.png";
   
   const [form, setForm] = useState({
-    name:            "",
-    email:           "",
-    phone:           "",
-    specialty:       "",
-    password:        "",
-    confirm:         "",
-    shopId:          "",
-    businessName:    "",
-    customDomain:    "", // Updated from vercelUrl to support Cloudflare
-    businessType:    "barber" // Multi-industry tracking state property
+    name: "",
+    email: "",
+    phone: "",
+    specialty: "",
+    password: "",
+    confirm: "",
+    shopId: "",
+    businessName: "",
+    customDomain: "", 
+    businessType: "barber" 
   });
 
-  const [shops,        setShops]        = useState([]);
+  const [shops, setShops] = useState([]);
   const [loadingShops, setLoadingShops] = useState(false);
-  const [loading,      setLoading]      = useState(false);
-  const [error,        setError]        = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Fetch available shops only if user switches to "Staff" mode
   useEffect(() => {
     if (!isOwner) {
       async function fetchShops() {
         try {
           setLoadingShops(true);
-          const q    = query(collection(db, "barbers"), where("role", "==", "owner"));
+          const q = query(collection(db, "barbers"), where("role", "==", "owner"));
           const snap = await getDocs(q);
           const list = snap.docs.map(d => ({
             id: d.id,
@@ -96,14 +92,12 @@ export default function Signup() {
     try {
       const role = isOwner ? "owner" : "staff";
       
-      // Look up selected parent shop businessType configuration dynamically if registering staff
       let resolvedBusinessType = form.businessType;
       if (!isOwner) {
         const selectedShopObj = shops.find(s => s.id === form.shopId);
         if (selectedShopObj && selectedShopObj.businessType) {
           resolvedBusinessType = selectedShopObj.businessType;
         } else {
-          // Direct fallback fetch from firestore context if lookup misses state array entries
           const shopDocSnap = await getDoc(doc(db, "barbers", form.shopId));
           if (shopDocSnap.exists()) {
             resolvedBusinessType = shopDocSnap.data().businessType || "barber";
@@ -155,14 +149,7 @@ export default function Signup() {
             component="img"
             src={logoPath}
             alt="BOOK-EH-TRIM Logo"
-            sx={{ 
-              height: 120, 
-              width: 'auto', 
-              mb: 2, 
-              mx: 'auto', 
-              display: 'block',
-              filter: 'drop-shadow(0px 4px 10px rgba(0,0,0,0.1))'
-            }}
+            sx={{ height: 120, width: 'auto', mb: 2, mx: 'auto', display: 'block', filter: 'drop-shadow(0px 4px 10px rgba(0,0,0,0.1))' }}
           />
           <Typography variant="h4" fontWeight={900}>
             {isOwner ? "Start Your Space" : "Join a Space"}
@@ -184,7 +171,7 @@ export default function Signup() {
             <Grid container spacing={2}>
               {isOwner && (
                 <Grid item xs={12}>
-                  <TextField
+                  <TextField 
                     select 
                     fullWidth 
                     label="Industry Category"
@@ -193,10 +180,9 @@ export default function Signup() {
                     onChange={handleChange}
                     required
                   >
-                    <MenuItem value="barber">Barber / Grooming Shop</MenuItem>
-                    <MenuItem value="trainer">Personal Training / Fitness</MenuItem>
-                    <MenuItem value="photography">Photography Studio</MenuItem>
-                    <MenuItem value="tutor">Educational Tutoring</MenuItem>
+                    <MenuItem value="barber">Barbershop</MenuItem>
+                    <MenuItem value="trainer">Personal Trainer</MenuItem>
+                    <MenuItem value="decorator">Painting & Decorating</MenuItem>
                   </TextField>
                 </Grid>
               )}

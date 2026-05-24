@@ -36,11 +36,15 @@ export default function HomeNav() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  
 
   const logoPath = "/images/Logo.png";
   const platformName = "BOOK-EH-TRIM";
   const brandColor = "#C9A84C";
+
+  // Dynamic label helper to keep the Nav sync'd with marketplace context
+  const getActionLabel = () => {
+    return "BROWSE SERVICES"; // Generic enough for Barbers, Decorators, and Trainers
+  };
 
   const handleDrawerToggle = () => {
     setMobileOpen((prevState) => !prevState);
@@ -48,8 +52,8 @@ export default function HomeNav() {
 
   const isAbsoluteHome = location.pathname === "/";
 
-  const scrollToBarbers = () => {
-    const element = document.getElementById('barber-selection');
+  const scrollToMarketplace = () => {
+    const element = document.getElementById('barber-selection'); // Keep ID for backward compatibility
     if (element) {
       const offset = 80;
       const bodyRect = document.body.getBoundingClientRect().top;
@@ -75,19 +79,11 @@ export default function HomeNav() {
           </IconButton>
       </Box>
       
-      {/* BIGGER LOGO IN MOBILE DRAWER */}
       <Box 
         component="img"
         src={logoPath}
         alt="Logo"
-        sx={{ 
-          height: 60, 
-          width: 'auto', 
-          mb: 1, 
-          mx: 'auto', 
-          display: 'block',
-          filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.5))' 
-        }}
+        sx={{ height: 60, width: 'auto', mb: 1, mx: 'auto', display: 'block', filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.5))' }}
       />
       
       <Typography variant="h6" sx={{ my: 2, fontWeight: 1000, letterSpacing: 2 }}>
@@ -96,27 +92,19 @@ export default function HomeNav() {
       <Divider sx={{ borderColor: "#2D2D2D" }} />
       <List>
         <ListItem disablePadding>
-          <ListItemButton 
-            onClick={() => { navigate("/login"); setMobileOpen(false); }}
-            sx={{ textAlign: 'center' }}
-          >
+          <ListItemButton onClick={() => { navigate("/login"); setMobileOpen(false); }} sx={{ textAlign: 'center' }}>
             <ListItemText primary="LOGIN" primaryTypographyProps={{ fontWeight: 700 }} />
           </ListItemButton>
         </ListItem>
         <ListItem disablePadding>
           <ListItemButton 
-            onClick={scrollToBarbers}
+            onClick={scrollToMarketplace}
             sx={{ 
-              textAlign: 'center', 
-              bgcolor: brandColor, 
-              color: "#000",
-              mx: 2,
-              borderRadius: 1,
-              mt: 2,
+              textAlign: 'center', bgcolor: brandColor, color: "#000", mx: 2, borderRadius: 1, mt: 2,
               '&:hover': { bgcolor: "#FFF" }
             }}
           >
-            <ListItemText primary="FIND A BARBER" primaryTypographyProps={{ fontWeight: 900 }} />
+            <ListItemText primary={getActionLabel()} primaryTypographyProps={{ fontWeight: 900 }} />
           </ListItemButton>
         </ListItem>
       </List>
@@ -128,86 +116,52 @@ export default function HomeNav() {
       <HideOnScroll>
         <AppBar 
           position="fixed" 
-          sx={{ 
-            bgcolor: "rgba(0, 0, 0, 0.95)", 
-            backdropFilter: "blur(10px)",
-            /* Set border to none to prevent the white/gray line seen in image.png */
-            borderBottom: "none",
-            boxShadow: "none",
-            zIndex: 1200
-          }}
+          sx={{ bgcolor: "rgba(0, 0, 0, 0.95)", backdropFilter: "blur(10px)", borderBottom: "none", boxShadow: "none", zIndex: 1200 }}
         >
           <Container maxWidth="lg">
-            {/* Reduced py on mobile to keep navbar compact */}
             <Toolbar sx={{ justifyContent: "space-between", py: { xs: 1, md: 2 } }}>
               
               <Box 
                 onClick={() => isAbsoluteHome ? window.scrollTo({ top: 0, behavior: 'smooth' }) : navigate("/")}
                 sx={{ cursor: "pointer", display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}
               >
-                {/* LOGO */}
                 <Box 
                   component="img"
                   src={logoPath}
                   alt="Logo"
                   sx={{ 
-                    height: { xs: 45, sm: 60, md: 75 },
-                    width: 'auto',
-                    objectFit: 'contain',
-                    transition: 'transform 0.3s ease',
-                    '&:hover': { transform: 'scale(1.05)' }
+                    height: { xs: 45, sm: 60, md: 75 }, width: 'auto', objectFit: 'contain',
+                    transition: 'transform 0.3s ease', '&:hover': { transform: 'scale(1.05)' }
                   }}
                 />
-
                 <Typography 
                   variant="h6" 
-                  sx={{ 
-                    fontWeight: 1000, 
-                    letterSpacing: { xs: 1, sm: 2 }, 
-                    color: "#FFF",
-                    fontSize: { xs: '0.75rem', sm: '1.1rem', md: '1.4rem' },
-                    textTransform: 'uppercase',
-                    display: 'block' 
-                  }}
+                  sx={{ fontWeight: 1000, letterSpacing: { xs: 1, sm: 2 }, color: "#FFF", fontSize: { xs: '0.75rem', sm: '1.1rem', md: '1.4rem' }, textTransform: 'uppercase' }}
                 >
                   {platformName}
                 </Typography>
               </Box>
 
               <Stack direction="row" spacing={2} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
-                <Button 
-                  onClick={() => navigate("/login")}
-                  sx={{ color: "#FFF", fontWeight: 700 }}
-                >
+                <Button onClick={() => navigate("/login")} sx={{ color: "#FFF", fontWeight: 700 }}>
                   LOGIN
                 </Button>
-
                 <Button 
                   variant="contained"
-                  onClick={scrollToBarbers}
-                  sx={{ 
-                    bgcolor: brandColor, 
-                    color: "#000", 
-                    fontWeight: 900,
-                    px: 3,
-                    '&:hover': { bgcolor: "#FFF" }
-                  }}
+                  onClick={scrollToMarketplace}
+                  sx={{ bgcolor: brandColor, color: "#000", fontWeight: 900, px: 3, '&:hover': { bgcolor: "#FFF" } }}
                 >
-                  Find a Barber
+                  {getActionLabel()}
                 </Button>
               </Stack>
 
-              <IconButton 
-                onClick={handleDrawerToggle}
-                sx={{ color: "#FFF", display: { md: 'none' } }}
-              >
+              <IconButton onClick={handleDrawerToggle} sx={{ color: "#FFF", display: { md: 'none' } }}>
                 <MenuIcon />
               </IconButton>
             </Toolbar>
           </Container>
         </AppBar>
       </HideOnScroll>
-    
 
       <Drawer
         anchor="right"

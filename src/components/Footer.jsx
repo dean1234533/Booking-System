@@ -17,7 +17,6 @@ import { useNavigate } from "react-router-dom";
 export default function Footer() {
   const navigate = useNavigate();
   
-  // State for Modals
   const [modalContent, setModalContent] = useState(null);
 
   // --- MARKETPLACE BRANDING ---
@@ -52,7 +51,6 @@ export default function Footer() {
         >
           {/* LEFT: BRANDING */}
           <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
-            {/* LOGO ADDED HERE */}
             <Box 
               component="img"
               src="/images/Logo.png"
@@ -88,7 +86,7 @@ export default function Footer() {
                 maxWidth: { xs: "100%", md: "300px" }
               }}
             >
-              The UK's premium grooming marketplace. Connecting master barbers with clients who value quality.
+              The UK's premium service marketplace. Connecting professionals with clients who value quality.
             </Typography>
           </Box>
           
@@ -115,7 +113,7 @@ export default function Footer() {
                 "&:hover": { color: brandColor } 
               }}
             >
-              BARBER LOGIN
+              PROFESSIONAL LOGIN
             </Link>
             
             <Link
@@ -150,7 +148,7 @@ export default function Footer() {
             variant="caption" 
             sx={{ color: "rgba(255,255,255,0.2)", fontSize: "0.65rem", letterSpacing: 1 }}
           >
-            © 2026 BOOK-EH-TRIM MARKETPLACE.
+            © 2026 {businessName} MARKETPLACE.
           </Typography>
           
           <Stack direction="row" spacing={3}>
@@ -189,32 +187,27 @@ export default function Footer() {
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1.8 }}>
             {modalContent === 'privacy' ? (
               <>
-                At {businessName}, we value your privacy. We collect minimal data required to facilitate 
-                barber bookings, including your name and contact details. We do not sell your data 
-                to third parties. Your payment information is handled securely by Stripe.
+                At {businessName}, we value your privacy. We collect minimal data required to facilitate service bookings, including your name and contact details. We do not sell your data to third parties. Your payment information is handled securely by Stripe.
               </>
             ) : (
               <>
-              
-               By using {businessName}, you agree to be bound by the following terms and conditions:
+                By using {businessName}, you agree to be bound by the following terms and conditions:
 
-1. Booking, Cancellations & Refunds
-Barber Timeframes: Cancellations must be made within the individual barber's specified timeframe.
+                1. Booking, Cancellations & Refunds
+                Service Timeframes: Cancellations must be made within the individual professional's specified timeframe.
 
-Marketplace Liability: {businessName} operates strictly as a technology marketplace. We are not liable for the direct actions, services, disputes, or conduct of independent barbers utilizing this platform.
+                Marketplace Liability: {businessName} operates strictly as a technology marketplace. We are not liable for the direct actions, services, disputes, or conduct of independent professionals utilizing this platform.
 
-Refund Policy: If you cancel a booking with more than 24 hours notice, you will receive a full refund of your deposit back to your original payment method. In this event, any associated payment processing or service charges will be covered entirely by the barber.
+                Refund Policy: If you cancel a booking with more than 24 hours notice, you will receive a full refund of your deposit. In this event, any associated payment processing or service charges will be covered entirely by the professional.
 
-Non-Refundable Policy: The booking fee is strictly non-refundable under all circumstances. Any cancellations made with less than 24 hours notice are completely non-refundable.
+                Non-Refundable Policy: The booking fee is strictly non-refundable under all circumstances.
 
-2. Automated Custom Domain Purchases
-Third-Party Registration: Custom domain names purchased through your dashboard are registered automatically via third-party registries. All sales are final and non-refundable once processed by the registry network.
+                2. Automated Custom Domain Purchases
+                Third-Party Registration: Custom domain names purchased through your dashboard are registered automatically. All sales are final.
 
-Platform Markup: The total domain fee charged includes the wholesale cost of the domain name alongside a flat platform automation, configuration, and management markup.
+                Platform Markup: The total domain fee includes the wholesale cost of the domain alongside a flat management markup.
 
-Ownership & Transfers: The user (barber) maintains operational ownership of the custom domain name. If you choose to terminate your subscription with {businessName}, the domain can be transferred out to a personal registrar account upon request, provided your marketplace account balance is fully clear and in good standing.
-
-Trademark Restrictions: Users are strictly prohibited from registering domain names that infringe upon existing corporate trademarks, copyrights, or legal brand entities. {businessName} reserves the right to unbind any domain that violates intellectual property laws.
+                Trademark Restrictions: Users are strictly prohibited from registering domain names that infringe upon existing corporate trademarks. {businessName} reserves the right to unbind any domain that violates intellectual property laws.
               </>
             )}
           </Typography>

@@ -188,6 +188,7 @@ function AppShell() {
 
   const isAlternativeBookingLayout = 
     location.pathname.includes("/pt-booking/") || 
+    location.pathname.includes("/decorator/") ||
     (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber" && !isPlatformDomain);
 
   // Helper to choose the right component based on business type

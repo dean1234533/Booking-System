@@ -1,29 +1,10 @@
 /**
  * DomainTab.jsx
- *
- * Tab component that lets a barber:
- * 1. Search for a domain and check availability (via /api/check-domain)
- * 2. Purchase & connect it (via /api/create-domain-checkout → Stripe)
- * 3. See the live status of an already-connected domain
- * 4. Connect a domain they already own directly via Cloudflare DNS configuration fallbacks
- *
- * Drop into Dashboard.jsx alongside the other Tab components and add:
- * <Tab label="Domain" icon={<LanguageIcon />} iconPosition="start" />
- * <TabPanel value={tab} index={domainTabIndex}>
- * <DomainTab profile={profile} barber={barber} brandColor={brandColor} />
- * </TabPanel>
- *
- * Pricing note:
- * The server (/api/check-domain) returns the final GBP price including the
- * platform markup. This component uses that value directly — no client-side
- * price calculation needed.
- *
- * NOTE FOR LOCAL DEPLOYMENTS (e.g., localhost:5174):
- * Direct external hostname handshakes via public networks require active tunnel paths 
- * (e.g., Ngrok) or direct deployment to resolve remote Cloudflare edge route timeouts.
+ * Full rewrite — calls Firebase Functions directly via httpsCallable.
+ * No REST /api/ endpoints needed.
  */
 
-import React, { useState, useEffect } from "react";
+import React, {useState, useEffect, useRef} from "react";
 import {
   Box, Button, Chip, CircularProgress, Divider,
   Grid, InputAdornment, Paper, TextField,
@@ -39,34 +20,32 @@ import {
   ShoppingCart    as CartIcon,
   HourglassBottom as PendingIcon,
   Link            as LinkIcon,
+  ContentCopy     as CopyIcon,
 } from "@mui/icons-material";
+import {getFunctions, httpsCallable} from "firebase/functions";
+import {getFirestore, doc, onSnapshot} from "firebase/firestore";
 
-// Import standard Firebase Firestore hooks to persist structural states permanently
-import { getFirestore, doc, updateDoc } from "firebase/firestore";
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// ── Domain status badge ───────────────────────────────────────────────────────
-
-function DomainStatusBadge({ status }) {
+function DomainStatusBadge({status}) {
   const map = {
-    active:       { label: "Active",       color: "success", icon: <CheckCircleIcon fontSize="inherit" /> },
-    pending:      { label: "Pending SSL",  color: "warning", icon: <PendingIcon fontSize="inherit" /> },
-    provisioning: { label: "Provisioning", color: "info",    icon: <PendingIcon fontSize="inherit" /> },
+    active:       {label: "Active",       color: "success", icon: <CheckCircleIcon fontSize="inherit" />},
+    pending:      {label: "Pending SSL",  color: "warning", icon: <PendingIcon fontSize="inherit" />},
+    provisioning: {label: "Provisioning", color: "info",    icon: <PendingIcon fontSize="inherit" />},
   };
-  const cfg = map[status] ?? { label: status, color: "default", icon: null };
+  const cfg = map[status] ?? {label: status, color: "default", icon: null};
   return (
     <Chip
       size="small"
       color={cfg.color}
       icon={cfg.icon}
       label={cfg.label}
-      sx={{ fontWeight: 700, fontSize: 11 }}
+      sx={{fontWeight: 700, fontSize: 11}}
     />
   );
 }
 
-// ── Availability result chip ──────────────────────────────────────────────────
-
-function AvailabilityChip({ available }) {
+function AvailabilityChip({available}) {
   if (available === null) return null;
   return available ? (
     <Chip icon={<CheckCircleIcon />} label="Available" color="success" size="small" />
@@ -75,32 +54,89 @@ function AvailabilityChip({ available }) {
   );
 }
 
-// ── Steps shown under the search bar ─────────────────────────────────────────
+function CopyField({label, value}) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Box
+      display="flex"
+      alignItems="center"
+      justifyContent="space-between"
+      p={1.5}
+      sx={{
+        bgcolor: "#F1F5F9",
+        borderRadius: 1.5,
+        border: "1px solid #E2E8F0",
+        mb: 1,
+      }}
+    >
+      <Box>
+        <Typography variant="caption" color="text.secondary" fontWeight={700}>
+          {label}
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{fontFamily: "monospace", fontSize: 12, wordBreak: "break-all"}}
+        >
+          {value}
+        </Typography>
+      </Box>
+      <Button
+        size="small"
+        onClick={copy}
+        startIcon={<CopyIcon fontSize="small" />}
+        sx={{ml: 1, minWidth: 80, flexShrink: 0}}
+      >
+        {copied ? "Copied!" : "Copy"}
+      </Button>
+    </Box>
+  );
+}
 
-const STEPS = ["Search domain", "Purchase", "Automatically connected"];
+const STEPS = ["Search domain", "Purchase", "Auto-connected"];
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function DomainTab({ profile, barber, brandColor }) {
+export default function DomainTab({barber, brandColor}) {
+  const functions = getFunctions();
+
+  // Search state
   const [query,         setQuery]         = useState("");
   const [searching,     setSearching]     = useState(false);
-  const [result,        setResult]        = useState(null); // { domain, available, price, currency }
+  const [result,        setResult]        = useState(null);
   const [searchError,   setSearchError]   = useState("");
+
+  // Purchase state
   const [purchasing,    setPurchasing]    = useState(false);
   const [purchaseError, setPurchaseError] = useState("");
-
-  // ── States for Connecting Existing Domains ──
-  const [existingDomain, setExistingDomain] = useState("");
-  const [linking, setLinking]               = useState(false);
-  const [linkError, setLinkError]           = useState("");
-  const [linkSuccess, setLinkSuccess]       = useState(false);
-
-  // Dynamic state overrides to handle instant client-side rendering updates
-  const [localCustomDomain, setLocalCustomDomain] = useState(null);
-  const [localDomainStatus, setLocalDomainStatus] = useState(null);
-
-  // On mount — if we just returned from a successful Stripe checkout, show a banner
   const [justPurchased, setJustPurchased] = useState(false);
+
+  // Existing domain state
+  const [existingDomain, setExistingDomain] = useState("");
+  const [linking,        setLinking]        = useState(false);
+  const [linkError,      setLinkError]      = useState("");
+  const [dnsRecords,     setDnsRecords]     = useState(null);
+
+  // Live barber doc from Firestore (real-time)
+  const [barberDoc, setBarberDoc] = useState(null);
+  const pollRef = useRef(null);
+
+  // Real-time listener on barber doc
+  useEffect(() => {
+    if (!barber?.uid) return;
+    const db  = getFirestore();
+    const ref = doc(db, "barbers", barber.uid);
+    const unsub = onSnapshot(ref, (snap) => {
+      if (snap.exists()) setBarberDoc(snap.data());
+    });
+    return () => unsub();
+  }, [barber?.uid]);
+
+  // Detect Stripe redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("domainSuccess") === "true") {
@@ -109,11 +145,35 @@ export default function DomainTab({ profile, barber, brandColor }) {
     }
   }, []);
 
-  // ── Search handler ─────────────────────────────────────────────────────────
+  // Poll checkDomainStatus when domain is pending
+  useEffect(() => {
+    const cfId   = barberDoc?.customHostnameId;
+    const status = barberDoc?.domainStatus;
+
+    if (!cfId || status === "active" || cfId === "native_account_bypass") {
+      clearInterval(pollRef.current);
+      return;
+    }
+
+    const checkStatus = httpsCallable(functions, "checkDomainStatus");
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await checkStatus({cfHostnameId: cfId});
+        if (res.data.isLive) clearInterval(pollRef.current);
+      } catch (e) {
+        console.error("Poll error:", e);
+      }
+    }, 12000);
+
+    return () => clearInterval(pollRef.current);
+  }, [barberDoc?.customHostnameId, barberDoc?.domainStatus]);
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   async function handleSearch(e) {
     e?.preventDefault();
-    const clean = query.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const clean = query.toLowerCase().trim()
+        .replace(/^https?:\/\//, "").replace(/\/$/, "");
     if (!clean) return;
 
     setSearching(true);
@@ -122,10 +182,9 @@ export default function DomainTab({ profile, barber, brandColor }) {
     setPurchaseError("");
 
     try {
-      const res  = await fetch(`/api/check-domain?domain=${encodeURIComponent(clean)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Availability check failed");
-      setResult(data);
+      const checkDomain = httpsCallable(functions, "checkDomain");
+      const res = await checkDomain({domain: clean});
+      setResult(res.data);
     } catch (err) {
       setSearchError(err.message);
     } finally {
@@ -133,25 +192,19 @@ export default function DomainTab({ profile, barber, brandColor }) {
     }
   }
 
-  // ── Purchase handler ───────────────────────────────────────────────────────
-
   async function handlePurchase() {
     if (!result?.available || !barber?.uid) return;
     setPurchasing(true);
     setPurchaseError("");
 
     try {
-      const res  = await fetch("/api/create-domain-checkout", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          domain:   result.domain,
-          barberId: barber.uid,
-        }),
+      const createCheckout = httpsCallable(functions, "createDomainCheckout");
+      const res = await createCheckout({
+        domain:   result.domain,
+        barberId: barber.uid,
+        priceUsd: result.priceUsd,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not start checkout");
-      window.location.href = data.url;
+      window.location.href = res.data.url;
     } catch (err) {
       setPurchaseError(err.message);
     } finally {
@@ -159,92 +212,46 @@ export default function DomainTab({ profile, barber, brandColor }) {
     }
   }
 
-  // ── Existing Domain Linker Handler ─────────────────────────────────────────
-
   async function handleLinkExisting(e) {
     e?.preventDefault();
-    const clean = existingDomain.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const clean = existingDomain.toLowerCase().trim()
+        .replace(/^https?:\/\//, "").replace(/\/$/, "");
     if (!clean || !barber?.uid) return;
 
     setLinking(true);
     setLinkError("");
-    setLinkSuccess(false);
-
-    // Helper to safely store changes right inside your database collections
-    const persistToFirestore = async () => {
-      try {
-        const db = getFirestore();
-        const docRef = doc(db, "barbers", barber.uid);
-        await updateDoc(docRef, {
-          customDomain: clean,
-          domainStatus: "active",
-          customHostnameId: "native_account_bypass"
-        });
-        // Push values to local view states immediately
-        setLocalCustomDomain(clean);
-        setLocalDomainStatus("active");
-      } catch (dbErr) {
-        console.error("Local database synchronization failed:", dbErr);
-      }
-    };
+    setDnsRecords(null);
 
     try {
-      const res = await fetch("/api/connect-existing-domain", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          domain: clean,
-          barberId: barber.uid
-        })
-      });
-
-      if (res.status === 500) {
-        await persistToFirestore();
-        setLinkSuccess(true);
-        setExistingDomain("");
-        return;
-      }
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not connect your custom domain");
-      
-      await persistToFirestore();
-      setLinkSuccess(true);
+      const addDomain = httpsCallable(functions, "addCustomDomain");
+      const res = await addDomain({domain: clean});
+      setDnsRecords(res.data.dnsRecords);
       setExistingDomain("");
     } catch (err) {
-      if (err.message.includes("JSON") || err.message.includes("end of input")) {
-        await persistToFirestore();
-        setLinkSuccess(true);
-        setExistingDomain("");
-      } else {
-        setLinkError(err.message);
-      }
+      setLinkError(err.message);
     } finally {
       setLinking(false);
     }
   }
 
-  // ── Derived values ─────────────────────────────────────────────────────────
+  // ── Derived ──────────────────────────────────────────────────────────────────
 
-  // Prioritize local state overrides over stale context data packets
-  const connectedDomain = localCustomDomain || profile.customDomain || null;
-  const domainStatus    = localDomainStatus || profile.domainStatus  || "active";
-
-  const displayPrice = result?.price != null
+  const connectedDomain = barberDoc?.customDomain   ?? null;
+  const domainStatus    = barberDoc?.domainStatus    ?? "pending";
+  const displayPrice    = result?.price != null
     ? `£${Number(result.price).toFixed(2)}`
     : null;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <Grid container spacing={3}>
 
-      {/* ── Left column: search + purchase ── */}
+      {/* ── Left: Search + Purchase ── */}
       <Grid item xs={12} md={7}>
-        <Paper sx={{ p: 3, borderRadius: 3 }}>
-
+        <Paper sx={{p: 3, borderRadius: 3}}>
           <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-            <LanguageIcon sx={{ color: brandColor }} />
+            <LanguageIcon sx={{color: brandColor}} />
             <Typography variant="h6" fontWeight={800}>Get a Custom Domain</Typography>
           </Box>
           <Typography variant="body2" color="text.secondary" mb={3}>
@@ -252,24 +259,21 @@ export default function DomainTab({ profile, barber, brandColor }) {
             No DNS configuration needed.
           </Typography>
 
-          {/* Success banner after Stripe redirect */}
           {justPurchased && (
-            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setJustPurchased(false)}>
-              🎉 Payment received! Your domain is being provisioned — this usually takes
-              2–5 minutes. SSL activation can take up to 24 hours.
+            <Alert severity="success" sx={{mb: 2}} onClose={() => setJustPurchased(false)}>
+              🎉 Payment received! Your domain is being provisioned — usually 2–5 minutes.
+              SSL activation can take up to 24 hours.
             </Alert>
           )}
 
-          {/* Steps */}
-          <Stepper alternativeLabel sx={{ mb: 3 }}>
-            {STEPS.map(label => (
+          <Stepper alternativeLabel sx={{mb: 3}}>
+            {STEPS.map((label) => (
               <Step key={label} active>
                 <StepLabel>{label}</StepLabel>
               </Step>
             ))}
           </Stepper>
 
-          {/* Search bar */}
           <Box
             component="form"
             onSubmit={handleSearch}
@@ -283,7 +287,7 @@ export default function DomainTab({ profile, barber, brandColor }) {
               label="Search for a domain"
               placeholder="deansbarbershop.com"
               value={query}
-              onChange={e => setQuery(e.target.value)}
+              onChange={(e) => setQuery(e.target.value)}
               disabled={searching}
               InputProps={{
                 startAdornment: (
@@ -297,25 +301,25 @@ export default function DomainTab({ profile, barber, brandColor }) {
               type="submit"
               variant="contained"
               disabled={searching || !query.trim()}
-              sx={{ bgcolor: brandColor, whiteSpace: "nowrap", minWidth: 110 }}
+              sx={{bgcolor: brandColor, whiteSpace: "nowrap", minWidth: 110}}
             >
-              {searching ? <CircularProgress size={18} color="inherit" /> : "Check"}
+              {searching
+                ? <CircularProgress size={18} color="inherit" />
+                : "Check"}
             </Button>
           </Box>
 
-          {/* Search error */}
           {searchError && (
-            <Alert severity="error" sx={{ mb: 2 }}>{searchError}</Alert>
+            <Alert severity="error" sx={{mb: 2}}>{searchError}</Alert>
           )}
 
-          {/* Result card */}
           {result && (
             <Paper
               variant="outlined"
               sx={{
                 p: 2, borderRadius: 2, mb: 2,
                 borderColor: result.available ? "success.main" : "error.main",
-                bgcolor:     result.available ? "#F0FFF4" : "#FFF5F5",
+                bgcolor:     result.available ? "#F0FFF4"      : "#FFF5F5",
               }}
             >
               <Box
@@ -338,9 +342,9 @@ export default function DomainTab({ profile, barber, brandColor }) {
 
               {result.available && (
                 <>
-                  <Divider sx={{ my: 1.5 }} />
+                  <Divider sx={{my: 1.5}} />
                   {purchaseError && (
-                    <Alert severity="error" sx={{ mb: 1.5 }}>{purchaseError}</Alert>
+                    <Alert severity="error" sx={{mb: 1.5}}>{purchaseError}</Alert>
                   )}
                   <Button
                     fullWidth
@@ -353,7 +357,7 @@ export default function DomainTab({ profile, barber, brandColor }) {
                     }
                     disabled={purchasing}
                     onClick={handlePurchase}
-                    sx={{ bgcolor: brandColor, fontWeight: 700 }}
+                    sx={{bgcolor: brandColor, fontWeight: 700}}
                   >
                     {purchasing
                       ? "Redirecting to checkout…"
@@ -366,7 +370,7 @@ export default function DomainTab({ profile, barber, brandColor }) {
                     mt={1}
                     textAlign="center"
                   >
-                    Secured by Stripe. Domain renews automatically each year.
+                    Secured by Stripe. Renews automatically each year.
                   </Typography>
                 </>
               )}
@@ -381,12 +385,12 @@ export default function DomainTab({ profile, barber, brandColor }) {
         </Paper>
       </Grid>
 
-      {/* ── Right column: current domain status + connect existing ── */}
+      {/* ── Right: Status + Connect Existing ── */}
       <Grid item xs={12} md={5}>
-        <Stack spacing={3} sx={{ height: "100%" }}>
-          
-          {/* Section: Live Status Badge System */}
-          <Paper sx={{ p: 3, borderRadius: 3, bgcolor: "#F8F9FA" }}>
+        <Stack spacing={3}>
+
+          {/* Live status */}
+          <Paper sx={{p: 3, borderRadius: 3, bgcolor: "#F8F9FA"}}>
             <Typography variant="subtitle1" fontWeight={800} mb={2}>
               Your Connected Domain
             </Typography>
@@ -399,7 +403,7 @@ export default function DomainTab({ profile, barber, brandColor }) {
                   justifyContent="space-between"
                   p={2}
                   mb={2}
-                  sx={{ bgcolor: "#fff", borderRadius: 2, border: "1px solid #E0E0E0" }}
+                  sx={{bgcolor: "#fff", borderRadius: 2, border: "1px solid #E0E0E0"}}
                 >
                   <Box>
                     <Typography fontWeight={700}>{connectedDomain}</Typography>
@@ -421,15 +425,13 @@ export default function DomainTab({ profile, barber, brandColor }) {
 
                 {domainStatus === "pending" && (
                   <Alert severity="info" icon={<PendingIcon />}>
-                    Your SSL certificate is being issued by Cloudflare. This usually takes
-                    a few minutes but can take up to 24 hours.
+                    SSL certificate being issued by Cloudflare. Usually a few minutes,
+                    up to 24 hours.
                   </Alert>
                 )}
-
                 {domainStatus === "active" && (
                   <Alert severity="success" icon={<CheckCircleIcon />}>
-                    Your domain is live and secured with SSL. Visitors to{" "}
-                    <strong>{connectedDomain}</strong> will see your booking site.
+                    Your domain is live and secured with HTTPS.
                   </Alert>
                 )}
               </>
@@ -440,9 +442,9 @@ export default function DomainTab({ profile, barber, brandColor }) {
                 alignItems="center"
                 justifyContent="center"
                 py={4}
-                sx={{ color: "text.disabled", textAlign: "center" }}
+                sx={{color: "text.disabled", textAlign: "center"}}
               >
-                <LanguageIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
+                <LanguageIcon sx={{fontSize: 48, mb: 1, opacity: 0.3}} />
                 <Typography variant="body2">No domain connected yet.</Typography>
                 <Typography variant="caption">
                   Search for one on the left to get started.
@@ -450,69 +452,93 @@ export default function DomainTab({ profile, barber, brandColor }) {
               </Box>
             )}
 
-            <Divider sx={{ my: 2 }} />
-
+            <Divider sx={{my: 2}} />
             <Typography variant="caption" color="text.secondary">
-              <strong>How it works:</strong> After purchase, we register the domain with
-              Cloudflare, issue a free SSL certificate, and point it at your booking site —
-              all automatically. You never touch DNS settings.
+              <strong>How it works:</strong> After purchase, we register the domain,
+              issue a free SSL certificate, and point it at your booking site —
+              all automatically.
             </Typography>
           </Paper>
 
-          {/* Section: Connect a Domain You Already Own */}
-          <Paper sx={{ p: 3, borderRadius: 3, border: "1px solid #E0E0E0" }}>
+          {/* Connect existing domain */}
+          <Paper sx={{p: 3, borderRadius: 3, border: "1px solid #E0E0E0"}}>
             <Box display="flex" alignItems="center" gap={1} mb={1}>
-              <LinkIcon sx={{ color: brandColor }} />
-              <Typography variant="subtitle1" fontWeight={800}>Connect Existing Domain</Typography>
+              <LinkIcon sx={{color: brandColor}} />
+              <Typography variant="subtitle1" fontWeight={800}>
+                Connect Existing Domain
+              </Typography>
             </Box>
             <Typography variant="body2" color="text.secondary" mb={2}>
-              Already own a domain from GoDaddy, Namecheap, or Google? Link it directly into your dashboard workspace.
+              Already own a domain from GoDaddy, Namecheap, or Google?
+              Enter it below and we'll give you the DNS records to add.
             </Typography>
 
-            {linkSuccess && (
-              <Alert severity="success" sx={{ mb: 2 }}>
-                🎉 Domain successfully submitted! Mapping records have synced with Cloudflare routing tables.
-              </Alert>
-            )}
-
             {linkError && (
-              <Alert severity="error" sx={{ mb: 2 }}>{linkError}</Alert>
+              <Alert severity="error" sx={{mb: 2}}>{linkError}</Alert>
             )}
 
-            <Box component="form" onSubmit={handleLinkExisting} display="flex" flexDirection="column" gap={1.5}>
+            <Box
+              component="form"
+              onSubmit={handleLinkExisting}
+              display="flex"
+              flexDirection="column"
+              gap={1.5}
+            >
               <TextField
                 fullWidth
                 size="small"
-                label="Enter your domain"
+                label="Your domain"
                 placeholder="myestablishedshop.co.uk"
                 value={existingDomain}
-                onChange={e => setExistingDomain(e.target.value)}
-                disabled={linking || linkSuccess}
+                onChange={(e) => setExistingDomain(e.target.value)}
+                disabled={linking}
               />
               <Button
                 fullWidth
                 type="submit"
                 variant="outlined"
-                disabled={linking || !existingDomain.trim() || linkSuccess}
-                sx={{ 
-                  borderColor: brandColor, 
-                  color: brandColor,
-                  fontWeight: 700,
-                  "&:hover": { borderColor: brandColor, bgcolor: `${brandColor}08` }
+                disabled={linking || !existingDomain.trim()}
+                sx={{
+                  borderColor: brandColor,
+                  color:       brandColor,
+                  fontWeight:  700,
+                  "&:hover":   {borderColor: brandColor, bgcolor: `${brandColor}10`},
                 }}
               >
-                {linking ? <CircularProgress size={18} color="inherit" /> : "Connect Existing Domain"}
+                {linking
+                  ? <CircularProgress size={18} color="inherit" />
+                  : "Get DNS Records"}
               </Button>
             </Box>
 
-            <Box mt={2} p={1.5} sx={{ bgcolor: "#F8F9FA", borderRadius: 2 }}>
-              <Typography variant="caption" color="text.primary" display="block" fontWeight={700} mb={0.5}>
-                ⚠️ Required DNS Configuration:
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ fontFamily: "monospace", fontSize: "0.75rem", lineHeight: 1.4 }}>
-                Log in to your registrar and add a CNAME record pointing your domain (or www subdomain) directly to your system platform root address.
-              </Typography>
-            </Box>
+            {/* Show DNS records to copy after linking */}
+            {dnsRecords && (
+              <Box mt={2}>
+                <Alert severity="success" sx={{mb: 2}}>
+                  Add these records in your domain registrar's DNS settings,
+                  then we'll verify automatically.
+                </Alert>
+                {dnsRecords.map((rec, i) => (
+                  <Box key={i} mb={1.5}>
+                    <Typography
+                      variant="caption"
+                      fontWeight={700}
+                      color="text.secondary"
+                      display="block"
+                      mb={0.5}
+                    >
+                      {rec.type} Record — {rec.description}
+                    </Typography>
+                    <CopyField label="Name"  value={rec.name} />
+                    <CopyField label="Value" value={rec.value} />
+                  </Box>
+                ))}
+                <Alert severity="info" sx={{mt: 1}}>
+                  DNS changes can take up to 48 hours to propagate. We'll update
+                  your status automatically once verified.
+                </Alert>
+              </Box>
+            )}
           </Paper>
 
         </Stack>

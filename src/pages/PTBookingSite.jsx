@@ -1,4 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { 
+  Box, Typography, Container, Stack, Link, Divider, 
+  Dialog, DialogTitle, DialogContent, DialogActions, Button 
+} from "@mui/material";
 
 // FADE-IN COMPONENT
 const FadeIn = ({ children }) => {
@@ -26,11 +30,11 @@ export default function PTBookingSite({ profile, barber, reviews = [], bookingWi
   const heroTitle = profile?.heroTitle || "Stronger. Leaner. Unstoppable.";
   const heroSubtitle = profile?.heroSubtitle || "Tailored high-performance outdoor functional resistance training packages.";
   
-  const SocialIcon = ({ d, url }) => (
-    <a href={url || "#"} target="_blank" rel="noopener noreferrer" className="hover:text-red-600 transition-colors p-2">
-      <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24"><path d={d}/></svg>
-    </a>
-  );
+  // Footer branding data
+  const logo = barber?.logo || profile?.logo;
+  const brandColor = "#ef4444"; // Matching your red theme
+  
+  const [modalContent, setModalContent] = useState(null);
 
   return (
     <div className="bg-white text-zinc-900 antialiased font-sans scroll-smooth min-h-screen overflow-x-hidden">
@@ -39,7 +43,10 @@ export default function PTBookingSite({ profile, barber, reviews = [], bookingWi
       <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b border-zinc-100">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 md:px-6 py-4">
           <a href="#" className="font-bold text-lg md:text-xl tracking-tight uppercase truncate">{businessName}</a>
-          <a href="#booking-section" className="rounded-full bg-zinc-900 px-5 py-2 text-[10px] md:text-xs font-bold uppercase text-white hover:bg-red-600 transition-all whitespace-nowrap">Book Now</a>
+          <div className="flex items-center gap-4">
+            <a href="#about" className="hidden md:block text-xs font-bold uppercase hover:text-red-600 transition-colors">About</a>
+            <a href="#booking-section" className="rounded-full bg-zinc-900 px-5 py-2 text-[10px] md:text-xs font-bold uppercase text-white hover:bg-red-600 transition-all whitespace-nowrap">Book Now</a>
+          </div>
         </div>
       </header>
 
@@ -53,7 +60,7 @@ export default function PTBookingSite({ profile, barber, reviews = [], bookingWi
         </div>
       </section>
 
-      {/* TRUST STATS */}
+      {/* SECTIONS (Trust, About, Video, Reviews, Booking) */}
       <FadeIn>
         <section className="py-12 bg-zinc-50 border-b border-zinc-100">
           <div className="mx-auto max-w-5xl px-6 grid grid-cols-3 gap-4 md:gap-8 text-center">
@@ -64,62 +71,56 @@ export default function PTBookingSite({ profile, barber, reviews = [], bookingWi
         </section>
       </FadeIn>
 
-      {/* VIDEO GRID */}
       <FadeIn>
-        <section className="py-16 md:py-24 max-w-7xl mx-auto px-6">
-          <h2 className="text-2xl md:text-3xl font-extrabold mb-10 md:mb-12 text-center md:text-left">Latest Sessions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="group rounded-2xl overflow-hidden bg-zinc-100 aspect-[9/16] relative shadow-lg">
-                <img src={`https://picsum.photos/seed/${i}/400/800`} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" alt="Training" />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                  <span className="bg-white/20 px-6 py-2 rounded-full backdrop-blur-md text-white font-bold text-sm">Watch</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </FadeIn>
-
-      {/* REVIEWS */}
-      <FadeIn>
-        <section id="reviews" className="bg-zinc-950 py-16 md:py-24 text-white px-6">
-          <div className="mx-auto max-w-4xl">
-            <h2 className="text-3xl font-extrabold text-center mb-12">Client Success</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {reviews.map((rev) => (
-                <div key={rev.id} className="p-6 md:p-8 bg-zinc-900 rounded-2xl border border-zinc-800">
-                  <div className="text-amber-400 mb-4">★★★★★</div>
-                  <p className="text-zinc-300 italic text-sm md:text-base">"{rev.comment}"</p>
-                  <p className="mt-6 font-bold text-xs">— {rev.customerName || "Client"}</p>
-                </div>
-              ))}
+        <section id="about" className="py-20 md:py-32 px-6 bg-white">
+          <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-12 items-center">
+            <div className="flex-1 w-full"><img src="https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800" alt="Trainer" className="rounded-3xl shadow-2xl w-full" /></div>
+            <div className="flex-1">
+              <h2 className="text-3xl md:text-4xl font-extrabold mb-6">Meet Your Coach</h2>
+              <p className="text-zinc-600 mb-6">With years of experience in high-performance athletics, I specialize in helping individuals push past their limits.</p>
             </div>
           </div>
         </section>
       </FadeIn>
 
-      {/* BOOKING */}
       <section id="booking-section" className="py-16 md:py-24 px-6">
         <div className="mx-auto max-w-xl text-center">
           <h2 className="text-2xl md:text-3xl font-extrabold mb-8">Claim Your Slot</h2>
-          <div className="p-2 border border-zinc-200 rounded-3xl bg-zinc-50 shadow-inner">
-            {bookingWidgetMount}
-          </div>
+          <div className="p-2 border border-zinc-200 rounded-3xl bg-zinc-50 shadow-inner">{bookingWidgetMount}</div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-zinc-100 py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col items-center gap-6">
-          <div className="font-bold text-lg uppercase">{businessName}</div>
-          <div className="flex gap-2 text-zinc-500">
-            <SocialIcon d="M12 2.163c3.2 0 3.6.01 4.8.07 3.3.15 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8 0 3.2-.1 3.5-.1 4.8-.1 3.3-1.6 4.8-4.9 4.9-1.3.1-1.6.1-4.8.1-3.2 0-3.5-.1-4.8-.1-3.3-.1-4.8-1.6-4.9-4.9-.1-1.3-.1-1.6-.1-4.8 0-3.2.1-3.5.1-4.8.1-3.3 1.6-4.8 4.9-4.9 1.3-.06 1.6-.07 4.8-.07zm0-2.163c-3.26 0-3.67.01-4.95.07-4.36.2-6.79 2.62-6.99 6.98-.06 1.28-.07 1.69-.07 4.95 0 3.26.01 3.67.07 4.95.2 4.36 2.62 6.79 6.99 6.99 1.28.06 1.69.07 4.95.07 3.26 0 3.67-.01 4.95-.07 4.36-.2 6.79-2.62 6.99-6.99.06-1.28.07-1.69.07-4.95 0-3.26-.01-3.67-.07-4.95-.2-4.36-2.62-6.79-6.99-6.99-1.28-.06-1.69-.07-4.95-.07zm0 5.838c-3.4 0-6.16 2.76-6.16 6.16 0 3.4 2.76 6.16 6.16 6.16 3.4 0 6.16-2.76 6.16-6.16 0-3.4-2.76-6.16-6.16-6.16zm0 10.162c-2.2 0-4-1.8-4-4 0-2.2 1.8-4 4-4 2.2 0 4 1.8 4 4 0 2.2-1.8 4-4 4zm6.4-11.8c-.8 0-1.4.6-1.4 1.4 0 .8.6 1.4 1.4 1.4.8 0 1.4-.6 1.4-1.4 0-.8-.6-1.4-1.4-1.4z" url={profile?.instagramUrl} />
-            <SocialIcon d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.78 0 2.89 2.89 0 0 1 2.89-2.89h.7V8.5h-.7a6.39 6.39 0 1 0 6.39 6.39V8.5h3.45z" url={profile?.tiktokUrl} />
-            <SocialIcon d="M24 12.07c0-6.63-5.37-12-12-12s-12 5.37-12 12c0 5.99 4.38 10.97 10.12 11.87v-8.39H7.08v-3.48h3.04V9.41c0-3.02 1.8-4.67 4.54-4.67 1.31 0 2.68.24 2.68.24v2.95h-1.51c-1.49 0-1.96.93-1.96 1.88v2.24h3.32l-.53 3.48h-2.79v8.39C19.62 23.04 24 18.06 24 12.07z" url={profile?.facebookUrl} />
-          </div>
-        </div>
-      </footer>
+      <Box component="footer" sx={{ py: 8, bgcolor: "#000000", color: "#FFFFFF", mt: 10 }}>
+        <Container maxWidth="lg">
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems="center" spacing={4}>
+            <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
+              {logo && <Box component="img" src={logo} alt="Logo" sx={{ height: 60, mb: 2, mx: { xs: "auto", md: "0" } }} />}
+              <Typography variant="h6" sx={{ fontWeight: 1000, letterSpacing: 2, textTransform: "uppercase", color: brandColor }}>
+                {businessName}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={4}>
+              <Link onClick={() => setModalContent('privacy')} sx={{ color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: "0.75rem", fontWeight: 800, "&:hover": { color: brandColor } }}>PRIVACY</Link>
+              <Link onClick={() => setModalContent('terms')} sx={{ color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: "0.75rem", fontWeight: 800, "&:hover": { color: brandColor } }}>TERMS</Link>
+            </Stack>
+          </Stack>
+          <Divider sx={{ my: 4, borderColor: "#1A1A1A" }} />
+          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.2)", display: "block", textAlign: "center" }}>
+            © {new Date().getFullYear()} {businessName}. ALL RIGHTS RESERVED.
+          </Typography>
+        </Container>
+
+        <Dialog open={Boolean(modalContent)} onClose={() => setModalContent(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: '#111', color: '#FFF' } }}>
+          <DialogTitle>{modalContent === 'privacy' ? 'PRIVACY POLICY' : 'TERMS & CONDITIONS'}</DialogTitle>
+          <DialogContent dividers sx={{ borderColor: '#333' }}>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+              {modalContent === 'privacy' ? `At ${businessName}, we value your privacy and collect only necessary data.` : `By using ${businessName}, you agree to our standard terms of service.`}
+            </Typography>
+          </DialogContent>
+          <DialogActions><Button onClick={() => setModalContent(null)} sx={{ color: brandColor }}>CLOSE</Button></DialogActions>
+        </Dialog>
+      </Box>
     </div>
   );
 }

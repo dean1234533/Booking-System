@@ -6,16 +6,11 @@ import {
   Clock, 
   Star, 
   ChevronRight, 
-  Instagram, 
-  CheckCircle2,
-  Menu,
-  X
+  CheckCircle2, 
+  Menu, 
+  X 
 } from 'lucide-react';
-
-/**
- * BEFORE/AFTER SLIDER COMPONENT
- * A professional, touch-enabled comparison slider.
- */
+ 
 const BeforeAfterSlider = ({ before, after }) => {
   const [sliderPos, setSliderPos] = useState(50);
 
@@ -57,9 +52,27 @@ const BeforeAfterSlider = ({ before, after }) => {
   );
 };
 
+const InstagramIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
+
 const DecoratorTemplate = ({ tenantData }) => {
-  // Use tenantData from your Firebase to make it dynamic
-  const brandColor = tenantData?.brandColor || "#6366f1"; // Accent Purple from your video
+  const brandColor = tenantData?.brandColor || "#6366f1";
   const businessName = tenantData?.businessName || "Amazon Clean";
 
   return (
@@ -91,7 +104,6 @@ const DecoratorTemplate = ({ tenantData }) => {
 
       {/* --- HERO SECTION --- */}
       <header id="home" className="relative h-screen flex items-center justify-center pt-20 overflow-hidden">
-        {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
           <img 
             src="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=2070&auto=format&fit=crop" 
@@ -126,7 +138,7 @@ const DecoratorTemplate = ({ tenantData }) => {
         </div>
       </header>
 
-      {/* --- SERVICES SECTION (What I Offer) --- */}
+      {/* --- SERVICES SECTION --- */}
       <section id="services" className="py-24 px-6" style={{ backgroundColor: `${brandColor}10` }}>
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
@@ -164,7 +176,7 @@ const DecoratorTemplate = ({ tenantData }) => {
         </div>
       </section>
 
-      {/* --- PORTFOLIO (Recent Work) --- */}
+      {/* --- PORTFOLIO --- */}
       <section id="portfolio" className="py-24 px-6 bg-white">
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-4xl font-extrabold mb-16">Recent Work</h2>
@@ -264,7 +276,9 @@ const DecoratorTemplate = ({ tenantData }) => {
                 <Mail size={20} /> info@amazonclean.co.uk
               </div>
               <div className="flex gap-4 mt-6">
-                <Instagram className="hover:text-pink-500 transition cursor-pointer" />
+                <a href="https://instagram.com" target="_blank" rel="noreferrer" className="text-slate-300 hover:text-pink-500 transition cursor-pointer">
+                  <InstagramIcon />
+                </a>
               </div>
             </div>
           </div>

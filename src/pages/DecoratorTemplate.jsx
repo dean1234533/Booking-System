@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import { 
   Phone, Mail, MapPin, Clock, Star, ChevronLeft, ChevronRight, 
   CheckCircle2, Menu, X 
@@ -70,9 +70,14 @@ const InstagramIcon = ({ className }) => (
 );
 
 const DecoratorTemplate = ({ tenantData }) => {
+  // Force scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const brandColor = tenantData?.brandColor || "#6366f1";
   const businessName = tenantData?.businessName || "Amazon Clean";
-  const logo = tenantData?.logo; // Fixed: Defined logo
+  const logo = tenantData?.logo; 
 
   const reviews = [
     { name: "David R.", text: "Excellent Painting Service. Professional, reliable, and great attention to detail." },
@@ -83,7 +88,7 @@ const DecoratorTemplate = ({ tenantData }) => {
   ];
 
   const [currentReview, setCurrentReview] = useState(0);
-  const [modalContent, setModalContent] = useState(null); // Fixed: Initialized state
+  const [modalContent, setModalContent] = useState(null);
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden">
@@ -149,7 +154,7 @@ const DecoratorTemplate = ({ tenantData }) => {
         </div>
       </header>
 
-      {/* --- SECTIONS (About, Services, Portfolio, Reviews, Contact) --- */}
+      {/* --- SECTIONS --- */}
       <section id="about" className="py-24 px-6 bg-slate-50">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-extrabold mb-8">About My Work</h2>
@@ -159,312 +164,83 @@ const DecoratorTemplate = ({ tenantData }) => {
         </div>
       </section>
 
-       {/* --- SERVICES SECTION --- */}
-
-
-
+      {/* --- SERVICES SECTION --- */}
       <section id="services" className="py-24 px-6" style={{ backgroundColor: `${brandColor}10` }}>
-
-
-
         <div className="max-w-6xl mx-auto">
-
-
-
           <div className="text-center mb-16">
-
-
-
             <h2 className="text-4xl font-extrabold mb-4">What I Offer</h2>
-
-
-
             <div className="w-24 h-1.5 mx-auto rounded-full" style={{ backgroundColor: brandColor }}></div>
-
-
-
           </div>
-
-
-
-
-
-
 
           <div className="grid md:grid-cols-2 gap-12 items-center">
-
-
-
             <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
-
-
-
               <ul className="space-y-4">
-
-
-
                 {["Room repaints", "Kitchen cabinet refreshes", "Stairs (including repairs)", "Ceilings only", "Feature walls", "Woodwork & trim", "Color consultation included"].map((item, i) => (
-
-
-
                   <li key={i} className="flex items-center gap-4 text-lg font-medium text-slate-700">
-
-
-
                     <CheckCircle2 style={{ color: brandColor }} />
-
-
-
                     {item}
-
-
-
                   </li>
-
-
-
                 ))}
-
-
-
               </ul>
-
-
-
               <button style={{ backgroundColor: brandColor }} className="w-full mt-10 text-white py-4 rounded-2xl font-bold shadow-lg hover:brightness-110 transition">
-
-
-
                 Get Your Free Quote
-
-
-
               </button>
-
-
-
             </div>
-
-
-
             <div className="rounded-3xl overflow-hidden shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-500">
-
-
-
               <img src="https://images.unsplash.com/photo-1562619425-c307bb83bc42?q=80&w=1935&auto=format&fit=crop" alt="Painting" />
-
-
-
             </div>
-
-
-
           </div>
-
-
-
         </div>
-
-
-
       </section>
-
-
-
-
-
-
 
       {/* --- PORTFOLIO --- */}
-
-
-
       <section id="portfolio" className="py-24 px-6 bg-white">
-
-
-
         <div className="max-w-7xl mx-auto text-center">
-
-
-
           <h2 className="text-4xl font-extrabold mb-16">Recent Work</h2>
-
-
-
           <div className="grid md:grid-cols-3 gap-8">
-
-
-
             <BeforeAfterSlider before="https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2069&auto=format&fit=crop" after="https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=2070&auto=format&fit=crop" />
-
-
-
             <BeforeAfterSlider before="https://images.unsplash.com/photo-1505873242700-f289a29e1e0f?q=80&w=2076&auto=format&fit=crop" after="https://images.unsplash.com/photo-1556912177-f547c184827a?q=80&w=2070&auto=format&fit=crop" />
-
-
-
             <BeforeAfterSlider before="https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=2074&auto=format&fit=crop" after="https://images.unsplash.com/photo-1527359353448-615621ad9d20?q=80&w=2069&auto=format&fit=crop" />
-
-
-
           </div>
-
-
-
         </div>
-
-
-
       </section>
 
-
-
-
-
-
-
-      {/* --- SLIDING REVIEWS --- */}
-
-
-
+      {/* --- REVIEWS --- */}
       <section id="reviews" className="py-24 px-6" style={{ backgroundColor: `${brandColor}05` }}>
-
-
-
         <div className="max-w-4xl mx-auto">
-
-
-
            <h2 className="text-4xl font-extrabold text-center mb-16">What Our Customers Say</h2>
-
-
-
            <div className="bg-white p-10 rounded-[40px] shadow-2xl relative border-t-8 transition-all duration-500" style={{ borderTopColor: brandColor }}>
-
-
-
               <div className="flex justify-center mb-6 text-yellow-400">
-
-
-
                 {[...Array(5)].map((_, i) => <Star key={i} size={24} fill="currentColor" />)}
-
-
-
               </div>
-
-
-
               <p className="text-xl md:text-2xl text-center leading-relaxed text-slate-700 italic mb-8">
-
-
-
                 "{reviews[currentReview].text}"
-
-
-
               </p>
-
-
-
               <div className="text-center font-bold text-xl">— {reviews[currentReview].name}</div>
-
-
-
               
-
-
-
               <button onClick={() => setCurrentReview(prev => (prev === 0 ? reviews.length - 1 : prev - 1))} className="absolute left-4 top-1/2 p-2 rounded-full bg-slate-100 hover:bg-slate-200"><ChevronLeft /></button>
-
-
-
               <button onClick={() => setCurrentReview(prev => (prev === reviews.length - 1 ? 0 : prev + 1))} className="absolute right-4 top-1/2 p-2 rounded-full bg-slate-100 hover:bg-slate-200"><ChevronRight /></button>
-
-
-
            </div>
-
-
-
         </div>
-
-
-
       </section>
-
-
-
-
-
-
 
       {/* --- CONTACT FORM --- */}
-
-
-
       <section id="contact" className="py-24 px-6 relative">
-
-
-
         <div className="max-w-2xl mx-auto bg-white border border-slate-100 p-8 md:p-12 rounded-[2rem] shadow-2xl">
-
-
-
           <div className="text-center mb-10">
-
-
-
             <h2 className="text-4xl font-extrabold mb-4">Contact Us</h2>
-
-
-
           </div>
-
-
-
           <form className="space-y-6">
-
-
-
             <div className="grid grid-cols-2 gap-4">
-
-
-
               <input type="text" placeholder="First Name" className="w-full p-4 rounded-xl border-2 border-slate-100 outline-none" />
-
-
-
               <input type="text" placeholder="Last Name" className="w-full p-4 rounded-xl border-2 border-slate-100 outline-none" />
-
-
-
             </div>
-
-
-
             <input type="tel" placeholder="Phone Number" className="w-full p-4 rounded-xl border-2 border-slate-100 outline-none" />
-
-
-
             <textarea placeholder="Tell us about your project" rows="4" className="w-full p-4 rounded-xl border-2 border-slate-100 outline-none"></textarea>
-
-
-
             <button type="submit" style={{ backgroundColor: brandColor }} className="w-full py-5 rounded-2xl text-white font-bold text-xl hover:brightness-110 transition">Request Quote</button>
-
-
-
           </form>
-
-
-
         </div>
-
-
-
       </section>
-
 
       {/* --- FOOTER --- */}
       <Box component="footer" sx={{ py: 8, bgcolor: "#000000", color: "#FFFFFF", mt: 10 }}>
@@ -487,7 +263,6 @@ const DecoratorTemplate = ({ tenantData }) => {
           </Typography>
         </Container>
 
-        {/* LEGAL MODAL */}
         <Dialog open={Boolean(modalContent)} onClose={() => setModalContent(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: '#111', color: '#FFF' } }}>
           <DialogTitle>{modalContent === 'privacy' ? 'PRIVACY POLICY' : 'TERMS & CONDITIONS'}</DialogTitle>
           <DialogContent dividers sx={{ borderColor: '#333' }}>

@@ -8,10 +8,6 @@ import { formatCurrency } from "../stripe/formatters";
 export default function BarberCard({ barber, isMarketplace }) {
   const navigate = useNavigate();
   
-  // Debug log to check what fields are actually in your database
-  // console.log("Barber Data:", barber);
-
-  // 🛡️ GUARD CLAUSE
   if (!barber || (!barber.id && !barber.uid) || (!barber.name && !barber.businessName)) {
     return null;
   }
@@ -20,13 +16,11 @@ export default function BarberCard({ barber, isMarketplace }) {
   const brandColor = barber?.brandColor || "#C9A84C";
   const businessType = barber?.businessType || "barber";
   
-  // ── Show business name on marketplace, but isolate FIRST NAME ONLY for individual barbers ──
   const displayName = isMarketplace 
     ? (barber?.businessName || barber?.name || "Premium Shop")
-    : (barber?.name?.split(" ")[0] || (businessType === "barber" ? "Master Barber" : "Trainer"));
+    : (barber?.name?.split(" ")[0] || "Professional");
 
   const shopLogo = isMarketplace ? (barber?.businessLogo || barber?.logoUrl) : null;
-
   const cardImage = isMarketplace
     ? (barber?.heroImage || barber?.logoUrl || barber?.profilePic)
     : (barber?.profilePic || barber?.heroImage || barber?.logoUrl);
@@ -41,23 +35,24 @@ export default function BarberCard({ barber, isMarketplace }) {
       brandColor: brandColor
     };
 
-    // Check for both updated customDomain and legacy vercelUrl fields
     const targetCustomDomain = barber.customDomain || barber.vercelUrl;
     
     if (isMarketplace && targetCustomDomain) {
-      // Clean up string string entries to prevent missing browser protocol crashes
       const secureUrl = targetCustomDomain.startsWith('http') ? targetCustomDomain : `https://${targetCustomDomain}`;
       window.location.href = secureUrl;
       return;
     }
 
-    // 🎯 NAVIGATION RULE REQUIREMENT:
-    // If it's the home marketplace, check the businessType to see if it routes to a multi-staff shop view
-    // or a direct dedicated professional booking channel view like /pt-booking/:id
     let path = "";
     if (isMarketplace) {
-      const isAlternativeType = businessType && businessType !== "barber";
-      path = isAlternativeType ? `/pt-booking/${id}` : `/shop/${id}`;
+      // 🌟 UPDATED: Routing logic now recognizes decorators
+      if (businessType === "decorator") {
+        path = `/decorator/${id}`;
+      } else if (businessType === "trainer") {
+        path = `/pt-booking/${id}`;
+      } else {
+        path = `/shop/${id}`;
+      }
     } else {
       path = `/barber/${id}`;
     }
@@ -65,18 +60,20 @@ export default function BarberCard({ barber, isMarketplace }) {
     navigate(path, { state: { tenant: brandingData, shopId: barber.shopId } });
   };
 
-  // ── Dynamic text helper to determine industry-specific badging ──
+  // ── Dynamic industry-specific badging ──
   const getOverlineText = () => {
     if (isMarketplace) {
-      return businessType === "barber" ? "Featured Shop" : "Featured Trainer";
+      if (businessType === "decorator") return "Featured Decorator";
+      if (businessType === "trainer") return "Featured Trainer";
+      return "Featured Shop";
     }
-    return businessType === "barber" ? "Professional Barber" : "Personal Trainer";
+    return businessType === "barber" ? "Professional Barber" : "Professional Service";
   };
 
-  // ── Dynamic action string label text context helper ──
+  // ── Dynamic action label ──
   const getActionLabel = () => {
     if (isMarketplace) {
-      return businessType === "barber" ? "VIEW SHOP →" : "VIEW PROFILE →";
+      return businessType === "barber" ? "VIEW SHOP →" : "VIEW PORTFOLIO →";
     }
     return "BOOK NOW →";
   };
@@ -91,7 +88,7 @@ export default function BarberCard({ barber, isMarketplace }) {
         overflow: "hidden",
         transition: "all 0.3s ease", 
         border: "1px solid", 
-        borderColor: brandColor, // 🌟 DYNAMIC FIX: Outer card border now mirrors the shop's exact brand color tint!
+        borderColor: brandColor,
         "&:hover": { 
           transform: "translateY(-8px)", 
           boxShadow: `0 20px 40px ${brandColor}25` 
@@ -126,7 +123,7 @@ export default function BarberCard({ barber, isMarketplace }) {
                 left: 20, 
                 width: 60, 
                 height: 60, 
-                border: `4px solid ${brandColor}`, // 🌟 DYNAMIC FIX: Boundary outline highlights the shop brand color framework
+                border: `4px solid ${brandColor}`, 
                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
                 bgcolor: 'white'
               }}
@@ -155,7 +152,6 @@ export default function BarberCard({ barber, isMarketplace }) {
               </Box>
             )}
 
-            {/* Updated Info Section to include aboutUs */}
             <Box display="flex" alignItems="flex-start" gap={1} color="text.secondary">
               <InfoIcon sx={{ fontSize: 18, color: brandColor, mt: 0.2 }} />
               <Typography 
@@ -170,8 +166,8 @@ export default function BarberCard({ barber, isMarketplace }) {
                 }}
               >
                 {isMarketplace 
-                  ? (barber.aboutUs || barber.about || barber.businessAbout || `Welcome to ${displayName}. Experience top-tier professional services.`)
-                  : (barber.bio || `Providing professional tailored services structured around your specific requirements and schedule.`)
+                  ? (barber.aboutUs || barber.about || barber.businessAbout || `Professional ${businessType} services available.`)
+                  : (barber.bio || `Providing professional tailored services.`)
                 }
               </Typography>
             </Box>

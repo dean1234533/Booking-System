@@ -16,7 +16,7 @@ import {
 } from "@mui/icons-material";
 import {
   collection, getDocs, query, where,
-  addDoc, deleteDoc, doc, serverTimestamp,
+  addDoc, deleteDoc, doc, updateDoc, serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase/config";
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -57,28 +57,29 @@ const TIME_SLOTS = [
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C" }) {
-  const [weekOffset,   setWeekOffset]   = useState(0);
-  const [slots,        setSlots]        = useState([]);
-  const [bookings,     setBookings]     = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [saving,       setSaving]       = useState(false);
-  const [toast,        setToast]        = useState(null);
-  const [copiedLink,   setCopiedLink]   = useState(false);
-  const [filterMode,   setFilterMode]   = useState("all");
-  const [selectedTime, setSelectedTime] = useState("");
-  const [bulkDate,     setBulkDate]     = useState(fmt(new Date()));
-  const [bulkRepeat,   setBulkRepeat]   = useState("none");
+  const [weekOffset,    setWeekOffset]    = useState(0);
+  const [slots,         setSlots]         = useState([]);
+  const [bookings,      setBookings]      = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [saving,        setSaving]        = useState(false);
+  const [toast,         setToast]         = useState(null);
+  const [copiedLink,    setCopiedLink]    = useState(false);
+  const [filterMode,    setFilterMode]    = useState("all"); // "all" | "available" | "booked"
+  const [selectedTime,  setSelectedTime]  = useState("");
+  const [bulkDate,      setBulkDate]      = useState(fmt(new Date()));
+  const [bulkRepeat,    setBulkRepeat]    = useState("none");
 
-  // Manual booking state
-  const [manualOpen,   setManualOpen]   = useState(false);
-  const [manualSlot,   setManualSlot]   = useState(null);
-  const [manualName,   setManualName]   = useState("");
-  const [manualEmail,  setManualEmail]  = useState("");
-  const [manualSending,setManualSending]= useState(false);
+  // ── Manual booking state ──────────────────────────────────────────────────
+  const [manualOpen,    setManualOpen]    = useState(false);
+  const [manualSlot,    setManualSlot]    = useState(null);
+  const [manualName,    setManualName]    = useState("");
+  const [manualEmail,   setManualEmail]   = useState("");
+  const [manualSending, setManualSending] = useState(false);
 
-  const weekDates   = getWeekDates(weekOffset);
-  const functions   = getFunctions();
+  const weekDates = getWeekDates(weekOffset);
+  const functions = getFunctions();
 
+  // Public booking link — respects custom domain if set
   const bookingLink = profile?.customDomain
     ? `https://${profile.customDomain}#booking-section`
     : `${window.location.origin}/book/${barber?.uid}`;
@@ -116,7 +117,7 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
     } finally {
       setLoading(false);
     }
-  }, [barber?.uid, weekOffset]);
+  }, [barber?.uid, weekOffset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -132,9 +133,12 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
         return;
       }
       await addDoc(collection(db, "slots"), {
-        date: dateStr, time,
-        barberId: barber.uid, shopId: barber.uid,
-        isBooked: false, status: "open",
+        date:      dateStr,
+        time,
+        barberId:  barber.uid,
+        shopId:    barber.uid,
+        isBooked:  false,
+        status:    "open",
         createdAt: serverTimestamp(),
       });
       setToast({ type: "success", msg: `Slot added: ${dateStr} at ${time}` });
@@ -160,9 +164,12 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
         const dateStr = fmt(d);
         if (!slots.find(s => s.date === dateStr && s.time === selectedTime)) {
           adds.push(addDoc(collection(db, "slots"), {
-            date: dateStr, time: selectedTime,
-            barberId: barber.uid, shopId: barber.uid,
-            isBooked: false, status: "open",
+            date:      dateStr,
+            time:      selectedTime,
+            barberId:  barber.uid,
+            shopId:    barber.uid,
+            isBooked:  false,
+            status:    "open",
             createdAt: serverTimestamp(),
           }));
         }
@@ -207,25 +214,24 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
     try {
       // 1. Write booking to Firestore
       await addDoc(collection(db, "bookings"), {
-        barberId:     barber.uid,
-        shopId:       barber.uid,
-        slotId:       manualSlot.id,
-        date:         manualSlot.date,
-        time:         manualSlot.time,
-        customerName: manualName,
-        customerEmail:manualEmail,
-        status:       "confirmed",
-        createdAt:    serverTimestamp(),
+        barberId:      barber.uid,
+        shopId:        barber.uid,
+        slotId:        manualSlot.id,
+        date:          manualSlot.date,
+        time:          manualSlot.time,
+        customerName:  manualName,
+        customerEmail: manualEmail,
+        status:        "confirmed",
+        createdAt:     serverTimestamp(),
       });
 
       // 2. Mark slot as booked
-      const { updateDoc: update } = await import("firebase/firestore");
-      await update(doc(db, "slots", manualSlot.id), {
+      await updateDoc(doc(db, "slots", manualSlot.id), {
         isBooked: true,
         status:   "booked",
       });
 
-      // 3. Send confirmation email with .ics attachment
+      // 3. Send confirmation email with .ics attachment via Cloud Function
       const sendConfirmation = httpsCallable(functions, "sendBookingConfirmation");
       await sendConfirmation({
         clientEmail:  manualEmail,
@@ -282,29 +288,35 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
 
       {/* ── Manual booking modal ── */}
       {manualOpen && manualSlot && (
-        <Box sx={{
-          position: "fixed", inset: 0, zIndex: 9999,
-          bgcolor: "rgba(0,0,0,0.5)",
-          display: "flex", alignItems: "center", justifyContent: "center", p: 2,
-        }}
+        <Box
+          sx={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            bgcolor: "rgba(0,0,0,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center", p: 2,
+          }}
           onClick={() => setManualOpen(false)}
         >
           <Paper
             sx={{ p: 4, borderRadius: 3, maxWidth: 420, width: "100%" }}
             onClick={e => e.stopPropagation()}
           >
-            <Typography variant="h6" fontWeight={800} mb={0.5}>Manual Booking</Typography>
+            <Typography variant="h6" fontWeight={800} mb={0.5}>
+              Manual Booking
+            </Typography>
             <Typography variant="body2" color="text.secondary" mb={3}>
-              {manualSlot.date} at {manualSlot.time} — client will receive a confirmation email with calendar invite.
+              {manualSlot.date} at {manualSlot.time} — client will receive a confirmation email
+              with a calendar invite (.ics).
             </Typography>
             <Stack spacing={2}>
               <TextField
                 fullWidth size="small" label="Client Name"
-                value={manualName} onChange={e => setManualName(e.target.value)}
+                value={manualName}
+                onChange={e => setManualName(e.target.value)}
               />
               <TextField
                 fullWidth size="small" label="Client Email" type="email"
-                value={manualEmail} onChange={e => setManualEmail(e.target.value)}
+                value={manualEmail}
+                onChange={e => setManualEmail(e.target.value)}
               />
               <Button
                 fullWidth variant="contained"
@@ -397,14 +409,16 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
           <Grid item xs={12} sm={3}>
             <TextField
               fullWidth size="small" type="date" label="Date"
-              value={bulkDate} onChange={e => setBulkDate(e.target.value)}
+              value={bulkDate}
+              onChange={e => setBulkDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
           <Grid item xs={12} sm={3}>
             <TextField
               fullWidth size="small" select label="Time"
-              value={selectedTime} onChange={e => setSelectedTime(e.target.value)}
+              value={selectedTime}
+              onChange={e => setSelectedTime(e.target.value)}
               SelectProps={{ native: true }}
             >
               <option value="">Select time</option>
@@ -414,7 +428,8 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
           <Grid item xs={12} sm={3}>
             <TextField
               fullWidth size="small" select label="Repeat"
-              value={bulkRepeat} onChange={e => setBulkRepeat(e.target.value)}
+              value={bulkRepeat}
+              onChange={e => setBulkRepeat(e.target.value)}
               SelectProps={{ native: true }}
             >
               <option value="none">No repeat</option>
@@ -450,7 +465,9 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
 
       {/* ── Week grid ── */}
       {loading ? (
-        <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
+        <Box display="flex" justifyContent="center" py={6}>
+          <CircularProgress />
+        </Box>
       ) : (
         <Grid container spacing={1.5}>
           {weekDates.map((date) => {
@@ -458,26 +475,28 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
             const daySlots = getSlotsForDate(dateStr);
             const isToday  = dateStr === fmt(new Date());
 
-            const filtered = filterMode === "available"
-              ? daySlots.filter(s => !s.isBooked)
-              : filterMode === "booked"
-              ? daySlots.filter(s =>  s.isBooked)
-              : daySlots;
+            const filtered =
+              filterMode === "available" ? daySlots.filter(s => !s.isBooked) :
+              filterMode === "booked"    ? daySlots.filter(s =>  s.isBooked) :
+              daySlots;
 
             return (
               <Grid item xs={12} sm={6} md={12 / 7} key={dateStr}>
-                <Paper sx={{
-                  p: 1.5, borderRadius: 3, minHeight: 180,
-                  border: isToday ? `2px solid ${brandColor}` : "1px solid #eee",
-                  bgcolor: isToday ? `${brandColor}08` : "#fff",
-                }}>
+                <Paper
+                  sx={{
+                    p: 1.5, borderRadius: 3, minHeight: 180,
+                    border: isToday ? `2px solid ${brandColor}` : "1px solid #eee",
+                    bgcolor: isToday ? `${brandColor}08` : "#fff",
+                  }}
+                >
                   {/* Day header */}
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
                     <Box>
                       <Typography fontSize={11} fontWeight={800} color="text.secondary" textTransform="uppercase">
                         {DAYS[date.getDay()]}
                       </Typography>
-                      <Typography fontSize={18} fontWeight={900} lineHeight={1}
+                      <Typography
+                        fontSize={18} fontWeight={900} lineHeight={1}
                         style={{ color: isToday ? brandColor : "#111" }}
                       >
                         {date.getDate()}
@@ -535,7 +554,7 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
                                   color:   slot.isBooked ? "#7c5700" : "#166534",
                                 }}
                               />
-                              {/* Book manually button on free slots */}
+                              {/* Manual book button — free slots only */}
                               {!slot.isBooked && (
                                 <Tooltip title="Book manually & email client">
                                   <IconButton
@@ -547,7 +566,7 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
                                   </IconButton>
                                 </Tooltip>
                               )}
-                              {/* Delete button on free slots */}
+                              {/* Delete button — free slots only */}
                               {!slot.isBooked && (
                                 <Tooltip title="Remove slot">
                                   <IconButton
@@ -566,7 +585,7 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
                     )}
                   </Box>
 
-                  {/* Quick-add button for this day */}
+                  {/* Quick-add button for this specific day */}
                   {selectedTime && (
                     <Button
                       fullWidth size="small"
@@ -596,10 +615,26 @@ export default function CalendarSyncTab({ barber, profile, brandColor = "#C9A84C
         </Typography>
         <Grid container spacing={2}>
           {[
-            { icon: "🔗", title: "Share your link",    desc: "Copy your booking link above and share it on Instagram, WhatsApp, or your website." },
-            { icon: "📅", title: "Client picks a slot", desc: "They see only your available (free) slots and choose one that works for them." },
-            { icon: "✅", title: "Slot is confirmed",   desc: "The slot is marked as booked in your calendar and disappears from public view." },
-            { icon: "📧", title: "Email confirmation",  desc: "Client receives a confirmation email with the time, date, and an .ics calendar file to add to their calendar." },
+            {
+              icon: "🔗",
+              title: "Share your link",
+              desc:  "Copy your booking link above and share it on Instagram, WhatsApp, or your website.",
+            },
+            {
+              icon: "📅",
+              title: "Client picks a slot",
+              desc:  "They see only your available (free) slots and choose one that works for them.",
+            },
+            {
+              icon: "✅",
+              title: "Slot is confirmed",
+              desc:  "The slot is marked as booked in your calendar and disappears from public view.",
+            },
+            {
+              icon: "📧",
+              title: "Email confirmation",
+              desc:  "Client receives a confirmation email with the time, date, and an .ics calendar file to add to their calendar.",
+            },
           ].map((item, i) => (
             <Grid item xs={12} sm={6} md={3} key={i}>
               <Box sx={{ p: 2, bgcolor: "#fff", borderRadius: 2, border: "1px solid #eee", height: "100%" }}>

@@ -18,8 +18,8 @@ import {
   collection, getDocs, query, where,
   addDoc, deleteDoc, doc, updateDoc, serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../../../firebase/config";
-import { addSlot, deleteSlot } from "../../../firebase/firestore";
+import { db } from "../firebase/config";
+import { addSlot, deleteSlot } from "../firebase/firestore";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

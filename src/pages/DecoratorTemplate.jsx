@@ -1,279 +1,466 @@
-import React, { useState, useEffect } from 'react'; // Added useEffect
-import { 
-  Phone, Mail, MapPin, Clock, Star, ChevronLeft, ChevronRight, 
-  CheckCircle2, Menu, X 
-} from 'lucide-react';
-// Required imports for the Footer and Dialog components
+import React, { useState, useEffect } from 'react';
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase/config";
+import { Star, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { 
   Box, Typography, Container, Stack, Link, Divider, 
-  Dialog, DialogTitle, DialogContent, DialogActions, Button 
+  Dialog, DialogTitle, DialogContent, DialogActions, Button,
+  Grid, Paper, Avatar, IconButton
 } from "@mui/material";
+import { TextField } from '@mui/material';
+import RateReviewIcon from '@mui/icons-material/RateReview';
+
+/* ─── Global style injection ─────────────────────────────── */
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cream:   #faf8f5;
+      --sand:    #f0ebe2;
+      --stone:   #e8e0d5;
+      --ink:     #1c1917;
+      --ink-mid: #44403c;
+      --ink-soft:#78716c;
+      --gold:    #b5924c;
+      --gold-lt: #d4af6e;
+    }
+    html { scroll-behavior: smooth; }
+    body { background: var(--cream); }
+    .dt-page { font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--cream); overflow-x: hidden; }
+    .dt-nav {
+      position: fixed; top: 0; width: 100%; z-index: 100;
+      background: rgba(250,248,245,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--stone);
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 2.5rem; height: 72px;
+    }
+    .dt-nav-brand { display: flex; align-items: center; gap: 12px; }
+    .dt-nav-logo {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: var(--sand); border: 1.5px solid var(--stone);
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .dt-nav-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.2rem; color: var(--ink); letter-spacing: 0.01em; }
+    .dt-nav-links { display: flex; gap: 2rem; }
+    .dt-nav-links a {
+      font-size: 0.875rem; font-weight: 500; color: var(--ink-mid); text-decoration: none;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .dt-nav-links a:hover { color: var(--ink); }
+    .dt-nav-cta {
+      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.65rem 1.6rem; border-radius: 2px; text-decoration: none; color: #fff;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .dt-nav-cta:hover { opacity: 0.88; transform: translateY(-1px); }
+    .dt-hero {
+      position: relative; height: 100vh; display: flex; align-items: flex-end;
+      justify-content: flex-start; overflow: hidden; padding: 0 0 6rem 6rem;
+    }
+    .dt-hero-bg { position: absolute; inset: 0; }
+    .dt-hero-bg img { width: 100%; height: 100%; object-fit: cover; }
+    .dt-hero-bg::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(120deg, rgba(28,25,23,0.75) 0%, rgba(28,25,23,0.3) 60%, transparent 100%);
+    }
+    .dt-hero-content { position: relative; z-index: 2; max-width: 680px; }
+    .dt-hero-eyebrow {
+      display: inline-block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.2em;
+      text-transform: uppercase; color: var(--gold-lt); margin-bottom: 1.25rem;
+      padding: 0.35rem 0; border-bottom: 1px solid var(--gold);
+    }
+    .dt-hero h1 {
+      font-family: 'Playfair Display', serif; font-size: clamp(2.8rem, 6vw, 5rem);
+      font-weight: 900; color: #fff; line-height: 1.1; margin-bottom: 1.5rem; letter-spacing: -0.01em;
+    }
+    .dt-hero-accent { color: var(--gold-lt); font-style: italic; }
+    .dt-hero-sub {
+      font-size: 1.05rem; color: rgba(255,255,255,0.8); font-weight: 300;
+      line-height: 1.7; margin-bottom: 2.5rem; max-width: 480px;
+    }
+    .dt-hero-actions { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+    .dt-hero-btn {
+      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 1rem 2.5rem; border-radius: 2px; border: none; cursor: pointer;
+      color: #fff; transition: opacity 0.2s, transform 0.15s;
+    }
+    .dt-hero-btn:hover { opacity: 0.88; transform: translateY(-2px); }
+    .dt-hero-badge {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.08); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.18); border-radius: 2px;
+      padding: 0.75rem 1.25rem;
+    }
+    .dt-hero-badge span { font-size: 0.8rem; color: rgba(255,255,255,0.9); font-weight: 500; }
+    .dt-section-label {
+      display: block; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.22em;
+      text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.75rem;
+    }
+    .dt-section-title {
+      font-family: 'Playfair Display', serif; font-size: clamp(2rem, 4vw, 2.8rem);
+      font-weight: 700; color: var(--ink); line-height: 1.2;
+    }
+    .dt-underline {
+      width: 48px; height: 3px; border-radius: 2px; margin-top: 1.25rem;
+    }
+    .dt-about {
+      padding: 7rem 6rem;
+      display: grid; grid-template-columns: 1fr 1.2fr; gap: 5rem; align-items: center;
+      background: var(--cream);
+    }
+    .dt-about-text { font-size: 1.1rem; color: var(--ink-mid); line-height: 1.85; font-weight: 300; margin-top: 1.5rem; }
+    .dt-about-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .dt-stat {
+      background: var(--sand); border: 1px solid var(--stone); border-radius: 4px;
+      padding: 1.75rem 1.5rem;
+    }
+    .dt-stat-num { font-family: 'Playfair Display', serif; font-size: 2.5rem; font-weight: 900; color: var(--ink); line-height: 1; }
+    .dt-stat-label { font-size: 0.78rem; color: var(--ink-soft); font-weight: 500; margin-top: 0.35rem; letter-spacing: 0.06em; }
+    .dt-services {
+      padding: 7rem 6rem; background: var(--sand);
+    }
+    .dt-services-inner { display: grid; grid-template-columns: 1.1fr 1fr; gap: 5rem; align-items: center; max-width: 1200px; margin: 0 auto; }
+    .dt-services-header { margin-bottom: 3rem; }
+    .dt-service-card { background: var(--cream); border: 1px solid var(--stone); border-radius: 4px; padding: 2.5rem; }
+    .dt-service-item {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0.85rem 0; border-bottom: 1px solid var(--stone);
+      font-size: 1rem; font-weight: 400; color: var(--ink-mid); letter-spacing: 0.01em;
+    }
+    .dt-service-item:last-of-type { border-bottom: none; }
+    .dt-service-btn {
+      display: block; width: 100%; margin-top: 2rem; border: none; cursor: pointer;
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 1rem; border-radius: 2px; color: #fff; transition: opacity 0.2s;
+    }
+    .dt-service-btn:hover { opacity: 0.88; }
+    .dt-services-img { border-radius: 4px; overflow: hidden; box-shadow: 0 24px 64px rgba(28,25,23,0.15); }
+    .dt-services-img img { width: 100%; height: 480px; object-fit: cover; display: block; }
+    .dt-portfolio { padding: 7rem 6rem; background: var(--cream); }
+    .dt-portfolio-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3rem; max-width: 1200px; margin-left: auto; margin-right: auto; }
+    .dt-portfolio-sub { font-size: 0.9rem; color: var(--ink-soft); max-width: 360px; text-align: right; line-height: 1.6; }
+    .dt-portfolio-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
+    .dt-portfolio-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); text-align: center; margin-top: 0.75rem; }
+    .dt-reviews { padding: 7rem 6rem; background: var(--sand); }
+    .dt-reviews-header { text-align: center; margin-bottom: 4rem; }
+    .dt-review-card {
+      background: var(--cream); border: 1px solid var(--stone);
+      border-radius: 4px; padding: 2.25rem;
+      display: flex; flex-direction: column; gap: 1.25rem;
+      max-width: 600px; margin: 0 auto;
+    }
+    .dt-review-quote { font-size: 2.5rem; color: var(--stone); line-height: 1; font-family: 'Playfair Display', serif; }
+    .dt-review-text { font-size: 1.1rem; color: var(--ink-mid); line-height: 1.75; font-weight: 300; }
+    .dt-review-divider { height: 1px; background: var(--stone); }
+    .dt-review-footer { display: flex; align-items: center; gap: 1rem; }
+    .dt-review-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--sand); border: 1.5px solid var(--stone);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 1rem; color: var(--ink); flex-shrink: 0;
+    }
+    .dt-review-name { font-weight: 600; font-size: 0.9rem; color: var(--ink); }
+    .dt-review-verified { font-size: 0.72rem; color: var(--ink-soft); margin-top: 2px; letter-spacing: 0.04em; }
+    .dt-review-cta { text-align: center; margin-top: 4rem; }
+    .dt-contact { padding: 7rem 6rem; background: var(--ink); }
+    .dt-contact-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; max-width: 1100px; margin: 0 auto; align-items: start; }
+    .dt-contact .dt-section-label { color: var(--gold); }
+    .dt-contact .dt-section-title { color: #fff; }
+    .dt-contact-sub { font-size: 0.95rem; color: rgba(255,255,255,0.5); line-height: 1.75; margin-top: 1.25rem; font-weight: 300; }
+    .dt-contact-perks { margin-top: 2.5rem; display: flex; flex-direction: column; gap: 1rem; }
+    .dt-contact-perk { display: flex; align-items: center; gap: 0.75rem; font-size: 0.88rem; color: rgba(255,255,255,0.65); font-weight: 400; }
+    .dt-contact-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .dt-form { display: flex; flex-direction: column; gap: 1rem; }
+    .dt-input {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 3px; padding: 1rem 1.25rem; color: #fff; font-size: 0.9rem;
+      font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s;
+      width: 100%;
+    }
+    .dt-input::placeholder { color: rgba(255,255,255,0.3); }
+    .dt-input:focus { border-color: rgba(255,255,255,0.4); }
+    .dt-textarea { resize: vertical; min-height: 120px; }
+    .dt-form-btn {
+      border: none; cursor: pointer; color: #fff;
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 1.1rem; border-radius: 3px; margin-top: 0.5rem;
+      transition: opacity 0.2s, transform 0.15s; font-family: 'DM Sans', sans-serif;
+    }
+    .dt-form-btn:hover { opacity: 0.88; transform: translateY(-2px); }
+    .dt-footer { background: #111; border-top: 1px solid rgba(255,255,255,0.05); padding: 3rem 6rem; }
+    .dt-footer-inner { display: flex; justify-content: space-between; align-items: center; }
+    .dt-footer-brand { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; }
+    .dt-footer-links { display: flex; gap: 2rem; }
+    .dt-footer-link {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(255,255,255,0.35); cursor: pointer; text-decoration: none;
+      transition: color 0.2s;
+    }
+    .dt-footer-copy { font-size: 0.72rem; color: rgba(255,255,255,0.2); margin-top: 2rem; text-align: center; letter-spacing: 0.06em; }
+    .ba-slider { position: relative; width: 100%; aspect-ratio: 4/5; border-radius: 4px; overflow: hidden; cursor: col-resize; border: 1px solid var(--stone); }
+    .ba-handle { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; z-index: 10; }
+    .ba-handle-knob {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 34px; height: 34px; background: #fff; border-radius: 50%;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center;
+    }
+    .ba-label {
+      position: absolute; bottom: 12px; font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase; color: #fff; z-index: 10;
+      background: rgba(0,0,0,0.45); padding: 4px 10px; border-radius: 2px;
+    }
+    .ba-label-before { left: 14px; }
+    .ba-label-after { right: 14px; }
+    @media (max-width: 900px) {
+      .dt-nav-links, .dt-nav-cta { display: none; }
+      .dt-hero { padding: 0 2rem 4rem; }
+      .dt-about, .dt-services-inner, .dt-contact-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+      .dt-about, .dt-services, .dt-portfolio, .dt-reviews, .dt-contact, .dt-footer { padding: 4rem 1.5rem; }
+      .dt-portfolio-grid { grid-template-columns: 1fr; }
+      .dt-portfolio-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+      .dt-portfolio-sub { text-align: left; }
+      .dt-footer-inner { flex-direction: column; gap: 1.5rem; text-align: center; }
+    }
+  `}</style>
+);
 
 const BeforeAfterSlider = ({ before, after }) => {
   const [sliderPos, setSliderPos] = useState(50);
-
   const handleMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.pageX - rect.left) / rect.width) * 100;
     setSliderPos(Math.max(0, Math.min(100, x)));
   };
-
   return (
-    <div 
-      className="relative w-full aspect-square md:aspect-video rounded-xl overflow-hidden cursor-col-resize shadow-lg border-4 border-white"
-      onMouseMove={handleMove}
-      onTouchMove={(e) => handleMove(e.touches[0])}
-    >
-      <div className="absolute inset-0 w-full h-full">
-        <img src={after} alt="After" className="w-full h-full object-cover" />
-      </div>
-      <div 
-        className="absolute inset-0 w-full h-full overflow-hidden" 
-        style={{ width: `${sliderPos}%` }}
-      >
-        <img src={before} alt="Before" className="w-full h-[100%] max-w-none object-cover" style={{ width: '100vw' }} />
-      </div>
-      <div 
-        className="absolute top-0 bottom-0 w-1 bg-white shadow-md z-10"
-        style={{ left: `${sliderPos}%` }}
-      >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center">
-          <div className="flex gap-0.5">
-            <div className="w-1 h-3 bg-gray-400 rounded-full"></div>
-            <div className="w-1 h-3 bg-gray-400 rounded-full"></div>
+    <div className="ba-slider" onMouseMove={handleMove} onTouchMove={(e) => handleMove(e.touches[0])}>
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <img src={after} alt="After" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', width: `${sliderPos}%` }}>
+          <img src={before} alt="Before" style={{ width: '100vw', height: '100%', maxWidth: 'none', objectFit: 'cover' }} />
+        </div>
+        <span className="ba-label ba-label-before">Before</span>
+        <span className="ba-label ba-label-after">After</span>
+        <div className="ba-handle" style={{ left: `${sliderPos}%` }}>
+          <div className="ba-handle-knob">
+            <div style={{ display: 'flex', gap: '3px' }}>
+              <div style={{ width: '2px', height: '12px', background: '#9ca3af', borderRadius: '2px' }}></div>
+              <div style={{ width: '2px', height: '12px', background: '#9ca3af', borderRadius: '2px' }}></div>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="absolute bottom-4 left-4 bg-black/50 text-white text-xs px-2 py-1 rounded uppercase tracking-widest">Before</div>
-      <div className="absolute bottom-4 right-4 bg-white/50 text-black text-xs px-2 py-1 rounded uppercase tracking-widest">After</div>
     </div>
   );
 };
 
-const InstagramIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-  </svg>
-);
-
 const DecoratorTemplate = ({ tenantData }) => {
-  // Force scroll to top on mount
+  const [reviews, setReviews] = useState([]);
+  const [modalContent, setModalContent] = useState(null);
+  const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
+
   useEffect(() => {
     window.scrollTo(0, 0);
+    async function fetchReviews() {
+      try {
+        const reviewsRef = collection(db, "barbers", "default", "reviews");
+        const snapshot = await getDocs(reviewsRef);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setReviews(data);
+      } catch (err) {
+        console.error("Error fetching reviews:", err);
+      }
+    }
+    fetchReviews();
   }, []);
 
-  const brandColor = tenantData?.brandColor || "#6366f1";
+  const nextReview = () => setCurrentReviewIndex((prev) => (prev + 1) % reviews.length);
+  const prevReview = () => setCurrentReviewIndex((prev) => (prev - 1 + reviews.length) % reviews.length);
+
+  const brandColor = tenantData?.brandColor || "#b5924c";
   const businessName = tenantData?.businessName || "Amazon Clean";
-  const logo = tenantData?.logo; 
-
-  const reviews = [
-    { name: "David R.", text: "Excellent Painting Service. Professional, reliable, and great attention to detail." },
-    { name: "Sarah M.", text: "Transformed our living room. Clean, tidy, and finished exactly on time!" },
-    { name: "James L.", text: "The color consultation was a game changer. Very happy with the results." },
-    { name: "Emma T.", text: "High quality finish and very respectful of my property. Would hire again." },
-    { name: "Robert W.", text: "Fair pricing and top-tier workmanship. Highly recommended for any home." }
-  ];
-
-  const [currentReview, setCurrentReview] = useState(0);
-  const [modalContent, setModalContent] = useState(null);
+  const logo = tenantData?.logo;
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden">
-      
-      {/* --- NAVIGATION --- */}
-      <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-md z-50 shadow-sm px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-             {logo && <img src={logo} alt="Logo" className="w-8 h-8 object-contain" />}
+    <>
+      <GlobalStyles />
+      <div className="dt-page">
+        <nav className="dt-nav">
+          <div className="dt-nav-brand">
+            <div className="dt-nav-logo">
+              {logo && <img src={logo} alt="Logo" style={{ width: 28, height: 28, objectFit: 'contain' }} />}
+            </div>
+            <span className="dt-nav-name">{businessName}</span>
           </div>
-          <span className="font-bold text-xl tracking-tight">{businessName}</span>
-        </div>
-        
-        <div className="hidden md:flex gap-8 font-medium text-slate-600">
-          <a href="#home" className="hover:text-slate-900 transition">Home</a>
-          <a href="#about" className="hover:text-slate-900 transition">About</a>
-          <a href="#portfolio" className="hover:text-slate-900 transition">Portfolio</a>
-          <a href="#reviews" className="hover:text-slate-900 transition">Reviews</a>
-          <a href="#services" className="hover:text-slate-900 transition">Services</a>
-          <a href="#contact" className="hover:text-slate-900 transition">Contact</a>
-        </div>
+          <div className="dt-nav-links">
+            {["home","about","portfolio","reviews","services","contact"].map(s => (
+              <a key={s} href={`#${s}`}>{s}</a>
+            ))}
+          </div>
+          <a href="#contact" className="dt-nav-cta" style={{ backgroundColor: brandColor }}>Free Quote</a>
+        </nav>
 
-        <a href="#contact" 
-           style={{ backgroundColor: brandColor }}
-           className="hidden md:block text-white px-5 py-2.5 rounded-full font-bold shadow-md hover:scale-105 transition active:scale-95">
-          Free Quote
-        </a>
-      </nav>
-
-      {/* --- HERO SECTION --- */}
-      <header id="home" className="relative h-screen flex items-center justify-center pt-20 overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img 
-            src="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=2070&auto=format&fit=crop" 
-            className="w-full h-full object-cover"
-            alt="Background"
-          />
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"></div>
-        </div>
-
-        <div className="relative z-10 text-center px-6 max-w-4xl">
-          <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 drop-shadow-lg">
-            London's Home <br /> Painters, <span style={{ color: brandColor }}>Done Right</span>
-          </h1>
-          <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto font-medium">
-            Fully insured. Results guaranteed. Professional painting and decorating services tailored to your home.
-          </p>
-          
-          <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
-            <button 
-              style={{ backgroundColor: brandColor }}
-              className="w-full md:w-auto text-white px-10 py-5 rounded-full text-xl font-bold shadow-2xl hover:brightness-110 transition active:scale-95"
-            >
-              Get Your Free Quote
-            </button>
-            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
-              <div className="flex text-yellow-400">
-                {[...Array(5)].map((_, i) => <Star key={i} size={18} fill="currentColor" />)}
+        <header id="home" className="dt-hero">
+          <div className="dt-hero-bg"><img src="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=2070&auto=format&fit=crop" alt="Background" /></div>
+          <div className="dt-hero-content">
+            <span className="dt-hero-eyebrow">London's Trusted Decorators</span>
+            <h1>Home Painting,<br /><span className="dt-hero-accent">Done Right.</span></h1>
+            <p className="dt-hero-sub">Fully insured. Results guaranteed. Professional painting and decorating services tailored to your home.</p>
+            <div className="dt-hero-actions">
+              <button className="dt-hero-btn" style={{ backgroundColor: brandColor }}>Get Your Free Quote</button>
+              <div className="dt-hero-badge">
+                <div style={{ display: 'flex', color: '#f59e0b' }}>{[...Array(5)].map((_, i) => <Star key={i} size={15} fill="currentColor" />)}</div>
+                <span>Rated by 30+ Homeowners</span>
               </div>
-              <span className="text-white font-bold">Rated by 30+ Homeowners</span>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* --- SECTIONS --- */}
-      <section id="about" className="py-24 px-6 bg-slate-50">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl font-extrabold mb-8">About My Work</h2>
-          <p className="text-xl text-slate-600 leading-relaxed">
-            With over 10 years of experience in high-end residential painting and decorating, I pride myself on meticulous prep work and a flawless finish. Whether it's a single feature wall or a complete property refresh, I treat every home as if it were my own.
-          </p>
-        </div>
-      </section>
+        <section id="about" className="dt-about">
+          <div>
+            <span className="dt-section-label">Who We Are</span>
+            <h2 className="dt-section-title">Craft, care &amp; a flawless finish</h2>
+            <div className="dt-underline" style={{ backgroundColor: brandColor }}></div>
+            <p className="dt-about-text">With over 10 years of experience in high-end residential painting and decorating, I pride myself on meticulous prep work and a flawless finish. Whether it's a single feature wall or a complete property refresh, I treat every home as if it were my own.</p>
+          </div>
+          <div className="dt-about-stats">
+            {[{ num: "10+", label: "Years of experience" }, { num: "200+", label: "Projects completed" }, { num: "30+", label: "Five-star reviews" }, { num: "100%", label: "Satisfaction guaranteed" }].map((s, i) => (
+              <div className="dt-stat" key={i}>
+                <div className="dt-stat-num" style={{ color: brandColor }}>{s.num}</div>
+                <div className="dt-stat-label">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-      {/* --- SERVICES SECTION --- */}
-      <section id="services" className="py-24 px-6" style={{ backgroundColor: `${brandColor}10` }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-extrabold mb-4">What I Offer</h2>
-            <div className="w-24 h-1.5 mx-auto rounded-full" style={{ backgroundColor: brandColor }}></div>
+        <section id="services" className="dt-services">
+          <div className="dt-services-inner">
+            <div>
+              <div className="dt-services-header">
+                <span className="dt-section-label">Our Services</span>
+                <h2 className="dt-section-title">Everything your home needs</h2>
+                <div className="dt-underline" style={{ backgroundColor: brandColor }}></div>
+              </div>
+              <div className="dt-service-card">
+                <ul style={{ listStyle: 'none' }}>
+                  {["Room repaints", "Kitchen cabinet refreshes", "Stairs (including repairs)", "Ceilings only", "Feature walls", "Woodwork & trim", "Colour consultation included"].map((item, i) => (
+                    <li key={i} className="dt-service-item">
+                      <CheckCircle2 size={18} style={{ color: brandColor, flexShrink: 0 }} />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <button className="dt-service-btn" style={{ backgroundColor: brandColor }}>Get Your Free Quote</button>
+              </div>
+            </div>
+            <div className="dt-services-img"><img src="https://images.unsplash.com/photo-1562619425-c307bb83bc42?q=80&w=1935&auto=format&fit=crop" alt="Painting" /></div>
+          </div>
+        </section>
+
+        <section id="portfolio" className="dt-portfolio">
+          <div className="dt-portfolio-header">
+            <div>
+              <span className="dt-section-label">Portfolio</span>
+              <h2 className="dt-section-title">Recent transformations</h2>
+              <div className="dt-underline" style={{ backgroundColor: brandColor }}></div>
+            </div>
+            <p className="dt-portfolio-sub">Drag the slider on each image to reveal the difference a professional finish makes.</p>
+          </div>
+          <div className="dt-portfolio-grid">
+            {[{before: "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2069&auto=format&fit=crop", after: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=2070&auto=format&fit=crop", label: "Living Room — SW London"},
+              {before: "https://images.unsplash.com/photo-1505873242700-f289a29e1e0f?q=80&w=2076&auto=format&fit=crop", after: "https://images.unsplash.com/photo-1556912177-f547c184827a?q=80&w=2070&auto=format&fit=crop", label: "Kitchen Refresh — North London"},
+              {before: "https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=2074&auto=format&fit=crop", after: "https://images.unsplash.com/photo-1527359353448-615621ad9d20?q=80&w=2069&auto=format&fit=crop", label: "Full Interior — East London"}].map((p, i) => (
+                <div key={i}>
+                  <BeforeAfterSlider before={p.before} after={p.after} />
+                  <p className="dt-portfolio-label">{p.label}</p>
+                </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="reviews" className="dt-reviews">
+          <div className="dt-reviews-header">
+            <span className="dt-section-label">Testimonials</span>
+            <h2 className="dt-section-title">What clients say</h2>
+            <div className="dt-underline" style={{ backgroundColor: brandColor, margin: '1.25rem auto 0' }}></div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
-              <ul className="space-y-4">
-                {["Room repaints", "Kitchen cabinet refreshes", "Stairs (including repairs)", "Ceilings only", "Feature walls", "Woodwork & trim", "Color consultation included"].map((item, i) => (
-                  <li key={i} className="flex items-center gap-4 text-lg font-medium text-slate-700">
-                    <CheckCircle2 style={{ color: brandColor }} />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <button style={{ backgroundColor: brandColor }} className="w-full mt-10 text-white py-4 rounded-2xl font-bold shadow-lg hover:brightness-110 transition">
-                Get Your Free Quote
+          <Container maxWidth="md">
+            {reviews.length > 0 ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <IconButton onClick={prevReview}><ChevronLeft /></IconButton>
+                <Box sx={{ flex: 1 }}>
+                  <div className="dt-review-card">
+                    <div style={{ display: 'flex', color: brandColor }}>{[...Array(reviews[currentReviewIndex].rating || 5)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}</div>
+                    <div className="dt-review-quote">"</div>
+                    <p className="dt-review-text">{reviews[currentReviewIndex].comment}</p>
+                    <div className="dt-review-divider"></div>
+                    <div className="dt-review-footer">
+                      <div className="dt-review-avatar">{reviews[currentReviewIndex].customerName?.charAt(0) || 'U'}</div>
+                      <div>
+                        <div className="dt-review-name">{reviews[currentReviewIndex].customerName || "Anonymous"}</div>
+                        <div className="dt-review-verified">Verified Customer</div>
+                      </div>
+                    </div>
+                  </div>
+                </Box>
+                <IconButton onClick={nextReview}><ChevronRight /></IconButton>
+              </Box>
+            ) : (
+              <p style={{ textAlign: 'center', color: 'var(--ink-soft)' }}>No reviews yet.</p>
+            )}
+
+            <div className="dt-review-cta">
+              <button onClick={() => window.location.href = `/review/${tenantData?.id || 'default'}`} className="dt-form-btn" style={{ background: 'transparent', border: '2px solid var(--ink)', color: 'var(--ink)' }}>
+                <RateReviewIcon style={{ fontSize: 16, marginRight: 8 }} /> Leave a Review
               </button>
             </div>
-            <div className="rounded-3xl overflow-hidden shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-500">
-              <img src="https://images.unsplash.com/photo-1562619425-c307bb83bc42?q=80&w=1935&auto=format&fit=crop" alt="Painting" />
-            </div>
-          </div>
-        </div>
-      </section>
+          </Container>
+        </section>
 
-      {/* --- PORTFOLIO --- */}
-      <section id="portfolio" className="py-24 px-6 bg-white">
-        <div className="max-w-7xl mx-auto text-center">
-          <h2 className="text-4xl font-extrabold mb-16">Recent Work</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <BeforeAfterSlider before="https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2069&auto=format&fit=crop" after="https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=2070&auto=format&fit=crop" />
-            <BeforeAfterSlider before="https://images.unsplash.com/photo-1505873242700-f289a29e1e0f?q=80&w=2076&auto=format&fit=crop" after="https://images.unsplash.com/photo-1556912177-f547c184827a?q=80&w=2070&auto=format&fit=crop" />
-            <BeforeAfterSlider before="https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=2074&auto=format&fit=crop" after="https://images.unsplash.com/photo-1527359353448-615621ad9d20?q=80&w=2069&auto=format&fit=crop" />
-          </div>
-        </div>
-      </section>
-
-      {/* --- REVIEWS --- */}
-      <section id="reviews" className="py-24 px-6" style={{ backgroundColor: `${brandColor}05` }}>
-        <div className="max-w-4xl mx-auto">
-           <h2 className="text-4xl font-extrabold text-center mb-16">What Our Customers Say</h2>
-           <div className="bg-white p-10 rounded-[40px] shadow-2xl relative border-t-8 transition-all duration-500" style={{ borderTopColor: brandColor }}>
-              <div className="flex justify-center mb-6 text-yellow-400">
-                {[...Array(5)].map((_, i) => <Star key={i} size={24} fill="currentColor" />)}
+        <section id="contact" className="dt-contact">
+          <div className="dt-contact-inner">
+            <div>
+              <span className="dt-section-label">Get in Touch</span>
+              <h2 className="dt-section-title">Request a free quote</h2>
+              <p className="dt-contact-sub">Tell us about your project and we'll be in touch within 24 hours to discuss your vision and provide a no-obligation quote.</p>
+              <div className="dt-contact-perks">
+                {["No call centres — speak directly with the decorator", "Free, no-obligation quote within 24 hours", "Fully insured and 100% satisfaction guaranteed"].map((p, i) => (
+                  <div key={i} className="dt-contact-perk"><div className="dt-contact-dot" style={{ backgroundColor: brandColor }}></div>{p}</div>
+                ))}
               </div>
-              <p className="text-xl md:text-2xl text-center leading-relaxed text-slate-700 italic mb-8">
-                "{reviews[currentReview].text}"
-              </p>
-              <div className="text-center font-bold text-xl">— {reviews[currentReview].name}</div>
-              
-              <button onClick={() => setCurrentReview(prev => (prev === 0 ? reviews.length - 1 : prev - 1))} className="absolute left-4 top-1/2 p-2 rounded-full bg-slate-100 hover:bg-slate-200"><ChevronLeft /></button>
-              <button onClick={() => setCurrentReview(prev => (prev === reviews.length - 1 ? 0 : prev + 1))} className="absolute right-4 top-1/2 p-2 rounded-full bg-slate-100 hover:bg-slate-200"><ChevronRight /></button>
-           </div>
-        </div>
-      </section>
-
-      {/* --- CONTACT FORM --- */}
-      <section id="contact" className="py-24 px-6 relative">
-        <div className="max-w-2xl mx-auto bg-white border border-slate-100 p-8 md:p-12 rounded-[2rem] shadow-2xl">
-          <div className="text-center mb-10">
-            <h2 className="text-4xl font-extrabold mb-4">Contact Us</h2>
-          </div>
-          <form className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <input type="text" placeholder="First Name" className="w-full p-4 rounded-xl border-2 border-slate-100 outline-none" />
-              <input type="text" placeholder="Last Name" className="w-full p-4 rounded-xl border-2 border-slate-100 outline-none" />
             </div>
-            <input type="tel" placeholder="Phone Number" className="w-full p-4 rounded-xl border-2 border-slate-100 outline-none" />
-            <textarea placeholder="Tell us about your project" rows="4" className="w-full p-4 rounded-xl border-2 border-slate-100 outline-none"></textarea>
-            <button type="submit" style={{ backgroundColor: brandColor }} className="w-full py-5 rounded-2xl text-white font-bold text-xl hover:brightness-110 transition">Request Quote</button>
-          </form>
-        </div>
-      </section>
+            <form className="dt-form" onSubmit={(e) => { e.preventDefault(); alert("Form submitted!"); }}>
+              <input className="dt-input" placeholder="Full Name" required />
+              <input className="dt-input" placeholder="Phone Number" type="tel" required />
+              <textarea className="dt-input dt-textarea" placeholder="Tell me about your project…" />
+              <button type="submit" className="dt-form-btn" style={{ backgroundColor: brandColor }}>Send Request</button>
+            </form>
+          </div>
+        </section>
 
-      {/* --- FOOTER --- */}
-      <Box component="footer" sx={{ py: 8, bgcolor: "#000000", color: "#FFFFFF", mt: 10 }}>
-        <Container maxWidth="lg">
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems="center" spacing={4}>
-            <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
-              {logo && <Box component="img" src={logo} alt="Logo" sx={{ height: 60, mb: 2, mx: { xs: "auto", md: "0" } }} />}
-              <Typography variant="h6" sx={{ fontWeight: 1000, letterSpacing: 2, textTransform: "uppercase", color: brandColor }}>
-                {businessName}
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={4}>
-              <Link onClick={() => setModalContent('privacy')} sx={{ color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: "0.75rem", fontWeight: 800, "&:hover": { color: brandColor } }}>PRIVACY</Link>
-              <Link onClick={() => setModalContent('terms')} sx={{ color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: "0.75rem", fontWeight: 800, "&:hover": { color: brandColor } }}>TERMS</Link>
-            </Stack>
-          </Stack>
-          <Divider sx={{ my: 4, borderColor: "#1A1A1A" }} />
-          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.2)", display: "block", textAlign: "center" }}>
-            © {new Date().getFullYear()} {businessName}. ALL RIGHTS RESERVED.
-          </Typography>
-        </Container>
+        <footer className="dt-footer">
+          <div className="dt-footer-inner">
+            <div className="dt-footer-brand" style={{ color: brandColor }}>{logo && <img src={logo} alt="Logo" style={{ height: 36, marginBottom: 8, display: 'block' }} />}{businessName}</div>
+            <div className="dt-footer-links">
+              <span className="dt-footer-link" onClick={() => setModalContent('privacy')}>Privacy</span>
+              <span className="dt-footer-link" onClick={() => setModalContent('terms')}>Terms</span>
+            </div>
+          </div>
+          <p className="dt-footer-copy">© {new Date().getFullYear()} {businessName}. All rights reserved.</p>
+        </footer>
 
-        <Dialog open={Boolean(modalContent)} onClose={() => setModalContent(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: '#111', color: '#FFF' } }}>
-          <DialogTitle>{modalContent === 'privacy' ? 'PRIVACY POLICY' : 'TERMS & CONDITIONS'}</DialogTitle>
+        <Dialog open={Boolean(modalContent)} onClose={() => setModalContent(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: '#1c1917', color: '#fff', borderRadius: '4px' } }}>
+          <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', fontWeight: 700 }}>{modalContent === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions'}</DialogTitle>
           <DialogContent dividers sx={{ borderColor: '#333' }}>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-              {modalContent === 'privacy' ? `At ${businessName}, we value your privacy and data security.` : `By using ${businessName}, you agree to our standard terms and conditions.`}
-            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)' }}>{modalContent === 'privacy' ? `At ${businessName}, we value your privacy.` : `By using ${businessName}, you agree to our standard terms.`}</Typography>
           </DialogContent>
-          <DialogActions><Button onClick={() => setModalContent(null)} sx={{ color: brandColor }}>CLOSE</Button></DialogActions>
+          <DialogActions><Button onClick={() => setModalContent(null)} sx={{ color: brandColor }}>Close</Button></DialogActions>
         </Dialog>
-      </Box>
-    </div>
+      </div>
+    </>
   );
 };
 

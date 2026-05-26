@@ -22,7 +22,7 @@ import TenantSignup      from "./pages/TenantSignup";
 import CancelBooking     from "./pages/CancelBooking";
 import ReviewPage        from "./pages/ReviewPage"; 
 import PTBookingSite     from "./pages/PTBookingSite";
-import DecoratorTemplate from "./pages/DecoratorTemplate"; // 🌟 ADDED IMPORT
+import DecoratorTemplate from "./pages/DecoratorTemplate";
 
 // Split Nav & Footer imports
 import Nav               from "./components/Nav";
@@ -61,11 +61,27 @@ function AppShell() {
 
   const identifyTenant = useCallback(async () => {
     const path = location.pathname;
-    const shopMatch = matchPath("/shop/:tenantId", path);
-    const ptMatch = matchPath("/pt-booking/:tenantId", path);
-    const barberMatch = matchPath("/barber/:id", path);
+
+    // ── FIX: Dashboard is always the logged-in barber's own view.
+    // Never resolve a tenant for dashboard routes — doing so causes
+    // isAlternativeBookingLayout to fire and strips the nav/shell.
+    if (path.startsWith("/dashboard")) {
+      setIsFetchingTenant(false);
+      return;
+    }
+
+    // ── FIX: Review page handles its own shopId via useParams.
+    // Never resolve a tenant here — if the shop is a decorator/trainer,
+    // isAlternativeBookingLayout would fire and break the review page layout.
+    if (path.startsWith("/review")) {
+      setIsFetchingTenant(false);
+      return;
+    }
+
+    const shopMatch    = matchPath("/shop/:tenantId", path);
+    const ptMatch      = matchPath("/pt-booking/:tenantId", path);
+    const barberMatch  = matchPath("/barber/:id", path);
     const bookingMatch = matchPath("/book/:barberId/*", path);
-    const reviewMatch = matchPath("/review/:shopId", path);
     
     const isAuthPath = matchPath("/login", path) || matchPath("/signup", path);
 
@@ -73,8 +89,7 @@ function AppShell() {
       shopMatch?.params.tenantId || 
       ptMatch?.params.tenantId ||
       barberMatch?.params.id || 
-      bookingMatch?.params.barberId || 
-      reviewMatch?.params.shopId;
+      bookingMatch?.params.barberId;
 
     try {
       if (isAuthPath && tenantBarber) {
@@ -102,7 +117,7 @@ function AppShell() {
       }
 
       if (data) {
-        const isStaff = data.role === 'staff' || data.isStaff;
+        const isStaff      = data.role === 'staff' || data.isStaff;
         const parentShopId = data.shopId;
 
         if (isStaff && parentShopId) {
@@ -111,16 +126,16 @@ function AppShell() {
             setTenantBarber({
               ...data, 
               id: parentShopId, 
-              businessType: shopData.businessType || data.businessType || "barber",
-              businessName: shopData.businessName || shopData.displayName || "Premium Space",
-              businessLogo: shopData.businessLogo || shopData.logoUrl || shopData.logo,
-              brandColor: shopData.brandColor || data.brandColor || "#C9A84C",
-              address: shopData.address || "",
-              phone: shopData.phone || shopData.businessPhone || "",
-              businessEmail: shopData.businessEmail || shopData.email || "",
-              instagramUrl: shopData.instagramUrl || null,
-              facebookUrl: shopData.facebookUrl || null,
-              privacyPolicy: shopData.privacyPolicy || "",
+              businessType:  shopData.businessType  || data.businessType  || "barber",
+              businessName:  shopData.businessName  || shopData.displayName || "Premium Space",
+              businessLogo:  shopData.businessLogo  || shopData.logoUrl    || shopData.logo,
+              brandColor:    shopData.brandColor     || data.brandColor     || "#C9A84C",
+              address:       shopData.address        || "",
+              phone:         shopData.phone          || shopData.businessPhone || "",
+              businessEmail: shopData.businessEmail  || shopData.email     || "",
+              instagramUrl:  shopData.instagramUrl   || null,
+              facebookUrl:   shopData.facebookUrl    || null,
+              privacyPolicy: shopData.privacyPolicy  || "",
               termsConditions: shopData.termsConditions || ""
             });
           }
@@ -129,8 +144,8 @@ function AppShell() {
             ...data,
             businessType: data.businessType || "barber",
             businessName: data.businessName || data.displayName || "Premium Space",
-            businessLogo: data.businessLogo || data.logoUrl || data.logo,
-            brandColor: data.brandColor || "#C9A84C"
+            businessLogo: data.businessLogo || data.logoUrl     || data.logo,
+            brandColor:   data.brandColor   || "#C9A84C"
           });
         }
         lastIdentifiedId.current = targetId || hostname;
@@ -153,7 +168,7 @@ function AppShell() {
     const selectedColor = tenantBarber?.brandColor || "#C9A84C";
     return createTheme({
       palette: {
-        primary: { main: "#1A1A1A" },
+        primary:   { main: "#1A1A1A" },
         secondary: { main: selectedColor },
       },
       shape: { borderRadius: 12 },
@@ -169,7 +184,8 @@ function AppShell() {
     });
   }, [tenantBarber]);
 
-  const isDashboard = location.pathname.startsWith('/dashboard');
+  const isDashboard  = location.pathname.startsWith('/dashboard');
+  const isReviewPath = location.pathname.startsWith('/review');
 
   const computedPageTitle = useMemo(() => {
     if (tenantBarber) {
@@ -186,14 +202,17 @@ function AppShell() {
     );
   }
 
-  const isAlternativeBookingLayout = 
+  // Only apply alternative layout for genuine tenant routes —
+  // never for /dashboard or /review (review has its own standalone layout)
+  const isAlternativeBookingLayout = !isDashboard && !isReviewPath && (
     location.pathname.includes("/pt-booking/") || 
     location.pathname.includes("/decorator/") ||
-    (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber" && !isPlatformDomain);
+    (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber" && !isPlatformDomain)
+  );
 
-  // Helper to choose the right component based on business type
+  // Choose the right landing component based on business type
   const renderTenantHome = (tenant) => {
-    if (tenant.businessType === "trainer") return <PTBookingSite barber={tenant} profile={tenant} />;
+    if (tenant.businessType === "trainer")   return <PTBookingSite barber={tenant} profile={tenant} />;
     if (tenant.businessType === "decorator") return <DecoratorTemplate tenantData={tenant} />;
     return <TenantHome tenant={tenant} />;
   };
@@ -207,7 +226,7 @@ function AppShell() {
 
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         
-        {!isDashboard && !isAlternativeBookingLayout && (
+        {!isDashboard && !isAlternativeBookingLayout && !isReviewPath && (
           tenantBarber ? (
             <TenantNav 
               key={`nav-${location.pathname}`} 
@@ -237,7 +256,7 @@ function AppShell() {
           </Routes>
         </Box>
 
-        {!isDashboard && !isAlternativeBookingLayout && (
+        {!isDashboard && !isAlternativeBookingLayout && !isReviewPath && (
           tenantBarber ? (
             <TenantFooter 
               key={`footer-${location.pathname}`} 

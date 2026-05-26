@@ -13,6 +13,8 @@ import {
   Palette as PaletteIcon,
   Nfc as NfcIcon,
   Language as LanguageIcon,
+  CalendarMonth as CalendarMonthIcon,
+  Receipt as ReceiptIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -44,6 +46,7 @@ import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
 import DesignTab    from "../components/dashboard/tabs/DesignTab";
 import PayTab       from "../components/dashboard/tabs/PayTab";
 import DomainTab    from "../components/dashboard/tabs/DomainTab";
+import InvoiceTab from "../components/dashboard/tabs/InvoiceTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -469,25 +472,32 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
   const brandColor = profile.brandColor || "#C9A84C";
 
+  // Trainer-specific calendar tab — only shown when businessType === "trainer"
+  const isTrainer = profile.businessType === "trainer";
+
   const tabs = [
     { label: "Schedule", icon: <AccessTimeIcon /> },
     { label: "Bookings", icon: <StoreIcon /> },
     { label: "Profile",  icon: <PersonIcon /> },
     { label: "Services", icon: <ListIcon /> },
-    ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }]  : []),
+    ...(userRole.isOwner ? [{ label: "Reviews",  icon: <ReviewsIcon /> }]      : []),
     { label: "Finance",  icon: <PaymentsIcon /> },
-    ...(userRole.isOwner ? [{ label: "Design",  icon: <PaletteIcon /> }]  : []),
-    // Domain tab: owner only AND not inside a tenant dashboard
+    ...(userRole.isOwner ? [{ label: "Design",   icon: <PaletteIcon /> }]      : []),
     ...(userRole.isOwner && !initialTenant ? [{ label: "Domain", icon: <LanguageIcon /> }] : []),
-    { label: "Pay",      icon: <NfcIcon /> },
+    { label: "Invoices", icon: <ReceiptIcon /> },
+   
   ];
 
   // Derive tab indices dynamically based on role so panels always align
-  const IDX_REVIEWS = 4;
-  const IDX_FINANCE = userRole.isOwner ? 5 : 4;
-  const IDX_DESIGN  = 6;  // owner only
-  const IDX_DOMAIN  = 7;  // owner only
-  const IDX_PAY = userRole.isOwner ? (initialTenant ? 7 : 8) : 5;
+  const IDX_REVIEWS  = 4;
+  const IDX_FINANCE  = userRole.isOwner ? 5 : 4;
+  const IDX_DESIGN   = 6;  // owner only
+  const IDX_DOMAIN   = 7;  // owner only, no tenant
+  // Invoices sits after Domain (owner, no tenant), after Design (tenant owner), after Finance (staff)
+  const IDX_INVOICES = userRole.isOwner ? (initialTenant ? 7 : 8) : 5;
+  // Calendar sits after Invoices (trainer only)
+  const IDX_CALENDAR = isTrainer ? IDX_INVOICES + 1 : null;
+  const IDX_PAY      = isTrainer ? IDX_CALENDAR + 1 : IDX_INVOICES + 1;
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (authLoading || (dataLoading && !barber)) {
@@ -626,6 +636,17 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             />
           </TabPanel>
         )}
+
+        {/* ── Invoices ── */}
+        <TabPanel value={tab} index={IDX_INVOICES}>
+          <InvoiceTab
+            barber={barber}
+            profile={profile}
+            brandColor={brandColor}
+          />
+        </TabPanel>
+
+        
 
         {/* ── Pay ── */}
         <TabPanel value={tab} index={IDX_PAY}>

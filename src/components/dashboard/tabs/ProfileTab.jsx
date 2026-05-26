@@ -9,6 +9,7 @@ import {
   Instagram as InstagramIcon,
   Facebook as FacebookIcon,
   Info as InfoIcon,
+  YouTube as YouTubeIcon,
 } from "@mui/icons-material";
 
 // ── TikTok SVG (no MUI icon available) ───────────────────────────────────────
@@ -124,19 +125,18 @@ export default function ProfileTab({
           />
         </Grid>
 
-        {/* ── Social Media — ALL barbers (staff + owners) ── */}
+        {/* ── Social Media & Media — ALL barbers ── */}
         <Grid item xs={12}>
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-            <InstagramIcon sx={{ verticalAlign: "middle", mr: 1 }} />
-            Social Media
+            Social Media & Content
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block" mb={2}>
-            Add your Instagram and TikTok so customers can see your work before booking.
+            Add your social links and a YouTube video URL to showcase your work.
           </Typography>
           <Grid container spacing={2}>
 
-            {/* Instagram — all barbers */}
+            {/* Instagram */}
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Instagram URL"
@@ -154,7 +154,7 @@ export default function ProfileTab({
               />
             </Grid>
 
-            {/* TikTok — all barbers */}
+            {/* TikTok */}
             <Grid item xs={12} sm={6}>
               <TextField
                 label="TikTok URL"
@@ -165,10 +165,27 @@ export default function ProfileTab({
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      {/* Box is required here to wrap the custom SVG icon */}
                       <Box sx={{ display: "flex", alignItems: "center", color: "#000" }}>
                         <TikTokIcon size={18} />
                       </Box>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+
+            {/* YouTube */}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="YouTube Video URL"
+                placeholder="https://youtube.com/watch?v=..."
+                fullWidth
+                value={profile.youtubeUrl || ""}
+                onChange={e => setProfile(p => ({ ...p, youtubeUrl: e.target.value }))}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <YouTubeIcon fontSize="small" sx={{ color: "#FF0000" }} />
                     </InputAdornment>
                   ),
                 }}

@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
   Box, Typography, Paper, TextField, Button, Rating, 
-  CircularProgress, Container, Card 
+  CircularProgress, Container 
 } from "@mui/material";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { Star as StarIcon } from "@mui/icons-material";
 
 export default function ReviewPage() {
-  const { shopId } = useParams(); // Gets the ID from the URL
+  const { shopId } = useParams(); // Ensure your Router path uses :shopId
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
@@ -26,13 +26,18 @@ export default function ReviewPage() {
     
     setLoading(true);
     try {
-      // Direct path to your shop's review sub-collection
+      // This path: db/barbers/{shopId}/reviews
+      // Matches the fetch logic: collection(db, "barbers", barber.uid, "reviews")
       const reviewsRef = collection(db, "barbers", shopId, "reviews");
+      
       await addDoc(reviewsRef, {
-        ...review,
+        customerName: review.customerName,
+        rating: review.rating,
+        comment: review.comment,
         date: new Date().toLocaleDateString(),
         createdAt: serverTimestamp()
       });
+      
       setSubmitted(true);
     } catch (err) {
       console.error("Error submitting review:", err);
@@ -48,7 +53,7 @@ export default function ReviewPage() {
         <Paper sx={{ p: 5, borderRadius: 4 }}>
           <Typography variant="h4" fontWeight={800} gutterBottom>Thank You! ✂️</Typography>
           <Typography color="text.secondary">Your feedback helps me grow and helps others find a great barber.</Typography>
-          <Button sx={{ mt: 3 }} onClick={() => navigate('/')}>Back to Home</Button>
+          <Button variant="contained" sx={{ mt: 3, bgcolor: "#1A1A1A" }} onClick={() => navigate('/')}>Back to Home</Button>
         </Paper>
       </Container>
     );

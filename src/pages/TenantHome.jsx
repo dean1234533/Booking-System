@@ -5,7 +5,7 @@ import {
   CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
   useMediaQuery, useTheme, IconButton, Tooltip
 } from "@mui/material";
-import { alpha } from "@mui/material/styles"
+import { alpha } from "@mui/material/styles";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import SanitizerIcon from "@mui/icons-material/Sanitizer";

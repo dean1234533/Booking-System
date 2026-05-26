@@ -1,4 +1,4 @@
-const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onCall, HttpsError, onRequest} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const axios = require("axios");
@@ -204,7 +204,7 @@ exports.checkDomainStatus = onCall(
 );
 
 // ── 5. Stripe webhook ────────────────────────────────────────────────────────
-exports.stripeWebhook = require("firebase-functions/v2/https").onRequest(
+exports.stripeWebhook = onRequest(
     {
       secrets: [STRIPE_SECRET, STRIPE_WEBHOOK_SECRET, PORKBUN_API_KEY, PORKBUN_SECRET_KEY, CF_API_TOKEN, CF_ZONE_ID],
       consumeAppEngineMiddleware: true,

@@ -1,12 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy } from "firebase/firestore"; // Added orderBy
 import { db } from "../firebase/config";
 import SlotPicker from "../components/SlotPicker";
-import { Box, Container, Typography, Grid, Paper, Stack, Avatar, Divider, Button, IconButton } from '@mui/material';
+import { Box, Container, Typography, Grid, Paper, Stack, Avatar, Divider, Button } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import RateReviewIcon from '@mui/icons-material/RateReview';
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
 const FadeIn = ({ children }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -46,22 +44,25 @@ function getYouTubeEmbedUrl(url) {
 
 export default function PTBookingSite({ profile, barber, reviews: propReviews = [] }) {
   const [slots, setSlots] = useState([]);
-  const [reviews, setReviews] = useState(propReviews);
+  const [reviews, setReviews] = useState(propReviews); // Use state to manage reviews
   const [modalContent, setModalContent] = useState(null);
-  const [currentReviewIndex, setCurrentReviewIndex] = useState(0); // Carousel State
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Fetch Slots AND Reviews
   useEffect(() => {
     async function fetchData() {
       if (!barber?.uid) return;
       try {
+        // 1. Fetch Slots
         const qSlots = query(collection(db, "slots"), where("barberId", "==", barber.uid), where("isBooked", "==", false));
         const snapshotSlots = await getDocs(qSlots);
         setSlots(snapshotSlots.docs.map(d => ({ id: d.id, ...d.data() })));
 
+        // 2. FIXED: Fetch Reviews from the sub-collection 
+        // This path must match exactly: collection(db, "barbers", shopId, "reviews")
         const reviewsRef = collection(db, "barbers", barber.uid, "reviews");
         const snapshotReviews = await getDocs(reviewsRef);
         setReviews(snapshotReviews.docs.map(d => d.data()));
@@ -72,7 +73,6 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
     }
     fetchData();
   }, [barber?.uid]);
-
   const businessName = barber?.shopName || "DB FITNESS";
   const heroTitle = profile?.heroTitle || "Stronger. Leaner. Unstoppable.";
   const heroSubtitle = profile?.heroSubtitle || "Tailored high-performance outdoor functional resistance training packages.";
@@ -90,10 +90,6 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   const handleConsultationSelect = (slot) => {
     setModalContent("consultationForm");
   };
-
-  // Carousel handlers
-  const nextReview = () => setCurrentReviewIndex((prev) => (prev + 1) % reviews.length);
-  const prevReview = () => setCurrentReviewIndex((prev) => (prev - 1 + reviews.length) % reviews.length);
 
   return (
     <div className="bg-white text-zinc-900 antialiased font-sans scroll-smooth min-h-screen overflow-x-hidden">
@@ -143,6 +139,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         </section>
       </FadeIn>
 
+      {/* ── YouTube video card — only renders when a URL is set in the dashboard ── */}
       {youtubeEmbedUrl && (
         <FadeIn>
           <section id="video" className="py-20 md:py-28 px-6 bg-zinc-950">
@@ -151,7 +148,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
               <h2 className="text-3xl md:text-4xl font-extrabold text-center text-white mb-10">Watch My Training</h2>
               <div
                 className="relative w-full overflow-hidden shadow-2xl"
-                style={{ borderRadius: 24, paddingTop: "56.25%" }}
+                style={{ borderRadius: 24, paddingTop: "56.25%" /* 16:9 */ }}
               >
                 <iframe
                   src={youtubeEmbedUrl}
@@ -224,44 +221,63 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
       <FadeIn>
         <section id="reviews" className="bg-zinc-950 py-16 md:py-24 px-6 text-white">
           <Box>
-            <Container maxWidth="sm">
+            <Container>
               <Box sx={{ mb: 8, textAlign: 'center' }}>
                 <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>TESTIMONIALS</Typography>
                 <Typography variant="h3" mt={1} sx={{ fontFamily: "'Playfair Display', serif", color: 'white' }}>Client Experiences</Typography>
               </Box>
 
-              {reviews.length > 0 ? (
-                <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <IconButton onClick={prevReview} sx={{ color: 'white', position: 'absolute', left: -50 }}><ArrowBackIosNewIcon /></IconButton>
-                  
-                  <Paper elevation={0} sx={{ p: 4, borderRadius: 0, bgcolor: '#18181b', border: '1px solid #27272a', width: '100%' }}>
-                    <Stack spacing={2}>
-                      <Box sx={{ display: 'flex', color: brandColor }}>
-                        {[...Array(Number(reviews[currentReviewIndex].rating) || 5)].map((_, i) => <StarIcon key={i} sx={{ fontSize: 18, opacity: 0.9 }} />)}
-                      </Box>
-                      <Typography variant="body1" sx={{ fontStyle: 'italic', color: '#e4e4e7', minHeight: '80px', fontWeight: 300 }}>
-                        "{reviews[currentReviewIndex].comment || reviews[currentReviewIndex].text || "Great experience!"}"
-                      </Typography>
-                      <Divider sx={{ bgcolor: '#27272a' }} />
-                      <Stack direction="row" spacing={2} alignItems="center">
-                        <Avatar sx={{ bgcolor: '#27272a', color: 'white' }}>{ (reviews[currentReviewIndex].customerName || reviews[currentReviewIndex].name || "C").charAt(0).toUpperCase() }</Avatar>
-                        <Box>
-                          <Typography fontWeight={600} variant="subtitle2" sx={{ color: 'white' }}>{reviews[currentReviewIndex].customerName || reviews[currentReviewIndex].name || "Anonymous"}</Typography>
-                          <Typography variant="caption" sx={{ opacity: 0.7, textTransform: 'uppercase' }}>Verified</Typography>
-                        </Box>
-                      </Stack>
-                    </Stack>
-                  </Paper>
-
-                  <IconButton onClick={nextReview} sx={{ color: 'white', position: 'absolute', right: -50 }}><ArrowForwardIosIcon /></IconButton>
-                </Box>
-              ) : (
-                <Typography textAlign="center" sx={{ fontWeight: 300, color: '#a1a1aa' }}>No testimonials available yet.</Typography>
-              )}
+              <Grid container spacing={4}>
+                {reviews.length > 0 ? (
+                  reviews.map((rev, idx) => {
+                    const rawName = rev.customerName || rev.name || "Client";
+                    const displayInitial = rawName.charAt(0).toUpperCase() || "C";
+                    const starRating = Number(rev.rating) || 5;
+                    return (
+                      <Grid item xs={12} md={4} key={idx}>
+                        <Paper elevation={0} sx={{ p: 4, borderRadius: 0, bgcolor: '#18181b', border: '1px solid #27272a', height: '100%' }}>
+                          <Stack spacing={2}>
+                            <Box sx={{ display: 'flex', color: brandColor }}>
+                              {[...Array(starRating)].map((_, i) => <StarIcon key={i} sx={{ fontSize: 18, opacity: 0.9 }} />)}
+                            </Box>
+                            <Typography variant="body1" sx={{ fontStyle: 'italic', color: '#e4e4e7', minHeight: '80px', fontWeight: 300 }}>
+                              "{rev.comment || rev.text || "Great experience!"}"
+                            </Typography>
+                            <Divider sx={{ bgcolor: '#27272a' }} />
+                            <Stack direction="row" spacing={2} alignItems="center">
+                              <Avatar sx={{ bgcolor: '#27272a', color: 'white', fontWeight: 400, fontSize: '0.9rem' }}>
+                                {displayInitial}
+                              </Avatar>
+                              <Box>
+                                <Typography fontWeight={600} variant="subtitle2" sx={{ letterSpacing: 1, color: 'white' }}>
+                                  {rev.customerName || rev.name || "Anonymous"}
+                                </Typography>
+                                <Typography variant="caption" sx={{ opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1 }}>Verified</Typography>
+                              </Box>
+                            </Stack>
+                          </Stack>
+                        </Paper>
+                      </Grid>
+                    );
+                  })
+                ) : (
+                  <Grid item xs={12}>
+                    <Typography textAlign="center" sx={{ fontWeight: 300, color: '#a1a1aa' }}>
+                      No testimonials available yet.
+                    </Typography>
+                  </Grid>
+                )}
+              </Grid>
             </Container>
-            
             <Box sx={{ mt: 10, textAlign: 'center' }}>
-              <Button variant="text" startIcon={<RateReviewIcon />} onClick={() => { window.location.href = `/review/${barber?.uid}`; }} sx={{ color: 'white', px: 6, py: 2, fontWeight: 600, border: '1px solid white', '&:hover': { bgcolor: 'white', color: 'black' } }}>LEAVE A REVIEW</Button>
+              <Button 
+                variant="text" 
+                startIcon={<RateReviewIcon />}
+                onClick={() => { window.location.href = `/review/${barber?.uid}`; }}
+                sx={{ color: 'white', px: 6, py: 2, fontWeight: 600, borderRadius: 0, letterSpacing: 2, border: '1px solid white', '&:hover': { bgcolor: 'white', color: 'black' } }}
+              >
+                LEAVE A REVIEW
+              </Button>
             </Box>
           </Box>
         </section>
@@ -271,7 +287,11 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <div className="mx-auto max-w-xl text-center">
           <p className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: brandColor }}>Ready to Start?</p>
           <h2 className="text-2xl md:text-3xl font-extrabold mb-8">Claim Your Slot</h2>
-          <SlotPicker slots={slots} brandColor={brandColor} onSelect={handleConsultationSelect} />
+          <SlotPicker
+            slots={slots}
+            brandColor={brandColor}
+            onSelect={handleConsultationSelect}
+          />
         </div>
       </section>
 

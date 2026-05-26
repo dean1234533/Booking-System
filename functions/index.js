@@ -9,7 +9,6 @@ const nodemailer = require("nodemailer");
 
 admin.initializeApp();
 
-// ── Secrets ───────────────────────────────────────────────────────────────────
 const CF_API_TOKEN = defineSecret("API_TOKEN");
 const CF_ZONE_ID = defineSecret("ZONE_ID");
 const STRIPE_SECRET = defineSecret("STRIPE_SECRET_KEY");
@@ -19,16 +18,14 @@ const GMAIL_PASS = defineSecret("GMAIL_PASS");
 const PORKBUN_API_KEY = defineSecret("PORKBUN_API_KEY");
 const PORKBUN_SECRET_KEY = defineSecret("PORKBUN_SECRET_KEY");
 
-// ── Constants ─────────────────────────────────────────────────────────────────
 const CF_API = "https://api.cloudflare.com/client/v4";
 const PORKBUN_API = "https://api.porkbun.com/api/json/v3";
 const APP_ORIGIN = "https://bookehtrim.co.uk";
 
 const SUPPORTED_TLDS = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
 const USD_TO_GBP = 0.79;
-const PLATFORM_MARKUP = 5; // £5 platform fee on top of registration cost
+const PLATFORM_MARKUP = 5;
 
-// Hardcoded fallback prices (USD) used when the Porkbun pricing endpoint is down
 const FALLBACK_PRICES_USD = {
   "com": 11.08,
   "net": 12.52,
@@ -39,8 +36,6 @@ const FALLBACK_PRICES_USD = {
   "shop": 4.00,
   "store": 5.00,
 };
-
-// ── Shared helpers ────────────────────────────────────────────────────────────
 
 function extractTLD(domain) {
   const parts = domain.split(".");
@@ -61,18 +56,8 @@ function toGbp(priceUsd) {
   return Math.round((priceUsd * USD_TO_GBP + PLATFORM_MARKUP) * 100) / 100;
 }
 
-// ── 1. Check domain availability ──────────────────────────────────────────────
-//
-//  Uses Cloudflare's public DNS-over-HTTPS (1.1.1.1) to check whether the
-//  domain resolves.  NXDOMAIN (Status === 3) means no one owns it → available.
-//  This requires zero API keys and is identical to the approach in worker.js,
-//  so it will never produce a 403.
-//
-//  Pricing comes from Porkbun's public /pricing/get endpoint (no auth required).
-//  If that endpoint is unreachable we fall back to the hardcoded table above.
-//
 exports.checkDomain = onCall(
-    {secrets: []}, // No secrets — DNS-over-HTTPS + public pricing endpoint
+    {secrets: [], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -90,15 +75,12 @@ exports.checkDomain = onCall(
       }
 
       try {
-      // ── Availability: DNS-over-HTTPS ─────────────────────────────────────
-      // Status 3 = NXDOMAIN — domain has no DNS records, so it's available.
         const dnsRes = await axios.get(
             `https://1.1.1.1/dns-query?name=${encodeURIComponent(clean)}&type=SOA`,
             {headers: {Accept: "application/dns-json"}},
         );
         const available = dnsRes.data.Status === 3;
 
-        // ── Pricing: Porkbun public endpoint, fallback to table ──────────────
         let priceUsd = FALLBACK_PRICES_USD[tld] ?? 12.00;
         try {
           const pricingRes = await axios.get("https://porkbun.com/api/json/v3/pricing/get");
@@ -128,9 +110,8 @@ exports.checkDomain = onCall(
     },
 );
 
-// ── 2. Create Stripe checkout for domain purchase ─────────────────────────────
 exports.createDomainCheckout = onCall(
-    {secrets: [STRIPE_SECRET]},
+    {secrets: [STRIPE_SECRET], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -157,7 +138,6 @@ exports.createDomainCheckout = onCall(
             },
             quantity: 1,
           }],
-          // NOTE: metadata type must match the check inside stripeWebhook below
           metadata: {
             type: "domain_purchase",
             domain,
@@ -176,9 +156,8 @@ exports.createDomainCheckout = onCall(
     },
 );
 
-// ── 3. Connect a domain the barber already owns ───────────────────────────────
 exports.addCustomDomain = onCall(
-    {secrets: [CF_API_TOKEN, CF_ZONE_ID]},
+    {secrets: [CF_API_TOKEN, CF_ZONE_ID], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -196,7 +175,7 @@ exports.addCustomDomain = onCall(
             {
               hostname: clean,
               ssl: {
-                method: "http", // HTTP-01 challenge — works immediately after DNS propagates
+                method: "http",
                 type: "dv",
                 settings: {min_tls_version: "1.2", http2: "on"},
               },
@@ -236,7 +215,6 @@ exports.addCustomDomain = onCall(
         const detail = error.response?.data || error.message;
         console.error("addCustomDomain error:", detail);
 
-        // Cloudflare returns code 1406 when the hostname already exists on the zone
         const errors = error.response?.data?.errors ?? [];
         if (errors.some((e) => e.code === 1406)) {
           throw new HttpsError("already-exists", "This domain is already connected to our platform.");
@@ -247,9 +225,8 @@ exports.addCustomDomain = onCall(
     },
 );
 
-// ── 4. Poll domain + SSL verification status ──────────────────────────────────
 exports.checkDomainStatus = onCall(
-    {secrets: [CF_API_TOKEN, CF_ZONE_ID]},
+    {secrets: [CF_API_TOKEN, CF_ZONE_ID], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -284,14 +261,6 @@ exports.checkDomainStatus = onCall(
     },
 );
 
-// ── 5. Stripe webhook ─────────────────────────────────────────────────────────
-//
-//  Flow on successful domain_purchase payment:
-//    1. Register domain via Porkbun  (/domain/register/{domain})
-//    2. Point nameservers at Cloudflare
-//    3. Add Custom Hostname (SSL for SaaS) on your zone
-//    4. Update barber's Firestore doc
-//
 exports.stripeWebhook = onRequest(
     {
       secrets: [
@@ -299,13 +268,11 @@ exports.stripeWebhook = onRequest(
         PORKBUN_API_KEY, PORKBUN_SECRET_KEY,
         CF_API_TOKEN, CF_ZONE_ID,
       ],
-      // consumeAppEngineMiddleware keeps req.rawBody intact for signature verification
       consumeAppEngineMiddleware: true,
     },
     async (req, res) => {
       const stripe = new Stripe(STRIPE_SECRET.value());
 
-      // ── Signature verification ───────────────────────────────────────────────
       let event;
       try {
         event = stripe.webhooks.constructEvent(
@@ -318,7 +285,6 @@ exports.stripeWebhook = onRequest(
         return res.status(400).send(`Webhook Error: ${err.message}`);
       }
 
-      // Only handle completed checkout sessions
       if (event.type !== "checkout.session.completed") {
         return res.json({received: true});
       }
@@ -326,7 +292,6 @@ exports.stripeWebhook = onRequest(
       const session = event.data.object;
       const meta = session.metadata ?? {};
 
-      // Only handle domain purchases (matches type set in createDomainCheckout)
       if (meta.type !== "domain_purchase") {
         return res.json({received: true});
       }
@@ -338,7 +303,6 @@ exports.stripeWebhook = onRequest(
       }
 
       try {
-      // ── Step 1: Register domain via Porkbun ──────────────────────────────
         const registerRes = await axios.post(
             `${PORKBUN_API}/domain/register/${encodeURIComponent(domain)}`,
             {
@@ -348,8 +312,6 @@ exports.stripeWebhook = onRequest(
         );
 
         if (registerRes.data.status !== "SUCCESS") {
-        // If Porkbun says the domain is already registered, continue — it may
-        // have succeeded on a previous webhook delivery attempt.
           const msg = (registerRes.data.message ?? "").toLowerCase();
           if (!msg.includes("already") && !msg.includes("own")) {
             throw new Error(`Porkbun registration failed: ${JSON.stringify(registerRes.data)}`);
@@ -357,7 +319,6 @@ exports.stripeWebhook = onRequest(
           console.warn("stripeWebhook: domain already registered, continuing.");
         }
 
-        // ── Step 2: Point nameservers at Cloudflare ──────────────────────────
         const nsRes = await axios.post(
             `${PORKBUN_API}/domain/updateNameservers/${encodeURIComponent(domain)}`,
             {
@@ -373,7 +334,6 @@ exports.stripeWebhook = onRequest(
           console.warn("stripeWebhook: nameserver update warning:", nsRes.data.message);
         }
 
-        // ── Step 3: Add Custom Hostname (SSL for SaaS) ───────────────────────
         const cfRes = await axios.post(
             `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames`,
             {
@@ -393,7 +353,6 @@ exports.stripeWebhook = onRequest(
         );
 
         if (!cfRes.data.success) {
-        // Code 1406 = hostname already exists on zone — safe to continue
           const errors = cfRes.data.errors ?? [];
           if (!errors.some((e) => e.code === 1406)) {
             throw new Error(`Cloudflare custom hostname error: ${JSON.stringify(errors)}`);
@@ -403,7 +362,6 @@ exports.stripeWebhook = onRequest(
 
         const cfResult = cfRes.data.result ?? {};
 
-        // ── Step 4: Update Firestore ──────────────────────────────────────────
         await admin.firestore().collection("barbers").doc(barberId).update({
           customDomain: domain,
           domainStatus: "pending",
@@ -414,7 +372,6 @@ exports.stripeWebhook = onRequest(
         console.log(`stripeWebhook: domain ${domain} provisioned for barber ${barberId}`);
       } catch (err) {
         console.error("stripeWebhook: provisioning failed:", err.message);
-        // Return 200 anyway — Stripe will retry on 4xx/5xx, causing duplicate registrations
         return res.json({received: true, error: err.message});
       }
 
@@ -422,9 +379,8 @@ exports.stripeWebhook = onRequest(
     },
 );
 
-// ── 6. Send booking confirmation email ────────────────────────────────────────
 exports.sendBookingConfirmation = onCall(
-    {secrets: [GMAIL_USER, GMAIL_PASS]},
+    {secrets: [GMAIL_USER, GMAIL_PASS], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -442,7 +398,6 @@ exports.sendBookingConfirmation = onCall(
         auth: {user: GMAIL_USER.value(), pass: GMAIL_PASS.value()},
       });
 
-      // Build iCal attachment
       const dateParts = date.split("-");
       const timeParts = time.split(":");
       const dateFlat = dateParts.join("");
@@ -473,14 +428,7 @@ exports.sendBookingConfirmation = onCall(
           from: `"${businessName || "BookehTrim"}" <${GMAIL_USER.value()}>`,
           to: clientEmail,
           subject: `Booking Confirmed — ${date} at ${time}`,
-          html: `
-          <p>Hi ${clientName || "there"},</p>
-          <p>Your session with <strong>${trainerName || "your trainer"}</strong> is confirmed.</p>
-          <p><strong>Date:</strong> ${date}<br/>
-             <strong>Time:</strong> ${time}<br/>
-             <strong>Location:</strong> ${location || "TBC"}</p>
-          <p>The calendar invite is attached below.</p>
-        `,
+          html: `<p>Hi ${clientName || "there"},</p><p>Your session with <strong>${trainerName || "your trainer"}</strong> is confirmed.</p><p><strong>Date:</strong> ${date}<br/><strong>Time:</strong> ${time}<br/><strong>Location:</strong> ${location || "TBC"}</p><p>The calendar invite is attached below.</p>`,
           attachments: [{
             filename: "session.ics",
             content: icsContent,
@@ -496,9 +444,8 @@ exports.sendBookingConfirmation = onCall(
     },
 );
 
-// ── 7. Generate and send Stripe invoice ───────────────────────────────────────
 exports.createStripeInvoice = onCall(
-    {secrets: [STRIPE_SECRET]},
+    {secrets: [STRIPE_SECRET], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -510,11 +457,10 @@ exports.createStripeInvoice = onCall(
       const stripe = new Stripe(STRIPE_SECRET.value());
 
       try {
-      // Re-use existing Stripe customer or create one
         const existing = await stripe.customers.list({email: clientEmail, limit: 1});
         const customer = existing.data.length > 0 ?
-        existing.data[0] :
-        await stripe.customers.create({email: clientEmail, name: clientName});
+          existing.data[0] :
+          await stripe.customers.create({email: clientEmail, name: clientName});
 
         const invoice = await stripe.invoices.create({
           customer: customer.id,
@@ -525,7 +471,7 @@ exports.createStripeInvoice = onCall(
         await stripe.invoiceItems.create({
           customer: customer.id,
           invoice: invoice.id,
-          amount: Math.round(amount * 100), // pence
+          amount: Math.round(amount * 100),
           currency: "gbp",
           description,
         });

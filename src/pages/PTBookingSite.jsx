@@ -1,216 +1,831 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore"; // Added orderBy
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../firebase/config";
 import SlotPicker from "../components/SlotPicker";
-import { Box, Container, Typography, Grid, Paper, Stack, Avatar, Divider, Button } from '@mui/material';
+import { Box, Container, Typography, Paper, Stack, Avatar, Divider, Button } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 
-const FadeIn = ({ children }) => {
-  const [isVisible, setIsVisible] = useState(false);
+/* ─── Google Fonts ─────────────────────────────────────────── */
+const fontLink = document.createElement('link');
+fontLink.rel = 'stylesheet';
+fontLink.href = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&family=Playfair+Display:ital@1&display=swap';
+document.head.appendChild(fontLink);
+
+/* ─── CSS Variables injected once ──────────────────────────── */
+const styleTag = document.createElement('style');
+styleTag.textContent = `
+  :root {
+    --brand: #1a1a1a;
+    --brand-dark: #1a1a1a;
+    --brand-glow: rgba(220,38,38,0.18);
+    --ink: #0f0f0f;
+    --ink-soft: #3d3d3d;
+    --cream: #faf8f5;
+    --warm-white: #fff9f5;
+    --mid: #e8e3dc;
+    --charcoal: #1a1a1a;
+    --charcoal-2: #222220;
+  }
+  html { scroll-behavior: smooth; }
+  body { overflow-x: hidden; }
+
+  /* ── Diagonal slash divider ── */
+  .slash-divider {
+    position: relative;
+    z-index: 1;
+  }
+  .slash-divider::after {
+    content: '';
+    position: absolute;
+    bottom: -3vw;
+    left: 0; right: 0;
+    height: 6vw;
+    background: inherit;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 0);
+    z-index: 2;
+  }
+
+  /* ── Noise texture overlay ── */
+  .noise::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Fade-in animation ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(32px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fadeUp 0.8s cubic-bezier(.22,.68,0,1.2) both; }
+
+  /* ── Stat counter pulse ── */
+  @keyframes popIn {
+    0%   { transform: scale(0.7); opacity: 0; }
+    70%  { transform: scale(1.08); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .pop-in { animation: popIn 0.6s cubic-bezier(.22,.68,0,1.2) both; }
+
+  /* ── Slide transitions ── */
+  @keyframes slideIn  { from { opacity:0; transform:translateX(40px);  } to { opacity:1; transform:translateX(0); } }
+  @keyframes slideOut { from { opacity:1; transform:translateX(0);  }    to { opacity:0; transform:translateX(-40px); } }
+  .slide-in  { animation: slideIn  0.45s cubic-bezier(.22,.68,0,1.1) both; }
+  .slide-out { animation: slideOut 0.35s cubic-bezier(.4,0,1,1) both; }
+
+  /* ── Hover lift ── */
+  .card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 60px rgba(0,0,0,0.12); }
+
+  /* ── Red underline headings ── */
+  .ruled-heading {
+    position: relative;
+    display: inline-block;
+  }
+  .ruled-heading::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 0;
+    width: 56px;
+    height: 3px;
+    background: var(--brand);
+  }
+
+  /* ── Number accent ── */
+  .stat-num {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Global scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--cream); }
+  ::-webkit-scrollbar-thumb { background: var(--brand); border-radius: 3px; }
+
+  /* ── SlotPicker horizontal scrollbar uses brand colour ── */
+  #booking-section ::-webkit-scrollbar { height: 4px; width: 4px; }
+  #booking-section ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+  #booking-section ::-webkit-scrollbar-thumb { background: var(--brand); border-radius: 4px; }
+`;
+document.head.appendChild(styleTag);
+
+/* ─── FadeIn on scroll ──────────────────────────────────────── */
+const FadeIn = ({ children, delay = 0 }) => {
+  const [vis, setVis] = useState(false);
   const ref = useRef(null);
-
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setIsVisible(true); },
-      { threshold: 0.1 }
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) setVis(true); },
+      { threshold: 0.08 }
     );
-    if (ref.current) observer.observe(ref.current);
-    return () => { if (ref.current) observer.unobserve(ref.current); };
+    if (ref.current) obs.observe(ref.current);
+    return () => ref.current && obs.unobserve(ref.current);
   }, []);
-
   return (
-    <div ref={ref} className={`transition-all duration-1000 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+    <div ref={ref} style={{ animationDelay: `${delay}ms` }}
+      className={vis ? 'fade-up' : 'opacity-0'}>
       {children}
     </div>
   );
 };
 
+/* ─── YouTube helper ────────────────────────────────────────── */
 function getYouTubeEmbedUrl(url) {
   if (!url) return null;
   try {
     const u = new URL(url);
     let id = null;
-    if (u.hostname === "youtu.be") {
-      id = u.pathname.slice(1);
-    } else if (u.hostname.includes("youtube.com")) {
-      id = u.searchParams.get("v") || u.pathname.split("/embed/")[1];
-    }
+    if (u.hostname === 'youtu.be') id = u.pathname.slice(1);
+    else if (u.hostname.includes('youtube.com'))
+      id = u.searchParams.get('v') || u.pathname.split('/embed/')[1];
     return id ? `https://www.youtube.com/embed/${id}` : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
+/* ─── Review Carousel ───────────────────────────────────────── */
+function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = '2px solid #0f0f0f' }) {
+  const [idx, setIdx] = useState(0);
+  const [animKey, setAnimKey] = useState(0);
+
+  const go = (dir) => {
+    setIdx(i => (i + dir + reviews.length) % reviews.length);
+    setAnimKey(k => k + 1);
+  };
+
+  if (!reviews.length) return (
+    <p style={{ color: '#71717a', textAlign: 'center', fontWeight: 300 }}>
+      No testimonials yet — be the first!
+    </p>
+  );
+
+  const rev = reviews[idx];
+  const name = rev.customerName || rev.name || 'Client';
+  const stars = Number(rev.rating) || 5;
+  const text  = rev.comment || rev.text || 'Great experience!';
+
+  return (
+    <div style={{ position: 'relative', maxWidth: 720, margin: '0 auto' }}>
+      {/* Large decorative quote */}
+      <div style={{
+        fontFamily: "'Playfair Display', serif",
+        fontSize: 'clamp(80px, 14vw, 160px)',
+        lineHeight: 0.8,
+        color: '#b8962e',
+        opacity: 0.22,
+        position: 'absolute',
+        top: -16,
+        left: 0,
+        userSelect: 'none',
+        pointerEvents: 'none',
+      }}>"</div>
+
+      {/* Card */}
+      <div key={animKey} className="slide-in" style={{
+        background: cardBg,
+        border: cardBorder,
+        borderRadius: 20,
+        padding: 'clamp(28px, 5vw, 52px)',
+        paddingTop: 'clamp(36px, 6vw, 64px)',
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+      }}>
+        {/* Gold accent strip */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0,
+          width: '100%', height: 4,
+          background: `linear-gradient(90deg, #b8962e, #e0c060, #b8962e)`,
+        }} />
+
+        {/* Stars — gold */}
+        <div style={{ display: 'flex', gap: 3, marginBottom: 20 }}>
+          {[...Array(stars)].map((_, i) => (
+            <StarIcon key={i} sx={{ fontSize: 20, color: '#b8962e' }} />
+          ))}
+        </div>
+
+        {/* Quote text — black */}
+        <p style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontStyle: 'italic',
+          fontWeight: 400,
+          fontSize: 'clamp(15px, 2.2vw, 19px)',
+          lineHeight: 1.75,
+          color: '#1a1a1a',
+          marginBottom: 28,
+          minHeight: 80,
+        }}>
+          "{text}"
+        </p>
+
+        <div style={{ height: 1, background: '#e4e4e7', marginBottom: 24 }} />
+
+        {/* Author */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            width: 46, height: 46, borderRadius: '50%',
+            background: `linear-gradient(135deg, #b8962e, #e0c060)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: 22, color: '#fff', flexShrink: 0,
+          }}>
+            {name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontWeight: 700,
+              color: '#0f0f0f',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              fontSize: 13,
+            }}>{name}</div>
+            <div style={{ fontSize: 11, color: '#b8962e', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700 }}>
+              Verified Client
+            </div>
+          </div>
+          {/* Counter */}
+          <div style={{ marginLeft: 'auto', color: '#a1a1aa', fontFamily: "'DM Sans', sans-serif", fontSize: 12 }}>
+            {idx + 1} / {reviews.length}
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 24 }}>
+        {[{ label: '←', dir: -1 }, { label: '→', dir: 1 }].map(({ label, dir }) => (
+          <button key={dir} onClick={() => go(dir)} style={{
+            width: 48, height: 48,
+            border: `1px solid rgba(255,255,255,0.25)`,
+            borderRadius: '50%',
+            background: 'transparent',
+            color: '#fff',
+            fontSize: 18,
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.2s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#b8962e'; e.currentTarget.style.borderColor = '#b8962e'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
+          >
+            {label}
+          </button>
+        ))}
+        {/* Dots */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 8 }}>
+          {reviews.map((_, i) => (
+            <button key={i} onClick={() => { setIdx(i); setAnimKey(k => k + 1); }} style={{
+              width: i === idx ? 20 : 7,
+              height: 7,
+              borderRadius: 4,
+              background: i === idx ? '#b8962e' : 'rgba(255,255,255,0.2)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+              padding: 0,
+            }} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Pricing Card ──────────────────────────────────────────── */
+function PricingCard({ plan, brandColor }) {
+  /* Gold badge colour — same value used in screenshots */
+  const gold = '#b8962e';
+
+  return (
+    <div className="card-hover" style={{
+      borderRadius: 16,
+      overflow: 'hidden',
+      background: 'var(--cream)',
+      border: '1px solid var(--mid)',
+      position: 'relative',
+    }}>
+      {/* Gold "Most Popular" badge — only on highlighted card */}
+      {plan.highlight && (
+        <div style={{
+          position: 'absolute', top: 16, right: 16,
+          background: gold,
+          color: '#fff',
+          fontSize: 10, fontWeight: 800,
+          letterSpacing: '0.12em',
+          padding: '4px 10px', borderRadius: 99,
+          textTransform: 'uppercase',
+          fontFamily: "'DM Sans', sans-serif",
+        }}>★ Most Popular</div>
+      )}
+      <div style={{ padding: 'clamp(24px, 4vw, 40px)' }}>
+        <div style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: 11, fontWeight: 800,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: 'var(--ink-soft)',
+          marginBottom: 8,
+        }}>{plan.name}</div>
+        <div style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 'clamp(44px, 6vw, 60px)',
+          lineHeight: 1,
+          color: 'var(--ink)',
+          letterSpacing: '0.02em',
+          marginBottom: 4,
+        }}>{plan.price}</div>
+        <div style={{
+          fontSize: 12,
+          color: 'var(--ink-soft)',
+          marginBottom: 24,
+          fontFamily: "'DM Sans', sans-serif",
+        }}>/ {plan.period}</div>
+        <div style={{ height: 1, background: 'var(--mid)', marginBottom: 24 }} />
+        <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {plan.features.map((f, j) => (
+            <li key={j} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              fontSize: 14, fontFamily: "'DM Sans', sans-serif",
+              color: 'var(--ink-soft)',
+            }}>
+              <span style={{
+                width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                background: 'var(--ink)',
+                color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 900,
+              }}>✓</span>
+              {f}
+            </li>
+          ))}
+        </ul>
+        <a href="#booking-section" style={{
+          display: 'block', textAlign: 'center',
+          padding: '13px 0', borderRadius: 8,
+          fontFamily: "'DM Sans', sans-serif",
+          fontWeight: 800, fontSize: 12,
+          letterSpacing: '0.12em', textTransform: 'uppercase',
+          textDecoration: 'none',
+          background: 'var(--ink)',
+          color: '#fff',
+          transition: 'opacity 0.2s',
+        }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          Book Now
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Component ────────────────────────────────────────── */
 export default function PTBookingSite({ profile, barber, reviews: propReviews = [] }) {
-  const [slots, setSlots] = useState([]);
-  const [reviews, setReviews] = useState(propReviews); // Use state to manage reviews
-  const [modalContent, setModalContent] = useState(null);
+  const [slots,    setSlots]    = useState([]);
+  const [reviews,  setReviews]  = useState(propReviews);
+  const [modal,    setModal]    = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
-  // Fetch Slots AND Reviews
   useEffect(() => {
     async function fetchData() {
       if (!barber?.uid) return;
       try {
-        // 1. Fetch Slots
-        const qSlots = query(collection(db, "slots"), where("barberId", "==", barber.uid), where("isBooked", "==", false));
-        const snapshotSlots = await getDocs(qSlots);
-        setSlots(snapshotSlots.docs.map(d => ({ id: d.id, ...d.data() })));
+        const qSlots = query(
+          collection(db, 'slots'),
+          where('barberId', '==', barber.uid),
+          where('isBooked', '==', false)
+        );
+        const ssSlots = await getDocs(qSlots);
+        setSlots(ssSlots.docs.map(d => ({ id: d.id, ...d.data() })));
 
-        // 2. FIXED: Fetch Reviews from the sub-collection 
-        // This path must match exactly: collection(db, "barbers", shopId, "reviews")
-        const reviewsRef = collection(db, "barbers", barber.uid, "reviews");
-        const snapshotReviews = await getDocs(reviewsRef);
-        setReviews(snapshotReviews.docs.map(d => d.data()));
-        
-      } catch (err) {
-        console.error("Error fetching data:", err);
-      }
+        const revRef  = collection(db, 'barbers', barber.uid, 'reviews');
+        const ssRevs  = await getDocs(revRef);
+        setReviews(ssRevs.docs.map(d => d.data()));
+      } catch (err) { console.error(err); }
     }
     fetchData();
   }, [barber?.uid]);
-  const businessName = barber?.shopName || "DB FITNESS";
-  const heroTitle = profile?.heroTitle || "Stronger. Leaner. Unstoppable.";
-  const heroSubtitle = profile?.heroSubtitle || "Tailored high-performance outdoor functional resistance training packages.";
-  const brandColor = profile?.brandColor || "#dc2626";
-  const logo = profile?.logoUrl || null;
-  const aboutText1 = profile?.aboutText1 || "With years of experience in high-performance athletics and functional training, I specialize in helping individuals push past their perceived limits.";
-  const aboutText2 = profile?.aboutText2 || "Whether you're looking to build explosive strength, improve mobility, or completely transform your physique, I provide the tools and accountability to get you there.";
-  const privacyText = profile?.privacyPolicy || `At ${businessName}, we value your privacy. We collect only the information necessary to provide our services and never sell your data to third parties.`;
-  const termsText = profile?.termsConditions || `By using ${businessName}, we agree to our terms of service. All bookings are subject to our cancellation policy.`;
 
-  const youtubeEmbedUrl = getYouTubeEmbedUrl(profile?.youtubeUrl);
-  const specializations = profile?.specializations || [{ title: "Strength & Conditioning", description: "Build raw power and muscular endurance through proven compound lifting." }, { title: "Fat Loss & Transformation", description: "Science-backed nutrition guidance and high-intensity training." }, { title: "Functional Fitness", description: "Outdoor resistance training focused on real-world movement patterns." }, { title: "1-to-1 Coaching", description: "Fully personalised sessions tailored to your goals and schedule." }];
-  const pricingPlans = profile?.pricingPlans || [{ name: "Taster Session", price: "£40", period: "one-off", features: ["60-min session", "Fitness assessment"], highlight: false }, { name: "Monthly Package", price: "£280", period: "per month", features: ["8 sessions/month", "Nutrition guidance"], highlight: true }, { name: "10-Session Block", price: "£350", period: "block", features: ["10 x 60-min sessions", "Flexible scheduling"], highlight: false }];
+  /* ── Resolved values ── */
+  const businessName  = barber?.shopName   || 'DB FITNESS';
+  const brandColor    = profile?.brandColor || '#dc2626';
+  const logo          = profile?.logoUrl   || null;
+  const heroTitle     = profile?.heroTitle  || 'Stronger.\nLeaner.\nUnstoppable.';
+  const heroSubtitle  = profile?.heroSubtitle || 'Tailored high-performance outdoor functional resistance training.';
+  const aboutText1    = profile?.aboutText1 || 'With years of experience in high-performance athletics and functional training, I specialise in helping individuals push past their perceived limits.';
+  const aboutText2    = profile?.aboutText2 || 'Whether you\'re building explosive strength, improving mobility, or transforming your physique — I provide the tools and accountability to get you there.';
+  const privacyText   = profile?.privacyPolicy   || `At ${businessName}, we value your privacy. We collect only information necessary to provide our services and never sell your data.`;
+  const termsText     = profile?.termsConditions || `By using ${businessName}, you agree to our terms of service. All bookings are subject to our cancellation policy.`;
+  const youtubeUrl    = getYouTubeEmbedUrl(profile?.youtubeUrl);
 
-  const handleConsultationSelect = (slot) => {
-    setModalContent("consultationForm");
-  };
+  const specializations = profile?.specializations || [
+    { title: 'Strength & Conditioning', description: 'Build raw power and muscular endurance through proven compound lifting and progressive overload.' },
+    { title: 'Fat Loss & Transformation', description: 'Science-backed nutrition guidance paired with high-intensity training protocols for real results.' },
+    { title: 'Functional Fitness', description: 'Outdoor resistance training focused on real-world movement patterns that carry over to daily life.' },
+    { title: '1-to-1 Coaching', description: 'Fully personalised sessions tailored to your goals, schedule, and current level of fitness.' },
+  ];
+  const pricingPlans = profile?.pricingPlans || [
+    { name: 'Taster',  price: '£40',  period: 'one-off', features: ['60-min session', 'Fitness assessment'], highlight: false },
+    { name: 'Monthly', price: '£280', period: 'per month', features: ['8 sessions/month', 'Nutrition guidance', 'Progress tracking'], highlight: true },
+    { name: '10-Block', price: '£350', period: 'block', features: ['10 × 60-min sessions', 'Flexible scheduling', 'Priority booking'], highlight: false },
+  ];
+
+  const navLinks = [
+    { label: 'About',    href: '#about' },
+    { label: 'Services', href: '#specializations' },
+    { label: 'Pricing',  href: '#pricing' },
+    { label: 'Reviews',  href: '#reviews' },
+  ];
 
   return (
-    <div className="bg-white text-zinc-900 antialiased font-sans scroll-smooth min-h-screen overflow-x-hidden">
-      <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b border-zinc-100">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 md:px-6 py-4">
-          <a href="#" className="font-bold text-lg md:text-xl tracking-tight uppercase truncate">{businessName}</a>
-          <div className="flex items-center gap-4">
-            <a href="#about" className="hidden md:block text-xs font-bold uppercase hover:text-red-600 transition-colors">About</a>
-            <a href="#specializations" className="hidden md:block text-xs font-bold uppercase hover:text-red-600 transition-colors">Services</a>
-            <a href="#pricing" className="hidden md:block text-xs font-bold uppercase hover:text-red-600 transition-colors">Pricing</a>
-            <a href="#booking-section" className="rounded-full bg-zinc-900 px-5 py-2 text-[10px] md:text-xs font-bold uppercase text-white hover:bg-red-600 transition-all whitespace-nowrap">Book Now</a>
-          </div>
+    <div style={{
+      fontFamily: "'DM Sans', sans-serif",
+      color: 'var(--ink)',
+      background: '#fff',
+      overflowX: 'hidden',
+    }}>
+      {/* ══════════ NAV ══════════ */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 100,
+        background: 'rgba(255,255,255,0.95)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: '1px solid var(--mid)',
+      }}>
+        <div style={{
+          maxWidth: 1200, margin: '0 auto',
+          padding: '0 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          height: 68,
+        }}>
+          {/* Logo / wordmark */}
+          <a href="#" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+            {logo
+              ? <img src={logo} alt="logo" style={{ height: 36 }} />
+              : (
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                  <span style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 26, letterSpacing: '0.12em',
+                    color: 'var(--ink)',
+                  }}>{businessName.split(' ')[0]}</span>
+                  {businessName.split(' ').length > 1 && (
+                    <span style={{
+                      fontFamily: "'Bebas Neue', sans-serif",
+                      fontSize: 26, letterSpacing: '0.12em',
+                      color: brandColor,
+                    }}>{' ' + businessName.split(' ').slice(1).join(' ')}</span>
+                  )}
+                </div>
+              )
+            }
+          </a>
+
+          {/* Desktop nav */}
+          <nav style={{ display: 'flex', gap: 6, alignItems: 'center' }} className="hidden md:flex">
+            {navLinks.map(l => (
+              <a key={l.label} href={l.href} style={{
+                padding: '7px 14px',
+                fontSize: 12, fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                textDecoration: 'none',
+                color: 'var(--ink-soft)',
+                borderRadius: 6,
+                transition: 'color 0.2s',
+              }}
+                onMouseEnter={e => e.currentTarget.style.color = brandColor}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--ink-soft)'}
+              >{l.label}</a>
+            ))}
+            <a href="#booking-section" style={{
+              marginLeft: 8,
+              padding: '9px 22px',
+              background: brandColor,
+              color: '#fff',
+              borderRadius: 8,
+              fontSize: 12, fontWeight: 800,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              textDecoration: 'none',
+              transition: 'opacity 0.2s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >Book Now</a>
+          </nav>
+
+          {/* Mobile menu toggle */}
+          <button className="md:hidden" onClick={() => setMenuOpen(o => !o)} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', gap: 5, padding: 8,
+          }}>
+            {[0,1,2].map(i => (
+              <span key={i} style={{ display: 'block', width: 24, height: 2, background: 'var(--ink)', borderRadius: 2 }} />
+            ))}
+          </button>
         </div>
+
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div style={{ background: '#fff', borderTop: '1px solid var(--mid)', padding: '16px 24px 20px' }}>
+            {navLinks.map(l => (
+              <a key={l.label} href={l.href} onClick={() => setMenuOpen(false)} style={{
+                display: 'block', padding: '10px 0',
+                fontSize: 14, fontWeight: 700,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                textDecoration: 'none', color: 'var(--ink)',
+                borderBottom: '1px solid var(--mid)',
+              }}>{l.label}</a>
+            ))}
+            <a href="#booking-section" onClick={() => setMenuOpen(false)} style={{
+              display: 'block', marginTop: 14,
+              padding: '12px 0', textAlign: 'center',
+              background: brandColor, color: '#fff',
+              borderRadius: 8, fontSize: 13, fontWeight: 800,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              textDecoration: 'none',
+            }}>Book Now</a>
+          </div>
+        )}
       </header>
 
-      <section className="relative min-h-[70vh] flex items-center justify-center bg-zinc-950 text-white p-6 text-center">
-        <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920')" }} />
-        <div className="relative z-10 max-w-3xl">
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tighter mb-6 leading-[1.1]">{heroTitle}</h1>
-          <p className="text-base md:text-lg text-zinc-300 mb-10 max-w-lg mx-auto">{heroSubtitle}</p>
-          <a href="#booking-section" className="inline-block w-full sm:w-auto rounded-full bg-red-600 px-10 py-4 font-bold uppercase tracking-widest hover:bg-red-700 transition-all">Get Started</a>
+      {/* ══════════ HERO ══════════ */}
+      <section style={{
+        position: 'relative',
+        minHeight: '90vh',
+        display: 'flex', alignItems: 'center',
+        background: 'var(--charcoal)',
+        overflow: 'hidden',
+      }}>
+        {/* BG image */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: "url('https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920')",
+          backgroundSize: 'cover', backgroundPosition: 'center',
+          opacity: 0.25,
+        }} />
+
+        {/* Gradient overlay */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: `linear-gradient(105deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 60%, ${brandColor}22 100%)`,
+        }} />
+
+        {/* Red accent bar on left */}
+        <div style={{
+          position: 'absolute', left: 0, top: '15%', bottom: '15%',
+          width: 4, background: brandColor,
+          borderRadius: '0 4px 4px 0',
+        }} />
+
+        <div style={{
+          position: 'relative', zIndex: 2,
+          maxWidth: 1200, margin: '0 auto',
+          padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)',
+          width: '100%',
+        }}>
+          {/* Label */}
+          <div className="fade-up" style={{ animationDelay: '100ms' }}>
+            <span style={{
+              display: 'inline-block',
+              background: brandColor,
+              color: '#fff',
+              fontSize: 11, fontWeight: 800,
+              letterSpacing: '0.2em', textTransform: 'uppercase',
+              padding: '5px 14px', borderRadius: 4,
+              marginBottom: 24,
+            }}>Personal Training</span>
+          </div>
+
+          {/* Main heading */}
+          <h1 className="fade-up" style={{
+            animationDelay: '200ms',
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: 'clamp(58px, 10vw, 110px)',
+            lineHeight: 0.95,
+            letterSpacing: '0.02em',
+            color: '#fff',
+            margin: '0 0 28px',
+            whiteSpace: 'pre-line',
+          }}>{heroTitle}</h1>
+
+          {/* Subheading */}
+          <p className="fade-up" style={{
+            animationDelay: '340ms',
+            fontSize: 'clamp(15px, 1.8vw, 18px)',
+            color: 'rgba(255,255,255,0.65)',
+            maxWidth: 440,
+            lineHeight: 1.7,
+            marginBottom: 40,
+            fontWeight: 300,
+          }}>{heroSubtitle}</p>
+
+          {/* CTAs */}
+          <div className="fade-up" style={{ animationDelay: '460ms', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <a href="#booking-section" style={{
+              padding: '14px 36px',
+              background: brandColor,
+              color: '#fff',
+              borderRadius: 8,
+              fontWeight: 800, fontSize: 13,
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              textDecoration: 'none',
+              transition: 'opacity 0.2s, transform 0.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'none'; }}
+            >Start Today</a>
+            <a href="#about" style={{
+              padding: '14px 36px',
+              background: 'transparent',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: 8,
+              fontWeight: 700, fontSize: 13,
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              textDecoration: 'none',
+              transition: 'border-color 0.2s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = brandColor}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'}
+            >Learn More</a>
+          </div>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="fade-up" style={{
+          animationDelay: '700ms',
+          position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+          color: 'rgba(255,255,255,0.35)',
+        }}>
+          <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.2)' }} />
+          <span style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700 }}>Scroll</span>
         </div>
       </section>
 
+      {/* ══════════ STATS BAR ══════════ */}
       <FadeIn>
-        <section className="py-12 bg-zinc-50 border-b border-zinc-100">
-          <div className="mx-auto max-w-5xl px-6 grid grid-cols-3 gap-4 md:gap-8 text-center">
-            <div><div className="text-2xl md:text-3xl font-black" style={{ color: brandColor }}>100+</div><div className="text-[9px] md:text-xs uppercase font-bold text-zinc-500">Clients</div></div>
-            <div><div className="text-2xl md:text-3xl font-black" style={{ color: brandColor }}>5.0</div><div className="text-[9px] md:text-xs uppercase font-bold text-zinc-500">Rating</div></div>
-            <div><div className="text-2xl md:text-3xl font-black" style={{ color: brandColor }}>Pro</div><div className="text-[9px] md:text-xs uppercase font-bold text-zinc-500">Certified</div></div>
+        <section style={{
+          background: brandColor,
+          padding: 'clamp(24px,4vw,36px) 24px',
+        }}>
+          <div style={{
+            maxWidth: 900, margin: '0 auto',
+            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 16, textAlign: 'center',
+          }}>
+            {[
+              { num: '100+', label: 'Happy Clients' },
+              { num: '5.0★', label: 'Average Rating' },
+              { num: 'Pro', label: 'Certified Trainer' },
+            ].map((s, i) => (
+              <div key={i} style={{ padding: '4px 0' }}>
+                <div className="stat-num" style={{ fontSize: 'clamp(28px, 5vw, 44px)', color: '#fff', letterSpacing: '0.04em' }}>
+                  {s.num}
+                </div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                  {s.label}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       </FadeIn>
 
+      {/* ══════════ ABOUT ══════════ */}
       <FadeIn>
-        <section id="about" className="py-20 md:py-32 px-6 bg-white">
-          <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-12 items-center">
-            <div className="flex-1 w-full"><img src={profile?.heroImage || "https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800"} alt="Trainer" className="rounded-3xl shadow-2xl w-full object-cover" style={{ maxHeight: 500 }} /></div>
-            <div className="flex-1">
-              <p className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: brandColor }}>Meet Your Coach</p>
-              <h2 className="text-3xl md:text-4xl font-extrabold mb-6">{profile?.coachName || barber?.name || "Your Personal Trainer"}</h2>
-              <p className="text-zinc-600 mb-6 leading-relaxed">{aboutText1}</p>
-              <p className="text-zinc-600 leading-relaxed">{aboutText2}</p>
-              <a href="#booking-section" className="inline-block mt-8 rounded-full px-8 py-3 font-bold uppercase text-sm text-white transition-all hover:opacity-90" style={{ backgroundColor: brandColor }}>Book a Session</a>
+        <section id="about" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: 'var(--cream)' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 'clamp(32px,5vw,72px)', alignItems: 'center' }}>
+            {/* Image */}
+            <div style={{ flex: '0 0 clamp(260px, 38%, 440px)' }}>
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={profile?.heroImage || 'https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800'}
+                  alt="Trainer"
+                  style={{
+                    width: '100%', borderRadius: 16,
+                    objectFit: 'cover', aspectRatio: '4/5',
+                    display: 'block',
+                    boxShadow: '0 24px 72px rgba(0,0,0,0.12)',
+                  }}
+                />
+                {/* Floating badge */}
+                <div style={{
+                  position: 'absolute', bottom: -18, right: -18,
+                  background: brandColor,
+                  color: '#fff',
+                  width: 90, height: 90,
+                  borderRadius: '50%',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: `0 8px 28px ${brandColor}55`,
+                }}>
+                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, lineHeight: 1 }}>PRO</span>
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.85 }}>Certified</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Text */}
+            <div style={{ flex: '1 1 320px' }}>
+              <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 12 }}>
+                Meet Your Coach
+              </p>
+              <h2 className="ruled-heading" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px, 5vw, 56px)', letterSpacing: '0.04em', margin: '0 0 28px', lineHeight: 1 }}>
+                {profile?.coachName || barber?.name || 'Your Personal Trainer'}
+              </h2>
+              <p style={{ color: 'var(--ink-soft)', lineHeight: 1.8, marginBottom: 16, fontSize: 15, fontWeight: 300 }}>{aboutText1}</p>
+              <p style={{ color: 'var(--ink-soft)', lineHeight: 1.8, marginBottom: 32, fontSize: 15, fontWeight: 300 }}>{aboutText2}</p>
+              <a href="#booking-section" style={{
+                display: 'inline-block',
+                padding: '12px 30px',
+                background: 'var(--ink)',
+                color: '#fff',
+                borderRadius: 8,
+                fontWeight: 800, fontSize: 12,
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                textDecoration: 'none',
+                transition: 'background 0.2s',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = brandColor}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--ink)'}
+              >Book a Session</a>
             </div>
           </div>
         </section>
       </FadeIn>
 
-      {/* ── YouTube video card — only renders when a URL is set in the dashboard ── */}
-      {youtubeEmbedUrl && (
+      {/* ══════════ VIDEO ══════════ */}
+      {youtubeUrl && (
         <FadeIn>
-          <section id="video" className="py-20 md:py-28 px-6 bg-zinc-950">
-            <div className="max-w-4xl mx-auto">
-              <p className="text-xs font-black uppercase tracking-widest text-center mb-3" style={{ color: brandColor }}>See It In Action</p>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-center text-white mb-10">Watch My Training</h2>
-              <div
-                className="relative w-full overflow-hidden shadow-2xl"
-                style={{ borderRadius: 24, paddingTop: "56.25%" /* 16:9 */ }}
-              >
-                <iframe
-                  src={youtubeEmbedUrl}
-                  title="Trainer video"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    width: "100%",
-                    height: "100%",
-                    border: "none",
-                    borderRadius: 24,
-                  }}
-                />
+          <section id="video" style={{ background: 'var(--charcoal-2)', padding: 'clamp(60px,8vw,100px) clamp(24px,5vw,80px)' }}>
+            <div style={{ maxWidth: 860, margin: '0 auto' }}>
+              <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>See It In Action</p>
+              <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', color: '#fff', textAlign: 'center', marginBottom: 32, letterSpacing: '0.04em' }}>Watch My Training</h2>
+              <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
+                <iframe src={youtubeUrl} title="Training video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }} />
               </div>
-              <div className="mt-8 text-center">
-                <a
-                  href="#booking-section"
-                  className="inline-block rounded-full px-10 py-4 font-bold uppercase text-sm text-white tracking-widest transition-all hover:opacity-90"
-                  style={{ backgroundColor: brandColor }}
-                >
-                  Book Your Session
-                </a>
+              <div style={{ textAlign: 'center', marginTop: 28 }}>
+                <a href="#booking-section" style={{
+                  display: 'inline-block', padding: '12px 32px',
+                  background: brandColor, color: '#fff',
+                  borderRadius: 8, fontWeight: 800, fontSize: 12,
+                  letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none',
+                }}>Book Your Session</a>
               </div>
             </div>
           </section>
         </FadeIn>
       )}
 
+      {/* ══════════ SERVICES ══════════ */}
       <FadeIn>
-        <section id="specializations" className="py-20 md:py-28 px-6 bg-zinc-50">
-          <div className="max-w-5xl mx-auto">
-            <p className="text-xs font-black uppercase tracking-widest text-center mb-3" style={{ color: brandColor }}>What I Do</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-14">Areas of Expertise</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+        <section id="specializations" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: '#fff' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>What I Do</p>
+            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 56 }}>
+              Areas of Expertise
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
               {specializations.map((spec, i) => (
-                <div key={i} className="p-8 bg-white border-t-4 shadow-sm hover:shadow-lg transition-all" style={{ borderTopColor: brandColor }}>
-                  <h3 className="text-xl font-bold mb-4 tracking-tight">{spec.title}</h3>
-                  <p className="text-zinc-600 text-sm leading-relaxed">{spec.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </FadeIn>
-
-      <FadeIn>
-        <section id="pricing" className="py-20 md:py-28 px-6 bg-white">
-          <div className="max-w-5xl mx-auto">
-            <p className="text-xs font-black uppercase tracking-widest text-center mb-3" style={{ color: brandColor }}>Investment</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-4">Simple, Transparent Pricing</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {pricingPlans.map((plan, i) => (
-                <div key={i} className="rounded-3xl overflow-hidden border transition-all hover:-translate-y-1 hover:shadow-xl" style={{ borderColor: plan.highlight ? brandColor : "#e4e4e7", boxShadow: plan.highlight ? `0 0 0 2px ${brandColor}` : "none" }}>
-                  {plan.highlight && <div className="text-white text-center text-xs font-black uppercase tracking-widest py-2" style={{ backgroundColor: brandColor }}>Most Popular</div>}
-                  <div className="p-8">
-                    <h3 className="text-lg font-extrabold mb-1">{plan.name}</h3>
-                    <div className="flex items-end gap-1 mb-6"><span className="text-4xl font-black">{plan.price}</span><span className="text-zinc-400 text-sm mb-1">/ {plan.period}</span></div>
-                    <ul className="space-y-3 mb-8">{plan.features.map((f, j) => (<li key={j} className="flex items-center gap-3 text-sm text-zinc-600"><span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs flex-shrink-0" style={{ backgroundColor: brandColor }}>✓</span>{f}</li>))}</ul>
-                    <a href="#booking-section" className="block text-center rounded-full py-3 font-bold text-sm uppercase transition-all" style={plan.highlight ? { backgroundColor: brandColor, color: "#fff" } : { backgroundColor: "#f4f4f5", color: "#18181b" }}>Book Now</a>
+                <div key={i} className="card-hover" style={{
+                  background: 'var(--cream)',
+                  borderRadius: 12,
+                  padding: 32,
+                  borderLeft: `4px solid ${brandColor}`,
+                  position: 'relative', overflow: 'hidden',
+                }}>
+                  {/* Number watermark */}
+                  <div style={{
+                    position: 'absolute', top: -8, right: 12,
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 72, color: brandColor, opacity: 0.07,
+                    lineHeight: 1, userSelect: 'none', pointerEvents: 'none',
+                  }}>0{i + 1}</div>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 8,
+                    background: brandColor,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: 16,
+                    fontSize: 16, color: '#fff', fontWeight: 900,
+                  }}>
+                    {['💪', '🔥', '⚡', '🎯'][i % 4]}
                   </div>
+                  <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: 17, marginBottom: 10, lineHeight: 1.2 }}>
+                    {spec.title}
+                  </h3>
+                  <p style={{ color: 'var(--ink-soft)', fontSize: 14, lineHeight: 1.7, fontWeight: 300, margin: 0 }}>
+                    {spec.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -218,102 +833,204 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         </section>
       </FadeIn>
 
+      {/* ══════════ PRICING ══════════ */}
       <FadeIn>
-        <section id="reviews" className="bg-zinc-950 py-16 md:py-24 px-6 text-white">
-          <Box>
-            <Container>
-              <Box sx={{ mb: 8, textAlign: 'center' }}>
-                <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>TESTIMONIALS</Typography>
-                <Typography variant="h3" mt={1} sx={{ fontFamily: "'Playfair Display', serif", color: 'white' }}>Client Experiences</Typography>
-              </Box>
-
-              <Grid container spacing={4}>
-                {reviews.length > 0 ? (
-                  reviews.map((rev, idx) => {
-                    const rawName = rev.customerName || rev.name || "Client";
-                    const displayInitial = rawName.charAt(0).toUpperCase() || "C";
-                    const starRating = Number(rev.rating) || 5;
-                    return (
-                      <Grid item xs={12} md={4} key={idx}>
-                        <Paper elevation={0} sx={{ p: 4, borderRadius: 0, bgcolor: '#18181b', border: '1px solid #27272a', height: '100%' }}>
-                          <Stack spacing={2}>
-                            <Box sx={{ display: 'flex', color: brandColor }}>
-                              {[...Array(starRating)].map((_, i) => <StarIcon key={i} sx={{ fontSize: 18, opacity: 0.9 }} />)}
-                            </Box>
-                            <Typography variant="body1" sx={{ fontStyle: 'italic', color: '#e4e4e7', minHeight: '80px', fontWeight: 300 }}>
-                              "{rev.comment || rev.text || "Great experience!"}"
-                            </Typography>
-                            <Divider sx={{ bgcolor: '#27272a' }} />
-                            <Stack direction="row" spacing={2} alignItems="center">
-                              <Avatar sx={{ bgcolor: '#27272a', color: 'white', fontWeight: 400, fontSize: '0.9rem' }}>
-                                {displayInitial}
-                              </Avatar>
-                              <Box>
-                                <Typography fontWeight={600} variant="subtitle2" sx={{ letterSpacing: 1, color: 'white' }}>
-                                  {rev.customerName || rev.name || "Anonymous"}
-                                </Typography>
-                                <Typography variant="caption" sx={{ opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1 }}>Verified</Typography>
-                              </Box>
-                            </Stack>
-                          </Stack>
-                        </Paper>
-                      </Grid>
-                    );
-                  })
-                ) : (
-                  <Grid item xs={12}>
-                    <Typography textAlign="center" sx={{ fontWeight: 300, color: '#a1a1aa' }}>
-                      No testimonials available yet.
-                    </Typography>
-                  </Grid>
-                )}
-              </Grid>
-            </Container>
-            <Box sx={{ mt: 10, textAlign: 'center' }}>
-              <Button 
-                variant="text" 
-                startIcon={<RateReviewIcon />}
-                onClick={() => { window.location.href = `/review/${barber?.uid}`; }}
-                sx={{ color: 'white', px: 6, py: 2, fontWeight: 600, borderRadius: 0, letterSpacing: 2, border: '1px solid white', '&:hover': { bgcolor: 'white', color: 'black' } }}
-              >
-                LEAVE A REVIEW
-              </Button>
-            </Box>
-          </Box>
+        <section id="pricing" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: 'var(--cream)' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Investment</p>
+            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 16 }}>
+              Simple, Transparent Pricing
+            </h2>
+            <p style={{ color: 'var(--ink-soft)', textAlign: 'center', marginBottom: 52, fontWeight: 300, maxWidth: 460, margin: '0 auto 52px' }}>
+              No contracts. No hidden fees. Just results.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24 }}>
+              {pricingPlans.map((plan, i) => (
+                <PricingCard key={i} plan={plan} brandColor={brandColor} />
+              ))}
+            </div>
+          </div>
         </section>
       </FadeIn>
 
-      <section id="booking-section" className="py-16 md:py-24 px-6">
-        <div className="mx-auto max-w-xl text-center">
-          <p className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: brandColor }}>Ready to Start?</p>
-          <h2 className="text-2xl md:text-3xl font-extrabold mb-8">Claim Your Slot</h2>
-          <SlotPicker
-            slots={slots}
-            brandColor={brandColor}
-            onSelect={handleConsultationSelect}
-          />
-        </div>
-      </section>
+      {/* ══════════ REVIEWS ══════════ */}
+      <FadeIn>
+        <section id="reviews" style={{
+          background: 'var(--charcoal)',
+          padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          {/* BG accent */}
+          <div style={{
+            position: 'absolute', top: 0, right: 0,
+            width: '30%', height: '100%',
+            background: `linear-gradient(180deg, ${brandColor}11 0%, transparent 100%)`,
+            pointerEvents: 'none',
+          }} />
 
-      <footer style={{ backgroundColor: "#000", color: "#fff", padding: "64px 24px 32px" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 24, marginBottom: 32 }}>
-            <div>{logo && <img src={logo} alt="Logo" style={{ height: 60, marginBottom: 12, display: "block" }} />}<div style={{ fontWeight: 900, letterSpacing: 3, textTransform: "uppercase", color: brandColor, fontSize: 18 }}>{businessName}</div></div>
-            <div style={{ display: "flex", gap: 32 }}>
-              <button onClick={() => setModalContent("privacy")} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1 }}>Privacy</button>
-              <button onClick={() => setModalContent("terms")} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1 }}>Terms</button>
+          <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Testimonials</p>
+            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', color: '#fff', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 48 }}>
+              Client Experiences
+            </h2>
+
+            <ReviewCarousel
+              reviews={reviews}
+              brandColor={brandColor}
+              cardBg="#ffffff"
+              cardBorder="2px solid #0f0f0f"
+            />
+
+            <div style={{ marginTop: 48, textAlign: 'center' }}>
+              <button
+                onClick={() => window.location.href = `/review/${barber?.uid}`}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  color: '#fff',
+                  padding: '12px 30px',
+                  borderRadius: 8,
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontWeight: 700, fontSize: 12,
+                  letterSpacing: '0.12em', textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = 'var(--ink)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
+              >
+                ✏️ Leave a Review
+              </button>
             </div>
           </div>
-          <div style={{ borderTop: "1px solid #1a1a1a", paddingTop: 24, textAlign: "center" }}><p style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>© {new Date().getFullYear()} {businessName}. ALL RIGHTS RESERVED.</p></div>
+        </section>
+      </FadeIn>
+
+      {/* ══════════ BOOKING ══════════ */}
+      <FadeIn>
+        <section id="booking-section" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: '#fff' }}>
+          <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
+            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 8 }}>Ready to Start?</p>
+            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,52px)', letterSpacing: '0.04em', marginBottom: 8 }}>
+              Claim Your Slot
+            </h2>
+            <p style={{ color: 'var(--ink-soft)', fontWeight: 300, marginBottom: 40, fontSize: 15 }}>
+              Choose a time that works for you and let's get to work.
+            </p>
+            <SlotPicker
+              slots={slots}
+             brandColor={brandColor}
+              onSelect={() => {}}
+            />
+          </div>
+        </section>
+      </FadeIn>
+
+      {/* ══════════ FOOTER ══════════ */}
+      <footer style={{ background: '#000', color: '#fff', padding: 'clamp(48px,6vw,80px) clamp(24px,5vw,80px) 32px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 32, marginBottom: 40 }}>
+            {/* Brand */}
+            <div>
+              {logo
+                ? <img src={logo} alt="Logo" style={{ height: 48, marginBottom: 12, display: 'block' }} />
+                : null
+              }
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, letterSpacing: '0.12em', color: brandColor, marginBottom: 6 }}>
+                {businessName}
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: 300, maxWidth: 220, lineHeight: 1.6 }}>
+                High-performance personal training tailored to your goals.
+              </p>
+            </div>
+            {/* Links */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
+                Navigate
+              </div>
+              {navLinks.map(l => (
+                <a key={l.label} href={l.href} style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, textDecoration: 'none', fontWeight: 400,
+                  transition: 'color 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = brandColor}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
+                >{l.label}</a>
+              ))}
+            </div>
+            {/* Legal */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
+                Legal
+              </div>
+              {[{ key: 'privacy', label: 'Privacy Policy' }, { key: 'terms', label: 'Terms & Conditions' }].map(({ key, label }) => (
+                <button key={key} onClick={() => setModal(key)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: 400,
+                  textAlign: 'left', padding: 0, transition: 'color 0.2s',
+                }}
+                  onMouseEnter={e => e.currentTarget.style.color = brandColor}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
+                >{label}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: 11, letterSpacing: '0.08em' }}>
+              © {new Date().getFullYear()} {businessName}. All rights reserved.
+            </p>
+            <a href="#" style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = brandColor}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.18)'}
+            >↑ Back to top</a>
+          </div>
         </div>
       </footer>
 
-      {modalContent && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, backgroundColor: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={() => setModalContent(null)}>
-          <div style={{ backgroundColor: "#111", color: "#fff", borderRadius: 16, padding: 32, maxWidth: 480, width: "100%", maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ fontWeight: 900, marginBottom: 16, textTransform: "uppercase" }}>{modalContent === "privacy" ? "Privacy Policy" : "Terms & Conditions"}</h2>
-            <p style={{ color: "rgba(255,255,255,0.7)", lineHeight: 1.7, fontSize: 14 }}>{modalContent === "privacy" ? privacyText : termsText}</p>
-            <button onClick={() => setModalContent(null)} style={{ marginTop: 24, padding: "10px 24px", background: brandColor, color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", fontSize: 12 }}>Close</button>
+      {/* ══════════ MODAL ══════════ */}
+      {modal && (
+        <div
+          onClick={() => setModal(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#111',
+              borderRadius: 16,
+              padding: 36,
+              maxWidth: 500, width: '100%',
+              maxHeight: '80vh', overflowY: 'auto',
+              border: '1px solid #222',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ color: '#fff', fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, letterSpacing: '0.06em', margin: 0 }}>
+                {modal === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions'}
+              </h2>
+              <button onClick={() => setModal(null)} style={{
+                background: '#222', border: 'none', color: '#fff',
+                width: 32, height: 32, borderRadius: '50%',
+                cursor: 'pointer', fontSize: 16, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+              }}>✕</button>
+            </div>
+            <p style={{ color: 'rgba(255,255,255,0.65)', lineHeight: 1.75, fontSize: 14, fontWeight: 300 }}>
+              {modal === 'privacy' ? privacyText : termsText}
+            </p>
+            <button onClick={() => setModal(null)} style={{
+              marginTop: 24, padding: '10px 24px',
+              background: brandColor, color: '#fff',
+              border: 'none', borderRadius: 8,
+              fontWeight: 800, cursor: 'pointer',
+              textTransform: 'uppercase', fontSize: 12, letterSpacing: '0.1em',
+            }}>Close</button>
           </div>
         </div>
       )}

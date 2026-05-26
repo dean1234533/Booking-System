@@ -9,13 +9,15 @@ admin.initializeApp();
 
 const CF_API_TOKEN = defineSecret("API_TOKEN");
 const CF_ZONE_ID = defineSecret("ZONE_ID");
-const CF_ACCOUNT_ID = defineSecret("ACCOUNT_ID");
 const STRIPE_SECRET = defineSecret("STRIPE_SECRET_KEY");
 const STRIPE_WEBHOOK_SECRET = defineSecret("STRIPE_WEBHOOK_SECRET");
 const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_PASS = defineSecret("GMAIL_PASS");
+const PORKBUN_API_KEY = defineSecret("PORKBUN_API_KEY");
+const PORKBUN_SECRET_KEY = defineSecret("PORKBUN_SECRET_KEY");
 
 const CF_API = "https://api.cloudflare.com/client/v4";
+const PORKBUN_API = "https://api.porkbun.com/api/json/v3";
 
 const SUPPORTED_TLDS = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
 const USD_TO_GBP = 0.79;
@@ -31,9 +33,9 @@ function isValidDomain(domain) {
   return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z]{2,})+$/i.test(domain);
 }
 
-// ── 1. Check domain availability ─────────────────────────────────────────────
+// ── 1. Check domain availability via Porkbun ──────────────────────────────────
 exports.checkDomain = onCall(
-    {secrets: [CF_API_TOKEN, CF_ACCOUNT_ID]},
+    {secrets: [PORKBUN_API_KEY, PORKBUN_SECRET_KEY]},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -50,24 +52,41 @@ exports.checkDomain = onCall(
         throw new HttpsError("invalid-argument", `Unsupported TLD: .${tld}`);
       }
 
-      const cfRes = await axios.get(
-          `${CF_API}/accounts/${CF_ACCOUNT_ID.value()}/registrar/domains/${clean}/availability`,
-          {headers: {Authorization: `Bearer ${CF_API_TOKEN.value()}`}},
-      );
+      try {
+        const availRes = await axios.post(
+            `${PORKBUN_API}/domain/check`,
+            {
+              secretapikey: PORKBUN_SECRET_KEY.value(),
+              apikey: PORKBUN_API_KEY.value(),
+              domain: clean,
+            },
+        );
 
-      const result = cfRes.data.result ?? {};
-      const priceUsd = result.price ?? null;
-      const priceGbp = priceUsd ?
-        Math.round((priceUsd * USD_TO_GBP + PLATFORM_MARKUP) * 100) / 100 :
-        null;
+        const pricingRes = await axios.get("https://porkbun.com/api/json/v3/pricing/get");
+        const pricing = pricingRes.data.pricing ?? {};
 
-      return {
-        domain: clean,
-        available: result.available ?? false,
-        price: priceGbp,
-        priceUsd: priceUsd,
-        currency: "GBP",
-      };
+        const normalizedTld = tld.replace(/^\./, "");
+        const priceUsd = pricing[normalizedTld]?.registration ?
+          parseFloat(pricing[normalizedTld].registration) :
+          null;
+
+        const priceGbp = priceUsd ?
+          Math.round((priceUsd * USD_TO_GBP + PLATFORM_MARKUP) * 100) / 100 :
+          null;
+
+        const available = availRes.data.avail === "yes";
+
+        return {
+          domain: clean,
+          available,
+          price: priceGbp,
+          priceUsd,
+          currency: "GBP",
+        };
+      } catch (error) {
+        console.error("checkDomain error:", error.response?.data || error.message);
+        throw new HttpsError("internal", "Failed to check domain availability.");
+      }
     },
 );
 
@@ -100,7 +119,7 @@ exports.createDomainCheckout = onCall(
           },
           quantity: 1,
         }],
-        metadata: {type: "domain_purchase", domain, barberId, priceUsd: String(priceUsd)},
+        metadata: {type: "porkbun_domain_purchase", domain, barberId, priceUsd: String(priceUsd)},
         success_url: `${origin}/dashboard?domainSuccess=true&domain=${encodeURIComponent(domain)}`,
         cancel_url: `${origin}/dashboard?domainCancelled=true`,
       });
@@ -184,9 +203,12 @@ exports.checkDomainStatus = onCall(
     },
 );
 
-// ── 5. Stripe webhook — provision domain after payment ────────────────────────
+// ── 5. Stripe webhook ────────────────────────────────────────────────────────
 exports.stripeWebhook = require("firebase-functions/v2/https").onRequest(
-    {secrets: [STRIPE_SECRET, STRIPE_WEBHOOK_SECRET, CF_API_TOKEN, CF_ZONE_ID, CF_ACCOUNT_ID]},
+    {
+      secrets: [STRIPE_SECRET, STRIPE_WEBHOOK_SECRET, PORKBUN_API_KEY, PORKBUN_SECRET_KEY, CF_API_TOKEN, CF_ZONE_ID],
+      consumeAppEngineMiddleware: true,
+    },
     async (req, res) => {
       const stripe = new Stripe(STRIPE_SECRET.value());
 
@@ -207,11 +229,22 @@ exports.stripeWebhook = require("firebase-functions/v2/https").onRequest(
       const session = event.data.object;
       const meta = session.metadata ?? {};
 
-      if (meta.type !== "domain_purchase") return res.json({received: true});
+      if (meta.type !== "porkbun_domain_purchase") return res.json({received: true});
 
       const {domain, barberId} = meta;
 
       try {
+        const registerRes = await axios.post(`${PORKBUN_API}/domain/create`, {
+          secretapikey: PORKBUN_SECRET_KEY.value(),
+          apikey: PORKBUN_API_KEY.value(),
+          domain,
+          years: 1,
+        });
+
+        if (registerRes.data.status !== "SUCCESS") {
+          throw new Error(`Porkbun registration failed: ${JSON.stringify(registerRes.data)}`);
+        }
+
         const cfRes = await axios.post(
             `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames`,
             {hostname: domain, ssl: {method: "txt", type: "dv", settings: {min_tls_version: "1.2"}}},
@@ -229,17 +262,15 @@ exports.stripeWebhook = require("firebase-functions/v2/https").onRequest(
             {type: "TXT", name: result.ownership_verification.name, value: result.ownership_verification.value},
           ],
         });
-
-        console.log(`Domain ${domain} provisioned for barber ${barberId}`);
       } catch (err) {
-        console.error("Domain provisioning failed:", err.message);
+        console.error("Domain registration/provisioning failed:", err.message);
       }
 
       return res.json({received: true});
     },
 );
 
-// ── 6. Send booking confirmation email with .ics calendar attachment ──────────
+// ── 6. Send booking confirmation ─────────────────────────────────────────────
 exports.sendBookingConfirmation = onCall(
     {secrets: [GMAIL_USER, GMAIL_PASS]},
     async (request) => {
@@ -259,16 +290,12 @@ exports.sendBookingConfirmation = onCall(
       const dateParts = date.split("-");
       const timeParts = time.split(":");
       const dateFlat = dateParts.join("");
-
-      // Clamp end time to 23:59 to avoid invalid DTEND hour=24 (RFC 5545)
       const startHour = parseInt(timeParts[0], 10);
       const endHour = Math.min(startHour + 1, 23);
       const endMin = endHour === 23 ? "59" : timeParts[1];
 
       const startDt = `${dateFlat}T${timeParts[0]}${timeParts[1]}00`;
       const endDt = `${dateFlat}T${String(endHour).padStart(2, "0")}${endMin}00`;
-
-      // UID required by RFC 5545
       const uid = `${dateFlat}-${timeParts[0]}${timeParts[1]}-${Date.now()}@bookehtrim.co.uk`;
 
       const icsContent = [
@@ -280,7 +307,6 @@ exports.sendBookingConfirmation = onCall(
         `DTSTART:${startDt}`,
         `DTEND:${endDt}`,
         `SUMMARY:PT Session with ${trainerName || "Your Trainer"}`,
-        `DESCRIPTION:Your training session with ${trainerName || "Your Trainer"}`,
         `LOCATION:${location || "TBC"}`,
         "STATUS:CONFIRMED",
         "END:VEVENT",
@@ -291,39 +317,8 @@ exports.sendBookingConfirmation = onCall(
         from: `"${businessName || "PT Booking"}" <${GMAIL_USER.value()}>`,
         to: clientEmail,
         subject: `Booking Confirmed — ${date} at ${time}`,
-        html: `
-          <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;color:#111">
-            <h2 style="margin:0 0 8px;font-size:24px">You're booked in! 💪</h2>
-            <p style="color:#555;margin:0 0 24px">Hi ${clientName || "there"}, your session is confirmed.</p>
-            <div style="background:#f8f8f8;border-radius:12px;padding:24px;margin:0 0 24px">
-              <table style="width:100%;border-collapse:collapse;font-size:15px">
-                <tr>
-                  <td style="padding:6px 0;color:#888;width:100px">Date</td>
-                  <td style="padding:6px 0;font-weight:700">${date}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;color:#888">Time</td>
-                  <td style="padding:6px 0;font-weight:700">${time}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;color:#888">Trainer</td>
-                  <td style="padding:6px 0;font-weight:700">${trainerName || "Your Trainer"}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;color:#888">Location</td>
-                  <td style="padding:6px 0;font-weight:700">${location || "TBC — trainer will confirm"}</td>
-                </tr>
-              </table>
-            </div>
-            <p style="color:#555;font-size:14px">The .ics file attached will add this session directly to your calendar app.</p>
-            <p style="color:#aaa;font-size:12px;margin-top:24px">To cancel or reschedule please contact your trainer directly.</p>
-          </div>
-        `,
-        attachments: [{
-          filename: "session.ics",
-          content: icsContent,
-          contentType: "text/calendar",
-        }],
+        html: `<p>Hi ${clientName || "there"}, your session is confirmed for ${date} at ${time}.</p>`,
+        attachments: [{filename: "session.ics", content: icsContent, contentType: "text/calendar"}],
       });
 
       return {sent: true};
@@ -342,35 +337,26 @@ exports.createStripeInvoice = onCall(
       }
 
       const stripe = new Stripe(STRIPE_SECRET.value());
+      const customers = await stripe.customers.list({email: clientEmail, limit: 1});
+      const customer = customers.data.length > 0 ? customers.data[0] : await stripe.customers.create({email: clientEmail, name: clientName});
 
-      try {
-        const customers = await stripe.customers.list({email: clientEmail, limit: 1});
-        const customer = customers.data.length > 0 ?
-          customers.data[0] :
-          await stripe.customers.create({email: clientEmail, name: clientName});
+      const invoice = await stripe.invoices.create({
+        customer: customer.id,
+        collection_method: "send_invoice",
+        days_until_due: 7,
+      });
 
-        const invoice = await stripe.invoices.create({
-          customer: customer.id,
-          auto_advance: true,
-          collection_method: "send_invoice",
-          days_until_due: 7,
-        });
+      await stripe.invoiceItems.create({
+        customer: customer.id,
+        invoice: invoice.id,
+        amount: Math.round(amount * 100),
+        currency: "gbp",
+        description: description,
+      });
 
-        await stripe.invoiceItems.create({
-          customer: customer.id,
-          invoice: invoice.id,
-          amount: Math.round(amount * 100),
-          currency: "gbp",
-          description: description,
-        });
+      const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
+      await stripe.invoices.sendInvoice(invoice.id);
 
-        const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
-        await stripe.invoices.sendInvoice(invoice.id);
-
-        return {success: true, invoiceUrl: finalized.hosted_invoice_url};
-      } catch (error) {
-        console.error("Stripe Invoice Error:", error);
-        throw new HttpsError("internal", error.message);
-      }
+      return {success: true, invoiceUrl: finalized.hosted_invoice_url};
     },
 );

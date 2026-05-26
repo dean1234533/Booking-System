@@ -16,6 +16,8 @@ import ContentCutIcon from "@mui/icons-material/ContentCut";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
  
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
@@ -58,6 +60,177 @@ function SocialButton({ href, label, icon, hoverColor }) {
         {icon}
       </IconButton>
     </Tooltip>
+  );
+}
+
+// ── Review Carousel ───────────────────────────────────────────────────────────
+function ReviewCarousel({ reviews, brandColor }) {
+  const [current, setCurrent] = useState(0);
+  const total = reviews.length;
+
+  const prev = () => setCurrent(i => (i - 1 + total) % total);
+  const next = () => setCurrent(i => (i + 1) % total);
+
+  // Auto-advance every 5 seconds
+  useEffect(() => {
+    if (total <= 1) return;
+    const timer = setInterval(next, 5000);
+    return () => clearInterval(timer);
+  }, [total]);
+
+  if (total === 0) {
+    return (
+      <Typography textAlign="center" color="text.secondary" sx={{ fontWeight: 300 }}>
+        No testimonials available yet.
+      </Typography>
+    );
+  }
+
+  const rev = reviews[current];
+  const rawName = rev.customerName || rev.name || "Client";
+  const displayInitial = rawName.charAt(0).toUpperCase() || "C";
+  const starRating = Number(rev.rating) || 5;
+
+  return (
+    <Box sx={{ position: "relative", maxWidth: 680, mx: "auto" }}>
+      {/* Card */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 4, md: 6 },
+          borderRadius: 0,
+          bgcolor: "white",
+          border: "1px solid #eee",
+          minHeight: 260,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          transition: "all 0.3s ease",
+        }}
+      >
+        <Stack spacing={3}>
+          {/* Stars */}
+          <Box sx={{ display: "flex", color: brandColor }}>
+            {[...Array(starRating)].map((_, i) => (
+              <StarIcon key={i} sx={{ fontSize: 20, opacity: 0.8 }} />
+            ))}
+          </Box>
+
+          {/* Quote */}
+          <Typography
+            variant="body1"
+            sx={{
+              fontStyle: "italic",
+              color: "text.secondary",
+              fontWeight: 300,
+              fontSize: "1.1rem",
+              lineHeight: 1.8,
+            }}
+          >
+            "{rev.comment || rev.text || "Great experience!"}"
+          </Typography>
+
+          <Divider />
+
+          {/* Author */}
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Avatar
+              sx={{
+                bgcolor: "#f0f0f0",
+                color: "black",
+                fontWeight: 400,
+                fontSize: "0.9rem",
+                border: "1px solid #eee",
+                width: 44,
+                height: 44,
+              }}
+            >
+              {displayInitial}
+            </Avatar>
+            <Box>
+              <Typography fontWeight={600} variant="subtitle2" sx={{ letterSpacing: 1 }}>
+                {rawName}
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.5, textTransform: "uppercase", letterSpacing: 1 }}>
+                Verified
+              </Typography>
+            </Box>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      {/* Prev / Next arrows */}
+      {total > 1 && (
+        <>
+          <IconButton
+            onClick={prev}
+            size="small"
+            sx={{
+              position: "absolute",
+              left: { xs: -16, md: -56 },
+              top: "50%",
+              transform: "translateY(-50%)",
+              border: "1px solid #eee",
+              bgcolor: "white",
+              borderRadius: 0,
+              width: 44,
+              height: 44,
+              "&:hover": { bgcolor: brandColor, color: "white", borderColor: brandColor },
+              transition: "all 0.2s",
+            }}
+          >
+            <ChevronLeftIcon />
+          </IconButton>
+          <IconButton
+            onClick={next}
+            size="small"
+            sx={{
+              position: "absolute",
+              right: { xs: -16, md: -56 },
+              top: "50%",
+              transform: "translateY(-50%)",
+              border: "1px solid #eee",
+              bgcolor: "white",
+              borderRadius: 0,
+              width: 44,
+              height: 44,
+              "&:hover": { bgcolor: brandColor, color: "white", borderColor: brandColor },
+              transition: "all 0.2s",
+            }}
+          >
+            <ChevronRightIcon />
+          </IconButton>
+        </>
+      )}
+
+      {/* Dot indicators */}
+      {total > 1 && (
+        <Box sx={{ display: "flex", justifyContent: "center", gap: 1, mt: 3 }}>
+          {reviews.map((_, i) => (
+            <Box
+              key={i}
+              onClick={() => setCurrent(i)}
+              sx={{
+                width: i === current ? 24 : 8,
+                height: 8,
+                borderRadius: 4,
+                bgcolor: i === current ? brandColor : "#ddd",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+              }}
+            />
+          ))}
+        </Box>
+      )}
+
+      {/* Counter */}
+      <Typography
+        variant="caption"
+        sx={{ display: "block", textAlign: "center", mt: 2, opacity: 0.4, letterSpacing: 2, textTransform: "uppercase" }}
+      >
+        {current + 1} / {total}
+      </Typography>
+    </Box>
   );
 }
  
@@ -349,49 +522,10 @@ export default function TenantHome({ tenant: initialTenant }) {
             <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>TESTIMONIALS</Typography>
             <Typography variant="h3" mt={1} sx={{ fontFamily: "'Playfair Display', serif" }}>Client Experiences</Typography>
           </Box>
- 
-          <Grid container spacing={4}>
-            {freshTenant?.reviews?.length > 0 ? (
-              freshTenant.reviews.map((rev, idx) => {
-                const rawName      = rev.customerName || rev.name || "Client";
-                const displayInitial = rawName.charAt(0).toUpperCase() || "C";
-                const starRating   = Number(rev.rating) || 5;
-                return (
-                  <Grid item xs={12} md={4} key={idx}>
-                    <Paper elevation={0} sx={{ p: 4, borderRadius: 0, bgcolor: 'white', border: '1px solid #eee', height: '100%' }}>
-                      <Stack spacing={2}>
-                        <Box sx={{ display: 'flex', color: brandColor }}>
-                          {[...Array(starRating)].map((_, i) => <StarIcon key={i} sx={{ fontSize: 18, opacity: 0.7 }} />)}
-                        </Box>
-                        <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary', minHeight: '80px', fontWeight: 300 }}>
-                          "{rev.comment || rev.text || "Great experience!"}"
-                        </Typography>
-                        <Divider />
-                        <Stack direction="row" spacing={2} alignItems="center">
-                          <Avatar sx={{ bgcolor: '#f0f0f0', color: 'black', fontWeight: 400, fontSize: '0.9rem', border: '1px solid #eee' }}>
-                            {displayInitial}
-                          </Avatar>
-                          <Box>
-                            <Typography fontWeight={600} variant="subtitle2" sx={{ letterSpacing: 1 }}>
-                              {rev.customerName || rev.name || "Anonymous"}
-                            </Typography>
-                            <Typography variant="caption" sx={{ opacity: 0.5, textTransform: 'uppercase', letterSpacing: 1 }}>Verified</Typography>
-                          </Box>
-                        </Stack>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                );
-              })
-            ) : (
-              <Grid item xs={12}>
-                <Typography textAlign="center" color="text.secondary" sx={{ fontWeight: 300 }}>
-                  No testimonials available yet.
-                </Typography>
-              </Grid>
-            )}
-          </Grid>
+
+          <ReviewCarousel reviews={freshTenant?.reviews || []} brandColor={brandColor} />
         </Container>
+
         <Box sx={{ mt: 10, textAlign: 'center' }}>
           <Button 
             variant="text" 

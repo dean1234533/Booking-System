@@ -126,25 +126,45 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   useEffect(() => () => { if (pollingRef.current) clearInterval(pollingRef.current); }, []);
   useEffect(() => { if (!authLoading && barber) loadData(); }, [barber, authLoading]);
 
-  // Handle post-Stripe-connect redirect
+  // ── Handle post-Stripe-connect redirect ───────────────────────────────────
+  // Stripe returns to /dashboard?stripeSuccess=true&acct=acct_xxx after onboarding.
+  // We POST to /api/stripe/callback which verifies charges_enabled with Stripe
+  // and writes stripeConnected:true to Firestore before we update local state.
   useEffect(() => {
     if (!barber?.uid) return;
+
     const params = new URLSearchParams(window.location.search);
     if (params.get("stripeSuccess") !== "true") return;
+
+    // Clean the URL immediately so a refresh doesn't re-trigger this
     window.history.replaceState({}, "", "/dashboard");
+
     const acct = params.get("acct");
+    if (!acct || acct === "undefined") {
+      setToast("Stripe connection incomplete — no account returned.");
+      return;
+    }
+
     (async () => {
       try {
-        if (acct && acct !== "undefined") {
-          await updateDoc(doc(db, "barbers", barber.uid), { stripeAccountId: acct });
-        }
-        const res  = await fetch(`/api/check-stripe?userId=${barber.uid}`);
+        const res  = await fetch("/api/stripe/callback", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ userId: barber.uid, stripeAccountId: acct }),
+        });
         const data = await res.json();
+
         if (data.connected) {
           setProfile(prev => ({ ...prev, stripeConnected: true }));
           setToast("🎉 Stripe connected!");
+        } else {
+          // Onboarding was started but not completed (e.g. user closed early)
+          setToast("Stripe onboarding incomplete — please connect again to finish.");
         }
-      } catch (e) { console.error("Post-Stripe return check failed:", e); }
+      } catch (e) {
+        console.error("Post-Stripe callback failed:", e);
+        setToast("Could not verify Stripe connection. Please refresh.");
+      }
     })();
   }, [barber]);
 
@@ -469,11 +489,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   };
 
   // ── Tab config ────────────────────────────────────────────────────────────
-  // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
   const brandColor = profile.brandColor || "#C9A84C";
-
-  // Trainer-specific calendar tab — only shown when businessType === "trainer"
-  const isTrainer = profile.businessType === "trainer";
+  const isTrainer  = profile.businessType === "trainer";
 
   const tabs = [
     { label: "Schedule", icon: <AccessTimeIcon /> },
@@ -485,17 +502,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     ...(userRole.isOwner ? [{ label: "Design",   icon: <PaletteIcon /> }]      : []),
     ...(userRole.isOwner && !initialTenant ? [{ label: "Domain", icon: <LanguageIcon /> }] : []),
     { label: "Invoices", icon: <ReceiptIcon /> },
-   
   ];
 
-  // Derive tab indices dynamically based on role so panels always align
   const IDX_REVIEWS  = 4;
   const IDX_FINANCE  = userRole.isOwner ? 5 : 4;
-  const IDX_DESIGN   = 6;  // owner only
-  const IDX_DOMAIN   = 7;  // owner only, no tenant
-  // Invoices sits after Domain (owner, no tenant), after Design (tenant owner), after Finance (staff)
+  const IDX_DESIGN   = 6;
+  const IDX_DOMAIN   = 7;
   const IDX_INVOICES = userRole.isOwner ? (initialTenant ? 7 : 8) : 5;
-  // Calendar sits after Invoices (trainer only)
   const IDX_CALENDAR = isTrainer ? IDX_INVOICES + 1 : null;
   const IDX_PAY      = isTrainer ? IDX_CALENDAR + 1 : IDX_INVOICES + 1;
 
@@ -570,10 +583,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 2 Profile (staff + owners) ──
-              ProfileTab contains Instagram & TikTok fields for ALL barbers.
-              Facebook is owner-only (gated inside ProfileTab via userRole.isOwner).
-              Domain tab is NOT shown to staff — see tab array above.            */}
+        {/* ── 2 Profile ── */}
         <TabPanel value={tab} index={2}>
           <ProfileTab
             profile={profile} setProfile={setProfile}
@@ -626,7 +636,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
-        {/* ── Domain (owner only on main dashboard — hidden in tenant context) ── */}
+        {/* ── Domain (owner only, no tenant context) ── */}
         {userRole.isOwner && !initialTenant && (
           <TabPanel value={tab} index={IDX_DOMAIN}>
             <DomainTab
@@ -645,8 +655,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             brandColor={brandColor}
           />
         </TabPanel>
-
-        
 
         {/* ── Pay ── */}
         <TabPanel value={tab} index={IDX_PAY}>

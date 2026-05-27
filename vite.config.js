@@ -10,7 +10,7 @@ export default defineConfig({
       // ✅ Redirects frontend /api calls to your backend server
       // Change 3000 to 5000 if your Node server is running on 5000
       "/api": {
-        target: "http://localhost:3000",
+        target: "http://localhost:8787",
         changeOrigin: true,
         secure: false,
         // Optional: rewriting the path if your backend doesn't expect "/api"

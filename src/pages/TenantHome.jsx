@@ -32,7 +32,8 @@ const TikTokIcon = ({ size = 20 }) => (
       6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z" />
   </svg>
 );
- 
+
+ const [activeReviewIndex, setActiveReviewIndex] = useState(0);
 // ── Social button (white variant for dark hero) ───────────────────────────────
 function SocialButton({ href, label, icon, hoverColor }) {
   if (!href) return null;
@@ -342,68 +343,77 @@ export default function TenantHome({ tenant: initialTenant }) {
         </Grid>
       </Container>
  
-      {/* ── 5. REVIEWS ───────────────────────────────────────────────────── */}
-      <Box sx={{ py: 15, bgcolor: '#fcfcfc', borderTop: '1px solid #EEE' }}>
-        <Container>
-          <Box sx={{ mb: 8, textAlign: 'center' }}>
-            <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>TESTIMONIALS</Typography>
-            <Typography variant="h3" mt={1} sx={{ fontFamily: "'Playfair Display', serif" }}>Client Experiences</Typography>
-          </Box>
- 
-          <Grid container spacing={4}>
-            {freshTenant?.reviews?.length > 0 ? (
-              freshTenant.reviews.map((rev, idx) => {
-                const rawName      = rev.customerName || rev.name || "Client";
+     
+        {/* ── 5. REVIEWS (CAROUSEL VIEW) ───────────────────────────────────── */}
+      {freshTenant?.reviews?.length > 0 && (
+        <Box sx={{ py: 15, bgcolor: '#fcfcfc', borderTop: '1px solid #EEE' }}>
+          <Container maxWidth="sm">
+            <Box sx={{ mb: 8, textAlign: 'center' }}>
+              <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>TESTIMONIALS</Typography>
+              <Typography variant="h3" mt={1} sx={{ fontFamily: "'Playfair Display', serif" }}>Client Experiences</Typography>
+            </Box>
+
+            <Box sx={{ position: 'relative', minHeight: '300px' }}>
+              {freshTenant.reviews.map((rev, idx) => {
+                const isActive = idx === activeReviewIndex;
+                if (!isActive) return null;
+
+                const rawName = rev.customerName || rev.name || "Client";
                 const displayInitial = rawName.charAt(0).toUpperCase() || "C";
-                const starRating   = Number(rev.rating) || 5;
+                const starRating = Number(rev.rating) || 5;
+
                 return (
-                  <Grid item xs={12} md={4} key={idx}>
-                    <Paper elevation={0} sx={{ p: 4, borderRadius: 0, bgcolor: 'white', border: '1px solid #eee', height: '100%' }}>
-                      <Stack spacing={2}>
-                        <Box sx={{ display: 'flex', color: brandColor }}>
-                          {[...Array(starRating)].map((_, i) => <StarIcon key={i} sx={{ fontSize: 18, opacity: 0.7 }} />)}
+                  <Paper key={rev.id || idx} elevation={0} sx={{ p: 4, borderRadius: 0, bgcolor: 'white', border: '1px solid #eee' }}>
+                    <Stack spacing={2}>
+                      <Box sx={{ display: 'flex', color: brandColor, justifyContent: 'center' }}>
+                        {[...Array(starRating)].map((_, i) => <StarIcon key={i} sx={{ fontSize: 18, opacity: 0.7 }} />)}
+                      </Box>
+                      <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary', fontWeight: 300, textAlign: 'center' }}>
+                        "{rev.comment || rev.text || "Great experience!"}"
+                      </Typography>
+                      <Divider />
+                      <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
+                        <Avatar sx={{ bgcolor: '#f0f0f0', color: 'black' }}>{displayInitial}</Avatar>
+                        <Box>
+                          <Typography fontWeight={600} variant="subtitle2">{rawName}</Typography>
+                          <Typography variant="caption" sx={{ opacity: 0.5, textTransform: 'uppercase' }}>Verified</Typography>
                         </Box>
-                        <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary', minHeight: '80px', fontWeight: 300 }}>
-                          "{rev.comment || rev.text || "Great experience!"}"
-                        </Typography>
-                        <Divider />
-                        <Stack direction="row" spacing={2} alignItems="center">
-                          <Avatar sx={{ bgcolor: '#f0f0f0', color: 'black', fontWeight: 400, fontSize: '0.9rem', border: '1px solid #eee' }}>
-                            {displayInitial}
-                          </Avatar>
-                          <Box>
-                            <Typography fontWeight={600} variant="subtitle2" sx={{ letterSpacing: 1 }}>
-                              {rev.customerName || rev.name || "Anonymous"}
-                            </Typography>
-                            <Typography variant="caption" sx={{ opacity: 0.5, textTransform: 'uppercase', letterSpacing: 1 }}>Verified</Typography>
-                          </Box>
-                        </Stack>
                       </Stack>
-                    </Paper>
-                  </Grid>
+                    </Stack>
+                  </Paper>
                 );
-              })
-            ) : (
-              <Grid item xs={12}>
-                <Typography textAlign="center" color="text.secondary" sx={{ fontWeight: 300 }}>
-                  No testimonials available yet.
-                </Typography>
-              </Grid>
-            )}
-          </Grid>
-        </Container>
-        <Box sx={{ mt: 10, textAlign: 'center' }}>
-          <Button 
-            variant="text" 
-            startIcon={<RateReviewIcon />}
-            onClick={() => navigate(`/review/${freshTenant?.id || freshTenant?.uid}`)}
-            sx={{ color: 'black', px: 6, py: 2, fontWeight: 600, borderRadius: 0, letterSpacing: 2, '&:hover': { bgcolor: 'transparent', color: brandColor } }}
-          >
-            LEAVE A REVIEW
-          </Button>
+              })}
+
+              {/* CONTROLS */}
+              <Stack direction="row" justifyContent="center" spacing={2} sx={{ mt: 4 }}>
+                <Button 
+                  onClick={() => setActiveReviewIndex(prev => (prev === 0 ? freshTenant.reviews.length - 1 : prev - 1))}
+                  sx={{ color: 'black', fontWeight: 700 }}
+                >
+                  PREV
+                </Button>
+                <Button 
+                  onClick={() => setActiveReviewIndex(prev => (prev === freshTenant.reviews.length - 1 ? 0 : prev + 1))}
+                  sx={{ color: 'black', fontWeight: 700 }}
+                >
+                  NEXT
+                </Button>
+              </Stack>
+            </Box>
+          </Container>
+          
+          <Box sx={{ mt: 10, textAlign: 'center' }}>
+            <Button 
+              variant="text" 
+              startIcon={<RateReviewIcon />}
+              onClick={() => navigate(`/review/${freshTenant?.id || freshTenant?.uid}`)}
+              sx={{ color: 'black', px: 6, py: 2, fontWeight: 600, borderRadius: 0, letterSpacing: 2, '&:hover': { bgcolor: 'transparent', color: brandColor } }}
+            >
+              LEAVE A REVIEW
+            </Button>
+          </Box>
         </Box>
-      </Box>
- 
+      )}
     </Box>
   );
 }

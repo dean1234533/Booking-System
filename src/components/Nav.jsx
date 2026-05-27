@@ -1,21 +1,8 @@
 import React, { useState } from "react";
 import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Button, 
-  Container, 
-  Box, 
-  IconButton,
-  useScrollTrigger,
-  Slide,
-  Stack,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
-  Divider
+  AppBar, Toolbar, Typography, Button, Container, Box, IconButton,
+  useScrollTrigger, Slide, Stack, Drawer, List, ListItem, 
+  ListItemButton, ListItemText, Divider, useTheme
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -24,134 +11,77 @@ import CloseIcon from "@mui/icons-material/Close";
 function HideOnScroll(props) {
   const { children } = props;
   const trigger = useScrollTrigger();
-
-  return (
-    <Slide appear={false} direction="down" in={!trigger}>
-      {children}
-    </Slide>
-  );
+  return <Slide appear={false} direction="down" in={!trigger}>{children}</Slide>;
 }
 
 export default function HomeNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const logoPath = "/images/Logo.png";
   const platformName = "BOOK-EH-TRIM";
   const brandColor = "#C9A84C";
 
-  // Dynamic label helper to keep the Nav sync'd with marketplace context
-  const getActionLabel = () => {
-    return "BROWSE SERVICES"; // Generic enough for Barbers, Decorators, and Trainers
-  };
-
-  const handleDrawerToggle = () => {
-    setMobileOpen((prevState) => !prevState);
-  };
-
+  const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
   const isAbsoluteHome = location.pathname === "/";
 
   const scrollToMarketplace = () => {
-    const element = document.getElementById('barber-selection'); // Keep ID for backward compatibility
+    const element = document.getElementById('browse-section');
     if (element) {
-      const offset = 80;
-      const bodyRect = document.body.getBoundingClientRect().top;
-      const elementRect = element.getBoundingClientRect().top;
-      const elementPosition = elementRect - bodyRect;
-      const offsetPosition = elementPosition - offset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
       navigate("/");
     }
     setMobileOpen(false);
   };
 
-  const drawer = (
-    <Box sx={{ textAlign: 'center', p: 2, bgcolor: "#000", height: "100%", color: "#FFF" }}>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <IconButton onClick={handleDrawerToggle} sx={{ color: "#FFF" }}>
-             <CloseIcon />
-          </IconButton>
-      </Box>
-      
-      <Box 
-        component="img"
-        src={logoPath}
-        alt="Logo"
-        sx={{ height: 60, width: 'auto', mb: 1, mx: 'auto', display: 'block', filter: 'drop-shadow(0px 4px 4px rgba(0,0,0,0.5))' }}
-      />
-      
-      <Typography variant="h6" sx={{ my: 2, fontWeight: 1000, letterSpacing: 2 }}>
-        {platformName}
-      </Typography>
-      <Divider sx={{ borderColor: "#2D2D2D" }} />
-      <List>
-        <ListItem disablePadding>
-          <ListItemButton onClick={() => { navigate("/login"); setMobileOpen(false); }} sx={{ textAlign: 'center' }}>
-            <ListItemText primary="LOGIN" primaryTypographyProps={{ fontWeight: 700 }} />
-          </ListItemButton>
-        </ListItem>
-        <ListItem disablePadding>
-          <ListItemButton 
-            onClick={scrollToMarketplace}
-            sx={{ 
-              textAlign: 'center', bgcolor: brandColor, color: "#000", mx: 2, borderRadius: 1, mt: 2,
-              '&:hover': { bgcolor: "#FFF" }
-            }}
-          >
-            <ListItemText primary={getActionLabel()} primaryTypographyProps={{ fontWeight: 900 }} />
-          </ListItemButton>
-        </ListItem>
-      </List>
-    </Box>
-  );
-
   return (
     <>
       <HideOnScroll>
         <AppBar 
           position="fixed" 
-          sx={{ bgcolor: "rgba(0, 0, 0, 0.95)", backdropFilter: "blur(10px)", borderBottom: "none", boxShadow: "none", zIndex: 1200 }}
+          elevation={0}
+          sx={{ 
+            bgcolor: "rgba(0, 0, 0, 0.8)", 
+            backdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+            zIndex: 1200 
+          }}
         >
           <Container maxWidth="lg">
-            <Toolbar sx={{ justifyContent: "space-between", py: { xs: 1, md: 2 } }}>
+            <Toolbar sx={{ justifyContent: "space-between", py: 1 }}>
               
+              {/* LOGO AREA */}
               <Box 
                 onClick={() => isAbsoluteHome ? window.scrollTo({ top: 0, behavior: 'smooth' }) : navigate("/")}
-                sx={{ cursor: "pointer", display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}
+                sx={{ cursor: "pointer", display: 'flex', alignItems: 'center', gap: 1.5 }}
               >
-                <Box 
-                  component="img"
-                  src={logoPath}
-                  alt="Logo"
-                  sx={{ 
-                    height: { xs: 45, sm: 60, md: 75 }, width: 'auto', objectFit: 'contain',
-                    transition: 'transform 0.3s ease', '&:hover': { transform: 'scale(1.05)' }
-                  }}
-                />
-                <Typography 
-                  variant="h6" 
-                  sx={{ fontWeight: 1000, letterSpacing: { xs: 1, sm: 2 }, color: "#FFF", fontSize: { xs: '0.75rem', sm: '1.1rem', md: '1.4rem' }, textTransform: 'uppercase' }}
-                >
+                <Box component="img" src={logoPath} alt="Logo" sx={{ height: { xs: 40, md: 50 }, width: 'auto' }} />
+                <Typography sx={{ 
+                  fontWeight: 800, letterSpacing: 1.5, color: "#FFF", 
+                  fontSize: { xs: '0.9rem', md: '1.2rem' }, textTransform: 'uppercase' 
+                }}>
                   {platformName}
                 </Typography>
               </Box>
 
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
-                <Button onClick={() => navigate("/login")} sx={{ color: "#FFF", fontWeight: 700 }}>
+              {/* DESKTOP NAV */}
+              <Stack direction="row" spacing={3} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
+                <Button onClick={() => navigate("/login")} sx={{ color: "#FFF", fontWeight: 600, fontSize: '0.85rem', '&:hover': { color: brandColor } }}>
                   LOGIN
                 </Button>
                 <Button 
-                  variant="contained"
+                  variant="outlined"
                   onClick={scrollToMarketplace}
-                  sx={{ bgcolor: brandColor, color: "#000", fontWeight: 900, px: 3, '&:hover': { bgcolor: "#FFF" } }}
+                  sx={{ 
+                    borderColor: brandColor, color: brandColor, fontWeight: 700, 
+                    borderRadius: '50px', px: 3, py: 0.8, fontSize: '0.8rem',
+                    '&:hover': { bgcolor: brandColor, color: '#000', borderColor: brandColor } 
+                  }}
                 >
-                  {getActionLabel()}
+                  BROWSE SERVICES
                 </Button>
               </Stack>
 
@@ -163,14 +93,35 @@ export default function HomeNav() {
         </AppBar>
       </HideOnScroll>
 
+      {/* DRAWER */}
       <Drawer
         anchor="right"
         open={mobileOpen}
         onClose={handleDrawerToggle}
-        ModalProps={{ keepMounted: true }}
-        PaperProps={{ sx: { width: '80%', maxWidth: 300, bgcolor: "#000" } }}
+        PaperProps={{ sx: { width: '100%', maxWidth: 300, bgcolor: "#050505" } }}
       >
-        {drawer}
+        <Box sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <IconButton onClick={handleDrawerToggle} sx={{ color: "#FFF", alignSelf: 'flex-end', mb: 2 }}>
+            <CloseIcon />
+          </IconButton>
+          <List sx={{ mt: 2 }}>
+            {['LOGIN', 'BROWSE SERVICES'].map((text) => (
+              <ListItem key={text} disablePadding sx={{ mb: 2 }}>
+                <ListItemButton 
+                  onClick={() => text === 'LOGIN' ? navigate('/login') : scrollToMarketplace()}
+                  sx={{ borderRadius: 2, border: text === 'BROWSE SERVICES' ? `1px solid ${brandColor}` : 'none' }}
+                >
+                  <ListItemText 
+                    primary={text} 
+                    primaryTypographyProps={{ 
+                      textAlign: 'center', color: text === 'BROWSE SERVICES' ? brandColor : '#FFF', fontWeight: 800 
+                    }} 
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Box>
       </Drawer>
     </>
   );

@@ -1,17 +1,12 @@
-/**
- * Home.jsx — TradeHub marketing homepage
- * Deep navy + gold premium aesthetic
- * MUI-based, matches existing codebase pattern
- * Nav and Footer are separate components — not included here
- */
-
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Box, Container, Typography, Grid, Paper,
+  Box, Container, Typography, Grid, Paper, Skeleton,
   Button, Stack, Chip, InputBase,
+  useMediaQuery, useTheme,
 } from "@mui/material";
 import SearchIcon             from "@mui/icons-material/Search";
 import LocationOnIcon         from "@mui/icons-material/LocationOn";
+import StarIcon               from "@mui/icons-material/Star";
 import ContentCutIcon         from "@mui/icons-material/ContentCut";
 import ElectricalServicesIcon from "@mui/icons-material/ElectricalServices";
 import PlumbingIcon           from "@mui/icons-material/Plumbing";
@@ -22,232 +17,222 @@ import BuildIcon              from "@mui/icons-material/Build";
 import SpaIcon                from "@mui/icons-material/Spa";
 import VerifiedIcon           from "@mui/icons-material/Verified";
 import ArrowForwardIcon       from "@mui/icons-material/ArrowForward";
-import RocketLaunchIcon       from "@mui/icons-material/RocketLaunch";
-import StarIcon               from "@mui/icons-material/Star";
-import LanguageIcon           from "@mui/icons-material/Language";
+import PublicIcon             from "@mui/icons-material/Public";
 import CalendarMonthIcon      from "@mui/icons-material/CalendarMonth";
-import PaymentsIcon           from "@mui/icons-material/Payments";
-import ReceiptLongIcon        from "@mui/icons-material/ReceiptLong";
+import PaymentIcon            from "@mui/icons-material/Payment";
+import InsertDriveFileIcon    from "@mui/icons-material/InsertDriveFile";
 import InstagramIcon          from "@mui/icons-material/Instagram";
+import YouTubeIcon            from "@mui/icons-material/YouTube";
 import CheckCircleIcon        from "@mui/icons-material/CheckCircle";
-
-import TenantHome from "./TenantHome";
-import CategoryRow from "../components/CategoryRow";
-import { useBarbers } from "../hooks/useBarbers";
+import CategoryRow            from "../components/CategoryRow";
+import TenantHome             from "./TenantHome";
+import { useBarbers }         from "../hooks/useBarbers";
+import { useNavigate }        from "react-router-dom";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
-const T = {
-  navy:       "#0B1628",
-  navyMid:    "#152238",
-  navyLight:  "#1E3050",
+const G = {
   gold:       "#C9A84C",
-  goldLight:  "#E8C96A",
-  goldPale:   "#F7EDD6",
-  goldDim:    "#7A5A1A",
-  offWhite:   "#F5F3EE",
-  white:      "#FFFFFF",
-  muted:      "#8A96A8",
-  border:     "#E8E4DC",
-  borderDark: "rgba(255,255,255,0.08)",
+  goldLight:  "#e8c97a",
+  goldPale:   "#f5e9c8",
+  goldAlpha:  "rgba(201,168,76,0.12)",
+  dark:       "#0d0d0d",
+  dark2:      "#1a1a1a",
+  charcoal:   "#2c2c2c",
+  warmWhite:  "#faf8f4",
+  cream:      "#f2ede3",
+  muted:      "#7a7060",
+  border:     "#e8e2d8",
 };
 
-const FONT_SERIF = "'Playfair Display', serif";
-const FONT_SANS  = "'DM Sans', sans-serif";
+const SERIF = "'Playfair Display', serif";
+const SANS  = "'DM Sans', sans-serif";
+const ITALIC = "'Cormorant Garamond', serif";
 
-// ── Data ──────────────────────────────────────────────────────────────────────
+// ── Category config ───────────────────────────────────────────────────────────
 const CATEGORIES = [
-  { label: "All",               icon: <BuildIcon />,              color: T.gold,    bg: T.goldPale   },
-  { label: "Barbers",           icon: <ContentCutIcon />,         color: T.gold,    bg: T.goldPale   },
-  { label: "Electricians",      icon: <ElectricalServicesIcon />, color: "#185FA5", bg: "#E6F1FB"    },
-  { label: "Plumbers",          icon: <PlumbingIcon />,           color: "#185FA5", bg: "#E6F1FB"    },
-  { label: "Decorators",        icon: <BrushIcon />,              color: "#993C1D", bg: "#FAECE7"    },
-  { label: "Personal Trainers", icon: <FitnessCenterIcon />,      color: "#534AB7", bg: "#EEEDFE"    },
-  { label: "Gardeners",         icon: <YardIcon />,               color: "#3B6D11", bg: "#EAF3DE"    },
-  { label: "Beauty",            icon: <SpaIcon />,                color: "#993556", bg: "#FBEAF0"    },
+  { label: "All",               icon: <BuildIcon />,              color: G.gold,    bg: G.goldPale  },
+  { label: "Barbers",           icon: <ContentCutIcon />,         color: G.gold,    bg: G.goldPale  },
+  { label: "Electricians",      icon: <ElectricalServicesIcon />, color: "#8a6a20", bg: G.goldPale  },
+  { label: "Plumbers",          icon: <PlumbingIcon />,           color: "#5a3e1b", bg: "#f0e8dc"   },
+  { label: "Decorators",        icon: <BrushIcon />,              color: "#7a3520", bg: "#f5e8e3"   },
+  { label: "Personal Trainers", icon: <FitnessCenterIcon />,      color: "#3d2c0e", bg: "#f0e4cc"   },
+  { label: "Gardeners",         icon: <YardIcon />,               color: "#3d3010", bg: "#f0ebda"   },
+  { label: "Beauty",            icon: <SpaIcon />,                color: "#6b3830", bg: "#f5e8e4"   },
 ];
 
 const REVIEWS = [
+  { name: "Marcus J.", initials: "MJ", text: "Found my go-to barber in minutes. The booking was seamless — proper quality.", trade: "Barber" },
+  { name: "Elena R.",  initials: "ER", text: "Got a decorator sorted within a day. The reviews are genuine — only verified pros.", trade: "Decorator" },
+  { name: "Jordan T.", initials: "JT", text: "My PT is brilliant. Booked him entirely through here. Easiest experience I've ever had.", trade: "Personal Trainer" },
+];
+
+const PLATFORM_FEATURES = [
   {
-    initials: "MJ", name: "Marcus J.", trade: "Barber",
-    text: "Found my go-to barber in minutes. The booking was seamless and he was exactly as advertised — proper quality.",
-    avatarBg: T.goldPale, avatarColor: T.goldDim,
+    icon: <PublicIcon sx={{ fontSize: 26 }} />,
+    title: "Your own website",
+    body: "Buy a custom domain or link your existing one. Every business gets a fully branded site — personalised with your images, text, and social links.",
   },
   {
-    initials: "ER", name: "Elena R.", trade: "Decorator",
-    text: "Got a decorator sorted within a day. The reviews on here are genuine — no dodgy contractors, just verified pros.",
-    avatarBg: "#FAECE7", avatarColor: "#993C1D",
+    icon: <CalendarMonthIcon sx={{ fontSize: 26 }} />,
+    title: "Booking system",
+    body: "Clients pick a time slot and book directly. Set your availability, services, and let the calendar run itself. No back-and-forth.",
   },
   {
-    initials: "JT", name: "Jordan T.", trade: "Personal Trainer",
-    text: "My PT is brilliant and I booked him entirely through TradeHub. Honestly the easiest experience I've had finding a trainer.",
-    avatarBg: "#EEEDFE", avatarColor: "#534AB7",
+    icon: <PaymentIcon sx={{ fontSize: 26 }} />,
+    title: "Payments & deposits",
+    body: "Connect Stripe to take online payments, set deposits, and accept face-to-face payments. Full control over how you get paid.",
+  },
+  {
+    icon: <InsertDriveFileIcon sx={{ fontSize: 26 }} />,
+    title: "Invoicing built in",
+    body: "Send professional invoices to clients in seconds. Track what's paid and what's pending — all from your dashboard.",
+  },
+  {
+    icon: <InstagramIcon sx={{ fontSize: 26 }} />,
+    title: "Social & media",
+    body: "Add your Instagram, TikTok, and Facebook links. Host a YouTube video directly on your site — let your work speak for itself.",
+  },
+  {
+    icon: <YouTubeIcon sx={{ fontSize: 26 }} />,
+    title: "Dashboard control",
+    body: "Customise your site, manage bookings, update your profile photo, and track your business — all from one clean dashboard.",
   },
 ];
 
 const HOW_STEPS = [
-  { num: "1", icon: <SearchIcon />,        title: "Search & browse",  body: "Filter by trade, location, and rating to find exactly who you need." },
-  { num: "2", icon: <StarIcon />,          title: "Compare & choose", body: "Read reviews, check availability, and pick the best fit for your job." },
-  { num: "3", icon: <CalendarMonthIcon />, title: "Book instantly",   body: "Confirm your slot in seconds. No phone calls, no waiting around." },
+  { num: "01", title: "Sign up & set up",    body: "Create your account, choose your business type, and fill in your profile. Takes less than 5 minutes." },
+  { num: "02", title: "Get your site",       body: "Buy a custom domain or link your own. Your branded business page goes live instantly." },
+  { num: "03", title: "Start taking bookings", body: "Connect Stripe, set your availability, and let clients book directly through your site." },
 ];
 
-const BUSINESS_FEATURES = [
-  { icon: <LanguageIcon />,    label: "Custom domain or link your own"              },
-  { icon: <CalendarMonthIcon />, label: "Time-slot booking system"                  },
-  { icon: <PaymentsIcon />,    label: "Stripe payments, deposits & invoices"        },
-  { icon: <ReceiptLongIcon />, label: "Face-to-face payments & receipts"            },
-  { icon: <InstagramIcon />,   label: "Instagram, TikTok, Facebook & YouTube"       },
-  { icon: <BuildIcon />,       label: "Customise images, text & branding"           },
-];
-
-// ── Shared components ─────────────────────────────────────────────────────────
-function SectionLabel({ children, light = false }) {
+// ── Section heading ───────────────────────────────────────────────────────────
+function SectionLabel({ text }) {
   return (
-    <Typography sx={{
-      fontFamily: FONT_SANS,
-      fontSize: "0.62rem",
-      fontWeight: 700,
-      letterSpacing: "0.14em",
-      textTransform: "uppercase",
-      color: light ? "rgba(201,168,76,0.6)" : T.gold,
-      mb: 0.8,
-    }}>
-      {children}
-    </Typography>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
+      <Box sx={{ width: 24, height: 1, bgcolor: G.gold }} />
+      <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.25em", textTransform: "uppercase", color: G.gold }}>
+        {text}
+      </Typography>
+    </Box>
   );
 }
 
-function SectionTitle({ children, light = false, center = false }) {
+function SectionHeading({ label, title, center = false, light = false }) {
   return (
-    <Typography sx={{
-      fontFamily: FONT_SERIF,
-      fontSize: { xs: "1.6rem", md: "2rem" },
-      fontWeight: 600,
-      color: light ? T.white : T.navy,
-      lineHeight: 1.2,
-      textAlign: center ? "center" : "left",
-    }}>
-      {children}
-    </Typography>
+    <Box sx={{ textAlign: center ? "center" : "left" }}>
+      <SectionLabel text={label} />
+      <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.7rem", md: "2.2rem" }, fontWeight: 400, color: light ? "#fff" : G.dark, lineHeight: 1.15 }}>
+        {title}
+      </Typography>
+    </Box>
   );
 }
 
-function GoldButton({ children, startIcon, href, onClick, outlined = false, large = false }) {
-  return (
-    <Button
-      component={href ? "a" : "button"}
-      href={href}
-      onClick={onClick}
-      startIcon={startIcon}
-      variant={outlined ? "outlined" : "contained"}
-      sx={{
-        fontFamily: FONT_SANS,
-        fontWeight: 600,
-        fontSize: large ? "0.88rem" : "0.82rem",
-        px: large ? 4 : 3,
-        py: large ? 1.6 : 1.2,
-        borderRadius: "8px",
-        boxShadow: "none",
-        ...(outlined ? {
-          borderColor: "rgba(255,255,255,0.25)",
-          color: T.white,
-          bgcolor: "rgba(255,255,255,0.06)",
-          "&:hover": { bgcolor: "rgba(255,255,255,0.12)", borderColor: "rgba(255,255,255,0.4)", boxShadow: "none" },
-        } : {
-          bgcolor: T.gold,
-          color: T.navy,
-          "&:hover": { bgcolor: T.goldLight, boxShadow: "none" },
-        }),
-      }}
-    >
-      {children}
-    </Button>
-  );
-}
-
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────────
 export default function Home({ tenant }) {
   const { barbers, loading } = useBarbers(!tenant);
+  const navigate = useNavigate();
+  const theme    = useTheme();
   const [activeCategory, setActiveCategory] = useState("All");
 
   useEffect(() => { window.scrollTo(0, 0); }, [tenant]);
   if (tenant) return <TenantHome tenant={tenant} />;
 
   return (
-    <Box sx={{ bgcolor: T.white, minHeight: "100vh", overflowX: "hidden", fontFamily: FONT_SANS }}>
+    <Box sx={{ bgcolor: "#fff", minHeight: "100vh", overflowX: "hidden", fontFamily: SANS }}>
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <Box sx={{ bgcolor: T.navy, pt: { xs: 9, md: 12 }, pb: 0, position: "relative", overflow: "hidden" }}>
+      <Box sx={{
+        bgcolor: G.dark,
+        pt: { xs: 10, md: 14 },
+        pb: 0,
+        position: "relative",
+        overflow: "hidden",
+      }}>
         {/* Gold top accent */}
-        <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, bgcolor: T.gold }} />
+        <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${G.gold}, transparent)` }} />
 
-        {/* Background watermark */}
+        {/* Decorative large text */}
         <Typography sx={{
-          position: "absolute", right: -40, top: 20,
-          fontFamily: FONT_SERIF, fontSize: { xs: "8rem", md: "14rem" },
-          fontWeight: 600, color: "rgba(255,255,255,0.02)",
-          lineHeight: 1, pointerEvents: "none", userSelect: "none",
+          position: "absolute", right: -24, top: 20,
+          fontFamily: SERIF, fontSize: { xs: "10rem", md: "18rem" }, fontWeight: 400,
+          color: "rgba(201,168,76,0.04)", lineHeight: 1, pointerEvents: "none", userSelect: "none",
         }}>
-          Pro
+          Book
         </Typography>
 
         <Container maxWidth="lg" sx={{ position: "relative" }}>
           {/* Badge */}
           <Box sx={{
             display: "inline-flex", alignItems: "center", gap: 1,
-            bgcolor: "rgba(201,168,76,0.12)",
-            border: "1px solid rgba(201,168,76,0.3)",
+            bgcolor: G.goldAlpha, border: `1px solid rgba(201,168,76,0.3)`,
             borderRadius: "99px", px: 2, py: 0.7, mb: 3.5,
           }}>
-            <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: T.gold }} />
-            <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.72rem", fontWeight: 500, color: T.gold, letterSpacing: "0.04em" }}>
-              The UK's premium trades & services marketplace
+            <Box sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: G.gold }} />
+            <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", fontWeight: 500, color: G.goldLight, letterSpacing: "0.04em" }}>
+              The UK's premier bookings marketplace
             </Typography>
           </Box>
 
-          {/* Headline */}
+          {/* Title */}
           <Typography sx={{
-            fontFamily: FONT_SERIF, fontWeight: 600, color: T.white,
-            fontSize: { xs: "2.6rem", md: "3.8rem", lg: "4.5rem" },
-            lineHeight: 1.08, letterSpacing: "-0.02em", mb: 2.5,
+            fontFamily: SERIF, fontWeight: 400, color: "#fff",
+            fontSize: { xs: "2.8rem", md: "4rem", lg: "5rem" },
+            lineHeight: 1.05, letterSpacing: "-0.02em", mb: 2.5,
           }}>
-            Your business,<br />your own{" "}
-            <Box component="em" sx={{ color: T.gold, fontStyle: "italic" }}>website</Box>
+            Find & book the right<br />
+            <em style={{ fontStyle: "italic", color: G.gold }}>professional</em> near you
           </Typography>
 
-          {/* Subtitle */}
           <Typography sx={{
-            fontFamily: FONT_SANS, fontSize: { xs: "0.95rem", md: "1.05rem" },
+            fontFamily: SANS, fontSize: { xs: "0.95rem", md: "1.05rem" }, fontWeight: 300,
             color: "rgba(255,255,255,0.55)", lineHeight: 1.8, maxWidth: 520, mb: 5,
           }}>
-            Sign up free and get your own hosted business website — custom domain,
-            booking system, Stripe payments, invoicing and more. One flat fee. Everything included.
+            From barbers and builders to personal trainers and electricians — browse, compare, and book vetted local professionals in minutes.
           </Typography>
 
           {/* CTAs */}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} mb={7}>
-            <GoldButton startIcon={<RocketLaunchIcon />} href="/signup" large>
-              Start for free
-            </GoldButton>
-            <GoldButton outlined href="#browse" large>
-              Browse professionals
-            </GoldButton>
+            <Button
+              startIcon={<SearchIcon />}
+              variant="contained"
+              onClick={() => document.getElementById("browse-section")?.scrollIntoView({ behavior: "smooth" })}
+              sx={{
+                bgcolor: G.gold, color: G.dark,
+                fontFamily: SANS, fontWeight: 600, fontSize: "0.85rem",
+                px: 3.5, py: 1.6, borderRadius: "2px", boxShadow: "none",
+                "&:hover": { bgcolor: G.goldLight, boxShadow: "none" },
+              }}
+            >
+              Find a professional
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate("/signup")}
+              sx={{
+                borderColor: "rgba(201,168,76,0.4)", color: G.goldLight,
+                fontFamily: SANS, fontWeight: 500, fontSize: "0.85rem",
+                px: 3.5, py: 1.6, borderRadius: "2px",
+                bgcolor: "rgba(201,168,76,0.06)",
+                "&:hover": { bgcolor: "rgba(201,168,76,0.12)", borderColor: G.gold },
+              }}
+            >
+              List your business
+            </Button>
           </Stack>
 
           {/* Stats */}
-          <Stack direction="row" sx={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <Stack direction="row" sx={{ borderTop: `1px solid rgba(255,255,255,0.08)` }}>
             {[
               { num: "2,400+", label: "Verified professionals" },
-              { num: "18+",    label: "Trade categories"       },
-              { num: "4.9★",   label: "Average rating"         },
+              { num: "18+",    label: "Trade categories" },
+              { num: "4.9★",   label: "Average rating" },
             ].map((s, i) => (
-              <Box key={i} sx={{
-                py: 2.5, pr: 4, mr: 4,
-                borderRight: i < 2 ? "1px solid rgba(255,255,255,0.08)" : "none",
-              }}>
-                <Typography sx={{ fontFamily: FONT_SERIF, fontSize: "1.7rem", fontWeight: 600, color: T.white, lineHeight: 1 }}>
-                  <Box component="span" sx={{ color: T.gold }}>{s.num}</Box>
+              <Box key={i} sx={{ py: 2.5, pr: 4, mr: 4, borderRight: i < 2 ? "1px solid rgba(255,255,255,0.08)" : "none" }}>
+                <Typography sx={{ fontFamily: SERIF, fontSize: "1.8rem", fontWeight: 400, color: G.gold, lineHeight: 1 }}>
+                  {s.num}
                 </Typography>
-                <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", mt: 0.5, letterSpacing: "0.03em" }}>
+                <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(255,255,255,0.35)", mt: 0.5, letterSpacing: "0.03em" }}>
                   {s.label}
                 </Typography>
               </Box>
@@ -257,69 +242,73 @@ export default function Home({ tenant }) {
       </Box>
 
       {/* ── SEARCH BAR ───────────────────────────────────────────────────── */}
-      <Box id="browse" sx={{ bgcolor: T.white, borderBottom: `1px solid ${T.border}`, px: { xs: 2, md: 5 }, py: 2 }}>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">
-          <Box sx={{
-            flex: 1, display: "flex", alignItems: "center", gap: 1.5,
-            border: `1.5px solid ${T.border}`, borderRadius: "10px",
-            px: 2, height: 46,
-            "&:focus-within": { borderColor: T.gold },
-            transition: "border-color .2s",
-          }}>
-            <SearchIcon sx={{ color: T.muted, fontSize: 18 }} />
-            <InputBase
-              placeholder='What service do you need? e.g. "barber", "plumber"'
-              sx={{ flex: 1, fontFamily: FONT_SANS, fontSize: "0.875rem" }}
-            />
-          </Box>
-          <Box sx={{
-            display: "flex", alignItems: "center", gap: 1.5,
-            border: `1.5px solid ${T.border}`, borderRadius: "10px",
-            px: 2, height: 46, minWidth: 160,
-            "&:focus-within": { borderColor: T.gold },
-            transition: "border-color .2s",
-          }}>
-            <LocationOnIcon sx={{ color: T.muted, fontSize: 18 }} />
-            <InputBase placeholder="Location" sx={{ flex: 1, fontFamily: FONT_SANS, fontSize: "0.875rem" }} />
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<SearchIcon />}
-            sx={{
-              height: 46, px: 3.5, bgcolor: T.gold, color: T.navy,
-              fontFamily: FONT_SANS, fontWeight: 600, fontSize: "0.82rem",
-              borderRadius: "10px", boxShadow: "none", whiteSpace: "nowrap",
-              "&:hover": { bgcolor: T.goldLight, boxShadow: "none" },
-            }}
-          >
-            Search
-          </Button>
-        </Stack>
+      <Box sx={{ bgcolor: G.dark2, borderBottom: `1px solid rgba(201,168,76,0.15)`, px: { xs: 2, md: 5 }, py: 2 }}>
+        <Container maxWidth="lg">
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">
+            <Box sx={{
+              flex: 1, display: "flex", alignItems: "center", gap: 1.5,
+              border: `1.5px solid rgba(255,255,255,0.1)`, borderRadius: "2px",
+              px: 2, height: 48, bgcolor: "rgba(255,255,255,0.04)",
+              "&:focus-within": { borderColor: G.gold },
+              transition: "border-color .2s",
+            }}>
+              <SearchIcon sx={{ color: G.muted, fontSize: 18 }} />
+              <InputBase
+                placeholder='What service? e.g. "barber", "plumber"'
+                sx={{ flex: 1, fontFamily: SANS, fontSize: "0.875rem", color: "#fff",
+                  "& input::placeholder": { color: "rgba(255,255,255,0.3)" } }}
+              />
+            </Box>
+            <Box sx={{
+              display: "flex", alignItems: "center", gap: 1.5,
+              border: `1.5px solid rgba(255,255,255,0.1)`, borderRadius: "2px",
+              px: 2, height: 48, minWidth: 180, bgcolor: "rgba(255,255,255,0.04)",
+              "&:focus-within": { borderColor: G.gold },
+              transition: "border-color .2s",
+            }}>
+              <LocationOnIcon sx={{ color: G.muted, fontSize: 18 }} />
+              <InputBase
+                placeholder="Your location"
+                sx={{ flex: 1, fontFamily: SANS, fontSize: "0.875rem", color: "#fff",
+                  "& input::placeholder": { color: "rgba(255,255,255,0.3)" } }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              startIcon={<SearchIcon />}
+              sx={{
+                height: 48, px: 3.5, bgcolor: G.gold, color: G.dark,
+                fontFamily: SANS, fontWeight: 600, fontSize: "0.82rem",
+                borderRadius: "2px", boxShadow: "none", whiteSpace: "nowrap",
+                "&:hover": { bgcolor: G.goldLight, boxShadow: "none" },
+              }}
+            >
+              Search
+            </Button>
+          </Stack>
+        </Container>
       </Box>
 
       {/* ── CATEGORY PILLS ───────────────────────────────────────────────── */}
-      <Box sx={{
-        bgcolor: T.white, borderBottom: `1px solid ${T.border}`,
-        px: { xs: 2, md: 5 }, py: 1.5,
-        overflowX: "auto", display: "flex", gap: 1,
+      <Box id="browse-section" sx={{
+        bgcolor: G.dark2, borderBottom: `1px solid rgba(201,168,76,0.1)`,
+        px: { xs: 2, md: 5 }, py: 1.5, overflowX: "auto", display: "flex", gap: 1,
         "&::-webkit-scrollbar": { display: "none" },
       }}>
         {CATEGORIES.map(cat => (
           <Chip
             key={cat.label}
             icon={React.cloneElement(cat.icon, {
-              style: { fontSize: 15, color: activeCategory === cat.label ? cat.color : T.muted },
+              style: { fontSize: 14, color: activeCategory === cat.label ? cat.color : "rgba(255,255,255,0.4)" }
             })}
             label={cat.label}
             onClick={() => setActiveCategory(cat.label)}
             sx={{
-              fontFamily: FONT_SANS, fontSize: "0.75rem", fontWeight: 500,
-              cursor: "pointer", whiteSpace: "nowrap",
-              bgcolor:     activeCategory === cat.label ? cat.bg    : T.white,
-              color:       activeCategory === cat.label ? cat.color : T.muted,
-              borderColor: activeCategory === cat.label ? cat.color : T.border,
-              border: "1.5px solid",
-              borderRadius: "99px",
+              fontFamily: SANS, fontSize: "0.72rem", fontWeight: 500, cursor: "pointer",
+              bgcolor:     activeCategory === cat.label ? cat.bg       : "rgba(255,255,255,0.05)",
+              color:       activeCategory === cat.label ? cat.color    : "rgba(255,255,255,0.55)",
+              borderColor: activeCategory === cat.label ? cat.color    : "rgba(255,255,255,0.1)",
+              border: "1.5px solid", borderRadius: "99px",
               transition: "all .2s",
               "&:hover": { bgcolor: cat.bg, color: cat.color, borderColor: cat.color },
               "& .MuiChip-icon": { ml: 1 },
@@ -329,66 +318,109 @@ export default function Home({ tenant }) {
       </Box>
 
       {/* ── LISTINGS ─────────────────────────────────────────────────────── */}
-      <Box sx={{ bgcolor: T.offWhite, py: { xs: 6, md: 10 }, px: { xs: 2, md: 5 } }}>
+      <Box sx={{ bgcolor: G.warmWhite, py: { xs: 6, md: 10 }, px: { xs: 2, md: 5 } }}>
         <Container maxWidth="lg" disableGutters>
-
-          {["Barbers", "Decorators", "Personal Trainers"].map((type, i) => {
-            const labels = [
-              { section: "Grooming",       title: "Top-rated barbers near you"       },
-              { section: "Home Trades",    title: "Trusted tradespeople near you"     },
-              { section: "Health & Fitness", title: "Personal trainers in your area" },
-            ];
-            return (
-              <Box key={type} sx={{ mb: i < 2 ? 7 : 0 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mb: 3 }}>
-                  <Box>
-                    <SectionLabel>{labels[i].section}</SectionLabel>
-                    <SectionTitle>{labels[i].title}</SectionTitle>
+          {loading ? (
+            <Skeleton variant="rounded" height={280} sx={{ borderRadius: 2 }} />
+          ) : (
+            <>
+              {[
+                { label: "Grooming",      title: "Top-rated barbers near you",          type: "barber"    },
+                { label: "Home Trades",   title: "Trusted tradespeople near you",        type: "decorator" },
+                { label: "Health & Fitness", title: "Personal trainers in your area",   type: "trainer"   },
+              ].map(({ label, title, type }) => (
+                <Box key={type} sx={{ mb: 7 }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mb: 3 }}>
+                    <SectionHeading label={label} title={title} />
+                    <Button
+                      endIcon={<ArrowForwardIcon />}
+                      sx={{ color: G.gold, fontFamily: SANS, fontWeight: 600, fontSize: "0.8rem" }}
+                    >
+                      See all
+                    </Button>
                   </Box>
-                  <Button
-                    endIcon={<ArrowForwardIcon />}
-                    sx={{ color: T.gold, fontFamily: FONT_SANS, fontWeight: 600, fontSize: "0.8rem" }}
-                  >
-                    See all
-                  </Button>
+                  <CategoryRow title={label} businessType={type} allBusinesses={barbers} />
                 </Box>
-                <CategoryRow
-                  title={type}
-                  businessType={type.toLowerCase().replace(" ", "")}
-                  allBusinesses={barbers}
-                />
-              </Box>
-            );
-          })}
+              ))}
+            </>
+          )}
+        </Container>
+      </Box>
 
+      {/* ── PLATFORM FEATURES ────────────────────────────────────────────── */}
+      <Box sx={{ bgcolor: G.dark, py: { xs: 10, md: 16 }, px: { xs: 2, md: 5 } }}>
+        <Container maxWidth="lg">
+          <Box sx={{ textAlign: "center", mb: 8 }}>
+            <SectionLabel text="For businesses" />
+            <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.9rem", md: "2.8rem" }, fontWeight: 400, color: "#fff", mt: 0.5 }}>
+              Everything you need to run your business
+            </Typography>
+            <Typography sx={{ fontFamily: SANS, fontWeight: 300, fontSize: "1rem", color: "rgba(255,255,255,0.45)", mt: 2, maxWidth: 560, mx: "auto", lineHeight: 1.8 }}>
+              Sign up and get your own professional website, booking system, payments, and more — all in one place.
+            </Typography>
+          </Box>
+
+          <Grid container spacing={3}>
+            {PLATFORM_FEATURES.map((f, i) => (
+              <Grid item xs={12} sm={6} md={4} key={i}>
+                <Box sx={{
+                  p: 4,
+                  bgcolor: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(201,168,76,0.12)",
+                  height: "100%",
+                  transition: "border-color .25s, background .25s",
+                  "&:hover": { borderColor: `rgba(201,168,76,0.4)`, bgcolor: "rgba(201,168,76,0.04)" },
+                }}>
+                  <Box sx={{ color: G.gold, mb: 2.5 }}>{f.icon}</Box>
+                  <Typography sx={{ fontFamily: SERIF, fontSize: "1.15rem", fontWeight: 400, color: "#fff", mb: 1.5 }}>
+                    {f.title}
+                  </Typography>
+                  <Typography sx={{ fontFamily: SANS, fontWeight: 300, fontSize: "0.875rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.75 }}>
+                    {f.body}
+                  </Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+
+          <Box sx={{ textAlign: "center", mt: 8 }}>
+            <Button
+              variant="contained"
+              onClick={() => navigate("/signup")}
+              sx={{
+                bgcolor: G.gold, color: G.dark,
+                fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem",
+                letterSpacing: "0.12em", textTransform: "uppercase",
+                px: 5, py: 1.8, borderRadius: "2px", boxShadow: "none",
+                "&:hover": { bgcolor: G.goldLight, boxShadow: "none" },
+              }}
+            >
+              Start for free →
+            </Button>
+          </Box>
         </Container>
       </Box>
 
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
-      <Box sx={{ bgcolor: T.navy, py: { xs: 8, md: 12 }, px: { xs: 2, md: 5 } }}>
-        <Container maxWidth="md">
-          <Box sx={{ textAlign: "center", mb: 7 }}>
-            <SectionLabel light>Simple process</SectionLabel>
-            <SectionTitle light center>Book in three steps</SectionTitle>
+      <Box sx={{ bgcolor: G.cream, py: { xs: 10, md: 14 }, px: { xs: 2, md: 5 } }}>
+        <Container maxWidth="lg">
+          <Box sx={{ textAlign: "center", mb: 8 }}>
+            <SectionLabel text="How it works" />
+            <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.9rem", md: "2.8rem" }, fontWeight: 400, color: G.dark, mt: 0.5 }}>
+              Up and running in minutes
+            </Typography>
           </Box>
           <Grid container spacing={4}>
-            {HOW_STEPS.map(step => (
+            {HOW_STEPS.map((step, i) => (
               <Grid item xs={12} md={4} key={step.num}>
-                <Box sx={{ textAlign: "center" }}>
-                  <Box sx={{
-                    width: 52, height: 52, borderRadius: "50%",
-                    bgcolor: "rgba(201,168,76,0.12)",
-                    border: "1px solid rgba(201,168,76,0.2)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    mx: "auto", mb: 2,
-                    "& svg": { color: T.gold, fontSize: 22 },
-                  }}>
-                    {step.icon}
-                  </Box>
-                  <Typography sx={{ fontFamily: FONT_SERIF, fontSize: "1.3rem", fontWeight: 600, color: T.white, mb: 0.5 }}>
-                    {step.num}. {step.title}
+                <Box sx={{ position: "relative", pl: 3, borderLeft: `2px solid ${i === 1 ? G.gold : "rgba(201,168,76,0.25)"}` }}>
+                  <Typography sx={{ fontFamily: SERIF, fontSize: "2.5rem", fontWeight: 400, color: `rgba(201,168,76,${i === 1 ? "0.6" : "0.25"})`, lineHeight: 1, mb: 1.5 }}>
+                    {step.num}
                   </Typography>
-                  <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.83rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.7 }}>
+                  <Typography sx={{ fontFamily: SERIF, fontSize: "1.2rem", fontWeight: 400, color: G.dark, mb: 1 }}>
+                    {step.title}
+                  </Typography>
+                  <Typography sx={{ fontFamily: SANS, fontWeight: 300, fontSize: "0.875rem", color: G.muted, lineHeight: 1.75 }}>
                     {step.body}
                   </Typography>
                 </Box>
@@ -398,266 +430,46 @@ export default function Home({ tenant }) {
         </Container>
       </Box>
 
-      {/* ── FOR BUSINESSES ───────────────────────────────────────────────── */}
-      <Box sx={{ bgcolor: T.white, py: { xs: 8, md: 12 }, px: { xs: 2, md: 5 } }}>
-        <Container maxWidth="lg">
-          <Grid container spacing={6} alignItems="center">
-
-            {/* Copy */}
-            <Grid item xs={12} md={6}>
-              <SectionLabel>For businesses</SectionLabel>
-              <SectionTitle>Everything you need to run your business</SectionTitle>
-              <Typography sx={{
-                fontFamily: FONT_SANS, fontSize: "0.95rem", color: T.muted,
-                lineHeight: 1.8, mt: 1.5, mb: 3,
-              }}>
-                When you join TradeHub you get your own fully-hosted business website.
-                Customise it, link your own domain, and manage every part of your
-                business from one dashboard — no tech skills needed.
-              </Typography>
-
-              <Stack spacing={1.2} mb={4}>
-                {BUSINESS_FEATURES.map((f, i) => (
-                  <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                    <Box sx={{
-                      width: 32, height: 32, borderRadius: "8px",
-                      bgcolor: T.goldPale,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      flexShrink: 0,
-                      "& svg": { color: T.goldDim, fontSize: 17 },
-                    }}>
-                      {f.icon}
-                    </Box>
-                    <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.875rem", fontWeight: 500, color: T.navy }}>
-                      {f.label}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-
-              <Stack direction="row" spacing={1.5}>
-                <Button
-                  variant="contained"
-                  startIcon={<RocketLaunchIcon />}
-                  href="/signup"
-                  sx={{
-                    bgcolor: T.gold, color: T.navy, fontFamily: FONT_SANS,
-                    fontWeight: 600, px: 3, py: 1.4, borderRadius: "8px",
-                    boxShadow: "none", "&:hover": { bgcolor: T.goldLight, boxShadow: "none" },
-                  }}
-                >
-                  Get listed for free
-                </Button>
-                <Button
-                  variant="outlined"
-                  sx={{
-                    borderColor: T.border, color: T.navy, fontFamily: FONT_SANS,
-                    fontWeight: 500, px: 3, py: 1.4, borderRadius: "8px",
-                    "&:hover": { borderColor: T.gold },
-                  }}
-                >
-                  Learn more
-                </Button>
-              </Stack>
-            </Grid>
-
-            {/* Dashboard preview card */}
-            <Grid item xs={12} md={6}>
-              <Paper elevation={0} sx={{
-                bgcolor: T.navy, borderRadius: 4, p: 3,
-                border: "1px solid rgba(201,168,76,0.2)",
-              }}>
-                {/* Header */}
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2.5 }}>
-                  <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.82rem", fontWeight: 600, color: T.white }}>
-                    My Dashboard
-                  </Typography>
-                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: T.gold }} />
-                </Box>
-
-                {/* Stats */}
-                <Grid container spacing={1.5} mb={2}>
-                  {[
-                    { label: "This month", val: "£3,240" },
-                    { label: "Bookings",   val: "42"      },
-                  ].map(s => (
-                    <Grid item xs={6} key={s.label}>
-                      <Box sx={{ bgcolor: "rgba(255,255,255,0.05)", borderRadius: 2, p: 1.5 }}>
-                        <Typography sx={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.06em", mb: 0.5 }}>
-                          {s.label}
-                        </Typography>
-                        <Typography sx={{ fontFamily: FONT_SERIF, fontSize: "1.4rem", fontWeight: 600, color: T.gold }}>
-                          {s.val}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-
-                {/* Bookings list */}
-                <Typography sx={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em", mb: 1 }}>
-                  Upcoming bookings
-                </Typography>
-                <Stack spacing={1}>
-                  {[
-                    { name: "James R. — Cut & Beard", time: "Today · 2:00 PM",      status: "Confirmed", statusColor: "#5DCAA5", statusBg: "rgba(26,92,56,0.3)" },
-                    { name: "Sarah M. — Full Colour",  time: "Tomorrow · 11:30 AM", status: "Pending",   statusColor: T.gold,   statusBg: "rgba(201,168,76,0.15)" },
-                    { name: "Tom K. — Haircut",        time: "Thu · 4:00 PM",       status: "Confirmed", statusColor: "#5DCAA5", statusBg: "rgba(26,92,56,0.3)" },
-                  ].map((b, i) => (
-                    <Box key={i} sx={{
-                      bgcolor: "rgba(255,255,255,0.05)", borderRadius: 2,
-                      px: 1.5, py: 1.2,
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                    }}>
-                      <Box>
-                        <Typography sx={{ fontSize: "0.78rem", fontWeight: 500, color: T.white }}>{b.name}</Typography>
-                        <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.35)", mt: 0.3 }}>{b.time}</Typography>
-                      </Box>
-                      <Box sx={{
-                        bgcolor: b.statusBg, color: b.statusColor,
-                        fontSize: "0.65rem", fontWeight: 600,
-                        px: 1.2, py: 0.4, borderRadius: "99px",
-                      }}>
-                        {b.status}
-                      </Box>
-                    </Box>
-                  ))}
-                </Stack>
-              </Paper>
-            </Grid>
-
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* ── PRICING ──────────────────────────────────────────────────────── */}
-      <Box sx={{ bgcolor: T.offWhite, py: { xs: 8, md: 12 }, px: { xs: 2, md: 5 } }}>
-        <Container maxWidth="sm">
-          <Box sx={{ textAlign: "center", mb: 5 }}>
-            <SectionLabel>Pricing</SectionLabel>
-            <SectionTitle center>One plan. Everything included.</SectionTitle>
-            <Typography sx={{
-              fontFamily: FONT_SANS, fontSize: "0.95rem", color: T.muted,
-              lineHeight: 1.8, mt: 1.5,
-            }}>
-              No feature tiers. No stripped-down plans. Every business gets the full platform.
-            </Typography>
-          </Box>
-
-          <Paper elevation={0} sx={{
-            border: `2px solid ${T.gold}`,
-            borderRadius: 4, overflow: "hidden",
-          }}>
-            {/* Gold header */}
-            <Box sx={{ bgcolor: T.navy, px: 4, py: 3, textAlign: "center" }}>
-              <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.7rem", fontWeight: 600, letterSpacing: "0.1em", color: "rgba(201,168,76,0.6)", textTransform: "uppercase", mb: 1 }}>
-                Full access
-              </Typography>
-              <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 0.5 }}>
-                <Typography sx={{ fontFamily: FONT_SERIF, fontSize: "3.5rem", fontWeight: 600, color: T.gold, lineHeight: 1 }}>
-                  £10
-                </Typography>
-                <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.9rem", color: "rgba(255,255,255,0.4)" }}>
-                  / month
-                </Typography>
-              </Box>
-              <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.78rem", color: "rgba(255,255,255,0.4)", mt: 0.5 }}>
-                + 2.5% on each Stripe transaction · Free for 30 days
-              </Typography>
-            </Box>
-
-            {/* Features */}
-            <Box sx={{ px: 4, py: 3 }}>
-              <Stack spacing={1.5}>
-                {[
-                  "Your own hosted business website",
-                  "Custom domain (buy or link your own)",
-                  "Time-slot booking system",
-                  "Stripe payments, deposits & invoicing",
-                  "Face-to-face & remote payments",
-                  "Instagram, TikTok, Facebook & YouTube links",
-                  "Customise images, text & branding",
-                  "Profile photo & business details",
-                  "30-day free trial — no card required",
-                ].map((f, i) => (
-                  <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                    <CheckCircleIcon sx={{ color: T.gold, fontSize: 18, flexShrink: 0 }} />
-                    <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.875rem", color: T.navy }}>
-                      {f}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-
-              <Button
-                fullWidth
-                variant="contained"
-                href="/signup"
-                startIcon={<RocketLaunchIcon />}
-                sx={{
-                  mt: 3, bgcolor: T.gold, color: T.navy,
-                  fontFamily: FONT_SANS, fontWeight: 700, fontSize: "0.88rem",
-                  py: 1.6, borderRadius: "10px", boxShadow: "none",
-                  "&:hover": { bgcolor: T.goldLight, boxShadow: "none" },
-                }}
-              >
-                Start your free 30 days
-              </Button>
-              <Typography sx={{
-                fontFamily: FONT_SANS, fontSize: "0.72rem", color: T.muted,
-                textAlign: "center", mt: 1,
-              }}>
-                No card required · Cancel anytime
-              </Typography>
-            </Box>
-          </Paper>
-        </Container>
-      </Box>
-
       {/* ── REVIEWS ──────────────────────────────────────────────────────── */}
-      <Box sx={{ bgcolor: T.white, py: { xs: 8, md: 12 }, px: { xs: 2, md: 5 } }}>
+      <Box sx={{ bgcolor: "#fff", py: { xs: 8, md: 12 }, px: { xs: 2, md: 5 }, borderTop: `1px solid ${G.border}` }}>
         <Container maxWidth="lg">
-          <Box sx={{ mb: 5 }}>
-            <SectionLabel>Testimonials</SectionLabel>
-            <SectionTitle>Trusted by thousands</SectionTitle>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mb: 6 }}>
+            <SectionHeading label="Testimonials" title="Trusted by thousands" />
           </Box>
           <Grid container spacing={3}>
             {REVIEWS.map((rev, i) => (
               <Grid item xs={12} md={4} key={i}>
                 <Paper elevation={0} sx={{
-                  p: 3.5, bgcolor: T.offWhite,
-                  border: `1px solid ${T.border}`, borderRadius: 3, height: "100%",
+                  p: 4, bgcolor: G.warmWhite,
+                  border: `1px solid ${G.border}`,
+                  borderRadius: 0, height: "100%",
+                  transition: "border-color .25s",
+                  "&:hover": { borderColor: G.gold },
                 }}>
-                  <Stack direction="row" spacing={0.4} mb={2}>
-                    {[1,2,3,4,5].map(j => (
-                      <StarIcon key={j} sx={{ color: T.gold, fontSize: 15 }} />
-                    ))}
+                  <Stack direction="row" spacing={0.4} mb={2.5}>
+                    {[1,2,3,4,5].map(j => <StarIcon key={j} sx={{ color: G.gold, fontSize: 14 }} />)}
                   </Stack>
-                  <Typography sx={{
-                    fontFamily: FONT_SANS, fontSize: "0.875rem",
-                    fontStyle: "italic", color: "#374955", lineHeight: 1.75, mb: 2.5,
-                  }}>
+                  <Typography sx={{ fontFamily: ITALIC, fontStyle: "italic", fontSize: "1.05rem", color: G.dark2, lineHeight: 1.75, mb: 3 }}>
                     "{rev.text}"
                   </Typography>
                   <Stack direction="row" spacing={1.5} alignItems="center">
                     <Box sx={{
                       width: 36, height: 36, borderRadius: "50%",
-                      bgcolor: rev.avatarBg,
-                      display: "flex", alignItems: "center", justifyContent: "center",
+                      bgcolor: G.goldPale, display: "flex", alignItems: "center", justifyContent: "center",
                     }}>
-                      <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.72rem", fontWeight: 700, color: rev.avatarColor }}>
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", fontWeight: 700, color: G.gold }}>
                         {rev.initials}
                       </Typography>
                     </Box>
                     <Box>
-                      <Typography sx={{ fontFamily: FONT_SANS, fontWeight: 600, fontSize: "0.82rem", color: T.navy }}>
+                      <Typography sx={{ fontFamily: SANS, fontWeight: 600, fontSize: "0.82rem", color: G.dark }}>
                         {rev.name}
                       </Typography>
-                      <Typography sx={{ fontFamily: FONT_SANS, fontSize: "0.72rem", color: T.muted }}>
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: G.muted }}>
                         Booked: {rev.trade}
                       </Typography>
                     </Box>
-                    <VerifiedIcon sx={{ color: T.gold, fontSize: 16, ml: "auto" }} />
+                    <VerifiedIcon sx={{ color: G.gold, fontSize: 16, ml: "auto" }} />
                   </Stack>
                 </Paper>
               </Grid>
@@ -666,32 +478,84 @@ export default function Home({ tenant }) {
         </Container>
       </Box>
 
-      {/* ── FOOTER CTA ───────────────────────────────────────────────────── */}
-      <Box sx={{ bgcolor: T.navy, py: { xs: 10, md: 14 }, px: { xs: 2, md: 5 }, textAlign: "center" }}>
-        <Container maxWidth="md">
-          <SectionLabel light>Join the platform</SectionLabel>
+      {/* ── BUSINESS CTA ─────────────────────────────────────────────────── */}
+      <Box sx={{
+        bgcolor: G.dark, py: { xs: 12, md: 18 }, px: { xs: 2, md: 5 },
+        textAlign: "center", position: "relative", overflow: "hidden",
+        borderTop: `2px solid ${G.gold}`,
+      }}>
+        <Box sx={{
+          position: "absolute", right: -24, top: "50%", transform: "translateY(-50%)",
+          fontFamily: SERIF, fontSize: { xs: "16rem", md: "26rem" }, fontWeight: 400,
+          color: "rgba(201,168,76,0.03)", lineHeight: 1, pointerEvents: "none", userSelect: "none",
+        }}>
+          &amp;
+        </Box>
+
+        <Container maxWidth="md" sx={{ position: "relative" }}>
+          <SectionLabel text="Join the platform" />
           <Typography sx={{
-            fontFamily: FONT_SERIF, fontSize: { xs: "1.9rem", md: "2.8rem" },
-            fontWeight: 600, color: T.white, mb: 1.5, lineHeight: 1.15, mt: 1,
+            fontFamily: SERIF, fontSize: { xs: "2rem", md: "3rem" }, fontWeight: 400,
+            color: "#fff", mb: 2, lineHeight: 1.15, mt: 1,
           }}>
-            Are you a{" "}
-            <Box component="em" sx={{ color: T.gold, fontStyle: "italic" }}>trade professional?</Box>
+            Are you a <em style={{ fontStyle: "italic", color: G.gold }}>trade professional?</em>
           </Typography>
           <Typography sx={{
-            fontFamily: FONT_SANS, fontSize: "0.95rem",
-            color: "rgba(255,255,255,0.45)", mb: 5, lineHeight: 1.7,
-            maxWidth: 500, mx: "auto",
+            fontFamily: SANS, fontSize: "0.95rem", color: "rgba(255,255,255,0.45)",
+            mb: 6, lineHeight: 1.8, maxWidth: 500, mx: "auto",
           }}>
-            List your business for free and start receiving bookings from customers in your area.
-            Your own website. Your own domain. £10/mo after your free trial.
+            Get your own professional website, booking system, and payment tools — all connected to your business. List for free and start taking bookings today.
           </Typography>
+
+          {/* Checklist */}
+          <Grid container spacing={1.5} sx={{ mb: 6, textAlign: "left", maxWidth: 560, mx: "auto" }}>
+            {[
+              "Custom domain or link your own",
+              "Built-in Stripe payments & deposits",
+              "Online booking with time slots",
+              "Professional invoice sending",
+              "Instagram, TikTok & YouTube links",
+              "Full dashboard to manage everything",
+            ].map(item => (
+              <Grid item xs={12} sm={6} key={item}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <CheckCircleIcon sx={{ color: G.gold, fontSize: 16, flexShrink: 0 }} />
+                  <Typography sx={{ fontFamily: SANS, fontSize: "0.82rem", fontWeight: 400, color: "rgba(255,255,255,0.6)" }}>
+                    {item}
+                  </Typography>
+                </Stack>
+              </Grid>
+            ))}
+          </Grid>
+
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="center">
-            <GoldButton startIcon={<RocketLaunchIcon />} href="/signup" large>
+            <Button
+              variant="contained"
+              onClick={() => navigate("/signup")}
+              sx={{
+                bgcolor: G.gold, color: G.dark,
+                fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem",
+                letterSpacing: "0.1em", textTransform: "uppercase",
+                px: 5, py: 1.8, borderRadius: "2px", boxShadow: "none",
+                "&:hover": { bgcolor: G.goldLight, boxShadow: "none" },
+              }}
+            >
               Get listed for free
-            </GoldButton>
-            <GoldButton outlined large>
-              Learn more
-            </GoldButton>
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate("/login")}
+              sx={{
+                borderColor: "rgba(201,168,76,0.3)", color: G.goldLight,
+                fontFamily: SANS, fontWeight: 500, fontSize: "0.8rem",
+                letterSpacing: "0.1em", textTransform: "uppercase",
+                px: 5, py: 1.8, borderRadius: "2px",
+                bgcolor: "rgba(201,168,76,0.05)",
+                "&:hover": { bgcolor: "rgba(201,168,76,0.1)", borderColor: G.gold },
+              }}
+            >
+              Professional login
+            </Button>
           </Stack>
         </Container>
       </Box>

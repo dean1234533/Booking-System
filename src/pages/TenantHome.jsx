@@ -1,662 +1,409 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState } from "react";
+import { 
+  Box, Container, Typography, Grid, Paper, 
+  Skeleton, Button, Divider, Stack, Avatar,
+  CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
+  useMediaQuery, useTheme, IconButton, Tooltip
+} from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import VerifiedIcon from "@mui/icons-material/Verified";
+import SanitizerIcon from "@mui/icons-material/Sanitizer";
+import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
+import StarIcon from "@mui/icons-material/Star";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import ContentCutIcon from "@mui/icons-material/ContentCut";
+import RateReviewIcon from "@mui/icons-material/RateReview";
+import InstagramIcon from "@mui/icons-material/Instagram";
+import FacebookIcon from "@mui/icons-material/Facebook";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+ 
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getShopStaff, getBarber } from "../firebase/firestore";
-import BarberCard from "../components/BarberCard";
-
-// ── Google Fonts — add to your index.html ─────────────────────────────────────
-// <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,400;1,300;1,400&display=swap" rel="stylesheet" />
-// <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
-
-// ── CSS injected once ─────────────────────────────────────────────────────────
-const CSS = `
-  :root {
-    --gold: #C9A84C;
-    --gold-light: #e8c97a;
-    --gold-pale: #f5e9c8;
-    --dark: #0d0d0d;
-    --dark2: #1a1a1a;
-    --warm-white: #faf8f4;
-    --cream: #f2ede3;
-    --text-muted: #7a7060;
-    --serif: 'Playfair Display', serif;
-    --sans: 'DM Sans', sans-serif;
-    --italic: 'Cormorant Garamond', serif;
-  }
-
-  .th-body { font-family: var(--sans); background: var(--warm-white); color: var(--dark); overflow-x: hidden; }
-
-  /* HERO */
-  .th-hero {
-    position: relative; height: 520px;
-    display: flex; align-items: flex-end; justify-content: center;
-    overflow: hidden;
-    background: linear-gradient(160deg,#1a0e00 0%,#0d0d0d 40%,#1c1408 100%);
-    padding-bottom: 56px;
-  }
-  .th-hero-img {
-    position: absolute; inset: 0;
-    background-size: cover; background-position: center 35%; opacity: 0.28;
-  }
-  .th-hero-overlay {
-    position: absolute; inset: 0;
-    background: linear-gradient(to bottom,rgba(13,13,13,0.2) 0%,rgba(13,13,13,0.9) 100%);
-  }
-  .th-hero-accent {
-    position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg,transparent,var(--gold),transparent);
-  }
-  .th-hero-content {
-    position: relative; z-index: 1; text-align: center;
-    display: flex; flex-direction: column; align-items: center; gap: 16px;
-  }
-  .th-eyebrow { display: flex; align-items: center; gap: 12px; }
-  .th-eyebrow-line { width: 32px; height: 1px; background: var(--gold); opacity: 0.6; }
-  .th-eyebrow span {
-    font-family: var(--sans); font-size: 10px; font-weight: 500;
-    letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255,255,255,0.6);
-  }
-  .th-hero-title {
-    font-family: var(--serif); font-weight: 400; font-size: 78px;
-    line-height: 0.92; letter-spacing: -0.03em; color: #fff; text-transform: uppercase;
-  }
-  .th-hero-title .accent { color: var(--gold); }
-  .th-hero-stars { display: flex; gap: 4px; }
-  .th-hero-stars span { color: var(--gold); font-size: 14px; }
-  .th-hero-tagline {
-    font-family: var(--sans); font-size: 10px; font-weight: 300;
-    letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255,255,255,0.5);
-  }
-  .th-hero-cta {
-    margin-top: 8px; padding: 14px 40px;
-    background: var(--gold); color: #0d0d0d;
-    font-family: var(--sans); font-size: 10px; font-weight: 500;
-    letter-spacing: 0.2em; text-transform: uppercase;
-    border: none; cursor: pointer; transition: background 0.25s, transform 0.2s;
-  }
-  .th-hero-cta:hover { background: var(--gold-light); transform: translateY(-1px); }
-
-  /* TRUST BAR */
-  .th-trust-bar {
-    background: var(--dark);
-    display: grid; grid-template-columns: repeat(3,1fr);
-    border-bottom: 1px solid rgba(201,168,76,0.15);
-  }
-  .th-trust-item {
-    padding: 22px 24px; display: flex; align-items: center; gap: 14px;
-    border-right: 1px solid rgba(255,255,255,0.06);
-  }
-  .th-trust-item:last-child { border-right: none; }
-  .th-trust-icon { color: var(--gold); font-size: 20px; flex-shrink: 0; }
-  .th-trust-label {
-    font-family: var(--sans); font-size: 11px; font-weight: 500;
-    letter-spacing: 0.08em; color: #fff; display: block;
-  }
-  .th-trust-sub {
-    font-family: var(--sans); font-size: 10px; font-weight: 300;
-    color: rgba(255,255,255,0.35); letter-spacing: 0.03em; display: block; margin-top: 2px;
-  }
-
-  /* SECTION UTILS */
-  .th-section-label { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .th-section-label-line { width: 24px; height: 1px; background: var(--gold); }
-  .th-section-label span {
-    font-family: var(--sans); font-size: 10px; font-weight: 500;
-    letter-spacing: 0.28em; text-transform: uppercase; color: var(--gold);
-  }
-  .th-section-title {
-    font-family: var(--serif); font-weight: 400; font-size: 34px; line-height: 1.15; color: var(--dark);
-  }
-  .th-divider { width: 36px; height: 1px; background: var(--gold); margin-top: 16px; }
-
-  /* LOCATION + HOURS */
-  .th-info-wrapper { padding: 72px 40px 0; background: var(--warm-white); }
-  .th-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 0 0 80px; }
-  .th-info-card { background: #fff; border: 1px solid #ebebeb; padding: 40px; }
-  .th-info-card.dark { background: var(--dark2); border-color: rgba(201,168,76,0.2); }
-  .th-info-card.dark .th-section-title { color: #fff; }
-  .th-info-address {
-    font-family: var(--sans); font-size: 14px; font-weight: 300;
-    color: var(--text-muted); line-height: 1.7; margin: 12px 0 28px;
-  }
-  .th-info-card.dark .th-info-address { color: rgba(255,255,255,0.5); }
-  .th-btn-primary {
-    padding: 13px 32px; background: transparent;
-    border: 1px solid var(--dark); color: var(--dark);
-    font-family: var(--sans); font-size: 10px; font-weight: 500;
-    letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; transition: all 0.25s;
-  }
-  .th-btn-primary:hover { background: var(--gold); border-color: var(--gold); color: #0d0d0d; }
-  .th-hours-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.07);
-  }
-  .th-hours-row:last-child { border-bottom: none; }
-  .th-hours-row.today {
-    background: rgba(201,168,76,0.06); padding: 10px 8px;
-    margin: 0 -8px; border-radius: 4px; border-bottom: none;
-  }
-  .th-hours-day { font-family: var(--sans); font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.75); }
-  .th-hours-day.today { color: var(--gold); font-weight: 500; }
-  .th-today-badge { font-size: 9px; opacity: 0.6; }
-  .th-hours-time { font-family: var(--sans); font-size: 12px; font-weight: 300; color: rgba(255,255,255,0.45); }
-  .th-hours-time.open { color: var(--gold); font-weight: 400; }
-  .th-hours-time.closed { color: #c0392b; }
-
-  /* ABOUT */
-  .th-about {
-    background: var(--dark); padding: 100px 40px;
-    text-align: center; position: relative; overflow: hidden;
-  }
-  .th-about-deco {
-    position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
-    font-family: var(--serif); font-size: 220px; line-height: 1;
-    color: var(--gold); opacity: 0.04; pointer-events: none; user-select: none;
-  }
-  .th-about-ring {
-    width: 52px; height: 52px; border-radius: 50%;
-    border: 1px solid rgba(201,168,76,0.35);
-    display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;
-  }
-  .th-about-eyebrow {
-    font-family: var(--sans); font-size: 10px; font-weight: 500;
-    letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold);
-    margin-bottom: 16px; display: block;
-  }
-  .th-about-title {
-    font-family: var(--serif); font-weight: 400; font-size: 40px;
-    color: #fff; line-height: 1.2; margin-bottom: 32px;
-  }
-  .th-about-body {
-    font-family: var(--italic); font-style: italic; font-weight: 300;
-    font-size: 20px; line-height: 1.75; color: rgba(255,255,255,0.6);
-    max-width: 580px; margin: 0 auto;
-  }
-
-  /* TEAM */
-  .th-team { padding: 80px 40px; background: var(--warm-white); }
-  .th-team-header { text-align: center; margin-bottom: 52px; }
-  .th-team-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
-  .th-barber-card {
-    background: #fff; border: 1px solid #ebebeb;
-    overflow: hidden; cursor: pointer;
-    transition: transform 0.25s, border-color 0.25s; position: relative;
-  }
-  .th-barber-card:hover { transform: translateY(-4px); border-color: var(--gold); }
-  .th-barber-photo {
-    height: 200px; background: var(--cream);
-    display: flex; align-items: center; justify-content: center;
-    position: relative; overflow: hidden;
-  }
-  .th-barber-initial {
-    font-family: var(--serif); font-size: 52px; font-weight: 400;
-    color: rgba(201,168,76,0.4);
-  }
-  .th-barber-overlay {
-    position: absolute; inset: 0;
-    background: linear-gradient(to top,rgba(13,13,13,0.7) 0%,transparent 50%);
-    opacity: 0; transition: opacity 0.3s;
-  }
-  .th-barber-card:hover .th-barber-overlay { opacity: 1; }
-  .th-barber-book {
-    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
-    padding: 8px 22px; background: var(--gold); color: #0d0d0d;
-    font-family: var(--sans); font-size: 9px; font-weight: 500;
-    letter-spacing: 0.18em; text-transform: uppercase;
-    opacity: 0; transition: opacity 0.3s; white-space: nowrap;
-  }
-  .th-barber-card:hover .th-barber-book { opacity: 1; }
-  .th-barber-info { padding: 20px 22px; }
-  .th-barber-name {
-    font-family: var(--serif); font-size: 17px; font-weight: 400; color: var(--dark); margin-bottom: 4px;
-  }
-  .th-barber-role {
-    font-family: var(--sans); font-size: 10px; font-weight: 300;
-    letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase;
-  }
-  .th-barber-tag {
-    display: inline-block; margin-top: 10px; padding: 3px 10px;
-    background: var(--gold-pale); font-family: var(--sans); font-size: 9px;
-    font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #8a6a20;
-  }
-
-  /* REVIEWS */
-  .th-reviews {
-    background: linear-gradient(135deg,var(--cream) 0%,#fff 60%,var(--cream) 100%);
-    padding: 80px 40px; border-top: 1px solid #e8e0d0;
-  }
-  .th-reviews-header { text-align: center; margin-bottom: 52px; }
-  .th-review-card { max-width: 640px; margin: 0 auto; position: relative; }
-  .th-review-quote {
-    font-family: var(--serif); font-size: 100px; line-height: 1;
-    color: var(--gold); opacity: 0.18; position: absolute; top: -18px; left: -8px;
-    user-select: none; pointer-events: none;
-  }
-  .th-review-stars { display: flex; gap: 3px; margin-bottom: 20px; }
-  .th-review-stars span { color: var(--gold); font-size: 13px; }
-  .th-review-text {
-    font-family: var(--italic); font-style: italic; font-weight: 400;
-    font-size: 20px; line-height: 1.7; color: var(--dark2); margin-bottom: 28px;
-    transition: opacity 0.25s;
-  }
-  .th-review-text.fade { opacity: 0; }
-  .th-review-author { display: flex; align-items: center; gap: 12px; }
-  .th-review-bar { width: 28px; height: 1px; background: var(--gold); }
-  .th-review-name {
-    font-family: var(--sans); font-size: 11px; font-weight: 500;
-    letter-spacing: 0.14em; text-transform: uppercase; color: var(--dark);
-  }
-  .th-review-verified {
-    font-family: var(--sans); font-size: 10px; font-weight: 300;
-    color: var(--text-muted); letter-spacing: 0.08em;
-  }
-  .th-review-dots { display: flex; justify-content: center; gap: 8px; margin-top: 32px; }
-  .th-dot {
-    height: 6px; border-radius: 3px; background: #d0c8b8;
-    cursor: pointer; transition: all 0.35s; width: 6px;
-  }
-  .th-dot.active { width: 22px; background: var(--gold); }
-
-  /* FOOTER */
-  .th-footer {
-    background: var(--dark); border-top: 2px solid var(--gold);
-    padding: 32px 40px; display: flex; justify-content: space-between; align-items: center;
-  }
-  .th-footer-brand { font-family: var(--serif); font-size: 20px; font-weight: 400; color: #fff; }
-  .th-footer-copy {
-    font-family: var(--sans); font-size: 10px; font-weight: 300;
-    color: rgba(255,255,255,0.3); letter-spacing: 0.08em;
-  }
-  .th-footer-socials { display: flex; gap: 8px; }
-  .th-social-btn {
-    width: 32px; height: 32px; border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.2);
-    display: flex; align-items: center; justify-content: center;
-    color: rgba(255,255,255,0.5); font-size: 15px; cursor: pointer; transition: all 0.2s;
-    text-decoration: none;
-  }
-  .th-social-btn:hover { border-color: var(--gold); color: var(--gold); }
-
-  /* LOADING */
-  .th-loading {
-    display: flex; align-items: center; justify-content: center;
-    height: 100vh; background: #000;
-  }
-  .th-spinner {
-    width: 40px; height: 40px; border-radius: 50%;
-    border: 1.5px solid rgba(201,168,76,0.2);
-    border-top-color: var(--gold);
-    animation: th-spin 0.9s linear infinite;
-  }
-  @keyframes th-spin { to { transform: rotate(360deg); } }
-
-  @media (max-width: 768px) {
-    .th-trust-bar { grid-template-columns: 1fr; }
-    .th-trust-item { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .th-trust-item:last-child { border-bottom: none; }
-    .th-info-grid { grid-template-columns: 1fr; }
-    .th-team-grid { grid-template-columns: 1fr 1fr; }
-    .th-hero-title { font-size: 48px; }
-    .th-footer { flex-direction: column; gap: 16px; text-align: center; }
-  }
-  @media (max-width: 480px) {
-    .th-team-grid { grid-template-columns: 1fr; }
-  }
-`;
-
-// ── Inject styles once ────────────────────────────────────────────────────────
-function useGlobalStyles(css) {
-  useEffect(() => {
-    const id = "th-styles";
-    if (document.getElementById(id)) return;
-    const tag = document.createElement("style");
-    tag.id = id;
-    tag.textContent = css;
-    document.head.appendChild(tag);
-  }, []);
-}
-
-// ── Review Carousel ───────────────────────────────────────────────────────────
-function ReviewCarousel({ reviews }) {
-  const [idx, setIdx] = useState(0);
-  const [fading, setFading] = useState(false);
-
-  const go = useCallback((next) => {
-    setFading(true);
-    setTimeout(() => { setIdx(next); setFading(false); }, 250);
-  }, []);
-
-  useEffect(() => {
-    if (reviews.length <= 1) return;
-    const t = setInterval(() => go((idx + 1) % reviews.length), 5500);
-    return () => clearInterval(t);
-  }, [idx, reviews.length, go]);
-
-  if (!reviews.length) return null;
-
-  const rev = reviews[idx];
-  const text = rev.comment || rev.text || "An exceptional experience from start to finish.";
-  const name = rev.customerName || rev.name || "Client";
-
+import BarberCard from "../components/BarberCard"; 
+ 
+// ── TikTok SVG ────────────────────────────────────────────────────────────────
+const TikTokIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: "block" }}>
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5
+      2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27
+      0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0
+      6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z" />
+  </svg>
+);
+ 
+// ── Social button (white variant for dark hero) ───────────────────────────────
+function SocialButton({ href, label, icon, hoverColor }) {
+  if (!href) return null;
+  const url = href.startsWith("http") ? href : `https://${href}`;
   return (
-    <div className="th-review-card">
-      <div className="th-review-quote">"</div>
-      <div className="th-review-stars">
-        {[1,2,3,4,5].map(i => <span key={i}>★</span>)}
-      </div>
-      <div className={`th-review-text${fading ? " fade" : ""}`}>
-        "{text}"
-      </div>
-      <div className="th-review-author">
-        <div className="th-review-bar" />
-        <div>
-          <div className="th-review-name">{name}</div>
-          <div className="th-review-verified">Verified Client</div>
-        </div>
-      </div>
-      <div className="th-review-dots">
-        {reviews.map((_, i) => (
-          <div
-            key={i}
-            className={`th-dot${i === idx ? " active" : ""}`}
-            onClick={() => go(i)}
-          />
-        ))}
-      </div>
-    </div>
+    <Tooltip title={`Follow on ${label}`} arrow>
+      <IconButton
+        component="a" href={url} target="_blank" rel="noopener noreferrer"
+        size="small"
+        sx={{
+          border: "1.5px solid rgba(255,255,255,0.4)",
+          borderRadius: 2,
+          color: "white",
+          p: 1,
+          transition: "all 0.2s",
+          "&:hover": {
+            borderColor: hoverColor,
+            bgcolor: alpha(hoverColor, 0.25),
+            transform: "translateY(-2px)",
+          },
+        }}
+      >
+        {icon}
+      </IconButton>
+    </Tooltip>
   );
 }
-
-// ── Hours Row ─────────────────────────────────────────────────────────────────
-function HoursRow({ day, dayData }) {
-  const isClosed = !dayData || dayData.isClosed || !dayData.open || !dayData.close;
-  const todayName = new Date().toLocaleDateString("en-GB", { weekday: "long" });
-  const isToday = day === todayName;
-
-  return (
-    <div className={`th-hours-row${isToday ? " today" : ""}`}>
-      <span className={`th-hours-day${isToday ? " today" : ""}`}>
-        {day}
-        {isToday && <span className="th-today-badge"> (today)</span>}
-      </span>
-      <span className={`th-hours-time${isClosed ? " closed" : " open"}`}>
-        {isClosed ? "Closed" : `${dayData.open} – ${dayData.close}`}
-      </span>
-    </div>
-  );
-}
-
-// ── Main Component ────────────────────────────────────────────────────────────
-const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-
+ 
 export default function TenantHome({ tenant: initialTenant }) {
-  useGlobalStyles(CSS);
-
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { tenantId } = useParams();
-
-  const [team, setTeam]             = useState([]);
-  const [loading, setLoading]       = useState(true);
+  const theme = useTheme();
+  
+  const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md"));
+ 
+  const [team, setTeam] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [freshTenant, setFreshTenant] = useState(initialTenant || location.state?.tenant);
-
-  const businessName = freshTenant?.businessName || "TRIMZ";
-  const address      = freshTenant?.address      || "123 High Street, Brentwood, Essex";
-  const aboutUs      = freshTenant?.aboutUs      || `Welcome to ${businessName}. We believe a great haircut is more than a service — it's a ritual. Our master barbers bring precision, passion, and years of expertise to every chair.`;
-  const heroImage    = freshTenant?.heroImage    || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=1200&q=80";
-  const instagramUrl = freshTenant?.instagramUrl || "";
-  const tiktokUrl    = freshTenant?.tiktokUrl    || "";
-  const facebookUrl  = freshTenant?.facebookUrl  || "";
-
-  // ── Fetch data ──────────────────────────────────────────────────────────────
+  
+  const [openPrivacy, setOpenPrivacy] = useState(false);
+  const [openTerms, setOpenTerms] = useState(false);
+ 
+  const brandColor      = freshTenant?.brandColor      || "#C9A84C";
+  const businessName    = freshTenant?.businessName     || "TRIMZ"; 
+  const address         = freshTenant?.address          || "Location TBD";
+  const aboutBgColor    = freshTenant?.aboutSectionColor || "#111111";
+  const trustBarBgColor = freshTenant?.trustBarColor    || "#000000";
+ 
+  // ── Owner social links ────────────────────────────────────────────────────
+  const ownerInstagram = freshTenant?.instagramUrl || "";
+  const ownerTikTok    = freshTenant?.tiktokUrl    || "";
+  const ownerFacebook  = freshTenant?.facebookUrl  || "";
+  const ownerHasSocial = ownerInstagram || ownerTikTok || ownerFacebook;
+  
+  const getContrastText = (hexColor) => {
+    if (!hexColor) return "#ffffff";
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return brightness > 155 ? "#000000" : "#ffffff";
+  };
+ 
+  const aboutTextColor    = getContrastText(aboutBgColor);
+  const trustBarTextColor = getContrastText(trustBarBgColor);
+ 
+  const heroImageUrl = isMobileOrTablet 
+    ? (freshTenant?.heroImageMobile || freshTenant?.heroImage || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1")
+    : (freshTenant?.heroImage || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1");
+ 
   useEffect(() => { window.scrollTo(0, 0); }, [tenantId, initialTenant?.id]);
-
+ 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchTenantData() {
       setLoading(true);
       try {
-        let tid  = initialTenant?.id || tenantId || location.state?.tenant?.id;
-        let base = initialTenant || location.state?.tenant;
-
-        if (!tid) {
-          const host = window.location.hostname;
-          const snap = await getDocs(query(collection(db, "tenants"), where("vercelUrl", "==", host), limit(1)));
-          if (!snap.empty) { tid = snap.docs[0].id; base = { id: tid, ...snap.docs[0].data() }; }
+        let activeTenantId = initialTenant?.id || tenantId || location.state?.tenant?.id;
+        let tenantBaseData = initialTenant || location.state?.tenant;
+ 
+        if (!activeTenantId) {
+          const currentHost = window.location.hostname;
+          const q = query(
+            collection(db, "tenants"), 
+            where("vercelUrl", "==", currentHost), 
+            limit(1)
+          );
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            activeTenantId = querySnapshot.docs[0].id;
+            tenantBaseData = { id: activeTenantId, ...querySnapshot.docs[0].data() };
+          }
         }
-        if (!tid) { setLoading(false); return; }
-
-        const [ownerData, staffMembers, reviewsSnap] = await Promise.all([
-          getBarber(tid),
-          getShopStaff(tid),
-          getDocs(collection(db, "barbers", tid, "reviews")),
+ 
+        if (!activeTenantId) { setLoading(false); return; }
+ 
+        const [updatedOwnerData, staffMembers, reviewsSnap] = await Promise.all([
+          getBarber(activeTenantId),
+          getShopStaff(activeTenantId),
+          getDocs(collection(db, "barbers", activeTenantId, "reviews"))
         ]);
-
-        const reviews    = reviewsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const tenantData = { ...(ownerData || base), id: tid, reviews };
-        setFreshTenant(tenantData);
-
-        const owner = { ...tenantData, name: tenantData.name || "Master Barber", profilePic: tenantData.profilePic || "", isOwner: true, shopId: tid };
-        const staff = staffMembers.map(m => ({ ...m, shopId: tid })).filter(m => m.name);
-        setTeam([owner, ...staff]);
-      } catch (err) {
-        console.error("Error loading shop data:", err);
-      } finally {
-        setLoading(false);
+        
+        const fetchedReviews = reviewsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+ 
+        const finalTenantData = {
+          ...(updatedOwnerData || tenantBaseData),
+          id: activeTenantId, 
+          reviews: fetchedReviews
+        };
+ 
+        setFreshTenant(finalTenantData);
+ 
+        // ── Owner object — passes through ALL their fields including social links ──
+        const ownerObject = {
+          ...finalTenantData,
+          name:       finalTenantData.name || "Master Barber",
+          profilePic: finalTenantData.profilePic || "", 
+          isOwner:    true,
+          shopId:     activeTenantId,
+        };
+ 
+        // ── Staff — each member carries their own instagramUrl + tiktokUrl
+        const activeStaff = staffMembers
+          .map(member => ({ ...member, shopId: activeTenantId }))
+          .filter(member => member.name);
+ 
+        setTeam([ownerObject, ...activeStaff]);
+ 
+      } catch (err) { 
+        console.error("Error loading shop data:", err); 
+      } finally { 
+        setLoading(false); 
       }
     }
-    fetchData();
+ 
+    fetchTenantData();
   }, [initialTenant?.id, tenantId, location.state]);
-
-  // ── Loading ─────────────────────────────────────────────────────────────────
+ 
   if (loading) {
     return (
-      <div className="th-loading">
-        <div className="th-spinner" />
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: '#000' }}>
+        <CircularProgress sx={{ color: brandColor }} thickness={2} size={60} />
+      </Box>
     );
   }
-
-  const reviews = freshTenant?.reviews || [];
-
-  // ── Render ──────────────────────────────────────────────────────────────────
+ 
   return (
-    <div className="th-body">
-
-      {/* ── HERO ── */}
-      <div className="th-hero">
-        <div className="th-hero-img" style={{ backgroundImage: `url('${heroImage}')` }} />
-        <div className="th-hero-overlay" />
-        <div className="th-hero-accent" />
-        <div className="th-hero-content">
-          <div className="th-eyebrow">
-            <div className="th-eyebrow-line" />
-            <span>Welcome to</span>
-            <div className="th-eyebrow-line" />
-          </div>
-          <div className="th-hero-title">
-            {businessName.slice(0, -1)}
-            <span className="accent">{businessName.slice(-1)}</span>
-          </div>
-          <div className="th-hero-stars">
-            <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
-          </div>
-          <div className="th-hero-tagline">5.0 · Top Rated Excellence</div>
-          <button
-            className="th-hero-cta"
-            onClick={() => document.getElementById("th-team")?.scrollIntoView({ behavior: "smooth" })}
-          >
-            Book a Barber
-          </button>
-        </div>
-      </div>
-
-      {/* ── TRUST BAR ── */}
-      <div className="th-trust-bar">
-        {[
-          { icon: "ti-certificate", label: "Licensed Barbers",   sub: "All staff fully certified"   },
-          { icon: "ti-sparkles",    label: "Hygiene Guaranteed", sub: "Sanitised tools, every cut"  },
-          { icon: "ti-award",       label: "Premium Products",   sub: "Professional-grade only"     },
-        ].map(({ icon, label, sub }) => (
-          <div className="th-trust-item" key={label}>
-            <i className={`ti ${icon} th-trust-icon`} aria-hidden="true" />
-            <div>
-              <span className="th-trust-label">{label}</span>
-              <span className="th-trust-sub">{sub}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── LOCATION + HOURS ── */}
-      <div className="th-info-wrapper">
-        <div className="th-info-grid">
-
-          {/* Location */}
-          <div className="th-info-card">
-            <div className="th-section-label">
-              <div className="th-section-label-line" />
-              <span>Find Us</span>
-            </div>
-            <div className="th-section-title">Visit the Shop</div>
-            <div className="th-divider" style={{ marginBottom: 20 }} />
-            <p className="th-info-address">{address}</p>
-            <button
-              className="th-btn-primary"
-              onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)}
-            >
-              Get Directions
-            </button>
-          </div>
-
-          {/* Hours */}
-          <div className="th-info-card dark">
-            <div className="th-section-label">
-              <div className="th-section-label-line" />
-              <span>Hours</span>
-            </div>
-            <div className="th-section-title">When We're Open</div>
-            <div className="th-divider" style={{ marginBottom: 20 }} />
-            {freshTenant?.hours ? (
-              DAYS.map(day => (
-                <HoursRow
-                  key={day}
-                  day={day}
-                  dayData={freshTenant.hours[day] || freshTenant.hours[day.toLowerCase()]}
-                />
-              ))
-            ) : (
-              <p style={{ color: "rgba(255,255,255,0.5)", fontFamily: "var(--sans)", fontSize: 13, lineHeight: 1.7 }}>
-                {freshTenant?.openingHours || "Contact us for opening times"}
-              </p>
-            )}
-          </div>
-
-        </div>
-      </div>
-
-      {/* ── ABOUT ── */}
-      <div className="th-about">
-        <div className="th-about-deco">&amp;</div>
-        <div className="th-about-ring">
-          <i className="ti ti-scissors" style={{ color: "var(--gold)", fontSize: 20 }} aria-hidden="true" />
-        </div>
-        <span className="th-about-eyebrow">Our Story</span>
-        <div className="th-about-title">Craft, Care<br />&amp; Character</div>
-        <p className="th-about-body">{aboutUs}</p>
-      </div>
-
-      {/* ── TEAM ── */}
-      <div className="th-team" id="th-team">
-        <div className="th-team-header">
-          <div className="th-section-label" style={{ justifyContent: "center" }}>
-            <div className="th-section-label-line" />
-            <span>The Experts</span>
-            <div className="th-section-label-line" />
-          </div>
-          <div className="th-section-title" style={{ marginTop: 8 }}>Meet the Barbers</div>
-          <div className="th-divider" style={{ margin: "14px auto 0" }} />
-        </div>
-
-        <div className="th-team-grid">
-          {team.map((barber, i) => (
-            <div
-              className="th-barber-card"
-              key={barber.id || i}
-              onClick={() => navigate(`/book/${freshTenant?.id || freshTenant?.uid}/${barber.id}`)}
-            >
-              <div className="th-barber-photo" style={barber.profilePic ? {} : { background: ["var(--cream)", "#e8e0d4", "#dde4e0"][i % 3] }}>
-                {barber.profilePic
-                  ? <img src={barber.profilePic} alt={barber.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <span className="th-barber-initial">{(barber.name || "?")[0]}</span>
-                }
-                <div className="th-barber-overlay" />
-                <div className="th-barber-book">Book Now</div>
-              </div>
-              <div className="th-barber-info">
-                <div className="th-barber-name">{barber.name}</div>
-                <div className="th-barber-role">{barber.isOwner ? "Master Barber · Owner" : barber.role || "Barber"}</div>
-                <div className="th-barber-tag">⭑ {barber.rating || "5.0"}</div>
-              </div>
-            </div>
+    <Box sx={{ bgcolor: "#FFFFFF", minHeight: "100vh", overflowX: 'hidden' }}>
+      
+      {/* ── 1. HERO ──────────────────────────────────────────────────────── */}
+      <Box sx={{
+        height: "100vh",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('${heroImageUrl}')`,
+        backgroundSize: "cover", 
+        backgroundPosition: "bottom center",
+        color: "white", textAlign: "center"
+      }}>
+        <Container maxWidth="lg">
+          <Box sx={{ 
+            display: 'inline-block', 
+            border: '1px solid rgba(255,255,255,0.3)', 
+            px: 4, py: 1, mb: 4 
+          }}>
+            <Typography variant="overline" sx={{ letterSpacing: 6, color: "#fff", fontWeight: 400, fontSize: '0.8rem' }}>
+              WELCOME TO
+            </Typography>
+          </Box>
+          
+          <Typography variant="h1" sx={{ 
+            fontWeight: 400, 
+            fontSize: { xs: '3.5rem', sm: '5rem', md: '7rem', lg: '8.5rem' }, 
+            fontFamily: "'Playfair Display', serif", 
+            lineHeight: 1,
+            mb: 2, 
+            textTransform: 'uppercase',
+            letterSpacing: { xs: -1, md: -2 }
+          }}>
+            {businessName}
+          </Typography>
+ 
+          <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {[1,2,3,4,5].map(i => <StarIcon key={i} sx={{ color: brandColor, fontSize: 24, opacity: 0.8 }} />)}
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+              <Box sx={{ width: 40, height: '1px', bgcolor: 'rgba(255,255,255,0.4)' }} />
+              <Typography sx={{ letterSpacing: { xs: 4, md: 8 }, fontWeight: 300, fontSize: '0.9rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)' }}>
+                5.0/5.0 Top Rated Excellence
+              </Typography>
+              <Box sx={{ width: 40, height: '1px', bgcolor: 'rgba(255,255,255,0.4)' }} />
+            </Box>
+          </Box>
+ 
+        </Container>
+      </Box>
+ 
+      {/* ── 1.5 TRUST SIGNAL BAR ─────────────────────────────────────────── */}
+      <Box sx={{ bgcolor: trustBarBgColor, py: 4, borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
+        <Container>
+          <Grid container spacing={2} justifyContent="center">
+            {[
+              { icon: <VerifiedIcon />,          text: "LICENSED BARBERS" },
+              { icon: <SanitizerIcon />,         text: "HYGIENE GUARANTEED" },
+              { icon: <WorkspacePremiumIcon />,  text: "PREMIUM PRODUCTS" }
+            ].map((signal, idx) => (
+              <Grid item xs={12} md={4} key={idx}>
+                <Stack direction="row" spacing={2} alignItems="center" justifyContent="center" sx={{ color: trustBarTextColor }}>
+                  {React.cloneElement(signal.icon, { sx: { color: brandColor, fontSize: 22, opacity: 0.8 } })}
+                  <Typography variant="subtitle2" fontWeight={400} sx={{ letterSpacing: 3, fontSize: '0.75rem' }}>
+                    {signal.text}
+                  </Typography>
+                </Stack>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
+ 
+      {/* ── 2. FIND US & HOURS ───────────────────────────────────────────── */}
+      <Container sx={{ mt: 10, mb: 15 }}>
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={6}>
+            <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
+              <LocationOnIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
+              <Typography variant="h5" sx={{ fontFamily: "'Playfair Display', serif", mb: 2 }}>Visit Us</Typography>
+              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', minHeight: '3em', fontWeight: 300 }}>{address}</Typography>
+              <Button 
+                variant="outlined" 
+                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)}
+                sx={{ borderColor: 'black', color: 'black', fontWeight: 600, letterSpacing: 2, px: 4, py: 1.5, borderRadius: 0, '&:hover': { bgcolor: 'black', color: 'white' } }}
+              >
+                GET DIRECTIONS
+              </Button>
+            </Paper>
+          </Grid>
+ 
+          <Grid item xs={12} md={6}>
+            <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
+              <AccessTimeIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
+              <Typography variant="h5" sx={{ fontFamily: "'Playfair Display', serif", mb: 3 }}>Opening Hours</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {freshTenant?.hours ? (
+                  ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day, i) => {
+                    const dayData   = freshTenant?.hours?.[day] || freshTenant?.hours?.[day.toLowerCase()];
+                    const isClosed = !dayData || dayData.isClosed || !dayData.open || !dayData.close;
+                    const hourText = isClosed ? "Closed" : `${dayData.open} – ${dayData.close}`;
+                    return (
+                      <Box key={day}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Typography fontWeight={500} sx={{ letterSpacing: 1 }}>{day}</Typography>
+                          <Typography variant="body2" fontWeight={300} color={isClosed ? 'error.main' : 'text.secondary'}>
+                            {hourText}
+                          </Typography>
+                        </Box>
+                        {i < 6 && <Divider sx={{ mt: 1.5, opacity: 0.5 }} />}
+                      </Box>
+                    );
+                  })
+                ) : (
+                  <Typography variant="body1" sx={{ color: 'text.secondary', whiteSpace: 'pre-line' }}>
+                    {freshTenant?.openingHours || "Contact us for opening times"}
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Container>
+ 
+      {/* ── 3. ABOUT ─────────────────────────────────────────────────────── */}
+      <Box sx={{ py: { xs: 12, md: 20 }, textAlign: 'center', backgroundColor: aboutBgColor, color: aboutTextColor }}>
+        <Container maxWidth="md">
+          <ContentCutIcon sx={{ color: brandColor, fontSize: 40, mb: 3, opacity: 0.6 }} />
+          <Typography variant="h3" sx={{ fontFamily: "'Playfair Display', serif", mb: 4, letterSpacing: 2 }}>
+            Our Story
+          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 300, lineHeight: 2, opacity: 0.8, maxWidth: '750px', mx: 'auto', fontSize: '1.2rem' }}>
+            {freshTenant?.aboutUs || `Welcome to ${businessName}. Share your mission, your craft, and what sets your business apart.`}
+          </Typography>
+        </Container>
+      </Box>
+ 
+      {/* ── 4. TEAM GRID ─────────────────────────────────────────────────── */}
+      <Container id="barber-section" sx={{ py: 15 }}>
+        <Box sx={{ mb: 10, textAlign: 'center' }}>
+          <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>EXPERTS</Typography>
+          <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: "'Playfair Display', serif" }}>Our Master Barbers</Typography>
+          <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: 'auto' }} />
+        </Box>
+        
+        <Grid container spacing={5}>
+          {team.map(barber => (
+            <Grid item xs={12} sm={6} md={4} key={barber.id}>
+              {/* 🎯 CHANGED: isMarketplace={false} here signals the BarberCard to navigate directly to the individual booking path `/barber/:id` */}
+              <BarberCard 
+                barber={{
+                  ...barber,
+                  businessName: barber.name,
+                  logoUrl:      barber.profilePic,
+                }} 
+                isMarketplace={false} 
+              />
+            </Grid>
           ))}
-        </div>
-      </div>
-
-      {/* ── REVIEWS ── */}
-      <div className="th-reviews">
-        <div className="th-reviews-header">
-          <div className="th-section-label" style={{ justifyContent: "center" }}>
-            <div className="th-section-label-line" />
-            <span>Testimonials</span>
-            <div className="th-section-label-line" />
-          </div>
-          <div className="th-section-title" style={{ marginTop: 8 }}>What Clients Say</div>
-          <div className="th-divider" style={{ margin: "14px auto 0" }} />
-        </div>
-
-        {reviews.length > 0
-          ? <ReviewCarousel reviews={reviews} />
-          : (
-            <p style={{ textAlign: "center", color: "var(--text-muted)", fontFamily: "var(--sans)", fontSize: 14 }}>
-              No reviews yet — be the first to leave one.
-            </p>
-          )
-        }
-
-        <div style={{ textAlign: "center", marginTop: 40 }}>
-          <button
-            className="th-btn-primary"
+        </Grid>
+      </Container>
+ 
+      {/* ── 5. REVIEWS ───────────────────────────────────────────────────── */}
+      <Box sx={{ py: 15, bgcolor: '#fcfcfc', borderTop: '1px solid #EEE' }}>
+        <Container>
+          <Box sx={{ mb: 8, textAlign: 'center' }}>
+            <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>TESTIMONIALS</Typography>
+            <Typography variant="h3" mt={1} sx={{ fontFamily: "'Playfair Display', serif" }}>Client Experiences</Typography>
+          </Box>
+ 
+          <Grid container spacing={4}>
+            {freshTenant?.reviews?.length > 0 ? (
+              freshTenant.reviews.map((rev, idx) => {
+                const rawName      = rev.customerName || rev.name || "Client";
+                const displayInitial = rawName.charAt(0).toUpperCase() || "C";
+                const starRating   = Number(rev.rating) || 5;
+                return (
+                  <Grid item xs={12} md={4} key={idx}>
+                    <Paper elevation={0} sx={{ p: 4, borderRadius: 0, bgcolor: 'white', border: '1px solid #eee', height: '100%' }}>
+                      <Stack spacing={2}>
+                        <Box sx={{ display: 'flex', color: brandColor }}>
+                          {[...Array(starRating)].map((_, i) => <StarIcon key={i} sx={{ fontSize: 18, opacity: 0.7 }} />)}
+                        </Box>
+                        <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary', minHeight: '80px', fontWeight: 300 }}>
+                          "{rev.comment || rev.text || "Great experience!"}"
+                        </Typography>
+                        <Divider />
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Avatar sx={{ bgcolor: '#f0f0f0', color: 'black', fontWeight: 400, fontSize: '0.9rem', border: '1px solid #eee' }}>
+                            {displayInitial}
+                          </Avatar>
+                          <Box>
+                            <Typography fontWeight={600} variant="subtitle2" sx={{ letterSpacing: 1 }}>
+                              {rev.customerName || rev.name || "Anonymous"}
+                            </Typography>
+                            <Typography variant="caption" sx={{ opacity: 0.5, textTransform: 'uppercase', letterSpacing: 1 }}>Verified</Typography>
+                          </Box>
+                        </Stack>
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                );
+              })
+            ) : (
+              <Grid item xs={12}>
+                <Typography textAlign="center" color="text.secondary" sx={{ fontWeight: 300 }}>
+                  No testimonials available yet.
+                </Typography>
+              </Grid>
+            )}
+          </Grid>
+        </Container>
+        <Box sx={{ mt: 10, textAlign: 'center' }}>
+          <Button 
+            variant="text" 
+            startIcon={<RateReviewIcon />}
             onClick={() => navigate(`/review/${freshTenant?.id || freshTenant?.uid}`)}
+            sx={{ color: 'black', px: 6, py: 2, fontWeight: 600, borderRadius: 0, letterSpacing: 2, '&:hover': { bgcolor: 'transparent', color: brandColor } }}
           >
-            Leave a Review
-          </button>
-        </div>
-      </div>
-
-      {/* ── FOOTER ── */}
-      <div className="th-footer">
-        <div className="th-footer-brand">{businessName}</div>
-        <div className="th-footer-copy">© {new Date().getFullYear()} {businessName}. All rights reserved.</div>
-        <div className="th-footer-socials">
-          {instagramUrl && (
-            <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="th-social-btn">
-              <i className="ti ti-brand-instagram" aria-hidden="true" />
-            </a>
-          )}
-          {tiktokUrl && (
-            <a href={tiktokUrl} target="_blank" rel="noopener noreferrer" className="th-social-btn">
-              <i className="ti ti-brand-tiktok" aria-hidden="true" />
-            </a>
-          )}
-          {facebookUrl && (
-            <a href={facebookUrl} target="_blank" rel="noopener noreferrer" className="th-social-btn">
-              <i className="ti ti-brand-facebook" aria-hidden="true" />
-            </a>
-          )}
-        </div>
-      </div>
-
-    </div>
+            LEAVE A REVIEW
+          </Button>
+        </Box>
+      </Box>
+ 
+    </Box>
   );
 }

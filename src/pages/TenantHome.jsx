@@ -33,7 +33,7 @@ const TikTokIcon = ({ size = 20 }) => (
   </svg>
 );
 
- const [activeReviewIndex, setActiveReviewIndex] = useState(0);
+ 
 // ── Social button (white variant for dark hero) ───────────────────────────────
 function SocialButton({ href, label, icon, hoverColor }) {
   if (!href) return null;
@@ -68,12 +68,13 @@ export default function TenantHome({ tenant: initialTenant }) {
   const { tenantId } = useParams();
   const theme = useTheme();
   
+  // FIXED: Moved hook inside the component
+  const [activeReviewIndex, setActiveReviewIndex] = useState(0);
+  
   const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md"));
- 
   const [team, setTeam] = useState([]);
   const [loading, setLoading] = useState(true);
   const [freshTenant, setFreshTenant] = useState(initialTenant || location.state?.tenant);
-  
   const [openPrivacy, setOpenPrivacy] = useState(false);
   const [openTerms, setOpenTerms] = useState(false);
  
@@ -262,13 +263,13 @@ export default function TenantHome({ tenant: initialTenant }) {
               <LocationOnIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
               <Typography variant="h5" sx={{ fontFamily: "'Playfair Display', serif", mb: 2 }}>Visit Us</Typography>
               <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', minHeight: '3em', fontWeight: 300 }}>{address}</Typography>
-              <Button 
-                variant="outlined" 
-                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)}
-                sx={{ borderColor: 'black', color: 'black', fontWeight: 600, letterSpacing: 2, px: 4, py: 1.5, borderRadius: 0, '&:hover': { bgcolor: 'black', color: 'white' } }}
-              >
-                GET DIRECTIONS
-              </Button>
+             <Button 
+    variant="outlined" 
+    onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)}
+    sx={{ borderColor: 'black', color: 'black', fontWeight: 600, letterSpacing: 2, px: 4, py: 1.5, borderRadius: 0, '&:hover': { bgcolor: 'black', color: 'white' } }}
+  >
+    GET DIRECTIONS
+  </Button>
             </Paper>
           </Grid>
  

@@ -12,12 +12,22 @@ import { useAuth } from "../context/AuthContext";
 import { auth } from "../firebase/config";
 import { signOut } from "firebase/auth";
 
+function contrastColor(hex) {
+  if (!hex || !hex.startsWith("#")) return "#111111";
+  const r = parseInt(hex.slice(1, 3), 16) || 0;
+  const g = parseInt(hex.slice(3, 5), 16) || 0;
+  const b = parseInt(hex.slice(5, 7), 16) || 0;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? "#111111" : "#ffffff";
+}
+
 export default function TenantNav({ tenant }) {
   const { barber } = useAuth();
   const navigate = useNavigate();
   const [anchor, setAnchor] = useState(null);
 
-  const brandColor = tenant?.brandColor || "#C9A84C"; 
+  const brandColor  = tenant?.brandColor  || "#C9A84C";
+  const navBg       = tenant?.navBgColor  || "#ffffff";
+  const navText     = contrastColor(navBg);
   const businessName = (tenant?.businessName || "PREMIUM BARBER SHOP").toUpperCase();
   const logo = tenant?.businessLogo || tenant?.logoUrl;
 
@@ -47,14 +57,14 @@ export default function TenantNav({ tenant }) {
   };
 
   return (
-    <AppBar 
-      position="sticky" 
-      elevation={0} 
-      sx={{ 
-        bgcolor: "rgba(255, 255, 255, 0.98)", 
+    <AppBar
+      position="sticky"
+      elevation={0}
+      sx={{
+        bgcolor: navBg,
         backdropFilter: "blur(15px) saturate(160%)",
-        borderBottom: `1px solid rgba(0,0,0,0.08)`, 
-        color: "#111",
+        borderBottom: `1px solid ${navText === "#111111" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`,
+        color: navText,
         zIndex: (theme) => theme.zIndex.drawer + 1,
         transition: "all 0.3s ease"
       }}
@@ -115,14 +125,15 @@ export default function TenantNav({ tenant }) {
             )}
             
             <Box>
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  fontWeight: 1000, 
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 1000,
                   letterSpacing: "-0.5px",
                   lineHeight: 1.1,
                   fontSize: { xs: '1rem', sm: '1.4rem' },
-                  fontFamily: "'Playfair Display', serif"
+                  fontFamily: "'Playfair Display', serif",
+                  color: navText,
                 }}
               >
                 {businessName}
@@ -133,13 +144,13 @@ export default function TenantNav({ tenant }) {
           <Box display="flex" alignItems="center" gap={2}>
             {barber ? (
               <>
-                <Button 
-                  component={Link} 
-                  to="/dashboard" 
+                <Button
+                  component={Link}
+                  to="/dashboard"
                   variant="text"
-                  sx={{ 
-                    color: "#111", 
-                    fontWeight: 900, 
+                  sx={{
+                    color: navText,
+                    fontWeight: 900,
                     fontSize: '0.75rem',
                     letterSpacing: '1px',
                     display: { xs: 'none', md: 'inline-flex' },
@@ -178,7 +189,7 @@ export default function TenantNav({ tenant }) {
                   }}
                 >
                   <Box sx={{ px: 2, py: 1.5 }}>
-                    <Typography variant="subtitle2" fontWeight={900}>
+                    <Typography variant="subtitle2" fontWeight={900} sx={{ color: navText }}>
                       {barber.name || barber.displayName}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">

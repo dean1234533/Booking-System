@@ -30,40 +30,25 @@ styleTag.textContent = `
   html { scroll-behavior: smooth; }
   body { overflow-x: hidden; }
 
-  /* ── Diagonal slash divider ── */
-  .slash-divider {
-    position: relative;
-    z-index: 1;
-  }
+  .slash-divider { position: relative; z-index: 1; }
   .slash-divider::after {
-    content: '';
-    position: absolute;
-    bottom: -3vw;
-    left: 0; right: 0;
-    height: 6vw;
-    background: inherit;
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 0);
-    z-index: 2;
+    content: ''; position: absolute; bottom: -3vw; left: 0; right: 0;
+    height: 6vw; background: inherit;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 0); z-index: 2;
   }
 
-  /* ── Noise texture overlay ── */
   .noise::before {
-    content: '';
-    position: absolute;
-    inset: 0;
+    content: ''; position: absolute; inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
+    pointer-events: none; z-index: 0;
   }
 
-  /* ── Fade-in animation ── */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(32px); }
     to   { opacity: 1; transform: translateY(0); }
   }
   .fade-up { animation: fadeUp 0.8s cubic-bezier(.22,.68,0,1.2) both; }
 
-  /* ── Stat counter pulse ── */
   @keyframes popIn {
     0%   { transform: scale(0.7); opacity: 0; }
     70%  { transform: scale(1.08); }
@@ -71,43 +56,26 @@ styleTag.textContent = `
   }
   .pop-in { animation: popIn 0.6s cubic-bezier(.22,.68,0,1.2) both; }
 
-  /* ── Slide transitions ── */
   @keyframes slideIn  { from { opacity:0; transform:translateX(40px);  } to { opacity:1; transform:translateX(0); } }
   @keyframes slideOut { from { opacity:1; transform:translateX(0);  }    to { opacity:0; transform:translateX(-40px); } }
   .slide-in  { animation: slideIn  0.45s cubic-bezier(.22,.68,0,1.1) both; }
   .slide-out { animation: slideOut 0.35s cubic-bezier(.4,0,1,1) both; }
 
-  /* ── Hover lift ── */
   .card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease; }
   .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 60px rgba(0,0,0,0.12); }
 
-  /* ── Red underline headings ── */
-  .ruled-heading {
-    position: relative;
-    display: inline-block;
-  }
+  .ruled-heading { position: relative; display: inline-block; }
   .ruled-heading::after {
-    content: '';
-    position: absolute;
-    bottom: -6px;
-    left: 0;
-    width: 56px;
-    height: 3px;
-    background: var(--brand);
+    content: ''; position: absolute; bottom: -6px; left: 0;
+    width: 56px; height: 3px; background: var(--brand);
   }
 
-  /* ── Number accent ── */
-  .stat-num {
-    font-family: 'Bebas Neue', sans-serif;
-    letter-spacing: 0.02em;
-  }
+  .stat-num { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.02em; }
 
-  /* ── Global scrollbar ── */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: var(--cream); }
   ::-webkit-scrollbar-thumb { background: var(--brand); border-radius: 3px; }
 
-  /* ── SlotPicker horizontal scrollbar uses brand colour ── */
   #booking-section ::-webkit-scrollbar { height: 4px; width: 4px; }
   #booking-section ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
   #booking-section ::-webkit-scrollbar-thumb { background: var(--brand); border-radius: 4px; }
@@ -170,124 +138,69 @@ function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = 
 
   return (
     <div style={{ position: 'relative', maxWidth: 720, margin: '0 auto' }}>
-      {/* Large decorative quote */}
       <div style={{
         fontFamily: "'Playfair Display', serif",
         fontSize: 'clamp(80px, 14vw, 160px)',
-        lineHeight: 0.8,
-        color: '#b8962e',
-        opacity: 0.22,
-        position: 'absolute',
-        top: -16,
-        left: 0,
-        userSelect: 'none',
-        pointerEvents: 'none',
+        lineHeight: 0.8, color: '#b8962e', opacity: 0.22,
+        position: 'absolute', top: -16, left: 0,
+        userSelect: 'none', pointerEvents: 'none',
       }}>"</div>
 
-      {/* Card */}
       <div key={animKey} className="slide-in" style={{
-        background: cardBg,
-        border: cardBorder,
-        borderRadius: 20,
-        padding: 'clamp(28px, 5vw, 52px)',
-        paddingTop: 'clamp(36px, 6vw, 64px)',
-        position: 'relative',
-        overflow: 'hidden',
+        background: cardBg, border: cardBorder, borderRadius: 20,
+        padding: 'clamp(28px, 5vw, 52px)', paddingTop: 'clamp(36px, 6vw, 64px)',
+        position: 'relative', overflow: 'hidden',
         boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
       }}>
-        {/* Gold accent strip */}
         <div style={{
-          position: 'absolute', top: 0, left: 0,
-          width: '100%', height: 4,
+          position: 'absolute', top: 0, left: 0, width: '100%', height: 4,
           background: `linear-gradient(90deg, #b8962e, #e0c060, #b8962e)`,
         }} />
-
-        {/* Stars — gold */}
         <div style={{ display: 'flex', gap: 3, marginBottom: 20 }}>
           {[...Array(stars)].map((_, i) => (
             <StarIcon key={i} sx={{ fontSize: 20, color: '#b8962e' }} />
           ))}
         </div>
-
-        {/* Quote text — black */}
         <p style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontStyle: 'italic',
-          fontWeight: 400,
-          fontSize: 'clamp(15px, 2.2vw, 19px)',
-          lineHeight: 1.75,
-          color: '#1a1a1a',
-          marginBottom: 28,
-          minHeight: 80,
-        }}>
-          "{text}"
-        </p>
-
+          fontFamily: "'DM Sans', sans-serif", fontStyle: 'italic', fontWeight: 400,
+          fontSize: 'clamp(15px, 2.2vw, 19px)', lineHeight: 1.75,
+          color: '#1a1a1a', marginBottom: 28, minHeight: 80,
+        }}>"{text}"</p>
         <div style={{ height: 1, background: '#e4e4e7', marginBottom: 24 }} />
-
-        {/* Author */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
             width: 46, height: 46, borderRadius: '50%',
             background: `linear-gradient(135deg, #b8962e, #e0c060)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: 22, color: '#fff', flexShrink: 0,
-          }}>
-            {name.charAt(0).toUpperCase()}
-          </div>
+            fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: '#fff', flexShrink: 0,
+          }}>{name.charAt(0).toUpperCase()}</div>
           <div>
-            <div style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontWeight: 700,
-              color: '#0f0f0f',
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              fontSize: 13,
-            }}>{name}</div>
-            <div style={{ fontSize: 11, color: '#b8962e', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700 }}>
-              Verified Client
-            </div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, color: '#0f0f0f', letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: 13 }}>{name}</div>
+            <div style={{ fontSize: 11, color: '#b8962e', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700 }}>Verified Client</div>
           </div>
-          {/* Counter */}
           <div style={{ marginLeft: 'auto', color: '#a1a1aa', fontFamily: "'DM Sans', sans-serif", fontSize: 12 }}>
             {idx + 1} / {reviews.length}
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 24 }}>
         {[{ label: '←', dir: -1 }, { label: '→', dir: 1 }].map(({ label, dir }) => (
           <button key={dir} onClick={() => go(dir)} style={{
-            width: 48, height: 48,
-            border: `1px solid rgba(255,255,255,0.25)`,
-            borderRadius: '50%',
-            background: 'transparent',
-            color: '#fff',
-            fontSize: 18,
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.2s',
+            width: 48, height: 48, border: `1px solid rgba(255,255,255,0.25)`,
+            borderRadius: '50%', background: 'transparent', color: '#fff',
+            fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
           }}
             onMouseEnter={e => { e.currentTarget.style.background = '#b8962e'; e.currentTarget.style.borderColor = '#b8962e'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
-          >
-            {label}
-          </button>
+          >{label}</button>
         ))}
-        {/* Dots */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 8 }}>
           {reviews.map((_, i) => (
             <button key={i} onClick={() => { setIdx(i); setAnimKey(k => k + 1); }} style={{
-              width: i === idx ? 20 : 7,
-              height: 7,
-              borderRadius: 4,
+              width: i === idx ? 20 : 7, height: 7, borderRadius: 4,
               background: i === idx ? '#b8962e' : 'rgba(255,255,255,0.2)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.3s',
-              padding: 0,
+              border: 'none', cursor: 'pointer', transition: 'all 0.3s', padding: 0,
             }} />
           ))}
         </div>
@@ -298,88 +211,42 @@ function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = 
 
 /* ─── Pricing Card ──────────────────────────────────────────── */
 function PricingCard({ plan, brandColor }) {
-  /* Gold badge colour — same value used in screenshots */
   const gold = '#b8962e';
-
   return (
     <div className="card-hover" style={{
-      borderRadius: 16,
-      overflow: 'hidden',
-      background: 'var(--cream)',
-      border: '1px solid var(--mid)',
-      position: 'relative',
+      borderRadius: 16, overflow: 'hidden', background: 'var(--cream)',
+      border: '1px solid var(--mid)', position: 'relative',
     }}>
-      {/* Gold "Most Popular" badge — only on highlighted card */}
       {plan.highlight && (
         <div style={{
-          position: 'absolute', top: 16, right: 16,
-          background: gold,
-          color: '#fff',
-          fontSize: 10, fontWeight: 800,
-          letterSpacing: '0.12em',
-          padding: '4px 10px', borderRadius: 99,
-          textTransform: 'uppercase',
+          position: 'absolute', top: 16, right: 16, background: gold, color: '#fff',
+          fontSize: 10, fontWeight: 800, letterSpacing: '0.12em',
+          padding: '4px 10px', borderRadius: 99, textTransform: 'uppercase',
           fontFamily: "'DM Sans', sans-serif",
         }}>★ Most Popular</div>
       )}
       <div style={{ padding: 'clamp(24px, 4vw, 40px)' }}>
-        <div style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: 11, fontWeight: 800,
-          letterSpacing: '0.18em',
-          textTransform: 'uppercase',
-          color: 'var(--ink-soft)',
-          marginBottom: 8,
-        }}>{plan.name}</div>
-        <div style={{
-          fontFamily: "'Bebas Neue', sans-serif",
-          fontSize: 'clamp(44px, 6vw, 60px)',
-          lineHeight: 1,
-          color: 'var(--ink)',
-          letterSpacing: '0.02em',
-          marginBottom: 4,
-        }}>{plan.price}</div>
-        <div style={{
-          fontSize: 12,
-          color: 'var(--ink-soft)',
-          marginBottom: 24,
-          fontFamily: "'DM Sans', sans-serif",
-        }}>/ {plan.period}</div>
+        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--ink-soft)', marginBottom: 8 }}>{plan.name}</div>
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(44px, 6vw, 60px)', lineHeight: 1, color: 'var(--ink)', letterSpacing: '0.02em', marginBottom: 4 }}>{plan.price}</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 24, fontFamily: "'DM Sans', sans-serif" }}>/ {plan.period}</div>
         <div style={{ height: 1, background: 'var(--mid)', marginBottom: 24 }} />
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {plan.features.map((f, j) => (
-            <li key={j} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              fontSize: 14, fontFamily: "'DM Sans', sans-serif",
-              color: 'var(--ink-soft)',
-            }}>
-              <span style={{
-                width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                background: 'var(--ink)',
-                color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 900,
-              }}>✓</span>
+            <li key={j} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontFamily: "'DM Sans', sans-serif", color: 'var(--ink-soft)' }}>
+              <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: 'var(--ink)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 900 }}>✓</span>
               {f}
             </li>
           ))}
         </ul>
         <a href="#booking-section" style={{
-          display: 'block', textAlign: 'center',
-          padding: '13px 0', borderRadius: 8,
-          fontFamily: "'DM Sans', sans-serif",
-          fontWeight: 800, fontSize: 12,
-          letterSpacing: '0.12em', textTransform: 'uppercase',
-          textDecoration: 'none',
-          background: 'var(--ink)',
-          color: '#fff',
-          transition: 'opacity 0.2s',
+          display: 'block', textAlign: 'center', padding: '13px 0', borderRadius: 8,
+          fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: 12,
+          letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none',
+          background: 'var(--ink)', color: '#fff', transition: 'opacity 0.2s',
         }}
           onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
           onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        >
-          Book Now
-        </a>
+        >Book Now</a>
       </div>
     </div>
   );
@@ -406,8 +273,8 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         const ssSlots = await getDocs(qSlots);
         setSlots(ssSlots.docs.map(d => ({ id: d.id, ...d.data() })));
 
-        const revRef  = collection(db, 'barbers', barber.uid, 'reviews');
-        const ssRevs  = await getDocs(revRef);
+        const revRef = collection(db, 'barbers', barber.uid, 'reviews');
+        const ssRevs = await getDocs(revRef);
         setReviews(ssRevs.docs.map(d => d.data()));
       } catch (err) { console.error(err); }
     }
@@ -415,16 +282,23 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   }, [barber?.uid]);
 
   /* ── Resolved values ── */
-  const businessName  = barber?.shopName   || 'DB FITNESS';
-  const brandColor    = profile?.brandColor || '#dc2626';
-  const logo          = profile?.logoUrl   || null;
-  const heroTitle     = profile?.heroTitle  || 'Stronger.\nLeaner.\nUnstoppable.';
-  const heroSubtitle  = profile?.heroSubtitle || 'Tailored high-performance outdoor functional resistance training.';
-  const aboutText1    = profile?.aboutText1 || 'With years of experience in high-performance athletics and functional training, I specialise in helping individuals push past their perceived limits.';
-  const aboutText2    = profile?.aboutText2 || 'Whether you\'re building explosive strength, improving mobility, or transforming your physique — I provide the tools and accountability to get you there.';
-  const privacyText   = profile?.privacyPolicy   || `At ${businessName}, we value your privacy. We collect only information necessary to provide our services and never sell your data.`;
-  const termsText     = profile?.termsConditions || `By using ${businessName}, you agree to our terms of service. All bookings are subject to our cancellation policy.`;
-  const youtubeUrl    = getYouTubeEmbedUrl(profile?.youtubeUrl);
+  const businessName = barber?.shopName    || 'DB FITNESS';
+  const brandColor   = profile?.brandColor || '#dc2626';
+  const logo         = profile?.logoUrl    || null;
+  const heroTitle    = profile?.heroTitle  || 'Stronger.\nLeaner.\nUnstoppable.';
+  const heroSubtitle = profile?.heroSubtitle || 'Tailored high-performance outdoor functional resistance training.';
+  const aboutText1   = profile?.aboutText1 || 'With years of experience in high-performance athletics and functional training, I specialise in helping individuals push past their perceived limits.';
+  const aboutText2   = profile?.aboutText2 || 'Whether you\'re building explosive strength, improving mobility, or transforming your physique — I provide the tools and accountability to get you there.';
+  const privacyText  = profile?.privacyPolicy   || `At ${businessName}, we value your privacy. We collect only information necessary to provide our services and never sell your data.`;
+  const termsText    = profile?.termsConditions || `By using ${businessName}, you agree to our terms of service. All bookings are subject to our cancellation policy.`;
+  const youtubeUrl   = getYouTubeEmbedUrl(profile?.youtubeUrl);
+
+  /* ── Stats bar — editable from Dashboard > Website tab ── */
+  const statBar = [
+    { num: profile?.statBar1Num || '100+', label: profile?.statBar1Label || 'Happy Clients' },
+    { num: profile?.statBar2Num || '5.0★', label: profile?.statBar2Label || 'Average Rating' },
+    { num: profile?.statBar3Num || 'Pro',  label: profile?.statBar3Label || 'Certified Trainer' },
+  ];
 
   const specializations = profile?.specializations || [
     { title: 'Strength & Conditioning', description: 'Build raw power and muscular endurance through proven compound lifting and progressive overload.' },
@@ -432,10 +306,11 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
     { title: 'Functional Fitness', description: 'Outdoor resistance training focused on real-world movement patterns that carry over to daily life.' },
     { title: '1-to-1 Coaching', description: 'Fully personalised sessions tailored to your goals, schedule, and current level of fitness.' },
   ];
+
   const pricingPlans = profile?.pricingPlans || [
-    { name: 'Taster',  price: '£40',  period: 'one-off', features: ['60-min session', 'Fitness assessment'], highlight: false },
-    { name: 'Monthly', price: '£280', period: 'per month', features: ['8 sessions/month', 'Nutrition guidance', 'Progress tracking'], highlight: true },
-    { name: '10-Block', price: '£350', period: 'block', features: ['10 × 60-min sessions', 'Flexible scheduling', 'Priority booking'], highlight: false },
+    { name: 'Taster',   price: '£40',  period: 'one-off',   features: ['60-min session', 'Fitness assessment'], highlight: false },
+    { name: 'Monthly',  price: '£280', period: 'per month', features: ['8 sessions/month', 'Nutrition guidance', 'Progress tracking'], highlight: true },
+    { name: '10-Block', price: '£350', period: 'block',     features: ['10 × 60-min sessions', 'Flexible scheduling', 'Priority booking'], highlight: false },
   ];
 
   const navLinks = [
@@ -446,227 +321,84 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   ];
 
   return (
-    <div style={{
-      fontFamily: "'DM Sans', sans-serif",
-      color: 'var(--ink)',
-      background: '#fff',
-      overflowX: 'hidden',
-    }}>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", color: 'var(--ink)', background: '#fff', overflowX: 'hidden' }}>
+
       {/* ══════════ NAV ══════════ */}
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 100,
-        background: 'rgba(255,255,255,0.95)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid var(--mid)',
-      }}>
-        <div style={{
-          maxWidth: 1200, margin: '0 auto',
-          padding: '0 24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          height: 68,
-        }}>
-          {/* Logo / wordmark */}
+      <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--mid)' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 68 }}>
           <a href="#" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
             {logo
               ? <img src={logo} alt="logo" style={{ height: 36 }} />
               : (
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                  <span style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 26, letterSpacing: '0.12em',
-                    color: 'var(--ink)',
-                  }}>{businessName.split(' ')[0]}</span>
+                  <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: '0.12em', color: 'var(--ink)' }}>{businessName.split(' ')[0]}</span>
                   {businessName.split(' ').length > 1 && (
-                    <span style={{
-                      fontFamily: "'Bebas Neue', sans-serif",
-                      fontSize: 26, letterSpacing: '0.12em',
-                      color: brandColor,
-                    }}>{' ' + businessName.split(' ').slice(1).join(' ')}</span>
+                    <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: '0.12em', color: brandColor }}>{' ' + businessName.split(' ').slice(1).join(' ')}</span>
                   )}
                 </div>
               )
             }
           </a>
 
-          {/* Desktop nav */}
           <nav style={{ display: 'flex', gap: 6, alignItems: 'center' }} className="hidden md:flex">
             {navLinks.map(l => (
-              <a key={l.label} href={l.href} style={{
-                padding: '7px 14px',
-                fontSize: 12, fontWeight: 700,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                textDecoration: 'none',
-                color: 'var(--ink-soft)',
-                borderRadius: 6,
-                transition: 'color 0.2s',
-              }}
+              <a key={l.label} href={l.href} style={{ padding: '7px 14px', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none', color: 'var(--ink-soft)', borderRadius: 6, transition: 'color 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.color = brandColor}
                 onMouseLeave={e => e.currentTarget.style.color = 'var(--ink-soft)'}
               >{l.label}</a>
             ))}
-            <a href="#booking-section" style={{
-              marginLeft: 8,
-              padding: '9px 22px',
-              background: brandColor,
-              color: '#fff',
-              borderRadius: 8,
-              fontSize: 12, fontWeight: 800,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              textDecoration: 'none',
-              transition: 'opacity 0.2s',
-            }}
+            <a href="#booking-section" style={{ marginLeft: 8, padding: '9px 22px', background: brandColor, color: '#fff', borderRadius: 8, fontSize: 12, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none', transition: 'opacity 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}
             >Book Now</a>
           </nav>
 
-          {/* Mobile menu toggle */}
-          <button className="md:hidden" onClick={() => setMenuOpen(o => !o)} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', gap: 5, padding: 8,
-          }}>
-            {[0,1,2].map(i => (
-              <span key={i} style={{ display: 'block', width: 24, height: 2, background: 'var(--ink)', borderRadius: 2 }} />
-            ))}
+          <button className="md:hidden" onClick={() => setMenuOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 5, padding: 8 }}>
+            {[0,1,2].map(i => <span key={i} style={{ display: 'block', width: 24, height: 2, background: 'var(--ink)', borderRadius: 2 }} />)}
           </button>
         </div>
 
-        {/* Mobile menu */}
         {menuOpen && (
           <div style={{ background: '#fff', borderTop: '1px solid var(--mid)', padding: '16px 24px 20px' }}>
             {navLinks.map(l => (
-              <a key={l.label} href={l.href} onClick={() => setMenuOpen(false)} style={{
-                display: 'block', padding: '10px 0',
-                fontSize: 14, fontWeight: 700,
-                letterSpacing: '0.08em', textTransform: 'uppercase',
-                textDecoration: 'none', color: 'var(--ink)',
-                borderBottom: '1px solid var(--mid)',
-              }}>{l.label}</a>
+              <a key={l.label} href={l.href} onClick={() => setMenuOpen(false)} style={{ display: 'block', padding: '10px 0', fontSize: 14, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none', color: 'var(--ink)', borderBottom: '1px solid var(--mid)' }}>{l.label}</a>
             ))}
-            <a href="#booking-section" onClick={() => setMenuOpen(false)} style={{
-              display: 'block', marginTop: 14,
-              padding: '12px 0', textAlign: 'center',
-              background: brandColor, color: '#fff',
-              borderRadius: 8, fontSize: 13, fontWeight: 800,
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-              textDecoration: 'none',
-            }}>Book Now</a>
+            <a href="#booking-section" onClick={() => setMenuOpen(false)} style={{ display: 'block', marginTop: 14, padding: '12px 0', textAlign: 'center', background: brandColor, color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none' }}>Book Now</a>
           </div>
         )}
       </header>
 
       {/* ══════════ HERO ══════════ */}
-      <section style={{
-        position: 'relative',
-        minHeight: '90vh',
-        display: 'flex', alignItems: 'center',
-        background: 'var(--charcoal)',
-        overflow: 'hidden',
-      }}>
-        {/* BG image */}
+      <section style={{ position: 'relative', minHeight: '90vh', display: 'flex', alignItems: 'center', background: 'var(--charcoal)', overflow: 'hidden' }}>
         <div style={{
           position: 'absolute', inset: 0,
-          backgroundImage: "url('https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920')",
-          backgroundSize: 'cover', backgroundPosition: 'center',
-          opacity: 0.25,
+          backgroundImage: profile?.heroBgImage
+            ? `url('${profile.heroBgImage}')`
+            : "url('https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920')",
+          backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.25,
         }} />
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(105deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 60%, ${brandColor}22 100%)` }} />
+        <div style={{ position: 'absolute', left: 0, top: '15%', bottom: '15%', width: 4, background: brandColor, borderRadius: '0 4px 4px 0' }} />
 
-        {/* Gradient overlay */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: `linear-gradient(105deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 60%, ${brandColor}22 100%)`,
-        }} />
-
-        {/* Red accent bar on left */}
-        <div style={{
-          position: 'absolute', left: 0, top: '15%', bottom: '15%',
-          width: 4, background: brandColor,
-          borderRadius: '0 4px 4px 0',
-        }} />
-
-        <div style={{
-          position: 'relative', zIndex: 2,
-          maxWidth: 1200, margin: '0 auto',
-          padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)',
-          width: '100%',
-        }}>
-          {/* Label */}
+        <div style={{ position: 'relative', zIndex: 2, maxWidth: 1200, margin: '0 auto', padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', width: '100%' }}>
           <div className="fade-up" style={{ animationDelay: '100ms' }}>
-            <span style={{
-              display: 'inline-block',
-              background: brandColor,
-              color: '#fff',
-              fontSize: 11, fontWeight: 800,
-              letterSpacing: '0.2em', textTransform: 'uppercase',
-              padding: '5px 14px', borderRadius: 4,
-              marginBottom: 24,
-            }}>Personal Training</span>
+            <span style={{ display: 'inline-block', background: brandColor, color: '#fff', fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', padding: '5px 14px', borderRadius: 4, marginBottom: 24 }}>Personal Training</span>
           </div>
-
-          {/* Main heading */}
-          <h1 className="fade-up" style={{
-            animationDelay: '200ms',
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: 'clamp(58px, 10vw, 110px)',
-            lineHeight: 0.95,
-            letterSpacing: '0.02em',
-            color: '#fff',
-            margin: '0 0 28px',
-            whiteSpace: 'pre-line',
-          }}>{heroTitle}</h1>
-
-          {/* Subheading */}
-          <p className="fade-up" style={{
-            animationDelay: '340ms',
-            fontSize: 'clamp(15px, 1.8vw, 18px)',
-            color: 'rgba(255,255,255,0.65)',
-            maxWidth: 440,
-            lineHeight: 1.7,
-            marginBottom: 40,
-            fontWeight: 300,
-          }}>{heroSubtitle}</p>
-
-          {/* CTAs */}
+          <h1 className="fade-up" style={{ animationDelay: '200ms', fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(58px, 10vw, 110px)', lineHeight: 0.95, letterSpacing: '0.02em', color: '#fff', margin: '0 0 28px', whiteSpace: 'pre-line' }}>{heroTitle}</h1>
+          <p className="fade-up" style={{ animationDelay: '340ms', fontSize: 'clamp(15px, 1.8vw, 18px)', color: 'rgba(255,255,255,0.65)', maxWidth: 440, lineHeight: 1.7, marginBottom: 40, fontWeight: 300 }}>{heroSubtitle}</p>
           <div className="fade-up" style={{ animationDelay: '460ms', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="#booking-section" style={{
-              padding: '14px 36px',
-              background: brandColor,
-              color: '#fff',
-              borderRadius: 8,
-              fontWeight: 800, fontSize: 13,
-              letterSpacing: '0.12em', textTransform: 'uppercase',
-              textDecoration: 'none',
-              transition: 'opacity 0.2s, transform 0.2s',
-            }}
+            <a href="#booking-section" style={{ padding: '14px 36px', background: brandColor, color: '#fff', borderRadius: 8, fontWeight: 800, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
               onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'none'; }}
             >Start Today</a>
-            <a href="#about" style={{
-              padding: '14px 36px',
-              background: 'transparent',
-              color: '#fff',
-              border: '1px solid rgba(255,255,255,0.3)',
-              borderRadius: 8,
-              fontWeight: 700, fontSize: 13,
-              letterSpacing: '0.12em', textTransform: 'uppercase',
-              textDecoration: 'none',
-              transition: 'border-color 0.2s',
-            }}
+            <a href="#about" style={{ padding: '14px 36px', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, fontWeight: 700, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none', transition: 'border-color 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.borderColor = brandColor}
               onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'}
             >Learn More</a>
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="fade-up" style={{
-          animationDelay: '700ms',
-          position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-          color: 'rgba(255,255,255,0.35)',
-        }}>
+        <div className="fade-up" style={{ animationDelay: '700ms', position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.35)' }}>
           <div style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.2)' }} />
           <span style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700 }}>Scroll</span>
         </div>
@@ -674,27 +406,12 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
 
       {/* ══════════ STATS BAR ══════════ */}
       <FadeIn>
-        <section style={{
-          background: brandColor,
-          padding: 'clamp(24px,4vw,36px) 24px',
-        }}>
-          <div style={{
-            maxWidth: 900, margin: '0 auto',
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 16, textAlign: 'center',
-          }}>
-            {[
-              { num: '100+', label: 'Happy Clients' },
-              { num: '5.0★', label: 'Average Rating' },
-              { num: 'Pro', label: 'Certified Trainer' },
-            ].map((s, i) => (
+        <section style={{ background: brandColor, padding: 'clamp(24px,4vw,36px) 24px' }}>
+          <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, textAlign: 'center' }}>
+            {statBar.map((s, i) => (
               <div key={i} style={{ padding: '4px 0' }}>
-                <div className="stat-num" style={{ fontSize: 'clamp(28px, 5vw, 44px)', color: '#fff', letterSpacing: '0.04em' }}>
-                  {s.num}
-                </div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-                  {s.label}
-                </div>
+                <div className="stat-num" style={{ fontSize: 'clamp(28px, 5vw, 44px)', color: '#fff', letterSpacing: '0.04em' }}>{s.num}</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -705,56 +422,28 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
       <FadeIn>
         <section id="about" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: 'var(--cream)' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 'clamp(32px,5vw,72px)', alignItems: 'center' }}>
-            {/* Image */}
             <div style={{ flex: '0 0 clamp(260px, 38%, 440px)' }}>
               <div style={{ position: 'relative' }}>
                 <img
                   src={profile?.heroImage || 'https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800'}
                   alt="Trainer"
-                  style={{
-                    width: '100%', borderRadius: 16,
-                    objectFit: 'cover', aspectRatio: '4/5',
-                    display: 'block',
-                    boxShadow: '0 24px 72px rgba(0,0,0,0.12)',
-                  }}
+                  style={{ width: '100%', borderRadius: 16, objectFit: 'cover', aspectRatio: '4/5', display: 'block', boxShadow: '0 24px 72px rgba(0,0,0,0.12)' }}
                 />
-                {/* Floating badge */}
-                <div style={{
-                  position: 'absolute', bottom: -18, right: -18,
-                  background: brandColor,
-                  color: '#fff',
-                  width: 90, height: 90,
-                  borderRadius: '50%',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: `0 8px 28px ${brandColor}55`,
-                }}>
+                <div style={{ position: 'absolute', bottom: -18, right: -18, background: brandColor, color: '#fff', width: 90, height: 90, borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 28px ${brandColor}55` }}>
                   <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, lineHeight: 1 }}>PRO</span>
                   <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.85 }}>Certified</span>
                 </div>
               </div>
             </div>
 
-            {/* Text */}
             <div style={{ flex: '1 1 320px' }}>
-              <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 12 }}>
-                Meet Your Coach
-              </p>
+              <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 12 }}>Meet Your Coach</p>
               <h2 className="ruled-heading" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px, 5vw, 56px)', letterSpacing: '0.04em', margin: '0 0 28px', lineHeight: 1 }}>
                 {profile?.coachName || barber?.name || 'Your Personal Trainer'}
               </h2>
               <p style={{ color: 'var(--ink-soft)', lineHeight: 1.8, marginBottom: 16, fontSize: 15, fontWeight: 300 }}>{aboutText1}</p>
               <p style={{ color: 'var(--ink-soft)', lineHeight: 1.8, marginBottom: 32, fontSize: 15, fontWeight: 300 }}>{aboutText2}</p>
-              <a href="#booking-section" style={{
-                display: 'inline-block',
-                padding: '12px 30px',
-                background: 'var(--ink)',
-                color: '#fff',
-                borderRadius: 8,
-                fontWeight: 800, fontSize: 12,
-                letterSpacing: '0.1em', textTransform: 'uppercase',
-                textDecoration: 'none',
-                transition: 'background 0.2s',
-              }}
+              <a href="#booking-section" style={{ display: 'inline-block', padding: '12px 30px', background: 'var(--ink)', color: '#fff', borderRadius: 8, fontWeight: 800, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none', transition: 'background 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.background = brandColor}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--ink)'}
               >Book a Session</a>
@@ -775,12 +464,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }} />
               </div>
               <div style={{ textAlign: 'center', marginTop: 28 }}>
-                <a href="#booking-section" style={{
-                  display: 'inline-block', padding: '12px 32px',
-                  background: brandColor, color: '#fff',
-                  borderRadius: 8, fontWeight: 800, fontSize: 12,
-                  letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none',
-                }}>Book Your Session</a>
+                <a href="#booking-section" style={{ display: 'inline-block', padding: '12px 32px', background: brandColor, color: '#fff', borderRadius: 8, fontWeight: 800, fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none' }}>Book Your Session</a>
               </div>
             </div>
           </section>
@@ -792,40 +476,16 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <section id="specializations" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: '#fff' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>What I Do</p>
-            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 56 }}>
-              Areas of Expertise
-            </h2>
+            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 56 }}>Areas of Expertise</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
               {specializations.map((spec, i) => (
-                <div key={i} className="card-hover" style={{
-                  background: 'var(--cream)',
-                  borderRadius: 12,
-                  padding: 32,
-                  borderLeft: `4px solid ${brandColor}`,
-                  position: 'relative', overflow: 'hidden',
-                }}>
-                  {/* Number watermark */}
-                  <div style={{
-                    position: 'absolute', top: -8, right: 12,
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 72, color: brandColor, opacity: 0.07,
-                    lineHeight: 1, userSelect: 'none', pointerEvents: 'none',
-                  }}>0{i + 1}</div>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 8,
-                    background: brandColor,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: 16,
-                    fontSize: 16, color: '#fff', fontWeight: 900,
-                  }}>
+                <div key={i} className="card-hover" style={{ background: 'var(--cream)', borderRadius: 12, padding: 32, borderLeft: `4px solid ${brandColor}`, position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: -8, right: 12, fontFamily: "'Bebas Neue', sans-serif", fontSize: 72, color: brandColor, opacity: 0.07, lineHeight: 1, userSelect: 'none', pointerEvents: 'none' }}>0{i + 1}</div>
+                  <div style={{ width: 36, height: 36, borderRadius: 8, background: brandColor, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 16, color: '#fff', fontWeight: 900 }}>
                     {['💪', '🔥', '⚡', '🎯'][i % 4]}
                   </div>
-                  <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: 17, marginBottom: 10, lineHeight: 1.2 }}>
-                    {spec.title}
-                  </h3>
-                  <p style={{ color: 'var(--ink-soft)', fontSize: 14, lineHeight: 1.7, fontWeight: 300, margin: 0 }}>
-                    {spec.description}
-                  </p>
+                  <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: 17, marginBottom: 10, lineHeight: 1.2 }}>{spec.title}</h3>
+                  <p style={{ color: 'var(--ink-soft)', fontSize: 14, lineHeight: 1.7, fontWeight: 300, margin: 0 }}>{spec.description}</p>
                 </div>
               ))}
             </div>
@@ -838,12 +498,8 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <section id="pricing" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: 'var(--cream)' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Investment</p>
-            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 16 }}>
-              Simple, Transparent Pricing
-            </h2>
-            <p style={{ color: 'var(--ink-soft)', textAlign: 'center', marginBottom: 52, fontWeight: 300, maxWidth: 460, margin: '0 auto 52px' }}>
-              No contracts. No hidden fees. Just results.
-            </p>
+            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 16 }}>Simple, Transparent Pricing</h2>
+            <p style={{ color: 'var(--ink-soft)', textAlign: 'center', fontWeight: 300, maxWidth: 460, margin: '0 auto 52px' }}>No contracts. No hidden fees. Just results.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24 }}>
               {pricingPlans.map((plan, i) => (
                 <PricingCard key={i} plan={plan} brandColor={brandColor} />
@@ -855,53 +511,19 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
 
       {/* ══════════ REVIEWS ══════════ */}
       <FadeIn>
-        <section id="reviews" style={{
-          background: 'var(--charcoal)',
-          padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)',
-          position: 'relative', overflow: 'hidden',
-        }}>
-          {/* BG accent */}
-          <div style={{
-            position: 'absolute', top: 0, right: 0,
-            width: '30%', height: '100%',
-            background: `linear-gradient(180deg, ${brandColor}11 0%, transparent 100%)`,
-            pointerEvents: 'none',
-          }} />
-
+        <section id="reviews" style={{ background: 'var(--charcoal)', padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, right: 0, width: '30%', height: '100%', background: `linear-gradient(180deg, ${brandColor}11 0%, transparent 100%)`, pointerEvents: 'none' }} />
           <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 1 }}>
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Testimonials</p>
-            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', color: '#fff', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 48 }}>
-              Client Experiences
-            </h2>
-
-            <ReviewCarousel
-              reviews={reviews}
-              brandColor={brandColor}
-              cardBg="#ffffff"
-              cardBorder="2px solid #0f0f0f"
-            />
-
+            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', color: '#fff', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 48 }}>Client Experiences</h2>
+            <ReviewCarousel reviews={reviews} brandColor={brandColor} cardBg="#ffffff" cardBorder="2px solid #0f0f0f" />
             <div style={{ marginTop: 48, textAlign: 'center' }}>
               <button
                 onClick={() => window.location.href = `/review/${barber?.uid}`}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                  color: '#fff',
-                  padding: '12px 30px',
-                  borderRadius: 8,
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontWeight: 700, fontSize: 12,
-                  letterSpacing: '0.12em', textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                }}
+                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.25)', color: '#fff', padding: '12px 30px', borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', gap: 8 }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = 'var(--ink)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
-              >
-                ✏️ Leave a Review
-              </button>
+              >✏️ Leave a Review</button>
             </div>
           </div>
         </section>
@@ -912,17 +534,9 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <section id="booking-section" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: '#fff' }}>
           <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 8 }}>Ready to Start?</p>
-            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,52px)', letterSpacing: '0.04em', marginBottom: 8 }}>
-              Claim Your Slot
-            </h2>
-            <p style={{ color: 'var(--ink-soft)', fontWeight: 300, marginBottom: 40, fontSize: 15 }}>
-              Choose a time that works for you and let's get to work.
-            </p>
-            <SlotPicker
-              slots={slots}
-             brandColor={brandColor}
-              onSelect={() => {}}
-            />
+            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,52px)', letterSpacing: '0.04em', marginBottom: 8 }}>Claim Your Slot</h2>
+            <p style={{ color: 'var(--ink-soft)', fontWeight: 300, marginBottom: 40, fontSize: 15 }}>Choose a time that works for you and let's get to work.</p>
+            <SlotPicker slots={slots} brandColor={brandColor} onSelect={() => {}} />
           </div>
         </section>
       </FadeIn>
@@ -931,43 +545,24 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
       <footer style={{ background: '#000', color: '#fff', padding: 'clamp(48px,6vw,80px) clamp(24px,5vw,80px) 32px' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 32, marginBottom: 40 }}>
-            {/* Brand */}
             <div>
-              {logo
-                ? <img src={logo} alt="Logo" style={{ height: 48, marginBottom: 12, display: 'block' }} />
-                : null
-              }
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, letterSpacing: '0.12em', color: brandColor, marginBottom: 6 }}>
-                {businessName}
-              </div>
-              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: 300, maxWidth: 220, lineHeight: 1.6 }}>
-                High-performance personal training tailored to your goals.
-              </p>
+              {logo ? <img src={logo} alt="Logo" style={{ height: 48, marginBottom: 12, display: 'block' }} /> : null}
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, letterSpacing: '0.12em', color: brandColor, marginBottom: 6 }}>{businessName}</div>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: 300, maxWidth: 220, lineHeight: 1.6 }}>High-performance personal training tailored to your goals.</p>
             </div>
-            {/* Links */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
-                Navigate
-              </div>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>Navigate</div>
               {navLinks.map(l => (
-                <a key={l.label} href={l.href} style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, textDecoration: 'none', fontWeight: 400,
-                  transition: 'color 0.2s' }}
+                <a key={l.label} href={l.href} style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, textDecoration: 'none', fontWeight: 400, transition: 'color 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.color = brandColor}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
                 >{l.label}</a>
               ))}
             </div>
-            {/* Legal */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
-                Legal
-              </div>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>Legal</div>
               {[{ key: 'privacy', label: 'Privacy Policy' }, { key: 'terms', label: 'Terms & Conditions' }].map(({ key, label }) => (
-                <button key={key} onClick={() => setModal(key)} style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: 400,
-                  textAlign: 'left', padding: 0, transition: 'color 0.2s',
-                }}
+                <button key={key} onClick={() => setModal(key)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: 400, textAlign: 'left', padding: 0, transition: 'color 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.color = brandColor}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
                 >{label}</button>
@@ -975,9 +570,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             </div>
           </div>
           <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: 11, letterSpacing: '0.08em' }}>
-              © {new Date().getFullYear()} {businessName}. All rights reserved.
-            </p>
+            <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: 11, letterSpacing: '0.08em' }}>© {new Date().getFullYear()} {businessName}. All rights reserved.</p>
             <a href="#" style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.color = brandColor}
               onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.18)'}
@@ -988,49 +581,18 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
 
       {/* ══════════ MODAL ══════════ */}
       {modal && (
-        <div
-          onClick={() => setModal(null)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            background: 'rgba(0,0,0,0.75)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 24,
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: '#111',
-              borderRadius: 16,
-              padding: 36,
-              maxWidth: 500, width: '100%',
-              maxHeight: '80vh', overflowY: 'auto',
-              border: '1px solid #222',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
-            }}
-          >
+        <div onClick={() => setModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#111', borderRadius: 16, padding: 36, maxWidth: 500, width: '100%', maxHeight: '80vh', overflowY: 'auto', border: '1px solid #222', boxShadow: '0 32px 80px rgba(0,0,0,0.8)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ color: '#fff', fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, letterSpacing: '0.06em', margin: 0 }}>
                 {modal === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions'}
               </h2>
-              <button onClick={() => setModal(null)} style={{
-                background: '#222', border: 'none', color: '#fff',
-                width: 32, height: 32, borderRadius: '50%',
-                cursor: 'pointer', fontSize: 16, display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-              }}>✕</button>
+              <button onClick={() => setModal(null)} style={{ background: '#222', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             </div>
             <p style={{ color: 'rgba(255,255,255,0.65)', lineHeight: 1.75, fontSize: 14, fontWeight: 300 }}>
               {modal === 'privacy' ? privacyText : termsText}
             </p>
-            <button onClick={() => setModal(null)} style={{
-              marginTop: 24, padding: '10px 24px',
-              background: brandColor, color: '#fff',
-              border: 'none', borderRadius: 8,
-              fontWeight: 800, cursor: 'pointer',
-              textTransform: 'uppercase', fontSize: 12, letterSpacing: '0.1em',
-            }}>Close</button>
+            <button onClick={() => setModal(null)} style={{ marginTop: 24, padding: '10px 24px', background: brandColor, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, cursor: 'pointer', textTransform: 'uppercase', fontSize: 12, letterSpacing: '0.1em' }}>Close</button>
           </div>
         </div>
       )}

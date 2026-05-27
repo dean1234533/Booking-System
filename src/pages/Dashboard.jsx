@@ -15,6 +15,7 @@ import {
   Language as LanguageIcon,
   CalendarMonth as CalendarMonthIcon,
   Receipt as ReceiptIcon,
+  Web as WebIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -46,7 +47,8 @@ import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
 import DesignTab    from "../components/dashboard/tabs/DesignTab";
 import PayTab       from "../components/dashboard/tabs/PayTab";
 import DomainTab    from "../components/dashboard/tabs/DomainTab";
-import InvoiceTab from "../components/dashboard/tabs/InvoiceTab";
+import InvoiceTab   from "../components/dashboard/tabs/InvoiceTab";
+import WebsiteTab   from "../components/dashboard/tabs/WebsiteTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -90,6 +92,15 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     privacyPolicy: "", termsConditions: "",
     domainStatus: "",
     customHostnameId: "",
+    navBgColor: "", footerBgColor: "",
+    // ── Website content — editable via WebsiteTab ──
+    heroTitle: "", heroSubtitle: "", heroBgImage: "",
+    coachName: "",
+    aboutText1: "", aboutText2: "",
+    statBar1Num: "", statBar1Label: "",
+    statBar2Num: "", statBar2Label: "",
+    statBar3Num: "", statBar3Label: "",
+    specializations: [], pricingPlans: [],
   });
 
   const [bookings,    setBookings]    = useState([]);
@@ -127,16 +138,12 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   useEffect(() => { if (!authLoading && barber) loadData(); }, [barber, authLoading]);
 
   // ── Handle post-Stripe-connect redirect ───────────────────────────────────
-  // Stripe returns to /dashboard?stripeSuccess=true&acct=acct_xxx after onboarding.
-  // We POST to /api/stripe/callback which verifies charges_enabled with Stripe
-  // and writes stripeConnected:true to Firestore before we update local state.
   useEffect(() => {
     if (!barber?.uid) return;
 
     const params = new URLSearchParams(window.location.search);
     if (params.get("stripeSuccess") !== "true") return;
 
-    // Clean the URL immediately so a refresh doesn't re-trigger this
     window.history.replaceState({}, "", "/dashboard");
 
     const acct = params.get("acct");
@@ -158,7 +165,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           setProfile(prev => ({ ...prev, stripeConnected: true }));
           setToast("🎉 Stripe connected!");
         } else {
-          // Onboarding was started but not completed (e.g. user closed early)
           setToast("Stripe onboarding incomplete — please connect again to finish.");
         }
       } catch (e) {
@@ -190,6 +196,23 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           facebookUrl:      data.facebookUrl      || "",
           domainStatus:     data.domainStatus     || "",
           customHostnameId: data.customHostnameId || "",
+          navBgColor:       data.navBgColor       || "",
+          footerBgColor:    data.footerBgColor    || "",
+          // ── Website content fields ──
+          heroTitle:        data.heroTitle        || "",
+          heroSubtitle:     data.heroSubtitle     || "",
+          heroBgImage:      data.heroBgImage      || "",
+          coachName:        data.coachName        || "",
+          aboutText1:       data.aboutText1       || "",
+          aboutText2:       data.aboutText2       || "",
+          statBar1Num:      data.statBar1Num      || "",
+          statBar1Label:    data.statBar1Label    || "",
+          statBar2Num:      data.statBar2Num      || "",
+          statBar2Label:    data.statBar2Label    || "",
+          statBar3Num:      data.statBar3Num      || "",
+          statBar3Label:    data.statBar3Label    || "",
+          specializations:  Array.isArray(data.specializations) ? data.specializations : [],
+          pricingPlans:     Array.isArray(data.pricingPlans)    ? data.pricingPlans    : [],
         }));
       }
       setUserRole({ isOwner, shopId: activeShopId });
@@ -256,7 +279,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         customDomain: profile.customDomain  || "",
         openingHours: profile.openingHours  || "",
         aboutUs:      profile.aboutUs       || "",
-        // ── Social links — persisted for both staff and owners ──
         instagramUrl: profile.instagramUrl  || "",
         tiktokUrl:    profile.tiktokUrl     || "",
         facebookUrl:  profile.facebookUrl   || "",
@@ -267,10 +289,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       if (heroFileDesktop){ const c = await imageCompression(heroFileDesktop, options); updatedData.heroImage       = await uploadBarberImage(c, barber.uid, "hero_banner_desktop"); }
       if (heroFileMobile) { const c = await imageCompression(heroFileMobile, options);  updatedData.heroImageMobile = await uploadBarberImage(c, barber.uid, "hero_banner_mobile"); }
 
-      // Always write to the barber's own top-level doc
       await updateBarber(barber.uid, updatedData);
 
-      // For staff: also write to the staff subcollection so BarberProfile can read it
       if (!userRole.isOwner && userRole.shopId) {
         await updateDoc(
           doc(db, "barbers", userRole.shopId, "staff", barber.uid),
@@ -500,7 +520,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     ...(userRole.isOwner ? [{ label: "Reviews",  icon: <ReviewsIcon /> }]      : []),
     { label: "Finance",  icon: <PaymentsIcon /> },
     ...(userRole.isOwner ? [{ label: "Design",   icon: <PaletteIcon /> }]      : []),
-    ...(userRole.isOwner && !initialTenant ? [{ label: "Domain", icon: <LanguageIcon /> }] : []),
+    ...(userRole.isOwner && !initialTenant ? [{ label: "Domain",  icon: <LanguageIcon /> }] : []),
+    ...(userRole.isOwner ? [{ label: "Website",  icon: <WebIcon /> }]          : []),
     { label: "Invoices", icon: <ReceiptIcon /> },
   ];
 
@@ -508,7 +529,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const IDX_FINANCE  = userRole.isOwner ? 5 : 4;
   const IDX_DESIGN   = 6;
   const IDX_DOMAIN   = 7;
-  const IDX_INVOICES = userRole.isOwner ? (initialTenant ? 7 : 8) : 5;
+  const IDX_WEBSITE  = userRole.isOwner && !initialTenant ? 8 : 7;
+  const IDX_INVOICES = userRole.isOwner ? (initialTenant ? 7 : 9) : 5;
   const IDX_CALENDAR = isTrainer ? IDX_INVOICES + 1 : null;
   const IDX_PAY      = isTrainer ? IDX_CALENDAR + 1 : IDX_INVOICES + 1;
 
@@ -545,6 +567,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
       <DashboardHeader
         profile={profile}
+        setProfile={setProfile}
         profilePreview={profilePreview}
         brandColor={brandColor}
         uploading={uploading}
@@ -555,9 +578,14 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 1.5, md: 3 }, mt: 3 }}>
         <Tabs
           value={tab} onChange={(_, v) => setTab(v)}
-          sx={{ mb: 2, borderBottom: "1px solid #eee" }}
           variant={isMobile ? "scrollable" : "standard"}
           scrollButtons="auto"
+          sx={{
+            mb: 2, borderBottom: "1px solid #eee",
+            "& .MuiTabs-indicator": { backgroundColor: brandColor, height: 3 },
+            "& .MuiTab-root.Mui-selected": { color: brandColor },
+            "& .MuiTab-root.Mui-selected .MuiSvgIcon-root": { color: brandColor },
+          }}
         >
           {tabs.map((t, i) => (
             <Tab key={i} icon={t.icon} iconPosition="start" label={isMobile ? "" : t.label} />
@@ -642,6 +670,17 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             <DomainTab
               profile={profile}
               barber={barber}
+              brandColor={brandColor}
+            />
+          </TabPanel>
+        )}
+
+        {/* ── Website (owner only) ── */}
+        {userRole.isOwner && (
+          <TabPanel value={tab} index={IDX_WEBSITE}>
+            <WebsiteTab
+              profile={profile}
+              setProfile={setProfile}
               brandColor={brandColor}
             />
           </TabPanel>

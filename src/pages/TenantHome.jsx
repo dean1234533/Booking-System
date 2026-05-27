@@ -157,9 +157,15 @@ export default function TenantHome({ tenant: initialTenant }) {
           shopId:     activeTenantId,
         };
  
-        // ── Staff — each member carries their own instagramUrl + tiktokUrl
+        // ── Staff — inherit shop branding so BarberProfile gets correct colours
         const activeStaff = staffMembers
-          .map(member => ({ ...member, shopId: activeTenantId }))
+          .map(member => ({
+            ...member,
+            shopId:        activeTenantId,
+            brandColor:    member.brandColor    || finalTenantData.brandColor    || "#C9A84C",
+            businessName:  finalTenantData.businessName,
+            businessLogo:  finalTenantData.businessLogo || finalTenantData.logoUrl,
+          }))
           .filter(member => member.name);
  
         setTeam([ownerObject, ...activeStaff]);

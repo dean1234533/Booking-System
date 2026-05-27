@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom"; // Added useNavigate
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
-  Box, Container, Grid, Typography, Avatar,
-  Paper, Skeleton, Alert, Divider, List, ListItem, ListItemText,
-  ButtonBase, Stack, Tooltip, IconButton
+  Box, Container, Typography, Avatar,
+  IconButton, Tooltip, Button, CircularProgress, Alert
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import ContentCutIcon        from "@mui/icons-material/ContentCut";
+import ArrowBackIcon    from "@mui/icons-material/ArrowBack";
+import InstagramIcon    from "@mui/icons-material/Instagram";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon   from "@mui/icons-material/KeyboardArrowUp";
-import InstagramIcon         from "@mui/icons-material/Instagram";
 
 import SlotPicker from "../components/SlotPicker";
 import SEOConfig  from "../components/SEOConfig";
@@ -19,24 +17,43 @@ import { doc, getDoc, collectionGroup, query, where, getDocs } from "firebase/fi
 import { formatCurrency } from "../stripe/formatters";
 import { useSlots }       from "../hooks/useSlots";
 
-// ── TikTok icon ──────────────────────────────────────────────────────────────
-const TikTokIcon = ({ size = 22, color = "currentColor" }) => (
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const TikTokIcon = ({ size = 20, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={color} style={{ display: "block", flexShrink: 0 }}>
-    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z" />
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5
+      2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27
+      0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0
+      6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z" />
   </svg>
 );
 
-// ── Social link button ────────────────────────────────────────────────────────
+function contrastColor(hex) {
+  if (!hex || !hex.startsWith("#")) return "#ffffff";
+  const r = parseInt(hex.slice(1, 3), 16) || 0;
+  const g = parseInt(hex.slice(3, 5), 16) || 0;
+  const b = parseInt(hex.slice(5, 7), 16) || 0;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? "#111111" : "#ffffff";
+}
+
 function SocialLink({ href, label, icon, hoverColor }) {
   if (!href) return null;
   const url = href.startsWith("http") ? href : `https://${href}`;
   return (
     <Tooltip title={`Follow on ${label}`} arrow>
-      <IconButton component="a" href={url} target="_blank" rel="noopener noreferrer" size="small"
+      <IconButton
+        component="a" href={url} target="_blank" rel="noopener noreferrer" size="small"
         sx={{
-          border: "1.5px solid", borderColor: "divider", borderRadius: 2, p: 1, color: "text.secondary",
+          border: "1.5px solid rgba(255,255,255,0.25)",
+          borderRadius: 2, p: 1,
+          color: "rgba(255,255,255,0.6)",
           transition: "all 0.2s",
-          "&:hover": { borderColor: hoverColor, color: hoverColor, bgcolor: alpha(hoverColor, 0.08), transform: "translateY(-2px)" }
+          "&:hover": {
+            borderColor: hoverColor,
+            color: hoverColor,
+            bgcolor: alpha(hoverColor, 0.12),
+            transform: "translateY(-2px)",
+          },
         }}
       >
         {icon}
@@ -46,15 +63,17 @@ function SocialLink({ href, label, icon, hoverColor }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
+
 export default function BarberProfile({ tenant: initialTenant }) {
   const { id: barberId } = useParams();
-  const navigate = useNavigate(); // Hook for navigation
+  const navigate  = useNavigate();
+  const location  = useLocation();
 
-  const [barber,            setBarber]            = useState(null);
-  const [footerData,        setFooterData]        = useState(initialTenant || null);
-  const [loading,           setLoading]           = useState(true);
-  const [error,             setError]             = useState(null);
-  const [expandedSpecialty, setExpandedSpecialty] = useState(false);
+  const [barber,     setBarber]     = useState(null);
+  const [footerData, setFooterData] = useState(initialTenant || null);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+  const [showAllServices, setShowAllServices] = useState(false);
 
   const { slots, loading: slotsLoading, error: slotsError } = useSlots(
     barberId,
@@ -64,7 +83,6 @@ export default function BarberProfile({ tenant: initialTenant }) {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-
     async function loadBarberData() {
       if (!barberId) return;
       try {
@@ -121,111 +139,260 @@ export default function BarberProfile({ tenant: initialTenant }) {
     loadBarberData();
   }, [barberId, initialTenant]);
 
-  const brandColor = initialTenant?.brandColor || footerData?.brandColor || barber?.brandColor || "#C9A84C";
-  const firstName  = barber?.name?.split(" ")[0] || "";
+  // Navigation state (from BarberCard) takes priority for branding
+  const effectiveTenant = location.state?.tenant || initialTenant || footerData;
+  const brandColor  = effectiveTenant?.brandColor || barber?.brandColor || "#C9A84C";
+  const btnText     = contrastColor(brandColor);
+
   const instagramUrl = barber?.instagramUrl || "";
   const tiktokUrl    = barber?.tiktokUrl    || "";
   const hasSocial    = instagramUrl || tiktokUrl;
 
-  // Handle slot selection navigation
+  const services    = barber?.services || [];
+  const visibleSvcs = showAllServices ? services : services.slice(0, 5);
+
+  const scrollToBooking = () =>
+    document.getElementById("booking-section")?.scrollIntoView({ behavior: "smooth" });
+
   const handleSlotSelect = (slot) => {
-    const staffParam = barber.isStaff ? "true" : "false";
-    const shopParam = barber.shopId || barberId;
-    navigate(`/book/${barberId}/${slot.id}?isStaff=${staffParam}&shopId=${shopParam}`, { 
-      state: { tenant: footerData || initialTenant } 
-    });
+    navigate(
+      `/book/${barberId}/${slot.id}?isStaff=${barber.isStaff ? "true" : "false"}&shopId=${barber.shopId || barberId}`,
+      { state: { tenant: effectiveTenant } }
+    );
   };
 
+  // ── Loading / error ───────────────────────────────────────────────────────
+
   if (loading) return (
-    <Container maxWidth={false} sx={{ py: 8, minHeight: "100vh" }}>
-      <Skeleton variant="circular" width={120} height={120} sx={{ mb: 2 }} />
-      <Skeleton width="40%" height={40} />
-      <Skeleton width="60%" />
-    </Container>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", bgcolor: "#0a0a0a" }}>
+      <CircularProgress sx={{ color: brandColor }} size={56} thickness={2} />
+    </Box>
   );
 
   if (error) return (
-    <Container maxWidth={false} sx={{ py: 8, minHeight: "100vh" }}>
-      <Alert severity="error">{error}</Alert>
-    </Container>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", bgcolor: "#0a0a0a", p: 4 }}>
+      <Alert severity="error" sx={{ maxWidth: 480 }}>{error}</Alert>
+    </Box>
   );
 
   if (!barber) return null;
 
-  return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Container maxWidth={false} sx={{ py: { xs: 5, md: 8 }, flexGrow: 1, px: { xs: 2, md: 6 } }}>
-        <SEOConfig barber={barber} tenant={initialTenant || footerData} />
+  // ── Render ────────────────────────────────────────────────────────────────
 
-        <Grid container spacing={6}>
-          <Grid item xs={12} md={3} lg={2.5}>
-            <Box textAlign={{ xs: "center", md: "left" }}>
-              {barber.profilePic ? (
-                <Box component="img" src={barber.profilePic} alt={barber.name}
-                  sx={{ width: 180, height: 180, borderRadius: "50%", objectFit: "cover", mb: 2, border: "3px solid", borderColor: brandColor, mx: { xs: "auto", md: "0" }, display: "block" }}
-                />
-              ) : (
-                <Avatar sx={{ width: 180, height: 180, bgcolor: "grey.200", color: "grey.600", fontSize: 48, mb: 2, mx: { xs: "auto", md: "0" }, border: "3px solid", borderColor: brandColor }}>
-                  {firstName?.[0]?.toUpperCase()}
-                </Avatar>
-              )}
-              <Typography variant="h3" fontWeight={900}>{firstName}</Typography>
-              {barber.specialty && (
-                <ButtonBase onClick={() => setExpandedSpecialty(!expandedSpecialty)}
-                  sx={{ mt: 2, p: 2, width: "100%", textAlign: "left", borderRadius: "16px", bgcolor: brandColor, color: "white", display: "block", transition: "all 0.3s ease-in-out", position: "relative", overflow: "hidden" }}
-                >
-                  <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 0.5 }}>
-                    <ContentCutIcon sx={{ fontSize: 16, mt: 0.3 }} />
-                    <Typography variant="body2" fontWeight={600} sx={{ lineHeight: 1.6, display: expandedSpecialty ? "block" : "-webkit-box", WebkitLineClamp: expandedSpecialty ? "unset" : 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                      {barber.specialty}
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#0a0a0a", color: "white" }}>
+      <SEOConfig barber={barber} tenant={effectiveTenant} />
+
+      {/* 4px brand strip */}
+      <Box sx={{ height: 4, bgcolor: brandColor }} />
+
+      {/* Back button */}
+      <Box sx={{ position: "fixed", top: 16, left: 20, zIndex: 1000 }}>
+        <IconButton
+          onClick={() => navigate(-1)}
+          sx={{
+            bgcolor: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(10px)",
+            color: "white",
+            border: "1px solid rgba(255,255,255,0.15)",
+            "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
+          }}
+        >
+          <ArrowBackIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {/* ── Hero: split-screen ── */}
+      <Box sx={{
+        minHeight: "100vh",
+        display: "grid",
+        gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+      }}>
+        {/* Photo panel */}
+        <Box sx={{ position: "relative", minHeight: { xs: 460, md: "100vh" }, overflow: "hidden" }}>
+          {barber.profilePic ? (
+            <Box
+              component="img"
+              src={barber.profilePic}
+              alt={barber.name}
+              sx={{
+                width: "100%", height: "100%",
+                objectFit: "cover", objectPosition: "center top",
+                display: "block",
+              }}
+            />
+          ) : (
+            <Box sx={{
+              width: "100%", height: "100%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              bgcolor: "#111",
+              minHeight: { xs: 460, md: "100vh" },
+            }}>
+              <Avatar sx={{ width: 180, height: 180, bgcolor: brandColor, fontSize: 64, fontWeight: 900 }}>
+                {barber.name?.[0]?.toUpperCase()}
+              </Avatar>
+            </Box>
+          )}
+          {/* Fade-right + fade-bottom overlay */}
+          <Box sx={{
+            position: "absolute", inset: 0,
+            background: {
+              xs: "linear-gradient(to bottom, transparent 50%, #0a0a0a 100%)",
+              md: "linear-gradient(to right, transparent 55%, #0a0a0a 100%), linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, transparent 30%)",
+            },
+          }} />
+          {/* Brand bottom stripe */}
+          <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, bgcolor: brandColor }} />
+        </Box>
+
+        {/* Info panel */}
+        <Box sx={{
+          bgcolor: "#0a0a0a",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          px: { xs: 3, sm: 5, md: 7, lg: 9 },
+          py: { xs: 6, md: 10 },
+          position: "relative",
+        }}>
+          {/* Eyebrow */}
+          <Typography sx={{
+            fontSize: "0.65rem", fontWeight: 800,
+            letterSpacing: "0.22em", textTransform: "uppercase",
+            color: brandColor, mb: 2,
+          }}>
+            Professional Barber
+          </Typography>
+
+          {/* Name */}
+          <Typography sx={{
+            fontFamily: "'Playfair Display', serif",
+            fontWeight: 900,
+            lineHeight: 1,
+            fontSize: { xs: "3rem", sm: "3.5rem", md: "3.8rem", lg: "4.5rem" },
+            color: "white",
+            mb: barber.specialty ? 3 : 4,
+          }}>
+            {barber.name}
+          </Typography>
+
+          {/* Specialty */}
+          {barber.specialty && (
+            <Typography sx={{
+              color: "rgba(255,255,255,0.5)",
+              lineHeight: 1.85,
+              fontSize: "0.95rem",
+              fontWeight: 300,
+              mb: 4,
+              maxWidth: 420,
+              borderLeft: `2px solid ${brandColor}`,
+              pl: 2,
+            }}>
+              {barber.specialty}
+            </Typography>
+          )}
+
+          {/* Services */}
+          {services.length > 0 && (
+            <Box sx={{ mb: 4 }}>
+              <Typography sx={{
+                fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.2em",
+                textTransform: "uppercase", color: brandColor,
+                display: "block", mb: 1.5,
+              }}>
+                Services
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column" }}>
+                {visibleSvcs.map((svc, i) => (
+                  <Box key={i} sx={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    py: 1.1,
+                    borderBottom: `1px solid rgba(255,255,255,0.07)`,
+                  }}>
+                    <Typography sx={{ color: "rgba(255,255,255,0.75)", fontSize: "0.9rem", fontWeight: 500 }}>
+                      {svc.name}
                     </Typography>
-                  </Stack>
-                  <Box sx={{ position: "absolute", bottom: 8, right: 12, display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <Typography variant="caption" sx={{ opacity: 0.8, fontSize: "0.65rem", fontWeight: 700 }}>
-                      {expandedSpecialty ? "SHOW LESS" : "READ MORE"}
+                    <Typography sx={{ color: brandColor, fontSize: "0.9rem", fontWeight: 800, ml: 3, flexShrink: 0 }}>
+                      {formatCurrency(svc.price)}
                     </Typography>
-                    {expandedSpecialty ? <KeyboardArrowUpIcon sx={{ fontSize: 14 }} /> : <KeyboardArrowDownIcon sx={{ fontSize: 14 }} />}
                   </Box>
-                </ButtonBase>
-              )}
-              <Divider sx={{ my: 4 }} />
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="overline" fontWeight={700} sx={{ mb: 1, display: "block" }}>Services</Typography>
-                <List dense disablePadding>
-                  {barber.services?.map((service, index) => (
-                    <ListItem key={index} sx={{ px: 0, py: 1 }}>
-                      <ListItemText primary={service.name} primaryTypographyProps={{ variant: "body2", fontWeight: 600 }} />
-                      <Typography variant="body2" fontWeight={700} color={brandColor}>{formatCurrency(service.price)}</Typography>
-                    </ListItem>
-                  ))}
-                </List>
+                ))}
               </Box>
-              {hasSocial && (
-                <>
-                  <Divider sx={{ mb: 2 }} />
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="overline" fontWeight={700} sx={{ mb: 1.5, display: "block" }}>See My Work</Typography>
-                    <Stack direction="row" spacing={1.5} justifyContent={{ xs: "center", md: "flex-start" }}>
-                      <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
-                      <SocialLink href={tiktokUrl} label="TikTok" icon={<TikTokIcon size={20} color="currentColor" />} hoverColor="#010101" />
-                    </Stack>
-                  </Box>
-                </>
+              {services.length > 5 && (
+                <Button
+                  size="small"
+                  endIcon={<KeyboardArrowDownIcon sx={{ transition: "transform 0.2s", transform: showAllServices ? "rotate(180deg)" : "none" }} />}
+                  onClick={() => setShowAllServices(v => !v)}
+                  sx={{ mt: 1, color: "rgba(255,255,255,0.4)", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", p: 0, "&:hover": { color: brandColor, bgcolor: "transparent" } }}
+                >
+                  {showAllServices ? "Show less" : `+${services.length - 5} more`}
+                </Button>
               )}
             </Box>
-          </Grid>
-          <Grid item xs={12} md={9} lg={9.5}>
-            <Typography variant="h4" fontWeight={900} mb={3}>Select a Time</Typography>
-            <SlotPicker
-              slots={slots}
-              loading={slotsLoading}
-              error={slotsError}
-              brandColor={brandColor}
-              onSelect={handleSlotSelect} // Passes the custom navigation function
-            />
-          </Grid>
-        </Grid>
-      </Container>
+          )}
+
+          {/* Social links */}
+          {hasSocial && (
+            <Box sx={{ display: "flex", gap: 1, mb: 4 }}>
+              <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
+              <SocialLink href={tiktokUrl}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#ffffff" />
+            </Box>
+          )}
+
+          {/* CTA */}
+          <Box>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={scrollToBooking}
+              sx={{
+                bgcolor: brandColor,
+                color: btnText,
+                px: 5, py: 1.5,
+                borderRadius: 0,
+                fontSize: "0.78rem",
+                fontWeight: 900,
+                letterSpacing: "0.18em",
+                boxShadow: `0 0 32px ${alpha(brandColor, 0.35)}`,
+                "&:hover": { bgcolor: brandColor, filter: "brightness(1.1)", boxShadow: `0 0 48px ${alpha(brandColor, 0.5)}` },
+              }}
+            >
+              BOOK APPOINTMENT
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* ── Booking section ── */}
+      <Box id="booking-section" sx={{ bgcolor: "#f8f9fa", py: { xs: 8, md: 12 } }}>
+        <Container maxWidth="lg">
+          <Box sx={{ mb: 7, textAlign: "center" }}>
+            <Typography sx={{
+              fontSize: "0.65rem", fontWeight: 800,
+              letterSpacing: "0.22em", textTransform: "uppercase",
+              color: brandColor, display: "block", mb: 1,
+            }}>
+              AVAILABILITY
+            </Typography>
+            <Typography variant="h3" sx={{
+              fontFamily: "'Playfair Display', serif",
+              color: "#0a0a0a",
+              fontWeight: 700,
+              fontSize: { xs: "2rem", md: "2.8rem" },
+            }}>
+              Book Your Appointment
+            </Typography>
+          </Box>
+
+          <SlotPicker
+            slots={slots}
+            loading={slotsLoading}
+            error={slotsError}
+            brandColor={brandColor}
+            onSelect={handleSlotSelect}
+          />
+        </Container>
+      </Box>
     </Box>
   );
 }

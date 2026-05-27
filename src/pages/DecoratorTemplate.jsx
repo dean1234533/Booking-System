@@ -236,22 +236,22 @@ const BeforeAfterSlider = ({ before, after }) => {
   };
   return (
     <div className="ba-slider" onMouseMove={handleMove} onTouchMove={(e) => handleMove(e.touches[0])}>
-        <div style={{ position: 'absolute', inset: 0 }}>
-          <img src={after} alt="After" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </div>
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', width: `${sliderPos}%` }}>
-          <img src={before} alt="Before" style={{ width: '100vw', height: '100%', maxWidth: 'none', objectFit: 'cover' }} />
-        </div>
-        <span className="ba-label ba-label-before">Before</span>
-        <span className="ba-label ba-label-after">After</span>
-        <div className="ba-handle" style={{ left: `${sliderPos}%` }}>
-          <div className="ba-handle-knob">
-            <div style={{ display: 'flex', gap: '3px' }}>
-              <div style={{ width: '2px', height: '12px', background: '#9ca3af', borderRadius: '2px' }}></div>
-              <div style={{ width: '2px', height: '12px', background: '#9ca3af', borderRadius: '2px' }}></div>
-            </div>
+      <div style={{ position: 'absolute', inset: 0 }}>
+        <img src={after || 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=2070'} alt="After" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      </div>
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', width: `${sliderPos}%` }}>
+        <img src={before || 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2069'} alt="Before" style={{ width: '100vw', height: '100%', maxWidth: 'none', objectFit: 'cover' }} />
+      </div>
+      <span className="ba-label ba-label-before">Before</span>
+      <span className="ba-label ba-label-after">After</span>
+      <div className="ba-handle" style={{ left: `${sliderPos}%` }}>
+        <div className="ba-handle-knob">
+          <div style={{ display: 'flex', gap: '3px' }}>
+            <div style={{ width: '2px', height: '12px', background: '#9ca3af', borderRadius: '2px' }}></div>
+            <div style={{ width: '2px', height: '12px', background: '#9ca3af', borderRadius: '2px' }}></div>
           </div>
         </div>
+      </div>
     </div>
   );
 };
@@ -265,7 +265,7 @@ const DecoratorTemplate = ({ tenantData }) => {
     window.scrollTo(0, 0);
     async function fetchReviews() {
       try {
-        const reviewsRef = collection(db, "barbers", "default", "reviews");
+        const reviewsRef = collection(db, "barbers", tenantData?.id || "default", "reviews");
         const snapshot = await getDocs(reviewsRef);
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setReviews(data);
@@ -274,19 +274,79 @@ const DecoratorTemplate = ({ tenantData }) => {
       }
     }
     fetchReviews();
-  }, []);
+  }, [tenantData?.id]);
 
   const nextReview = () => setCurrentReviewIndex((prev) => (prev + 1) % reviews.length);
   const prevReview = () => setCurrentReviewIndex((prev) => (prev - 1 + reviews.length) % reviews.length);
 
-  const brandColor = tenantData?.brandColor || "#b5924c";
-  const businessName = tenantData?.businessName || "Amazon Clean";
-  const logo = tenantData?.logo;
+  /* ── All content resolved from tenantData with fallbacks ── */
+  const brandColor    = tenantData?.brandColor  || "#b5924c";
+  const businessName  = tenantData?.businessName || tenantData?.name || "Your Business";
+  const logo          = tenantData?.logoUrl      || tenantData?.logo || null;
+
+  // Hero
+  const heroImage     = tenantData?.heroImage    || "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=2070&auto=format&fit=crop";
+  const heroEyebrow   = tenantData?.heroTagline  || "London's Trusted Decorators";
+  const heroLine1     = tenantData?.heroHeadingLine1 || "Home Painting,";
+  const heroLine2     = tenantData?.heroHeadingLine2 || "Done Right.";
+  const heroSub       = tenantData?.heroSubtext  || "Fully insured. Results guaranteed. Professional painting and decorating services tailored to your home.";
+  const heroCta       = tenantData?.heroCtaText  || "Get Your Free Quote";
+  const heroReview    = tenantData?.heroReviewText || "Rated by 30+ Homeowners";
+
+  // About
+  const aboutTagline  = tenantData?.aboutTagline || "Who We Are";
+  const aboutHeading  = tenantData?.aboutHeading || "Craft, care & a flawless finish";
+  const aboutBody     = tenantData?.aboutBody    || tenantData?.aboutUs || "With over 10 years of experience in high-end residential painting and decorating, I pride myself on meticulous prep work and a flawless finish. Whether it's a single feature wall or a complete property refresh, I treat every home as if it were my own.";
+
+  // Stats
+  const stats = [
+    { num: tenantData?.stat1Value || "10+",  label: tenantData?.stat1Label || "Years of experience" },
+    { num: tenantData?.stat2Value || "200+", label: tenantData?.stat2Label || "Projects completed" },
+    { num: tenantData?.stat3Value || "30+",  label: tenantData?.stat3Label || "Five-star reviews" },
+    { num: tenantData?.stat4Value || "100%", label: tenantData?.stat4Label || "Satisfaction guaranteed" },
+  ];
+
+  // Services
+  const servicesHeading = tenantData?.servicesHeading || "Everything your home needs";
+  const servicesImage   = tenantData?.servicesImage   || "https://images.unsplash.com/photo-1562619425-c307bb83bc42?q=80&w=1935&auto=format&fit=crop";
+  const serviceItems    = (tenantData?.services || []).length > 0
+    ? tenantData.services
+    : [
+        { name: "Room repaints" }, { name: "Kitchen cabinet refreshes" },
+        { name: "Stairs (including repairs)" }, { name: "Ceilings only" },
+        { name: "Feature walls" }, { name: "Woodwork & trim" },
+        { name: "Colour consultation included" },
+      ];
+
+  // Portfolio
+  const portfolioHeading = tenantData?.portfolioHeading || "Recent transformations";
+  const portfolioSubtext = tenantData?.portfolioSubtext || "Drag the slider on each image to reveal the difference a professional finish makes.";
+  const portfolioItems   = (tenantData?.portfolioItems || []).length > 0
+    ? tenantData.portfolioItems
+    : [
+        { before: "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2069", after: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=2070", label: "Living Room — SW London" },
+        { before: "https://images.unsplash.com/photo-1505873242700-f289a29e1e0f?q=80&w=2076", after: "https://images.unsplash.com/photo-1556912177-f547c184827a?q=80&w=2070", label: "Kitchen Refresh — North London" },
+        { before: "https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=2074", after: "https://images.unsplash.com/photo-1527359353448-615621ad9d20?q=80&w=2069", label: "Full Interior — East London" },
+      ];
+
+  // Legal
+  const privacyText = tenantData?.privacyPolicy   || `At ${businessName}, we value your privacy. We collect only information necessary to provide our services and never sell your data.`;
+  const termsText   = tenantData?.termsConditions || `By using ${businessName}, you agree to our terms of service. All bookings are subject to our cancellation policy.`;
+
+  // Social
+  const instagramUrl = tenantData?.instagramUrl || "";
+  const tiktokUrl    = tenantData?.tiktokUrl    || "";
+  const facebookUrl  = tenantData?.facebookUrl  || "";
+  const contactEmail = tenantData?.contactEmail || tenantData?.email || "";
+
+  const currentReview = reviews[currentReviewIndex];
 
   return (
     <>
       <GlobalStyles />
       <div className="dt-page">
+
+        {/* ── NAV ── */}
         <nav className="dt-nav">
           <div className="dt-nav-brand">
             <div className="dt-nav-logo">
@@ -302,31 +362,40 @@ const DecoratorTemplate = ({ tenantData }) => {
           <a href="#contact" className="dt-nav-cta" style={{ backgroundColor: brandColor }}>Free Quote</a>
         </nav>
 
+        {/* ── HERO ── */}
         <header id="home" className="dt-hero">
-          <div className="dt-hero-bg"><img src="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=2070&auto=format&fit=crop" alt="Background" /></div>
+          <div className="dt-hero-bg">
+            <img src={heroImage} alt="Background" />
+          </div>
           <div className="dt-hero-content">
-            <span className="dt-hero-eyebrow">London's Trusted Decorators</span>
-            <h1>Home Painting,<br /><span className="dt-hero-accent">Done Right.</span></h1>
-            <p className="dt-hero-sub">Fully insured. Results guaranteed. Professional painting and decorating services tailored to your home.</p>
+            <span className="dt-hero-eyebrow">{heroEyebrow}</span>
+            <h1>
+              {heroLine1}<br />
+              <span className="dt-hero-accent">{heroLine2}</span>
+            </h1>
+            <p className="dt-hero-sub">{heroSub}</p>
             <div className="dt-hero-actions">
-              <button className="dt-hero-btn" style={{ backgroundColor: brandColor }}>Get Your Free Quote</button>
+              <button className="dt-hero-btn" style={{ backgroundColor: brandColor }} onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}>
+                {heroCta}
+              </button>
               <div className="dt-hero-badge">
                 <div style={{ display: 'flex', color: '#f59e0b' }}>{[...Array(5)].map((_, i) => <Star key={i} size={15} fill="currentColor" />)}</div>
-                <span>Rated by 30+ Homeowners</span>
+                <span>{heroReview}</span>
               </div>
             </div>
           </div>
         </header>
 
+        {/* ── ABOUT ── */}
         <section id="about" className="dt-about">
           <div>
-            <span className="dt-section-label">Who We Are</span>
-            <h2 className="dt-section-title">Craft, care &amp; a flawless finish</h2>
+            <span className="dt-section-label">{aboutTagline}</span>
+            <h2 className="dt-section-title">{aboutHeading}</h2>
             <div className="dt-underline" style={{ backgroundColor: brandColor }}></div>
-            <p className="dt-about-text">With over 10 years of experience in high-end residential painting and decorating, I pride myself on meticulous prep work and a flawless finish. Whether it's a single feature wall or a complete property refresh, I treat every home as if it were my own.</p>
+            <p className="dt-about-text">{aboutBody}</p>
           </div>
           <div className="dt-about-stats">
-            {[{ num: "10+", label: "Years of experience" }, { num: "200+", label: "Projects completed" }, { num: "30+", label: "Five-star reviews" }, { num: "100%", label: "Satisfaction guaranteed" }].map((s, i) => (
+            {stats.map((s, i) => (
               <div className="dt-stat" key={i}>
                 <div className="dt-stat-num" style={{ color: brandColor }}>{s.num}</div>
                 <div className="dt-stat-label">{s.label}</div>
@@ -335,51 +404,57 @@ const DecoratorTemplate = ({ tenantData }) => {
           </div>
         </section>
 
+        {/* ── SERVICES ── */}
         <section id="services" className="dt-services">
           <div className="dt-services-inner">
             <div>
               <div className="dt-services-header">
                 <span className="dt-section-label">Our Services</span>
-                <h2 className="dt-section-title">Everything your home needs</h2>
+                <h2 className="dt-section-title">{servicesHeading}</h2>
                 <div className="dt-underline" style={{ backgroundColor: brandColor }}></div>
               </div>
               <div className="dt-service-card">
                 <ul style={{ listStyle: 'none' }}>
-                  {["Room repaints", "Kitchen cabinet refreshes", "Stairs (including repairs)", "Ceilings only", "Feature walls", "Woodwork & trim", "Colour consultation included"].map((item, i) => (
+                  {serviceItems.map((item, i) => (
                     <li key={i} className="dt-service-item">
                       <CheckCircle2 size={18} style={{ color: brandColor, flexShrink: 0 }} />
-                      {item}
+                      {item.name || item}
+                      {item.price ? ` — £${item.price}` : ""}
                     </li>
                   ))}
                 </ul>
-                <button className="dt-service-btn" style={{ backgroundColor: brandColor }}>Get Your Free Quote</button>
+                <button className="dt-service-btn" style={{ backgroundColor: brandColor }} onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}>
+                  Get Your Free Quote
+                </button>
               </div>
             </div>
-            <div className="dt-services-img"><img src="https://images.unsplash.com/photo-1562619425-c307bb83bc42?q=80&w=1935&auto=format&fit=crop" alt="Painting" /></div>
+            <div className="dt-services-img">
+              <img src={servicesImage} alt="Services" />
+            </div>
           </div>
         </section>
 
+        {/* ── PORTFOLIO ── */}
         <section id="portfolio" className="dt-portfolio">
           <div className="dt-portfolio-header">
             <div>
               <span className="dt-section-label">Portfolio</span>
-              <h2 className="dt-section-title">Recent transformations</h2>
+              <h2 className="dt-section-title">{portfolioHeading}</h2>
               <div className="dt-underline" style={{ backgroundColor: brandColor }}></div>
             </div>
-            <p className="dt-portfolio-sub">Drag the slider on each image to reveal the difference a professional finish makes.</p>
+            <p className="dt-portfolio-sub">{portfolioSubtext}</p>
           </div>
           <div className="dt-portfolio-grid">
-            {[{before: "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2069&auto=format&fit=crop", after: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=2070&auto=format&fit=crop", label: "Living Room — SW London"},
-              {before: "https://images.unsplash.com/photo-1505873242700-f289a29e1e0f?q=80&w=2076&auto=format&fit=crop", after: "https://images.unsplash.com/photo-1556912177-f547c184827a?q=80&w=2070&auto=format&fit=crop", label: "Kitchen Refresh — North London"},
-              {before: "https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=2074&auto=format&fit=crop", after: "https://images.unsplash.com/photo-1527359353448-615621ad9d20?q=80&w=2069&auto=format&fit=crop", label: "Full Interior — East London"}].map((p, i) => (
-                <div key={i}>
-                  <BeforeAfterSlider before={p.before} after={p.after} />
-                  <p className="dt-portfolio-label">{p.label}</p>
-                </div>
+            {portfolioItems.map((p, i) => (
+              <div key={i}>
+                <BeforeAfterSlider before={p.before} after={p.after} />
+                <p className="dt-portfolio-label">{p.label}</p>
+              </div>
             ))}
           </div>
         </section>
 
+        {/* ── REVIEWS ── */}
         <section id="reviews" className="dt-reviews">
           <div className="dt-reviews-header">
             <span className="dt-section-label">Testimonials</span>
@@ -388,19 +463,21 @@ const DecoratorTemplate = ({ tenantData }) => {
           </div>
 
           <Container maxWidth="md">
-            {reviews.length > 0 ? (
+            {reviews.length > 0 && currentReview ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <IconButton onClick={prevReview}><ChevronLeft /></IconButton>
                 <Box sx={{ flex: 1 }}>
                   <div className="dt-review-card">
-                    <div style={{ display: 'flex', color: brandColor }}>{[...Array(reviews[currentReviewIndex].rating || 5)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}</div>
+                    <div style={{ display: 'flex', color: brandColor }}>
+                      {[...Array(currentReview.rating || 5)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}
+                    </div>
                     <div className="dt-review-quote">"</div>
-                    <p className="dt-review-text">{reviews[currentReviewIndex].comment}</p>
+                    <p className="dt-review-text">{currentReview.comment}</p>
                     <div className="dt-review-divider"></div>
                     <div className="dt-review-footer">
-                      <div className="dt-review-avatar">{reviews[currentReviewIndex].customerName?.charAt(0) || 'U'}</div>
+                      <div className="dt-review-avatar">{currentReview.customerName?.charAt(0) || 'U'}</div>
                       <div>
-                        <div className="dt-review-name">{reviews[currentReviewIndex].customerName || "Anonymous"}</div>
+                        <div className="dt-review-name">{currentReview.customerName || "Anonymous"}</div>
                         <div className="dt-review-verified">Verified Customer</div>
                       </div>
                     </div>
@@ -413,13 +490,18 @@ const DecoratorTemplate = ({ tenantData }) => {
             )}
 
             <div className="dt-review-cta">
-              <button onClick={() => window.location.href = `/review/${tenantData?.id || 'default'}`} className="dt-form-btn" style={{ background: 'transparent', border: '2px solid var(--ink)', color: 'var(--ink)' }}>
+              <button
+                onClick={() => window.location.href = `/review/${tenantData?.id || 'default'}`}
+                className="dt-form-btn"
+                style={{ background: 'transparent', border: '2px solid var(--ink)', color: 'var(--ink)' }}
+              >
                 <RateReviewIcon style={{ fontSize: 16, marginRight: 8 }} /> Leave a Review
               </button>
             </div>
           </Container>
         </section>
 
+        {/* ── CONTACT ── */}
         <section id="contact" className="dt-contact">
           <div className="dt-contact-inner">
             <div>
@@ -428,11 +510,23 @@ const DecoratorTemplate = ({ tenantData }) => {
               <p className="dt-contact-sub">Tell us about your project and we'll be in touch within 24 hours to discuss your vision and provide a no-obligation quote.</p>
               <div className="dt-contact-perks">
                 {["No call centres — speak directly with the decorator", "Free, no-obligation quote within 24 hours", "Fully insured and 100% satisfaction guaranteed"].map((p, i) => (
-                  <div key={i} className="dt-contact-perk"><div className="dt-contact-dot" style={{ backgroundColor: brandColor }}></div>{p}</div>
+                  <div key={i} className="dt-contact-perk">
+                    <div className="dt-contact-dot" style={{ backgroundColor: brandColor }}></div>
+                    {p}
+                  </div>
                 ))}
               </div>
+              {/* Social links — shown if set */}
+              {(instagramUrl || tiktokUrl || facebookUrl || contactEmail) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '2rem' }}>
+                  {instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', letterSpacing: '0.08em' }}>📸 Instagram</a>}
+                  {tiktokUrl    && <a href={tiktokUrl}    target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', letterSpacing: '0.08em' }}>🎵 TikTok</a>}
+                  {facebookUrl  && <a href={facebookUrl}  target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', letterSpacing: '0.08em' }}>📘 Facebook</a>}
+                  {contactEmail && <a href={`mailto:${contactEmail}`} style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', letterSpacing: '0.08em' }}>✉ Email</a>}
+                </div>
+              )}
             </div>
-            <form className="dt-form" onSubmit={(e) => { e.preventDefault(); alert("Form submitted!"); }}>
+            <form className="dt-form" onSubmit={(e) => { e.preventDefault(); alert("Message sent! We'll be in touch within 24 hours."); }}>
               <input className="dt-input" placeholder="Full Name" required />
               <input className="dt-input" placeholder="Phone Number" type="tel" required />
               <textarea className="dt-input dt-textarea" placeholder="Tell me about your project…" />
@@ -441,24 +535,44 @@ const DecoratorTemplate = ({ tenantData }) => {
           </div>
         </section>
 
+        {/* ── FOOTER ── */}
         <footer className="dt-footer">
           <div className="dt-footer-inner">
-            <div className="dt-footer-brand" style={{ color: brandColor }}>{logo && <img src={logo} alt="Logo" style={{ height: 36, marginBottom: 8, display: 'block' }} />}{businessName}</div>
+            <div className="dt-footer-brand" style={{ color: brandColor }}>
+              {logo && <img src={logo} alt="Logo" style={{ height: 36, marginBottom: 8, display: 'block' }} />}
+              {businessName}
+            </div>
             <div className="dt-footer-links">
-              <span className="dt-footer-link" onClick={() => setModalContent('privacy')}>Privacy</span>
-              <span className="dt-footer-link" onClick={() => setModalContent('terms')}>Terms</span>
+              {privacyText  && <span className="dt-footer-link" onClick={() => setModalContent('privacy')}>Privacy</span>}
+              {termsText    && <span className="dt-footer-link" onClick={() => setModalContent('terms')}>Terms</span>}
+              {instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="dt-footer-link">Instagram</a>}
+              {facebookUrl  && <a href={facebookUrl}  target="_blank" rel="noopener noreferrer" className="dt-footer-link">Facebook</a>}
+              {tiktokUrl    && <a href={tiktokUrl}    target="_blank" rel="noopener noreferrer" className="dt-footer-link">TikTok</a>}
             </div>
           </div>
           <p className="dt-footer-copy">© {new Date().getFullYear()} {businessName}. All rights reserved.</p>
         </footer>
 
-        <Dialog open={Boolean(modalContent)} onClose={() => setModalContent(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: '#1c1917', color: '#fff', borderRadius: '4px' } }}>
-          <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', fontWeight: 700 }}>{modalContent === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions'}</DialogTitle>
+        {/* ── LEGAL MODAL ── */}
+        <Dialog
+          open={Boolean(modalContent)}
+          onClose={() => setModalContent(null)}
+          maxWidth="sm" fullWidth
+          PaperProps={{ sx: { bgcolor: '#1c1917', color: '#fff', borderRadius: '4px' } }}
+        >
+          <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', fontWeight: 700 }}>
+            {modalContent === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions'}
+          </DialogTitle>
           <DialogContent dividers sx={{ borderColor: '#333' }}>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)' }}>{modalContent === 'privacy' ? `At ${businessName}, we value your privacy.` : `By using ${businessName}, you agree to our standard terms.`}</Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', whiteSpace: 'pre-wrap', lineHeight: 1.75 }}>
+              {modalContent === 'privacy' ? privacyText : termsText}
+            </Typography>
           </DialogContent>
-          <DialogActions><Button onClick={() => setModalContent(null)} sx={{ color: brandColor }}>Close</Button></DialogActions>
+          <DialogActions>
+            <Button onClick={() => setModalContent(null)} sx={{ color: brandColor }}>Close</Button>
+          </DialogActions>
         </Dialog>
+
       </div>
     </>
   );

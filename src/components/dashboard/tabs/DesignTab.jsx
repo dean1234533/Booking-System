@@ -36,9 +36,34 @@ export default function DesignTab({
         {/* Brand Colour */}
         <Grid item xs={12} sm={6}>
           <Typography variant="subtitle2" fontWeight={700} mb={1}>Brand Colour</Typography>
-          <input type="color" value={profile.brandColor || "#C9A84C"}
-            onChange={e => setProfile(p => ({ ...p, brandColor: e.target.value }))}
-            style={{ width: 48, height: 48, border: "none", cursor: "pointer", borderRadius: 8 }} />
+          <Box display="flex" alignItems="center" gap={1.5}>
+            <input type="color" value={profile.brandColor || "#C9A84C"}
+              onChange={e => setProfile(p => ({ ...p, brandColor: e.target.value }))}
+              style={{ width: 48, height: 48, border: "none", cursor: "pointer", borderRadius: 8 }} />
+            <Typography variant="caption" color="text.secondary">Used on buttons, tabs & accents</Typography>
+          </Box>
+        </Grid>
+
+        {/* Nav Background */}
+        <Grid item xs={12} sm={6}>
+          <Typography variant="subtitle2" fontWeight={700} mb={1}>Nav Background</Typography>
+          <Box display="flex" alignItems="center" gap={1.5}>
+            <input type="color" value={profile.navBgColor || "#ffffff"}
+              onChange={e => setProfile(p => ({ ...p, navBgColor: e.target.value }))}
+              style={{ width: 48, height: 48, border: "none", cursor: "pointer", borderRadius: 8 }} />
+            <Typography variant="caption" color="text.secondary">Navigation bar background colour</Typography>
+          </Box>
+        </Grid>
+
+        {/* Footer Background */}
+        <Grid item xs={12} sm={6}>
+          <Typography variant="subtitle2" fontWeight={700} mb={1}>Footer Background</Typography>
+          <Box display="flex" alignItems="center" gap={1.5}>
+            <input type="color" value={profile.footerBgColor || "#0a0a0a"}
+              onChange={e => setProfile(p => ({ ...p, footerBgColor: e.target.value }))}
+              style={{ width: 48, height: 48, border: "none", cursor: "pointer", borderRadius: 8 }} />
+            <Typography variant="caption" color="text.secondary">Footer background colour</Typography>
+          </Box>
         </Grid>
 
         {/* Desktop Hero Banner */}

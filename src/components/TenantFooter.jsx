@@ -10,6 +10,14 @@ import EmailIcon from "@mui/icons-material/Email";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
 import { Link as RouterLink } from "react-router-dom";
 
+function contrastColor(hex) {
+  if (!hex || !hex.startsWith("#")) return "#ffffff";
+  const r = parseInt(hex.slice(1, 3), 16) || 0;
+  const g = parseInt(hex.slice(3, 5), 16) || 0;
+  const b = parseInt(hex.slice(5, 7), 16) || 0;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? "#111111" : "#ffffff";
+}
+
 export default function TenantFooter({ tenant }) {
   const [modal, setModal] = useState({ open: false, title: "", content: null });
 
@@ -18,7 +26,15 @@ export default function TenantFooter({ tenant }) {
   // --- DATA MAPPING (Synced with TenantNav) ---
   const logo = tenant?.businessLogo || tenant?.logoUrl;
   const businessName = (tenant?.businessName || "PREMIUM BARBER SHOP").toUpperCase();
-  const brandColor = tenant?.brandColor || "#C9A84C";
+  const brandColor  = tenant?.brandColor    || "#C9A84C";
+  const footerBg    = tenant?.footerBgColor || "#0a0a0a";
+  const footerText  = contrastColor(footerBg);
+  const mutedText   = footerText === "#ffffff"
+    ? "rgba(255,255,255,0.5)"
+    : "rgba(0,0,0,0.45)";
+  const dividerColor = footerText === "#ffffff"
+    ? "rgba(255,255,255,0.05)"
+    : "rgba(0,0,0,0.1)";
   
   // Contact Info
   const address = tenant?.address;
@@ -44,7 +60,7 @@ export default function TenantFooter({ tenant }) {
   };
 
   return (
-    <Box component="footer" sx={{ bgcolor: "#0A0A0A", color: "white", pt: 8, pb: 4, mt: 'auto' }}>
+    <Box component="footer" sx={{ bgcolor: footerBg, color: footerText, pt: 8, pb: 4, mt: 'auto' }}>
       <Container maxWidth="lg">
         <Grid container spacing={4}>
           
@@ -85,20 +101,21 @@ export default function TenantFooter({ tenant }) {
               )}
             </Box>
 
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 1000, 
-                mb: 1, 
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 1000,
+                mb: 1,
                 letterSpacing: 1,
-                fontFamily: "'Playfair Display', serif" 
+                fontFamily: "'Playfair Display', serif",
+                color: footerText,
               }}
             >
               {businessName}
             </Typography>
-            
+
             {address && (
-              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.5)", mb: 3, maxWidth: 300 }}>
+              <Typography variant="body2" sx={{ color: mutedText, mb: 3, maxWidth: 300 }}>
                 {address}
               </Typography>
             )}
@@ -107,7 +124,7 @@ export default function TenantFooter({ tenant }) {
               {phone && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <PhoneIcon sx={{ fontSize: 18, color: brandColor }} />
-                  <Link href={`tel:${phone}`} sx={{ color: 'white', textDecoration: 'none', fontSize: '0.9rem', opacity: 0.8 }}>
+                  <Link href={`tel:${phone}`} sx={{ color: footerText, textDecoration: 'none', fontSize: '0.9rem', opacity: 0.8 }}>
                     {phone}
                   </Link>
                 </Box>
@@ -115,7 +132,7 @@ export default function TenantFooter({ tenant }) {
               {email && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <EmailIcon sx={{ fontSize: 18, color: brandColor }} />
-                  <Link href={`mailto:${email}`} sx={{ color: 'white', textDecoration: 'none', fontSize: '0.9rem', opacity: 0.8 }}>
+                  <Link href={`mailto:${email}`} sx={{ color: footerText, textDecoration: 'none', fontSize: '0.9rem', opacity: 0.8 }}>
                     {email}
                   </Link>
                 </Box>
@@ -129,27 +146,27 @@ export default function TenantFooter({ tenant }) {
               STAY CONNECTED
             </Typography>
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <IconButton 
-                component="a" 
-                href={instagram || "#"} 
+              <IconButton
+                component="a"
+                href={instagram || "#"}
                 target={instagram ? "_blank" : "_self"}
-                sx={{ 
-                  color: "white", 
-                  border: '1px solid rgba(255,255,255,0.1)', 
-                  '&:hover': { bgcolor: brandColor, borderColor: brandColor, color: "black" }
+                sx={{
+                  color: footerText,
+                  border: `1px solid ${dividerColor}`,
+                  '&:hover': { bgcolor: brandColor, borderColor: brandColor, color: contrastColor(brandColor) }
                 }}
               >
                 <InstagramIcon />
               </IconButton>
 
-              <IconButton 
-                component="a" 
-                href={facebook || "#"} 
+              <IconButton
+                component="a"
+                href={facebook || "#"}
                 target={facebook ? "_blank" : "_self"}
-                sx={{ 
-                  color: "white", 
-                  border: '1px solid rgba(255,255,255,0.1)', 
-                  '&:hover': { bgcolor: brandColor, borderColor: brandColor, color: "black" }
+                sx={{
+                  color: footerText,
+                  border: `1px solid ${dividerColor}`,
+                  '&:hover': { bgcolor: brandColor, borderColor: brandColor, color: contrastColor(brandColor) }
                 }}
               >
                 <FacebookIcon />
@@ -159,11 +176,11 @@ export default function TenantFooter({ tenant }) {
 
           {/* Bottom Bar */}
           <Grid item xs={12}>
-            <Divider sx={{ bgcolor: 'rgba(255,255,255,0.05)', my: 4 }} />
+            <Divider sx={{ bgcolor: dividerColor, my: 4 }} />
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-              
+
               <Stack direction="row" spacing={3} alignItems="center">
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.3)' }}>
+                <Typography variant="caption" sx={{ color: mutedText }}>
                   © {new Date().getFullYear()} {businessName}
                 </Typography>
                 <Link component={RouterLink} to="/login" sx={{ fontSize: '0.7rem', color: brandColor, textDecoration: 'none', fontWeight: 900, letterSpacing: 1 }}>
@@ -172,10 +189,10 @@ export default function TenantFooter({ tenant }) {
               </Stack>
 
               <Stack direction="row" spacing={3}>
-                <Link onClick={() => handleOpenLegal('privacy')} sx={{ cursor: 'pointer', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', textDecoration: 'none', '&:hover': { color: brandColor } }}>
+                <Link onClick={() => handleOpenLegal('privacy')} sx={{ cursor: 'pointer', fontSize: '0.75rem', color: mutedText, textDecoration: 'none', '&:hover': { color: brandColor } }}>
                   Privacy Policy
                 </Link>
-                <Link onClick={() => handleOpenLegal('terms')} sx={{ cursor: 'pointer', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', textDecoration: 'none', '&:hover': { color: brandColor } }}>
+                <Link onClick={() => handleOpenLegal('terms')} sx={{ cursor: 'pointer', fontSize: '0.75rem', color: mutedText, textDecoration: 'none', '&:hover': { color: brandColor } }}>
                   Terms of Service
                 </Link>
               </Stack>
@@ -186,14 +203,14 @@ export default function TenantFooter({ tenant }) {
       </Container>
 
       {/* Legal Dialog */}
-      <Dialog 
-        open={modal.open} 
-        onClose={() => setModal({ ...modal, open: false })} 
-        PaperProps={{ sx: { bgcolor: '#111', color: 'white', maxWidth: '600px', borderRadius: '4px' } }}
+      <Dialog
+        open={modal.open}
+        onClose={() => setModal({ ...modal, open: false })}
+        PaperProps={{ sx: { bgcolor: footerBg, color: footerText, maxWidth: '600px', borderRadius: '4px' } }}
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>{modal.title}</DialogTitle>
-        <DialogContent dividers sx={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-          <Typography variant="body2" sx={{ lineHeight: 1.8, color: 'rgba(255,255,255,0.6)' }}>
+        <DialogTitle sx={{ fontWeight: 900, color: footerText }}>{modal.title}</DialogTitle>
+        <DialogContent dividers sx={{ borderColor: dividerColor }}>
+          <Typography variant="body2" sx={{ lineHeight: 1.8, color: mutedText }}>
             {modal.content}
           </Typography>
         </DialogContent>

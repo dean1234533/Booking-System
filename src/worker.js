@@ -10,9 +10,8 @@ import Stripe from "stripe";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SUPPORTED_TLDS  = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
-const PLATFORM_MARKUP = 9; // £9 added on top of base cost
+const PLATFORM_MARKUP = 9;
 
-// Porkbun base pricing estimates in USD (used for calculating the final GBP price)
 const ESTIMATED_PRICES_USD = {
   "com":    11.08,
   "net":    12.52,
@@ -29,9 +28,9 @@ const ESTIMATED_PRICES_USD = {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 
+    headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*" 
+      "Access-Control-Allow-Origin": "*",
     },
   });
 }
@@ -55,7 +54,7 @@ function toFirestoreFields(obj) {
     if (typeof val === "string")       fields[key] = { stringValue: val };
     else if (typeof val === "boolean") fields[key] = { booleanValue: val };
     else if (typeof val === "number")  fields[key] = { integerValue: String(val) };
-    else if (val === null)              fields[key] = { nullValue: null };
+    else if (val === null)             fields[key] = { nullValue: null };
   }
   return fields;
 }
@@ -73,6 +72,10 @@ function calcFinalPriceGbp(tld, usdToGbpRate) {
 
 // ── Route handlers ────────────────────────────────────────────────────────────
 
+// POST /api/connect
+// Initiates Stripe Connect onboarding. Returns { url }.
+// FIXED: return_url now uses stripeSuccess=true&acct= so the Dashboard
+//        useEffect can detect the redirect and call /api/stripe/callback.
 async function handleConnect(request, env) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -88,44 +91,106 @@ async function handleConnect(request, env) {
   }
 
   try {
-    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
-    const account = await stripe.accounts.create({
-      type: "express",
-      email: email,
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
-      },
-      business_profile: {
-        name: businessName || "Barber Shop Owner",
-      },
-      metadata: { barberId: userId }
-    });
+    const stripe  = new Stripe(env.STRIPE_SECRET_KEY);
+    const origin  = env.APP_ORIGIN ?? "https://bookehtrim.co.uk";
+    const base    = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
 
-    const origin = env.APP_ORIGIN ?? "https://bookehtrim.co.uk";
+    // Reuse an existing Stripe account if one already exists for this barber
+    let accountId;
+    const fbRes = await fetch(`${base}/barbers/${userId}`);
+    if (fbRes.ok) {
+      const fbData      = await fbRes.json();
+      const existingId  = fbData.fields?.stripeAccountId?.stringValue;
+      if (existingId) accountId = existingId;
+    }
+
+    if (!accountId) {
+      const account = await stripe.accounts.create({
+        type:  "express",
+        email,
+        capabilities: {
+          card_payments: { requested: true },
+          transfers:     { requested: true },
+        },
+        business_profile: {
+          name: businessName || "Barber Shop Owner",
+        },
+        metadata: { barberId: userId },
+      });
+      accountId = account.id;
+
+      // Store account ID immediately; stripeConnected stays false until
+      // /api/stripe/callback confirms charges_enabled after onboarding.
+      await fetch(
+        `${base}/barbers/${userId}?updateMask.fieldPaths=stripeAccountId&updateMask.fieldPaths=stripeConnected`,
+        {
+          method:  "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            fields: toFirestoreFields({ stripeAccountId: accountId, stripeConnected: false }),
+          }),
+        }
+      );
+    }
 
     const accountLink = await stripe.accountLinks.create({
-      account: account.id,
-      refresh_url: `${origin}/signup`,
-      return_url: `${origin}/dashboard?stripe_success=true`,
-      type: "account_onboarding",
-    });
-
-    const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
-    await fetch(`${base}/barbers/${userId}?updateMask.fieldPaths=stripeAccountId&updateMask.fieldPaths=stripeConnected`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fields: toFirestoreFields({
-          stripeAccountId: account.id,
-          stripeConnected: false
-        })
-      })
+      account:     accountId,
+      refresh_url: `${origin}/dashboard?error=retry`,
+      // FIXED: was stripe_success=true with no acct param.
+      // Now uses stripeSuccess=true&acct= to match the Dashboard useEffect.
+      return_url:  `${origin}/dashboard?stripeSuccess=true&acct=${accountId}`,
+      type:        "account_onboarding",
     });
 
     return json({ url: accountLink.url });
   } catch (err) {
     console.error("[connect-error]:", err);
+    return json({ error: err.message }, 500);
+  }
+}
+
+// POST /api/stripe/callback
+// Called by the Dashboard useEffect after Stripe redirects back.
+// Verifies charges_enabled with Stripe, then writes stripeConnected:true.
+// Body: { userId, stripeAccountId }
+async function handleStripeCallback(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON body" }, 400); }
+
+  const { userId, stripeAccountId } = body ?? {};
+
+  if (!userId || !stripeAccountId) {
+    return json({ error: "Missing userId or stripeAccountId" }, 400);
+  }
+
+  try {
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+
+    // Always verify with Stripe — never trust the URL param alone.
+    // Prevents a spoofed ?stripeSuccess=true from marking someone as connected.
+    const account    = await stripe.accounts.retrieve(stripeAccountId);
+    const isComplete = account.details_submitted && account.charges_enabled;
+
+    if (!isComplete) {
+      return json({
+        connected: false,
+        reason:    "Onboarding incomplete — details not submitted or charges not enabled",
+      });
+    }
+
+    const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+    await fetch(`${base}/barbers/${userId}?updateMask.fieldPaths=stripeConnected`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ fields: toFirestoreFields({ stripeConnected: true }) }),
+    });
+
+    return json({ connected: true });
+  } catch (err) {
+    console.error("[stripe-callback] Error:", err);
     return json({ error: err.message }, 500);
   }
 }
@@ -143,7 +208,7 @@ async function handleCheckPayment(request, env) {
     const stripe  = new Stripe(env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     return json({
-      status:       session.status,
+      status:         session.status,
       payment_status: session.payment_status,
       metadata:       session.metadata,
     });
@@ -182,15 +247,9 @@ async function handleCheckDomain(request, env) {
 
     const dnsData    = await dnsRes.json();
     const isAvailable = dnsData.Status === 3;
+    const finalPrice  = calcFinalPriceGbp(tld, env.USD_TO_GBP_RATE);
 
-    const finalPrice = calcFinalPriceGbp(tld, env.USD_TO_GBP_RATE);
-
-    return json({
-      domain:    clean,
-      available: isAvailable,
-      price:     finalPrice,
-      currency:  "GBP",
-    });
+    return json({ domain: clean, available: isAvailable, price: finalPrice, currency: "GBP" });
   } catch (err) {
     console.error("[check-domain] Unexpected error:", err);
     return json({ error: "Internal server error" }, 500);
@@ -211,16 +270,15 @@ async function handleCreateDomainCheckout(request, env) {
   }
 
   const targetExtension = domain.toLowerCase().trim();
-  const tld           = extractTLD(targetExtension);
-  const finalPriceGbp = calcFinalPriceGbp(tld, env.USD_TO_GBP_RATE);
-  const priceGbpPence = Math.round(finalPriceGbp * 100);
-
-  const origin = env.APP_ORIGIN ?? "https://bookehtrim.co.uk";
+  const tld             = extractTLD(targetExtension);
+  const finalPriceGbp   = calcFinalPriceGbp(tld, env.USD_TO_GBP_RATE);
+  const priceGbpPence   = Math.round(finalPriceGbp * 100);
+  const origin          = env.APP_ORIGIN ?? "https://bookehtrim.co.uk";
 
   try {
     const stripe  = new Stripe(env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.create({
-      mode:                  "payment",
+      mode:                 "payment",
       payment_method_types: ["card"],
       line_items: [{
         price_data: {
@@ -233,11 +291,7 @@ async function handleCreateDomainCheckout(request, env) {
         },
         quantity: 1,
       }],
-      metadata: {
-        type:     "domain_purchase",
-        domain,
-        barberId,
-      },
+      metadata:    { type: "domain_purchase", domain, barberId },
       success_url: `${origin}/dashboard?domainSuccess=true&domain=${encodeURIComponent(domain)}`,
       cancel_url:  `${origin}/dashboard?domainCancelled=true`,
     });
@@ -271,11 +325,7 @@ async function handleConnectExistingDomain(request, env) {
   try {
     const hostnameResult = await addCustomHostname(clean, env);
     await updateFirestoreDomain(barberId, clean, hostnameResult.id, env);
-    return json({ 
-      success: true, 
-      domain: clean, 
-      customHostnameId: hostnameResult.id 
-    });
+    return json({ success: true, domain: clean, customHostnameId: hostnameResult.id });
   } catch (err) {
     console.error("[connect-existing] Configuration routing error:", err);
     return json({ error: err.message }, 500);
@@ -341,12 +391,10 @@ async function handleStripeWebhook(request, env) {
 
     if (meta.type === "domain_purchase") {
       const { domain, barberId } = meta;
-
       if (!domain || !barberId) {
         console.error("[stripe-webhook] Missing domain or barberId in metadata");
         return json({ received: true });
       }
-
       try {
         await provisionDomain(domain, barberId, env);
       } catch (err) {
@@ -359,7 +407,7 @@ async function handleStripeWebhook(request, env) {
   return json({ received: true });
 }
 
-// ── PORKBUN REGISTRATION ENGINE ───────────────────────────────────────────────
+// ── Porkbun Registration Engine ───────────────────────────────────────────────
 
 async function registerDomain(domain, env) {
   const res = await fetch(
@@ -387,10 +435,7 @@ async function registerDomain(domain, env) {
       body:    JSON.stringify({
         apikey:       env.PORKBUN_API_KEY,
         secretapikey: env.PORKBUN_SECRET_KEY,
-        nameservers: [
-          "byron.ns.cloudflare.com",  
-          "sierra.ns.cloudflare.com", 
-        ],
+        nameservers:  ["byron.ns.cloudflare.com", "sierra.ns.cloudflare.com"],
       }),
     }
   );
@@ -403,7 +448,7 @@ async function registerDomain(domain, env) {
   return data;
 }
 
-// ── CLOUDFLARE CONFIGURATION ENGINE ───────────────────────────────────────────
+// ── Cloudflare Configuration Engine ──────────────────────────────────────────
 
 async function addCustomHostname(domain, env) {
   const res = await fetch(
@@ -462,13 +507,13 @@ async function provisionDomain(domain, barberId, env) {
   };
 }
 
-// ── Main Worker Export with Built-In Firebase Proxy ──────────────────────────
+// ── Main Worker Export ────────────────────────────────────────────────────────
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // 1. Global CORS Preflight Handling
+    // 1. Global CORS Preflight
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -484,6 +529,8 @@ export default {
     switch (url.pathname) {
       case "/api/connect":
         return handleConnect(request, env);
+      case "/api/stripe/callback":
+        return handleStripeCallback(request, env);
       case "/api/check-payment":
         return handleCheckPayment(request, env);
       case "/api/quick-charge":
@@ -498,57 +545,48 @@ export default {
         return handleCheckStripe(request, env);
       case "/api/stripe-webhook":
         return handleStripeWebhook(request, env);
-        
+
       default:
-        // 3. CLOUDFLARE SSL CHALLENGE BYPASS
+        // 3. Cloudflare SSL Challenge Bypass
         if (url.pathname.startsWith("/.well-known/cf-custom-hostname-challenge/")) {
           return fetch(request);
         }
 
-        // 4. MULTI-TENANT PROXY RESOLUTION VIA RAW FIREBASE PRODUCTION ADDRESS
+        // 4. Multi-Tenant Proxy to Firebase
         const firebaseTargetHost = "booking-system-cdce0.web.app";
-        const targetFirebaseUrl = `https://${firebaseTargetHost}${url.pathname}${url.search}`;
-        
-        // Isolate the custom incoming tenant hostname before updating headers
-        const incomingHost = url.hostname;
-        const fallbackHost = "fallback.bookehtrim.co.uk";
-        
-        // Use the query param value, or the clean incoming host if it's an actual customer domain
-        const activeTenant = url.searchParams.get("tenant") || 
-                             (incomingHost !== fallbackHost ? incomingHost : "bookehnow.co.uk");
+        const targetFirebaseUrl  = `https://${firebaseTargetHost}${url.pathname}${url.search}`;
+        const incomingHost       = url.hostname;
+        const fallbackHost       = "fallback.bookehtrim.co.uk";
+        const activeTenant       = url.searchParams.get("tenant") ||
+                                   (incomingHost !== fallbackHost ? incomingHost : "bookehnow.co.uk");
 
         const initOptions = {
-          method: request.method,
+          method:  request.method,
           headers: new Headers(request.headers),
         };
-
-        // Stream body data safely if request method accepts payload contents
         if (request.method !== "GET" && request.method !== "HEAD") {
           initOptions.body = request.body;
         }
 
         const proxyRequest = new Request(targetFirebaseUrl, initOptions);
-        
-        // Force header updates so Firebase recognizes its own canonical deployment host
-        proxyRequest.headers.set("Host", firebaseTargetHost);
+        proxyRequest.headers.set("Host",             firebaseTargetHost);
         proxyRequest.headers.set("X-Forwarded-Host", activeTenant);
-        proxyRequest.headers.set("X-SaaS-Tenant", activeTenant);
-        
+        proxyRequest.headers.set("X-SaaS-Tenant",    activeTenant);
+
         let response = await fetch(proxyRequest);
 
-        // 5. SPA ROUTING FALLBACK INTERCEPTOR
+        // 5. SPA Routing Fallback
         if (response.status === 404 && !url.pathname.includes(".")) {
-          const fallbackIndexUrl = `https://${firebaseTargetHost}/index.html`;
-          const fallbackRequest = new Request(fallbackIndexUrl, {
-            method: "GET",
-            headers: new Headers(request.headers)
-          });
-          fallbackRequest.headers.set("Host", firebaseTargetHost);
+          const fallbackRequest = new Request(
+            `https://${firebaseTargetHost}/index.html`,
+            { method: "GET", headers: new Headers(request.headers) }
+          );
+          fallbackRequest.headers.set("Host",             firebaseTargetHost);
           fallbackRequest.headers.set("X-Forwarded-Host", activeTenant);
-          fallbackRequest.headers.set("X-SaaS-Tenant", activeTenant);
+          fallbackRequest.headers.set("X-SaaS-Tenant",    activeTenant);
           response = await fetch(fallbackRequest);
         }
-        
+
         return response;
     }
   },

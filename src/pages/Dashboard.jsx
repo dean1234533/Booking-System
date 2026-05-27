@@ -16,6 +16,12 @@ import {
   CalendarMonth as CalendarMonthIcon,
   Receipt as ReceiptIcon,
   Web as WebIcon,
+  FitnessCenter as FitnessCenterIcon,
+  MenuBook as MenuBookIcon,
+  Assignment as AssignmentIcon,
+  ColorLens as ColorLensIcon,
+  RequestQuote as RequestQuoteIcon,
+  Today as TodayIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -48,7 +54,13 @@ import DesignTab    from "../components/dashboard/tabs/DesignTab";
 import PayTab       from "../components/dashboard/tabs/PayTab";
 import DomainTab    from "../components/dashboard/tabs/DomainTab";
 import InvoiceTab   from "../components/dashboard/tabs/InvoiceTab";
-import WebsiteTab   from "../components/dashboard/tabs/WebsiteTab";
+import WebsiteTab       from "../components/dashboard/tabs/WebsiteTab";
+import WorkoutPlansTab  from "../components/dashboard/tabs/WorkoutPlansTab";
+import FoodDiaryTab     from "../components/dashboard/tabs/FoodDiaryTab";
+import CheckInTab       from "../components/dashboard/tabs/CheckInTab";
+import ColourApprovalTab from "../components/dashboard/tabs/ColourApprovalTab";
+import QuoteTab          from "../components/dashboard/tabs/QuoteTab";
+import DayPlannerTab     from "../components/dashboard/tabs/DayPlannerTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -73,6 +85,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [tab,          setTab]          = useState(0);
+  const [slideDir,     setSlideDir]     = useState("right");
+  const touchStartX = useRef(null);
   const [dataLoading,  setDataLoading]  = useState(true);
   const [stripeLoading,setStripeLoading]= useState(false);
   const [uploading,    setUploading]    = useState(false);
@@ -509,43 +523,52 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   };
 
   // ── Tab config ────────────────────────────────────────────────────────────
-  const brandColor = profile.brandColor || "#C9A84C";
-  const isTrainer  = profile.businessType === "trainer";
+  const brandColor   = profile.brandColor || "#C9A84C";
+  const textOnBrand = (() => {
+    const r = parseInt(brandColor.slice(1, 3), 16) || 0;
+    const g = parseInt(brandColor.slice(3, 5), 16) || 0;
+    const b = parseInt(brandColor.slice(5, 7), 16) || 0;
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? "#1A1A1A" : "#ffffff";
+  })();
+  const isBarber    = !profile.businessType || profile.businessType === "barber";
+  const isTrainer   = profile.businessType === "trainer";
+  const isDecorator = profile.businessType === "decorator";
+  const isOwner     = userRole.isOwner;
 
   const tabs = [
-    { label: "Schedule", icon: <AccessTimeIcon /> },
-    { label: "Bookings", icon: <StoreIcon /> },
-    { label: "Profile",  icon: <PersonIcon /> },
-    { label: "Services", icon: <ListIcon /> },
-    ...(userRole.isOwner ? [{ label: "Reviews",  icon: <ReviewsIcon /> }]      : []),
-    { label: "Finance",  icon: <PaymentsIcon /> },
-    ...(userRole.isOwner ? [{ label: "Design",   icon: <PaletteIcon /> }]      : []),
-    ...(userRole.isOwner && !initialTenant ? [{ label: "Domain",  icon: <LanguageIcon /> }] : []),
-    ...(userRole.isOwner ? [{ label: "Website",  icon: <WebIcon /> }]          : []),
-    { label: "Invoices", icon: <ReceiptIcon /> },
+    { key: "schedule",  label: "Schedule",  icon: <AccessTimeIcon /> },
+    { key: "bookings",  label: "Bookings",  icon: <StoreIcon /> },
+    { key: "profile",   label: "Profile",   icon: <PersonIcon /> },
+    { key: "services",  label: "Services",  icon: <ListIcon /> },
+    ...(isOwner && isBarber   ? [{ key: "reviews",  label: "Reviews",  icon: <ReviewsIcon /> }]  : []),
+    { key: "finance",   label: "Finance",   icon: <PaymentsIcon /> },
+    ...(isOwner               ? [{ key: "design",   label: "Design",   icon: <PaletteIcon /> }]  : []),
+    ...(isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
+    ...(isOwner               ? [{ key: "website",  label: "Website",  icon: <WebIcon /> }]      : []),
+    { key: "invoices",  label: "Invoices",  icon: <ReceiptIcon /> },
+    ...(isOwner && isTrainer   ? [{ key: "workouts",  label: "Workouts",   icon: <FitnessCenterIcon /> }] : []),
+    ...(isOwner && isTrainer   ? [{ key: "fooddiary", label: "Food Diary", icon: <MenuBookIcon /> }]    : []),
+    ...(isOwner && isTrainer   ? [{ key: "checkin",   label: "Check-In",   icon: <AssignmentIcon /> }]  : []),
+    ...(isOwner && isTrainer   ? [{ key: "pay",       label: "Pay",        icon: <NfcIcon /> }]         : []),
+    ...(isOwner && isDecorator ? [{ key: "colours",  label: "Colours",    icon: <ColorLensIcon /> }]   : []),
+    ...(isOwner && isDecorator ? [{ key: "quotes",   label: "Quotes",     icon: <RequestQuoteIcon /> }]: []),
+    ...(isOwner && isDecorator ? [{ key: "dayplan",  label: "Day Plan",   icon: <TodayIcon /> }]       : []),
   ];
 
-  const IDX_REVIEWS  = 4;
-  const IDX_FINANCE  = userRole.isOwner ? 5 : 4;
-  const IDX_DESIGN   = 6;
-  const IDX_DOMAIN   = 7;
-  const IDX_WEBSITE  = userRole.isOwner && !initialTenant ? 8 : 7;
-  const IDX_INVOICES = userRole.isOwner ? (initialTenant ? 7 : 9) : 5;
-  const IDX_CALENDAR = isTrainer ? IDX_INVOICES + 1 : null;
-  const IDX_PAY      = isTrainer ? IDX_CALENDAR + 1 : IDX_INVOICES + 1;
+  const tabIdx = (key) => tabs.findIndex(t => t.key === key);
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (authLoading || (dataLoading && !barber)) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", bgcolor: "#0a0a0a" }}>
+        <CircularProgress sx={{ color: brandColor }} thickness={2} size={48} />
       </Box>
     );
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ pb: isMobile ? 12 : 6, bgcolor: "#F8F9FA", minHeight: "100vh" }}>
+    <Box sx={{ pb: isMobile ? 12 : 6, minHeight: "100vh", background: `radial-gradient(ellipse 90% 30% at 50% 0%, ${brandColor}09 0%, transparent 65%), #0a0a0a` }}>
       <Snackbar
         open={Boolean(toast)} autoHideDuration={4000}
         onClose={() => setToast(null)} message={toast}
@@ -576,21 +599,75 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       />
 
       <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 1.5, md: 3 }, mt: 3 }}>
-        <Tabs
-          value={tab} onChange={(_, v) => setTab(v)}
-          variant={isMobile ? "scrollable" : "standard"}
-          scrollButtons="auto"
+
+        {/* ── Premium pill tab bar ── */}
+        <Box sx={{
+          bgcolor: "#111",
+          border: "1px solid rgba(255,255,255,0.06)",
+          mb: 3,
+          px: 0.75,
+          py: 0.75,
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4)`,
+        }}>
+          <Tabs
+            value={tab}
+            onChange={(_, v) => { setSlideDir(v > tab ? "right" : "left"); setTab(v); }}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              minHeight: 40,
+              "& .MuiTabs-indicator": { display: "none" },
+              "& .MuiTabs-scrollButtons": { color: "rgba(255,255,255,0.35)" },
+              "& .MuiTab-root": {
+                color: "rgba(255,255,255,0.35)",
+                minHeight: 40,
+                borderRadius: 0,
+                px: { xs: 1.5, sm: 2 },
+                fontSize: "0.71rem",
+                fontWeight: 600,
+                letterSpacing: "0.05em",
+                transition: "color .18s, background-color .18s",
+                "& .MuiSvgIcon-root": { color: "rgba(255,255,255,0.28)", fontSize: "1rem" },
+              },
+              "& .MuiTab-root:hover:not(.Mui-selected)": {
+                color: "rgba(255,255,255,0.6)",
+                bgcolor: "rgba(255,255,255,0.04)",
+              },
+              "& .MuiTab-root.Mui-selected": {
+                color: textOnBrand,
+                bgcolor: brandColor,
+                fontWeight: 700,
+                boxShadow: `0 0 14px ${brandColor}45`,
+                "& .MuiSvgIcon-root": { color: textOnBrand },
+              },
+            }}
+          >
+            {tabs.map((t, i) => (
+              <Tab key={i} icon={t.icon} iconPosition="start" label={isMobile ? "" : t.label} />
+            ))}
+          </Tabs>
+        </Box>
+
+        <style>{`
+          @keyframes dashSlideInR { from { opacity: 0; transform: translateX(42px); } to { opacity: 1; transform: translateX(0); } }
+          @keyframes dashSlideInL { from { opacity: 0; transform: translateX(-42px); } to { opacity: 1; transform: translateX(0); } }
+        `}</style>
+
+        <Box
+          key={tab}
+          onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
+          onTouchEnd={e => {
+            if (touchStartX.current === null) return;
+            const dx = e.changedTouches[0].clientX - touchStartX.current;
+            touchStartX.current = null;
+            if      (dx < -55 && tab < tabs.length - 1) { setSlideDir("right"); setTab(t => t + 1); }
+            else if (dx >  55 && tab > 0)               { setSlideDir("left");  setTab(t => t - 1); }
+          }}
           sx={{
-            mb: 2, borderBottom: "1px solid #eee",
-            "& .MuiTabs-indicator": { backgroundColor: brandColor, height: 3 },
-            "& .MuiTab-root.Mui-selected": { color: brandColor },
-            "& .MuiTab-root.Mui-selected .MuiSvgIcon-root": { color: brandColor },
+            animation: `${slideDir === "right" ? "dashSlideInR" : "dashSlideInL"} 0.26s cubic-bezier(0.4,0,0.2,1) both`,
+            overflow: "hidden",
           }}
         >
-          {tabs.map((t, i) => (
-            <Tab key={i} icon={t.icon} iconPosition="start" label={isMobile ? "" : t.label} />
-          ))}
-        </Tabs>
 
         {/* ── 0 Schedule ── */}
         <TabPanel value={tab} index={0}>
@@ -633,9 +710,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 4 Reviews (owner only) ── */}
-        {userRole.isOwner && (
-          <TabPanel value={tab} index={IDX_REVIEWS}>
+        {/* ── 4 Reviews (barber owner only) ── */}
+        {isOwner && isBarber && (
+          <TabPanel value={tab} index={tabIdx("reviews")}>
             <ReviewsTab
               reviews={reviews}
               onDeleteReview={handleDeleteReview}
@@ -644,7 +721,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         )}
 
         {/* ── Finance ── */}
-        <TabPanel value={tab} index={IDX_FINANCE}>
+        <TabPanel value={tab} index={tabIdx("finance")}>
           <FinanceTab
             profile={profile} setProfile={setProfile} userRole={userRole}
             stripeLoading={stripeLoading} handleConnectStripe={handleConnectStripe}
@@ -652,8 +729,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         </TabPanel>
 
         {/* ── Design (owner only) ── */}
-        {userRole.isOwner && (
-          <TabPanel value={tab} index={IDX_DESIGN}>
+        {isOwner && (
+          <TabPanel value={tab} index={tabIdx("design")}>
             <DesignTab
               profile={profile} setProfile={setProfile}
               logoPreview={logoPreview}               setLogoFile={setLogoFile}               setLogoPreview={setLogoPreview}
@@ -665,8 +742,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         )}
 
         {/* ── Domain (owner only, no tenant context) ── */}
-        {userRole.isOwner && !initialTenant && (
-          <TabPanel value={tab} index={IDX_DOMAIN}>
+        {isOwner && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("domain")}>
             <DomainTab
               profile={profile}
               barber={barber}
@@ -676,8 +753,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         )}
 
         {/* ── Website (owner only) ── */}
-        {userRole.isOwner && (
-          <TabPanel value={tab} index={IDX_WEBSITE}>
+        {isOwner && (
+          <TabPanel value={tab} index={tabIdx("website")}>
             <WebsiteTab
               profile={profile}
               setProfile={setProfile}
@@ -687,7 +764,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         )}
 
         {/* ── Invoices ── */}
-        <TabPanel value={tab} index={IDX_INVOICES}>
+        <TabPanel value={tab} index={tabIdx("invoices")}>
           <InvoiceTab
             barber={barber}
             profile={profile}
@@ -695,21 +772,67 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── Pay ── */}
-        <TabPanel value={tab} index={IDX_PAY}>
-          <PayTab
-            profile={profile} barber={barber}
-            setTab={setTab} financeTabIndex={IDX_FINANCE} brandColor={brandColor}
-            terminalAmount={terminalAmount}   setTerminalAmount={setTerminalAmount}
-            terminalService={terminalService} setTerminalService={setTerminalService}
-            terminalNote={terminalNote}       setTerminalNote={setTerminalNote}
-            terminalStatus={terminalStatus}   terminalSession={terminalSession}
-            handleCreateTerminalCharge={handleCreateTerminalCharge}
-            handleCancelTerminal={handleCancelTerminal}
-            handleResetTerminal={handleResetTerminal}
-            handleCopyPayLink={handleCopyPayLink}
-          />
-        </TabPanel>
+        {/* ── Workout Plans (trainer owner only) ── */}
+        {isOwner && isTrainer && (
+          <TabPanel value={tab} index={tabIdx("workouts")}>
+            <WorkoutPlansTab barber={barber} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Food Diary (trainer owner only) ── */}
+        {isOwner && isTrainer && (
+          <TabPanel value={tab} index={tabIdx("fooddiary")}>
+            <FoodDiaryTab barber={barber} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Check-In (trainer owner only) ── */}
+        {isOwner && isTrainer && (
+          <TabPanel value={tab} index={tabIdx("checkin")}>
+            <CheckInTab barber={barber} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Pay / Tap-to-Pay (trainer owner only) ── */}
+        {isOwner && isTrainer && (
+          <TabPanel value={tab} index={tabIdx("pay")}>
+            <PayTab
+              profile={profile} barber={barber}
+              setTab={setTab} financeTabIndex={tabIdx("finance")} brandColor={brandColor}
+              terminalAmount={terminalAmount}   setTerminalAmount={setTerminalAmount}
+              terminalService={terminalService} setTerminalService={setTerminalService}
+              terminalNote={terminalNote}       setTerminalNote={setTerminalNote}
+              terminalStatus={terminalStatus}   terminalSession={terminalSession}
+              handleCreateTerminalCharge={handleCreateTerminalCharge}
+              handleCancelTerminal={handleCancelTerminal}
+              handleResetTerminal={handleResetTerminal}
+              handleCopyPayLink={handleCopyPayLink}
+            />
+          </TabPanel>
+        )}
+
+        {/* ── Colour Approval (decorator owner only) ── */}
+        {isOwner && isDecorator && (
+          <TabPanel value={tab} index={tabIdx("colours")}>
+            <ColourApprovalTab barber={barber} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Quote Generator (decorator owner only) ── */}
+        {isOwner && isDecorator && (
+          <TabPanel value={tab} index={tabIdx("quotes")}>
+            <QuoteTab barber={barber} profile={profile} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Day Planner (decorator owner only) ── */}
+        {isOwner && isDecorator && (
+          <TabPanel value={tab} index={tabIdx("dayplan")}>
+            <DayPlannerTab barber={barber} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        </Box>{/* end slide wrapper */}
       </Box>
     </Box>
   );

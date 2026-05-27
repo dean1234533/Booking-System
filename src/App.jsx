@@ -24,6 +24,10 @@ import ReviewPage        from "./pages/ReviewPage";
 import PTBookingSite     from "./pages/PTBookingSite";
 import DecoratorTemplate from "./pages/DecoratorTemplate";
 import Onboarding        from "./pages/Onboarding";
+import WorkoutPlanView      from "./pages/WorkoutPlanView";
+import FoodDiarySubmit      from "./pages/FoodDiarySubmit";
+import CheckInSubmit        from "./pages/CheckInSubmit";
+import ColourApprovalPage   from "./pages/ColourApprovalPage";
 
 // Split Nav & Footer imports
 import Nav               from "./components/Nav";
@@ -188,6 +192,10 @@ function AppShell() {
   const isDashboard    = location.pathname.startsWith('/dashboard');
   const isReviewPath   = location.pathname.startsWith('/review');
   const isOnboarding   = location.pathname.startsWith('/onboarding');
+  const isWorkoutView  = location.pathname.startsWith('/workout')
+                      || location.pathname.startsWith('/food-diary')
+                      || location.pathname.startsWith('/check-in')
+                      || location.pathname.startsWith('/colour-approval');
 
   const computedPageTitle = useMemo(() => {
     if (tenantBarber) {
@@ -228,7 +236,7 @@ function AppShell() {
 
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         
-        {!isDashboard && !isOnboarding && !isAlternativeBookingLayout && !isReviewPath && (
+        {!isDashboard && !isOnboarding && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
           tenantBarber ? (
             <TenantNav 
               key={`nav-${location.pathname}`} 
@@ -253,13 +261,17 @@ function AppShell() {
             <Route path="/login" element={tenantBarber ? <TenantLogin tenant={tenantBarber} /> : <Login />} />
             <Route path="/signup" element={tenantBarber ? <TenantSignup tenant={tenantBarber} /> : <Signup />} />
             <Route path="/cancel-booking/:bookingId" element={<CancelBooking />} />
+            <Route path="/workout/:trainerId/:planId"                element={<WorkoutPlanView />} />
+            <Route path="/food-diary/:trainerId"                  element={<FoodDiarySubmit />} />
+            <Route path="/check-in/:trainerId"                    element={<CheckInSubmit />} />
+            <Route path="/colour-approval/:tradieId/:paletteId"   element={<ColourApprovalPage />} />
             <Route path="/onboarding" element={<BarberRoute><Onboarding /></BarberRoute>} />
             <Route path="/dashboard/*" element={<BarberRoute><Dashboard onProfileUpdate={identifyTenant} /></BarberRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Box>
 
-        {!isDashboard && !isOnboarding && !isAlternativeBookingLayout && !isReviewPath && (
+        {!isDashboard && !isOnboarding && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
           tenantBarber ? (
             <TenantFooter 
               key={`footer-${location.pathname}`} 

@@ -16,15 +16,15 @@ export default function ServicesTab({
     <>
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={6}>
+          <Grid item xs={12} sm={6}>
             <TextField fullWidth label="Service Name" value={newService.name}
               onChange={e => setNewService({ ...newService, name: e.target.value })} />
           </Grid>
-          <Grid item xs={4}>
+          <Grid item xs={8} sm={4}>
             <TextField fullWidth label="Price (£)" type="number" value={newService.price}
               onChange={e => setNewService({ ...newService, price: e.target.value })} />
           </Grid>
-          <Grid item xs={2}>
+          <Grid item xs={4} sm={2}>
             <Button fullWidth variant="contained" sx={{ height: 56, bgcolor: brandColor }}
               onClick={handleAddService}>
               <AddCircleIcon />

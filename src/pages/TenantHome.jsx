@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { 
   Box, Container, Typography, Grid, Paper, 
   Skeleton, Button, Divider, Stack, Avatar,
@@ -14,6 +15,8 @@ import StarIcon from "@mui/icons-material/Star";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
 import RateReviewIcon from "@mui/icons-material/RateReview";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -21,8 +24,6 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getShopStaff, getBarber } from "../firebase/firestore";
-import BarberCard from "../components/BarberCard"; 
- 
 // ── TikTok SVG ────────────────────────────────────────────────────────────────
 const TikTokIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: "block" }}>
@@ -70,6 +71,7 @@ export default function TenantHome({ tenant: initialTenant }) {
   
   // FIXED: Moved hook inside the component
   const [activeReviewIndex, setActiveReviewIndex] = useState(0);
+  const [slideDir, setSlideDir] = useState("right");
   
   const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md"));
   const [team, setTeam] = useState([]);
@@ -78,6 +80,10 @@ export default function TenantHome({ tenant: initialTenant }) {
   const [openPrivacy, setOpenPrivacy] = useState(false);
   const [openTerms, setOpenTerms] = useState(false);
  
+  const fontKey     = freshTenant?.siteFont;
+  const displayFont = getFontFamily(fontKey, "playfair");
+  useEffect(() => { if (fontKey) loadGoogleFont(fontKey); }, [fontKey]);
+
   const brandColor      = freshTenant?.brandColor      || "#C9A84C";
   const businessName    = freshTenant?.businessName     || "TRIMZ"; 
   const address         = freshTenant?.address          || "Location TBD";
@@ -214,7 +220,7 @@ export default function TenantHome({ tenant: initialTenant }) {
           <Typography variant="h1" sx={{ 
             fontWeight: 400, 
             fontSize: { xs: '3.5rem', sm: '5rem', md: '7rem', lg: '8.5rem' }, 
-            fontFamily: "'Playfair Display', serif", 
+            fontFamily: displayFont, 
             lineHeight: 1,
             mb: 2, 
             textTransform: 'uppercase',
@@ -267,7 +273,7 @@ export default function TenantHome({ tenant: initialTenant }) {
           <Grid item xs={12} md={6}>
             <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
               <LocationOnIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
-              <Typography variant="h5" sx={{ fontFamily: "'Playfair Display', serif", mb: 2 }}>Visit Us</Typography>
+              <Typography variant="h5" sx={{ fontFamily: displayFont, mb: 2 }}>Visit Us</Typography>
               <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', minHeight: '3em', fontWeight: 300 }}>{address}</Typography>
              <Button 
     variant="outlined" 
@@ -282,7 +288,7 @@ export default function TenantHome({ tenant: initialTenant }) {
           <Grid item xs={12} md={6}>
             <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
               <AccessTimeIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
-              <Typography variant="h5" sx={{ fontFamily: "'Playfair Display', serif", mb: 3 }}>Opening Hours</Typography>
+              <Typography variant="h5" sx={{ fontFamily: displayFont, mb: 3 }}>Opening Hours</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {freshTenant?.hours ? (
                   ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day, i) => {
@@ -316,7 +322,7 @@ export default function TenantHome({ tenant: initialTenant }) {
       <Box sx={{ py: { xs: 12, md: 20 }, textAlign: 'center', backgroundColor: aboutBgColor, color: aboutTextColor }}>
         <Container maxWidth="md">
           <ContentCutIcon sx={{ color: brandColor, fontSize: 40, mb: 3, opacity: 0.6 }} />
-          <Typography variant="h3" sx={{ fontFamily: "'Playfair Display', serif", mb: 4, letterSpacing: 2 }}>
+          <Typography variant="h3" sx={{ fontFamily: displayFont, mb: 4, letterSpacing: 2 }}>
             Our Story
           </Typography>
           <Typography variant="h6" sx={{ fontWeight: 300, lineHeight: 2, opacity: 0.8, maxWidth: '750px', mx: 'auto', fontSize: '1.2rem' }}>
@@ -329,98 +335,233 @@ export default function TenantHome({ tenant: initialTenant }) {
       <Container id="barber-section" sx={{ py: 15 }}>
         <Box sx={{ mb: 10, textAlign: 'center' }}>
           <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>EXPERTS</Typography>
-          <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: "'Playfair Display', serif" }}>Our Master Barbers</Typography>
+          <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>Our Master Barbers</Typography>
           <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: 'auto' }} />
         </Box>
         
-        <Grid container spacing={5}>
-          {team.map(barber => (
-            <Grid item xs={12} sm={6} md={4} key={barber.id}>
-              {/* 🎯 CHANGED: isMarketplace={false} here signals the BarberCard to navigate directly to the individual booking path `/barber/:id` */}
-              <BarberCard 
-                barber={{
-                  ...barber,
-                  businessName: barber.name,
-                  logoUrl:      barber.profilePic,
-                }} 
-                isMarketplace={false} 
-              />
-            </Grid>
-          ))}
+        <Grid container spacing={4}>
+          {team.map(barber => {
+            const depositValue   = Number(barber?.depositAmount) || 10;
+            const cardColor      = barber?.brandColor || brandColor;
+            const displayName    = barber?.name?.split(" ")[0] || "Professional";
+            const cardImage      = barber?.profilePic || barber?.heroImage;
+            const handleBooking  = () => navigate(
+              `/barber/${barber.id || barber.uid}`,
+              { state: { tenant: { ...barber, businessName: barber.name, businessLogo: barber.profilePic, brandColor } } }
+            );
+            return (
+              <Grid item xs={12} sm={6} md={4} key={barber.id}>
+                <Box
+                  onClick={handleBooking}
+                  sx={{
+                    cursor: "pointer", bgcolor: "#111", overflow: "hidden",
+                    transition: "box-shadow 0.3s ease",
+                    "&:hover": { boxShadow: "0 20px 56px rgba(0,0,0,0.45)" },
+                    "&:hover .staff-zoom": { transform: "scale(1.05)" },
+                  }}
+                >
+                  {/* Brand accent bar */}
+                  <Box sx={{ height: 3, bgcolor: cardColor }} />
+
+                  {/* Portrait image */}
+                  <Box sx={{ position: "relative", paddingTop: "115%", bgcolor: "#1a1a1a", overflow: "hidden" }}>
+                    {cardImage ? (
+                      <Box
+                        className="staff-zoom"
+                        component="img"
+                        src={cardImage}
+                        alt={displayName}
+                        sx={{
+                          position: "absolute", inset: 0,
+                          width: "100%", height: "100%",
+                          objectFit: "cover", objectPosition: "center top",
+                          transition: "transform 0.5s ease",
+                        }}
+                      />
+                    ) : (
+                      <Box sx={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Typography sx={{ fontFamily: displayFont, fontSize: "5rem", fontWeight: 400, color: cardColor, opacity: 0.4 }}>
+                          {displayName[0]}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "35%", background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)" }} />
+                  </Box>
+
+                  {/* Content */}
+                  <Box sx={{ p: 3 }}>
+                    <Typography sx={{ fontFamily: displayFont, fontSize: "1.25rem", fontWeight: 400, color: "#fff", lineHeight: 1.2, mb: 0.5 }}>
+                      {displayName}
+                    </Typography>
+                    <Typography sx={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: cardColor, mb: barber.bio ? 2 : 0 }}>
+                      Professional Barber
+                    </Typography>
+                    {barber.bio && (
+                      <Typography sx={{
+                        fontSize: "0.82rem", color: "rgba(255,255,255,0.4)", fontWeight: 300, lineHeight: 1.7,
+                        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                        mt: 1.5,
+                      }}>
+                        {barber.bio}
+                      </Typography>
+                    )}
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2.5, pt: 2.5, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                      <Box>
+                        <Typography sx={{ fontSize: "0.55rem", fontWeight: 700, color: "rgba(255,255,255,0.25)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Deposit</Typography>
+                        <Typography sx={{ fontSize: "0.92rem", fontWeight: 800, color: "#fff" }}>£{depositValue}</Typography>
+                      </Box>
+                      <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: cardColor, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                        BOOK NOW →
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Grid>
+            );
+          })}
         </Grid>
       </Container>
  
-     
-        {/* ── 5. REVIEWS (CAROUSEL VIEW) ───────────────────────────────────── */}
-      {freshTenant?.reviews?.length > 0 && (
-        <Box sx={{ py: 15, bgcolor: '#fcfcfc', borderTop: '1px solid #EEE' }}>
-          <Container maxWidth="sm">
-            <Box sx={{ mb: 8, textAlign: 'center' }}>
-              <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>TESTIMONIALS</Typography>
-              <Typography variant="h3" mt={1} sx={{ fontFamily: "'Playfair Display', serif" }}>Client Experiences</Typography>
-            </Box>
+      {/* ── 5. REVIEWS ───────────────────────────────────────────────────────── */}
+      <Box sx={{
+        py: { xs: 10, md: 15 }, bgcolor: "#0d0d0d",
+        borderTop: `3px solid ${brandColor}`,
+        position: "relative", overflow: "hidden",
+      }}>
+        <style>{`
+          @keyframes slideInRight { from { opacity: 0; transform: translateX(52px); } to { opacity: 1; transform: translateX(0); } }
+          @keyframes slideInLeft  { from { opacity: 0; transform: translateX(-52px); } to { opacity: 1; transform: translateX(0); } }
+        `}</style>
 
-            <Box sx={{ position: 'relative', minHeight: '300px' }}>
-              {freshTenant.reviews.map((rev, idx) => {
-                const isActive = idx === activeReviewIndex;
-                if (!isActive) return null;
+        <Container maxWidth="sm">
+          {/* Header */}
+          <Box sx={{ mb: { xs: 6, md: 8 }, textAlign: "center" }}>
+            <Typography sx={{ color: brandColor, fontWeight: 700, letterSpacing: "0.3em", fontSize: "0.62rem", textTransform: "uppercase", mb: 1.5 }}>
+              Testimonials
+            </Typography>
+            <Typography sx={{ fontFamily: displayFont, fontSize: { xs: "2rem", md: "2.6rem" }, fontWeight: 400, color: "#fff", lineHeight: 1.15 }}>
+              What Our Clients Say
+            </Typography>
+            <Box sx={{ width: 36, height: 2, bgcolor: brandColor, mx: "auto", mt: 2.5 }} />
+          </Box>
 
-                const rawName = rev.customerName || rev.name || "Client";
-                const displayInitial = rawName.charAt(0).toUpperCase() || "C";
-                const starRating = Number(rev.rating) || 5;
-
-                return (
-                  <Paper key={rev.id || idx} elevation={0} sx={{ p: 4, borderRadius: 0, bgcolor: 'white', border: '1px solid #eee' }}>
-                    <Stack spacing={2}>
-                      <Box sx={{ display: 'flex', color: brandColor, justifyContent: 'center' }}>
-                        {[...Array(starRating)].map((_, i) => <StarIcon key={i} sx={{ fontSize: 18, opacity: 0.7 }} />)}
-                      </Box>
-                      <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary', fontWeight: 300, textAlign: 'center' }}>
-                        "{rev.comment || rev.text || "Great experience!"}"
-                      </Typography>
-                      <Divider />
-                      <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
-                        <Avatar sx={{ bgcolor: '#f0f0f0', color: 'black' }}>{displayInitial}</Avatar>
-                        <Box>
-                          <Typography fontWeight={600} variant="subtitle2">{rawName}</Typography>
-                          <Typography variant="caption" sx={{ opacity: 0.5, textTransform: 'uppercase' }}>Verified</Typography>
+          {/* Review slider */}
+          {freshTenant?.reviews?.length > 0 ? (
+            <>
+              <Box sx={{ minHeight: { xs: 280, md: 300 } }}>
+                {freshTenant.reviews.map((rev, idx) => {
+                  if (idx !== activeReviewIndex) return null;
+                  const rawName  = rev.customerName || rev.name || "Client";
+                  const initial  = rawName.charAt(0).toUpperCase();
+                  const stars    = Math.min(Math.max(Number(rev.rating) || 5, 1), 5);
+                  return (
+                    <Box key={`rev-${idx}-${activeReviewIndex}`} sx={{ animation: `${slideDir === "right" ? "slideInRight" : "slideInLeft"} 0.42s cubic-bezier(0.4,0,0.2,1) both` }}>
+                      <Paper elevation={0} sx={{ p: { xs: 4, md: 5 }, borderRadius: 0, bgcolor: "#faf8f4", position: "relative", overflow: "hidden" }}>
+                        {/* Decorative quote */}
+                        <Typography sx={{ position: "absolute", top: 12, left: 20, fontFamily: displayFont, fontSize: "7rem", lineHeight: 1, color: brandColor, opacity: 0.12, userSelect: "none", pointerEvents: "none" }}>
+                          "
+                        </Typography>
+                        {/* Stars */}
+                        <Box sx={{ display: "flex", justifyContent: "center", gap: 0.3, mb: 3 }}>
+                          {[...Array(5)].map((_, i) => (
+                            <StarIcon key={i} sx={{ fontSize: 16, color: i < stars ? brandColor : "rgba(201,168,76,0.2)" }} />
+                          ))}
                         </Box>
-                      </Stack>
-                    </Stack>
-                  </Paper>
-                );
-              })}
+                        {/* Review text */}
+                        <Typography sx={{
+                          fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic",
+                          fontSize: { xs: "1.1rem", md: "1.22rem" }, color: "#1a1a1a",
+                          lineHeight: 1.85, textAlign: "center", mb: 4, px: { xs: 0, md: 1 },
+                        }}>
+                          "{rev.comment || rev.text || "Great experience!"}"
+                        </Typography>
+                        {/* Separator */}
+                        <Box sx={{ width: 28, height: "1px", bgcolor: brandColor, mx: "auto", mb: 4, opacity: 0.5 }} />
+                        {/* Reviewer */}
+                        <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
+                          <Avatar sx={{ width: 44, height: 44, bgcolor: brandColor, color: "#0d0d0d", fontWeight: 700, fontSize: "1rem", fontFamily: displayFont }}>
+                            {initial}
+                          </Avatar>
+                          <Box sx={{ textAlign: "left" }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: "0.88rem", color: "#0d0d0d", letterSpacing: "0.03em" }}>
+                              {rawName}
+                            </Typography>
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                              <VerifiedIcon sx={{ fontSize: 11, color: brandColor }} />
+                              <Typography sx={{ fontSize: "0.62rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#888" }}>
+                                Verified Client
+                              </Typography>
+                            </Stack>
+                          </Box>
+                        </Stack>
+                      </Paper>
+                    </Box>
+                  );
+                })}
+              </Box>
 
-              {/* CONTROLS */}
-              <Stack direction="row" justifyContent="center" spacing={2} sx={{ mt: 4 }}>
-                <Button 
-                  onClick={() => setActiveReviewIndex(prev => (prev === 0 ? freshTenant.reviews.length - 1 : prev - 1))}
-                  sx={{ color: 'black', fontWeight: 700 }}
-                >
-                  PREV
-                </Button>
-                <Button 
-                  onClick={() => setActiveReviewIndex(prev => (prev === freshTenant.reviews.length - 1 ? 0 : prev + 1))}
-                  sx={{ color: 'black', fontWeight: 700 }}
-                >
-                  NEXT
-                </Button>
-              </Stack>
+              {/* Controls */}
+              {freshTenant.reviews.length > 1 && (
+                <Stack direction="row" alignItems="center" justifyContent="center" spacing={3} sx={{ mt: 4 }}>
+                  <IconButton
+                    onClick={() => {
+                      setSlideDir("left");
+                      setActiveReviewIndex(i => (i === 0 ? freshTenant.reviews.length - 1 : i - 1));
+                    }}
+                    sx={{ border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.45)", "&:hover": { borderColor: brandColor, color: brandColor } }}
+                  >
+                    <ArrowBackIcon fontSize="small" />
+                  </IconButton>
+                  <Stack direction="row" spacing={0.75}>
+                    {freshTenant.reviews.map((_, i) => (
+                      <Box
+                        key={i}
+                        onClick={() => { setSlideDir(i > activeReviewIndex ? "right" : "left"); setActiveReviewIndex(i); }}
+                        sx={{ width: i === activeReviewIndex ? 24 : 7, height: 7, borderRadius: "99px", bgcolor: i === activeReviewIndex ? brandColor : "rgba(255,255,255,0.18)", cursor: "pointer", transition: "all .3s ease" }}
+                      />
+                    ))}
+                  </Stack>
+                  <IconButton
+                    onClick={() => {
+                      setSlideDir("right");
+                      setActiveReviewIndex(i => (i === freshTenant.reviews.length - 1 ? 0 : i + 1));
+                    }}
+                    sx={{ border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.45)", "&:hover": { borderColor: brandColor, color: brandColor } }}
+                  >
+                    <ArrowForwardIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              )}
+            </>
+          ) : (
+            <Box sx={{ textAlign: "center", py: 4 }}>
+              <Typography sx={{ color: "rgba(255,255,255,0.3)", fontFamily: displayFont, fontSize: "1.1rem", mb: 1 }}>
+                No reviews yet
+              </Typography>
+              <Typography sx={{ color: "rgba(255,255,255,0.2)", fontSize: "0.82rem", fontWeight: 300 }}>
+                Be the first to share your experience.
+              </Typography>
             </Box>
-          </Container>
-          
-          <Box sx={{ mt: 10, textAlign: 'center' }}>
-            <Button 
-              variant="text" 
-              startIcon={<RateReviewIcon />}
+          )}
+
+          {/* Write a review CTA */}
+          <Box sx={{ textAlign: "center", mt: 7 }}>
+            <Button
+              startIcon={<RateReviewIcon sx={{ fontSize: 16 }} />}
               onClick={() => navigate(`/review/${freshTenant?.id || freshTenant?.uid}`)}
-              sx={{ color: 'black', px: 6, py: 2, fontWeight: 600, borderRadius: 0, letterSpacing: 2, '&:hover': { bgcolor: 'transparent', color: brandColor } }}
+              sx={{
+                bgcolor: brandColor, color: "#0d0d0d",
+                px: 5, py: 1.8, borderRadius: 0,
+                fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", fontSize: "0.78rem",
+                boxShadow: "none",
+                "&:hover": { bgcolor: brandColor, filter: "brightness(1.1)", boxShadow: "none" },
+              }}
             >
-              LEAVE A REVIEW
+              Write a Review
             </Button>
           </Box>
-        </Box>
-      )}
+        </Container>
+      </Box>
     </Box>
   );
 }

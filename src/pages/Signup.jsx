@@ -146,7 +146,7 @@ export default function Signup() {
         if (url) { window.location.href = url; return; }
       }
 
-      navigate("/dashboard");
+      navigate(isOwner ? "/onboarding" : "/dashboard");
     } catch (err) {
       setError(err.message || "Failed to create account.");
     } finally {

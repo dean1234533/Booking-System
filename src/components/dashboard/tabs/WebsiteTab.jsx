@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Box, Grid, TextField, Typography, Divider, Button,
   IconButton, Accordion, AccordionSummary, AccordionDetails, Paper,
@@ -8,7 +8,9 @@ import {
   AddCircle as AddCircleIcon,
   Delete as DeleteIcon,
   Image as ImageIcon,
+  CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
+import { FONT_OPTIONS, loadGoogleFont } from "../../../utils/fontOptions";
 
 function ImageField({ label, value, onChange, hint }) {
   return (
@@ -54,6 +56,12 @@ function Section({ title, defaultExpanded = false, children }) {
 export default function WebsiteTab({ profile, setProfile, brandColor }) {
   const set = (key, val) => setProfile(prev => ({ ...prev, [key]: val }));
 
+  const selectedFont = profile.siteFont || "playfair";
+
+  useEffect(() => {
+    FONT_OPTIONS.forEach(f => loadGoogleFont(f.key));
+  }, []);
+
   // ── Specializations ──
   const specializations = profile.specializations || [
     { title: "Strength & Conditioning", description: "Build raw power and muscular endurance through proven compound lifting and progressive overload." },
@@ -91,6 +99,71 @@ export default function WebsiteTab({ profile, setProfile, brandColor }) {
       <Typography variant="body2" color="text.secondary" mb={3}>
         Edit every piece of text and every image on your public page. Press <strong>Save Profile</strong> in the header to publish.
       </Typography>
+
+      {/* ── Font Style ── */}
+      <Section title="🔤 Font Style" defaultExpanded>
+        <Typography variant="body2" color="text.secondary" mb={2.5}>
+          Choose a heading font for your public website. Body text stays clean regardless of choice.
+        </Typography>
+        <Box sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(5, 1fr)" },
+          gap: 1.5,
+        }}>
+          {FONT_OPTIONS.map(f => {
+            const active = selectedFont === f.key;
+            return (
+              <Box
+                key={f.key}
+                onClick={() => set("siteFont", f.key)}
+                sx={{
+                  border: active ? `2px solid ${brandColor}` : "1.5px solid #e5e5e5",
+                  borderRadius: 2,
+                  p: 2,
+                  cursor: "pointer",
+                  bgcolor: active ? `${brandColor}10` : "#fafafa",
+                  position: "relative",
+                  transition: "border-color .15s, background-color .15s, box-shadow .15s",
+                  "&:hover": {
+                    borderColor: brandColor,
+                    bgcolor: `${brandColor}06`,
+                    boxShadow: `0 0 0 3px ${brandColor}18`,
+                  },
+                }}
+              >
+                {active && (
+                  <CheckCircleIcon sx={{
+                    position: "absolute", top: 8, right: 8,
+                    fontSize: 16, color: brandColor,
+                  }} />
+                )}
+                <Typography sx={{
+                  fontFamily: f.family,
+                  fontSize: "1.2rem",
+                  lineHeight: 1.25,
+                  color: "#1a1a1a",
+                  mb: 0.5,
+                  pr: active ? 2 : 0,
+                }}>
+                  {f.label}
+                </Typography>
+                <Typography variant="caption" sx={{ color: "#888", display: "block", fontSize: "0.67rem", letterSpacing: "0.04em" }}>
+                  {f.cat}
+                </Typography>
+                <Typography sx={{
+                  fontFamily: f.family,
+                  fontSize: "0.72rem",
+                  color: "#aaa",
+                  mt: 0.75,
+                  lineHeight: 1.3,
+                }}>
+                  Aa Bb Cc
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      </Section>
 
       {/* ── Hero ── */}
       <Section title="🦸 Hero Section" defaultExpanded>

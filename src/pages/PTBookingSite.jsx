@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../firebase/config";
+import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import SlotPicker from "../components/SlotPicker";
-import { Box, Container, Typography, Paper, Stack, Avatar, Divider, Button } from '@mui/material';
+import { Box, Container, Typography, Paper, Stack, Avatar, Divider, Button, useMediaQuery } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 
@@ -116,7 +117,7 @@ function getYouTubeEmbedUrl(url) {
 }
 
 /* ─── Review Carousel ───────────────────────────────────────── */
-function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = '2px solid #0f0f0f' }) {
+function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = '2px solid #0f0f0f',displayFont }) {
   const [idx, setIdx] = useState(0);
   const [animKey, setAnimKey] = useState(0);
 
@@ -172,7 +173,7 @@ function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = 
             width: 46, height: 46, borderRadius: '50%',
             background: `linear-gradient(135deg, #b8962e, #e0c060)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: '#fff', flexShrink: 0,
+            fontFamily: displayFont, fontSize: 22, color: '#fff', flexShrink: 0,
           }}>{name.charAt(0).toUpperCase()}</div>
           <div>
             <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, color: '#0f0f0f', letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: 13 }}>{name}</div>
@@ -210,7 +211,7 @@ function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = 
 }
 
 /* ─── Pricing Card ──────────────────────────────────────────── */
-function PricingCard({ plan, brandColor }) {
+function PricingCard({ plan, brandColor,displayFont }) {
   const gold = '#b8962e';
   return (
     <div className="card-hover" style={{
@@ -227,7 +228,7 @@ function PricingCard({ plan, brandColor }) {
       )}
       <div style={{ padding: 'clamp(24px, 4vw, 40px)' }}>
         <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--ink-soft)', marginBottom: 8 }}>{plan.name}</div>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(44px, 6vw, 60px)', lineHeight: 1, color: 'var(--ink)', letterSpacing: '0.02em', marginBottom: 4 }}>{plan.price}</div>
+        <div style={{ fontFamily: displayFont, fontSize: 'clamp(44px, 6vw, 60px)', lineHeight: 1, color: 'var(--ink)', letterSpacing: '0.02em', marginBottom: 4 }}>{plan.price}</div>
         <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 24, fontFamily: "'DM Sans', sans-serif" }}>/ {plan.period}</div>
         <div style={{ height: 1, background: 'var(--mid)', marginBottom: 24 }} />
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -258,7 +259,12 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   const [reviews,  setReviews]  = useState(propReviews);
   const [modal,    setModal]    = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
+  const fontKey     = barber?.siteFont || profile?.siteFont || "bebas";
+  const displayFont = getFontFamily(fontKey, "bebas");
+
+  useEffect(() => { loadGoogleFont(fontKey); }, [fontKey]);
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
@@ -322,6 +328,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: 'var(--ink)', background: '#fff', overflowX: 'hidden' }}>
+      <style>{`.stat-num { font-family: ${displayFont}; }`}</style>
 
       {/* ══════════ NAV ══════════ */}
       <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--mid)' }}>
@@ -331,16 +338,16 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
               ? <img src={logo} alt="logo" style={{ height: 36 }} />
               : (
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                  <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: '0.12em', color: 'var(--ink)' }}>{businessName.split(' ')[0]}</span>
+                  <span style={{ fontFamily: displayFont, fontSize: 26, letterSpacing: '0.12em', color: 'var(--ink)' }}>{businessName.split(' ')[0]}</span>
                   {businessName.split(' ').length > 1 && (
-                    <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: '0.12em', color: brandColor }}>{' ' + businessName.split(' ').slice(1).join(' ')}</span>
+                    <span style={{ fontFamily: displayFont, fontSize: 26, letterSpacing: '0.12em', color: brandColor }}>{' ' + businessName.split(' ').slice(1).join(' ')}</span>
                   )}
                 </div>
               )
             }
           </a>
 
-          <nav style={{ display: 'flex', gap: 6, alignItems: 'center' }} className="hidden md:flex">
+          <nav style={{ display: isMobile ? 'none' : 'flex', gap: 6, alignItems: 'center' }}>
             {navLinks.map(l => (
               <a key={l.label} href={l.href} style={{ padding: '7px 14px', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none', color: 'var(--ink-soft)', borderRadius: 6, transition: 'color 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.color = brandColor}
@@ -353,7 +360,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             >Book Now</a>
           </nav>
 
-          <button className="md:hidden" onClick={() => setMenuOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 5, padding: 8 }}>
+          <button onClick={() => setMenuOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: isMobile ? 'flex' : 'none', flexDirection: 'column', gap: 5, padding: 8 }}>
             {[0,1,2].map(i => <span key={i} style={{ display: 'block', width: 24, height: 2, background: 'var(--ink)', borderRadius: 2 }} />)}
           </button>
         </div>
@@ -384,7 +391,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
           <div className="fade-up" style={{ animationDelay: '100ms' }}>
             <span style={{ display: 'inline-block', background: brandColor, color: '#fff', fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', padding: '5px 14px', borderRadius: 4, marginBottom: 24 }}>Personal Training</span>
           </div>
-          <h1 className="fade-up" style={{ animationDelay: '200ms', fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(58px, 10vw, 110px)', lineHeight: 0.95, letterSpacing: '0.02em', color: '#fff', margin: '0 0 28px', whiteSpace: 'pre-line' }}>{heroTitle}</h1>
+          <h1 className="fade-up" style={{ animationDelay: '200ms', fontFamily: displayFont, fontSize: 'clamp(40px, 12vw, 110px)', lineHeight: 0.95, letterSpacing: '0.02em', color: '#fff', margin: '0 0 28px', whiteSpace: 'pre-line' }}>{heroTitle}</h1>
           <p className="fade-up" style={{ animationDelay: '340ms', fontSize: 'clamp(15px, 1.8vw, 18px)', color: 'rgba(255,255,255,0.65)', maxWidth: 440, lineHeight: 1.7, marginBottom: 40, fontWeight: 300 }}>{heroSubtitle}</p>
           <div className="fade-up" style={{ animationDelay: '460ms', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="#booking-section" style={{ padding: '14px 36px', background: brandColor, color: '#fff', borderRadius: 8, fontWeight: 800, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}
@@ -422,15 +429,15 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
       <FadeIn>
         <section id="about" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: 'var(--cream)' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 'clamp(32px,5vw,72px)', alignItems: 'center' }}>
-            <div style={{ flex: '0 0 clamp(260px, 38%, 440px)' }}>
+            <div style={{ flex: isMobile ? '0 0 100%' : '0 0 clamp(260px, 38%, 440px)' }}>
               <div style={{ position: 'relative' }}>
                 <img
                   src={profile?.heroImage || 'https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800'}
                   alt="Trainer"
                   style={{ width: '100%', borderRadius: 16, objectFit: 'cover', aspectRatio: '4/5', display: 'block', boxShadow: '0 24px 72px rgba(0,0,0,0.12)' }}
                 />
-                <div style={{ position: 'absolute', bottom: -18, right: -18, background: brandColor, color: '#fff', width: 90, height: 90, borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 28px ${brandColor}55` }}>
-                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, lineHeight: 1 }}>PRO</span>
+                <div style={{ position: 'absolute', bottom: isMobile ? 12 : -18, right: isMobile ? 12 : -18, background: brandColor, color: '#fff', width: 90, height: 90, borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 28px ${brandColor}55` }}>
+                  <span style={{ fontFamily: displayFont, fontSize: 28, lineHeight: 1 }}>PRO</span>
                   <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.85 }}>Certified</span>
                 </div>
               </div>
@@ -438,7 +445,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
 
             <div style={{ flex: '1 1 320px' }}>
               <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 12 }}>Meet Your Coach</p>
-              <h2 className="ruled-heading" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px, 5vw, 56px)', letterSpacing: '0.04em', margin: '0 0 28px', lineHeight: 1 }}>
+              <h2 className="ruled-heading" style={{ fontFamily: displayFont, fontSize: 'clamp(36px, 5vw, 56px)', letterSpacing: '0.04em', margin: '0 0 28px', lineHeight: 1 }}>
                 {profile?.coachName || barber?.name || 'Your Personal Trainer'}
               </h2>
               <p style={{ color: 'var(--ink-soft)', lineHeight: 1.8, marginBottom: 16, fontSize: 15, fontWeight: 300 }}>{aboutText1}</p>
@@ -458,7 +465,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
           <section id="video" style={{ background: 'var(--charcoal-2)', padding: 'clamp(60px,8vw,100px) clamp(24px,5vw,80px)' }}>
             <div style={{ maxWidth: 860, margin: '0 auto' }}>
               <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>See It In Action</p>
-              <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', color: '#fff', textAlign: 'center', marginBottom: 32, letterSpacing: '0.04em' }}>Watch My Training</h2>
+              <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', color: '#fff', textAlign: 'center', marginBottom: 32, letterSpacing: '0.04em' }}>Watch My Training</h2>
               <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
                 <iframe src={youtubeUrl} title="Training video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }} />
@@ -476,11 +483,11 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <section id="specializations" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: '#fff' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>What I Do</p>
-            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 56 }}>Areas of Expertise</h2>
+            <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 56 }}>Areas of Expertise</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
               {specializations.map((spec, i) => (
                 <div key={i} className="card-hover" style={{ background: 'var(--cream)', borderRadius: 12, padding: 32, borderLeft: `4px solid ${brandColor}`, position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', top: -8, right: 12, fontFamily: "'Bebas Neue', sans-serif", fontSize: 72, color: brandColor, opacity: 0.07, lineHeight: 1, userSelect: 'none', pointerEvents: 'none' }}>0{i + 1}</div>
+                  <div style={{ position: 'absolute', top: -8, right: 12, fontFamily: displayFont, fontSize: 72, color: brandColor, opacity: 0.07, lineHeight: 1, userSelect: 'none', pointerEvents: 'none' }}>0{i + 1}</div>
                   <div style={{ width: 36, height: 36, borderRadius: 8, background: brandColor, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 16, color: '#fff', fontWeight: 900 }}>
                     {['💪', '🔥', '⚡', '🎯'][i % 4]}
                   </div>
@@ -498,11 +505,11 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <section id="pricing" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: 'var(--cream)' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Investment</p>
-            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 16 }}>Simple, Transparent Pricing</h2>
+            <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 16 }}>Simple, Transparent Pricing</h2>
             <p style={{ color: 'var(--ink-soft)', textAlign: 'center', fontWeight: 300, maxWidth: 460, margin: '0 auto 52px' }}>No contracts. No hidden fees. Just results.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24 }}>
               {pricingPlans.map((plan, i) => (
-                <PricingCard key={i} plan={plan} brandColor={brandColor} />
+                <PricingCard key={i} plan={plan} brandColor={brandColor} displayFont={displayFont}/>
               ))}
             </div>
           </div>
@@ -515,8 +522,8 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
           <div style={{ position: 'absolute', top: 0, right: 0, width: '30%', height: '100%', background: `linear-gradient(180deg, ${brandColor}11 0%, transparent 100%)`, pointerEvents: 'none' }} />
           <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 1 }}>
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Testimonials</p>
-            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,56px)', color: '#fff', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 48 }}>Client Experiences</h2>
-            <ReviewCarousel reviews={reviews} brandColor={brandColor} cardBg="#ffffff" cardBorder="2px solid #0f0f0f" />
+            <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', color: '#fff', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 48 }}>Client Experiences</h2>
+            <ReviewCarousel reviews={reviews} brandColor={brandColor} displayFont={displayFont} cardBg="#ffffff" cardBorder="2px solid #0f0f0f" />
             <div style={{ marginTop: 48, textAlign: 'center' }}>
               <button
                 onClick={() => window.location.href = `/review/${barber?.uid}`}
@@ -534,7 +541,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <section id="booking-section" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: '#fff' }}>
           <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 8 }}>Ready to Start?</p>
-            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(36px,6vw,52px)', letterSpacing: '0.04em', marginBottom: 8 }}>Claim Your Slot</h2>
+            <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,52px)', letterSpacing: '0.04em', marginBottom: 8 }}>Claim Your Slot</h2>
             <p style={{ color: 'var(--ink-soft)', fontWeight: 300, marginBottom: 40, fontSize: 15 }}>Choose a time that works for you and let's get to work.</p>
             <SlotPicker slots={slots} brandColor={brandColor} onSelect={() => {}} />
           </div>
@@ -547,7 +554,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 32, marginBottom: 40 }}>
             <div>
               {logo ? <img src={logo} alt="Logo" style={{ height: 48, marginBottom: 12, display: 'block' }} /> : null}
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, letterSpacing: '0.12em', color: brandColor, marginBottom: 6 }}>{businessName}</div>
+              <div style={{ fontFamily: displayFont, fontSize: 22, letterSpacing: '0.12em', color: brandColor, marginBottom: 6 }}>{businessName}</div>
               <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: 300, maxWidth: 220, lineHeight: 1.6 }}>High-performance personal training tailored to your goals.</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -584,7 +591,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <div onClick={() => setModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#111', borderRadius: 16, padding: 36, maxWidth: 500, width: '100%', maxHeight: '80vh', overflowY: 'auto', border: '1px solid #222', boxShadow: '0 32px 80px rgba(0,0,0,0.8)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ color: '#fff', fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, letterSpacing: '0.06em', margin: 0 }}>
+              <h2 style={{ color: '#fff', fontFamily: displayFont, fontSize: 28, letterSpacing: '0.06em', margin: 0 }}>
                 {modal === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions'}
               </h2>
               <button onClick={() => setModal(null)} style={{ background: '#222', border: 'none', color: '#fff', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>

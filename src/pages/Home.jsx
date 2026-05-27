@@ -20,7 +20,6 @@ import PaymentIcon            from "@mui/icons-material/Payment";
 import InsertDriveFileIcon    from "@mui/icons-material/InsertDriveFile";
 import InstagramIcon          from "@mui/icons-material/Instagram";
 import YouTubeIcon            from "@mui/icons-material/YouTube";
-import CheckCircleIcon        from "@mui/icons-material/CheckCircle";
 import CategoryRow            from "../components/CategoryRow";
 import TenantHome             from "./TenantHome";
 import { useBarbers }         from "../hooks/useBarbers";
@@ -401,39 +400,45 @@ export default function Home({ tenant }) {
       </Box>
 
       {/* ── PLATFORM FEATURES ── */}
-      <Box sx={{ bgcolor: G.dark, py: { xs: 10, md: 16 }, px: { xs: 2, md: 5 } }}>
-        <Container maxWidth="lg">
-          <Box sx={{ textAlign: "center", mb: 8 }}>
+      <Box sx={{
+        bgcolor: G.dark, py: { xs: 12, md: 18 }, px: { xs: 2, md: 5 },
+        position: "relative", overflow: "hidden",
+        borderTop: `2px solid ${G.gold}`,
+      }}>
+        <Box sx={{ position: "absolute", right: -24, top: "50%", transform: "translateY(-50%)", fontFamily: SERIF, fontSize: { xs: "16rem", md: "26rem" }, color: "rgba(201,168,76,0.03)", lineHeight: 1, pointerEvents: "none", userSelect: "none" }}>
+          &amp;
+        </Box>
+        <Container maxWidth="lg" sx={{ position: "relative" }}>
+          <Box sx={{ textAlign: "center", mb: { xs: 8, md: 11 } }}>
             <SectionLabel text="For businesses" />
-            <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.9rem", md: "2.8rem" }, fontWeight: 400, color: "#fff", mt: 0.5 }}>
-              Everything you need to run your business
+            <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "2rem", md: "3rem" }, fontWeight: 400, color: "#fff", mb: 2, lineHeight: 1.15, mt: 1 }}>
+              Everything you need to <em style={{ fontStyle: "italic", color: G.gold }}>run your business</em>
             </Typography>
-            <Typography sx={{ fontFamily: SANS, fontWeight: 300, fontSize: "1rem", color: "rgba(255,255,255,0.45)", mt: 2, maxWidth: 560, mx: "auto", lineHeight: 1.8 }}>
+            <Typography sx={{ fontFamily: SANS, fontSize: "0.95rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.8, maxWidth: 500, mx: "auto" }}>
               Sign up and get your own professional website, booking system, payments, and more — all in one place.
             </Typography>
           </Box>
-          <Grid container spacing={3}>
+
+          <Grid container spacing={{ xs: 6, md: 8 }}>
             {PLATFORM_FEATURES.map((f, i) => (
               <Grid item xs={12} sm={6} md={4} key={i}>
-                <Box sx={{
-                  p: { xs: 3, md: 4 },
-                  bgcolor: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(201,168,76,0.12)",
-                  height: "100%",
-                  transition: "border-color .25s, background .25s",
-                  "&:hover": { borderColor: "rgba(201,168,76,0.4)", bgcolor: "rgba(201,168,76,0.04)" },
-                }}>
-                  <Box sx={{ color: G.gold, mb: 2.5 }}>{f.icon}</Box>
-                  <Typography sx={{ fontFamily: SERIF, fontSize: "1.1rem", fontWeight: 400, color: "#fff", mb: 1.5 }}>{f.title}</Typography>
-                  <Typography sx={{ fontFamily: SANS, fontWeight: 300, fontSize: "0.875rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.75 }}>{f.body}</Typography>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                  <Box sx={{ color: G.gold }}>{f.icon}</Box>
+                  <Typography sx={{ fontFamily: SERIF, fontSize: "1.15rem", fontWeight: 400, color: "#fff" }}>
+                    {f.title}
+                  </Typography>
+                  <Typography sx={{ fontFamily: SANS, fontWeight: 300, fontSize: "0.875rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.8 }}>
+                    {f.body}
+                  </Typography>
                 </Box>
               </Grid>
             ))}
           </Grid>
-          <Box sx={{ textAlign: "center", mt: 8 }}>
+
+          <Box sx={{ textAlign: "center", mt: { xs: 8, md: 11 } }}>
             <Button variant="contained" onClick={() => navigate("/signup")}
-              sx={{ bgcolor: G.gold, color: G.dark, fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.12em", textTransform: "uppercase", px: 5, py: 1.8, borderRadius: "2px", boxShadow: "none", "&:hover": { bgcolor: G.goldLight, boxShadow: "none" } }}>
-              Start for free →
+              sx={{ bgcolor: G.gold, color: G.dark, fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", px: 5, py: 1.8, borderRadius: "2px", boxShadow: "none", "&:hover": { bgcolor: G.goldLight, boxShadow: "none" } }}>
+              Get listed for free
             </Button>
           </Box>
         </Container>
@@ -466,7 +471,7 @@ export default function Home({ tenant }) {
 
       {/* ── REVIEWS (auto-sliding) ── */}
       <Box sx={{ bgcolor: "#fff", py: { xs: 8, md: 12 }, px: { xs: 2, md: 5 }, borderTop: `1px solid ${G.border}` }}>
-        <style>{`@keyframes revFadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }`}</style>
+        <style>{`@keyframes revFade { from { opacity:0; } to { opacity:1; } }`}</style>
         <Container maxWidth="md">
           <Box sx={{ textAlign: "center", mb: 6 }}>
             <SectionLabel text="Testimonials" />
@@ -475,32 +480,34 @@ export default function Home({ tenant }) {
             </Typography>
           </Box>
 
-          {/* Review card */}
-          <Paper key={revIdx} elevation={0} sx={{
+          {/* Review card — stable outer Paper, animated inner content */}
+          <Paper elevation={0} sx={{
             p: { xs: 3, md: 5 }, bgcolor: G.warmWhite,
             border: `1px solid ${G.border}`, borderRadius: 0,
-            animation: "revFadeUp 0.45s ease both",
+            minHeight: { xs: 240, md: 260 },
           }}>
-            <Stack direction="row" spacing={0.4} mb={2.5} justifyContent="center">
-              {[1,2,3,4,5].map(j => <StarIcon key={j} sx={{ color: G.gold, fontSize: { xs: 16, md: 18 } }} />)}
-            </Stack>
-            <Typography sx={{
-              fontFamily: ITALIC, fontStyle: "italic",
-              fontSize: { xs: "1.1rem", md: "1.3rem" },
-              color: G.dark2, lineHeight: 1.75, mb: 3, textAlign: "center",
-            }}>
-              "{rev.text}"
-            </Typography>
-            <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
-              <Box sx={{ width: 42, height: 42, borderRadius: "50%", bgcolor: G.goldPale, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Typography sx={{ fontFamily: SANS, fontSize: "0.78rem", fontWeight: 700, color: G.gold }}>{rev.initials}</Typography>
-              </Box>
-              <Box sx={{ textAlign: "left" }}>
-                <Typography sx={{ fontFamily: SANS, fontWeight: 700, fontSize: "0.85rem", color: G.dark }}>{rev.name}</Typography>
-                <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: G.muted }}>Booked: {rev.trade}</Typography>
-              </Box>
-              <VerifiedIcon sx={{ color: G.gold, fontSize: 18, ml: 1 }} />
-            </Stack>
+            <Box key={revIdx} sx={{ animation: "revFade 0.4s ease both" }}>
+              <Stack direction="row" spacing={0.4} mb={2.5} justifyContent="center">
+                {[1,2,3,4,5].map(j => <StarIcon key={j} sx={{ color: G.gold, fontSize: { xs: 16, md: 18 } }} />)}
+              </Stack>
+              <Typography sx={{
+                fontFamily: ITALIC, fontStyle: "italic",
+                fontSize: { xs: "1.1rem", md: "1.3rem" },
+                color: G.dark2, lineHeight: 1.75, mb: 3, textAlign: "center",
+              }}>
+                "{rev.text}"
+              </Typography>
+              <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
+                <Box sx={{ width: 42, height: 42, borderRadius: "50%", bgcolor: G.goldPale, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Typography sx={{ fontFamily: SANS, fontSize: "0.78rem", fontWeight: 700, color: G.gold }}>{rev.initials}</Typography>
+                </Box>
+                <Box sx={{ textAlign: "left" }}>
+                  <Typography sx={{ fontFamily: SANS, fontWeight: 700, fontSize: "0.85rem", color: G.dark }}>{rev.name}</Typography>
+                  <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: G.muted }}>Booked: {rev.trade}</Typography>
+                </Box>
+                <VerifiedIcon sx={{ color: G.gold, fontSize: 18, ml: 1 }} />
+              </Stack>
+            </Box>
           </Paper>
 
           {/* Controls */}
@@ -524,45 +531,6 @@ export default function Home({ tenant }) {
         </Container>
       </Box>
 
-      {/* ── BUSINESS CTA ── */}
-      <Box sx={{
-        bgcolor: G.dark, py: { xs: 12, md: 18 }, px: { xs: 2, md: 5 },
-        textAlign: "center", position: "relative", overflow: "hidden",
-        borderTop: `2px solid ${G.gold}`,
-      }}>
-        <Box sx={{ position: "absolute", right: -24, top: "50%", transform: "translateY(-50%)", fontFamily: SERIF, fontSize: { xs: "16rem", md: "26rem" }, color: "rgba(201,168,76,0.03)", lineHeight: 1, pointerEvents: "none", userSelect: "none" }}>
-          &amp;
-        </Box>
-        <Container maxWidth="md" sx={{ position: "relative" }}>
-          <SectionLabel text="Join the platform" />
-          <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "2rem", md: "3rem" }, fontWeight: 400, color: "#fff", mb: 2, lineHeight: 1.15, mt: 1 }}>
-            Are you a <em style={{ fontStyle: "italic", color: G.gold }}>trade professional?</em>
-          </Typography>
-          <Typography sx={{ fontFamily: SANS, fontSize: "0.95rem", color: "rgba(255,255,255,0.45)", mb: 6, lineHeight: 1.8, maxWidth: 500, mx: "auto" }}>
-            Get your own professional website, booking system, and payment tools — all connected to your business. List for free and start taking bookings today.
-          </Typography>
-          <Grid container spacing={1.5} sx={{ mb: 6, textAlign: "left", maxWidth: 560, mx: "auto" }}>
-            {["Custom domain or link your own","Built-in Stripe payments & deposits","Online booking with time slots","Professional invoice sending","Instagram, TikTok & YouTube links","Full dashboard to manage everything"].map(item => (
-              <Grid item xs={12} sm={6} key={item}>
-                <Stack direction="row" spacing={1.5} alignItems="center">
-                  <CheckCircleIcon sx={{ color: G.gold, fontSize: 16, flexShrink: 0 }} />
-                  <Typography sx={{ fontFamily: SANS, fontSize: "0.82rem", fontWeight: 400, color: "rgba(255,255,255,0.6)" }}>{item}</Typography>
-                </Stack>
-              </Grid>
-            ))}
-          </Grid>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="center">
-            <Button variant="contained" onClick={() => navigate("/signup")}
-              sx={{ bgcolor: G.gold, color: G.dark, fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", px: 5, py: 1.8, borderRadius: "2px", boxShadow: "none", "&:hover": { bgcolor: G.goldLight, boxShadow: "none" } }}>
-              Get listed for free
-            </Button>
-            <Button variant="outlined" onClick={() => navigate("/login")}
-              sx={{ borderColor: "rgba(201,168,76,0.3)", color: G.goldLight, fontFamily: SANS, fontWeight: 500, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", px: 5, py: 1.8, borderRadius: "2px", bgcolor: "rgba(201,168,76,0.05)", "&:hover": { bgcolor: "rgba(201,168,76,0.1)", borderColor: G.gold } }}>
-              Professional login
-            </Button>
-          </Stack>
-        </Container>
-      </Box>
 
     </Box>
   );

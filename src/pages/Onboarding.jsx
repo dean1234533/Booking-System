@@ -255,6 +255,13 @@ const css = `
   }
   .ob-cta-secondary:hover { color: rgba(255,255,255,0.6); }
 
+  .ob-cta-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   /* ── Right: card ── */
   .ob-card {
     background: rgba(255,255,255,0.03);
@@ -439,10 +446,37 @@ const css = `
   @media (max-width: 768px) {
     .ob-topbar { padding: 16px 20px; }
     .ob-progress-wrap { padding: 20px 20px 0; }
-    .ob-body { grid-template-columns: 1fr; padding: 32px 20px 60px; gap: 40px; }
+    .ob-body {
+      grid-template-columns: 1fr;
+      padding: 32px 20px 60px;
+      gap: 32px;
+    }
     .ob-left { padding-right: 0; }
     .ob-card { padding: 24px; }
     .ob-step-label { font-size: 8px; }
+    .ob-desc { max-width: 100%; font-size: 14px; }
+    .ob-heading { font-size: clamp(1.75rem, 8vw, 2.5rem); }
+    .ob-mock-domain-text {
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ob-cta-secondary { margin-left: 0; }
+    .ob-done-wrap { padding: 20px 0; }
+  }
+
+  @media (max-width: 420px) {
+    .ob-topbar { padding: 12px 16px; }
+    .ob-progress-wrap { padding: 14px 16px 0; }
+    .ob-body { padding: 20px 16px 48px; gap: 24px; }
+    .ob-card { padding: 18px; }
+    .ob-step-labels { display: none; }
+    .ob-cta { width: 100%; justify-content: center; }
+    .ob-check-item { font-size: 13px; }
+    .ob-logo { font-size: 15px; }
+    .ob-skip { font-size: 11px; }
+    .ob-card-title { font-size: 18px; }
   }
 `;
 
@@ -676,7 +710,7 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
               ))}
             </ul>
 
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+            <div className="ob-cta-row">
               <button className="ob-cta" onClick={() => advance(current.ctaTab)}>
                 {current.ctaLabel}
                 <span className="ob-cta-arrow">→</span>

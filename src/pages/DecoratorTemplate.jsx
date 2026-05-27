@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
+import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { Star, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { 
   Box, Typography, Container, Stack, Link, Divider, 
@@ -214,15 +215,58 @@ const GlobalStyles = () => (
     }
     .ba-label-before { left: 14px; }
     .ba-label-after { right: 14px; }
+    .dt-hamburger {
+      display: none; flex-direction: column; gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 8px; flex-shrink: 0;
+    }
+    .dt-hamburger span {
+      display: block; width: 24px; height: 2px; background: var(--ink); border-radius: 2px;
+    }
+    .dt-mobile-menu {
+      position: fixed; top: 72px; left: 0; right: 0; z-index: 99;
+      background: rgba(250,248,245,0.98); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--stone); padding: 12px 1.5rem 18px;
+    }
+    .dt-mobile-menu a {
+      display: block; padding: 11px 0; font-size: 13px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none;
+      color: var(--ink); border-bottom: 1px solid var(--stone);
+    }
+    .dt-mobile-menu-cta {
+      display: block; margin-top: 14px; padding: 12px; text-align: center;
+      color: #fff; border-radius: 2px; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none;
+    }
     @media (max-width: 900px) {
+      .dt-nav { padding: 0 1.5rem; }
       .dt-nav-links, .dt-nav-cta { display: none; }
+      .dt-hamburger { display: flex; }
       .dt-hero { padding: 0 2rem 4rem; }
       .dt-about, .dt-services-inner, .dt-contact-inner { grid-template-columns: 1fr; gap: 2.5rem; }
       .dt-about, .dt-services, .dt-portfolio, .dt-reviews, .dt-contact, .dt-footer { padding: 4rem 1.5rem; }
+      .dt-services-img img { height: 300px; }
       .dt-portfolio-grid { grid-template-columns: 1fr; }
       .dt-portfolio-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
-      .dt-portfolio-sub { text-align: left; }
+      .dt-portfolio-sub { text-align: left; max-width: 100%; }
       .dt-footer-inner { flex-direction: column; gap: 1.5rem; text-align: center; }
+      .dt-footer-links { flex-wrap: wrap; justify-content: center; gap: 1rem; }
+    }
+    @media (max-width: 480px) {
+      .dt-nav { height: 60px; padding: 0 1.25rem; }
+      .dt-mobile-menu { top: 60px; }
+      .dt-hero { padding: 0 1.25rem 3rem; }
+      .dt-hero h1 { font-size: clamp(2rem, 9vw, 2.8rem); }
+      .dt-hero-sub { font-size: 0.9rem; }
+      .dt-hero-actions { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+      .dt-hero-btn { width: 100%; text-align: center; }
+      .dt-hero-badge { width: 100%; justify-content: center; }
+      .dt-about, .dt-services, .dt-portfolio, .dt-reviews, .dt-contact, .dt-footer { padding: 3rem 1.25rem; }
+      .dt-about-stats { gap: 0.75rem; }
+      .dt-services-img img { height: 200px; }
+      .dt-review-card { padding: 1.5rem; }
+      .dt-review-text { font-size: 0.95rem; }
+      .dt-contact-inner { gap: 2rem; }
+      .dt-footer { padding: 2.5rem 1.25rem; }
     }
   `}</style>
 );
@@ -260,6 +304,7 @@ const DecoratorTemplate = ({ tenantData }) => {
   const [reviews, setReviews] = useState([]);
   const [modalContent, setModalContent] = useState(null);
   const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -278,6 +323,10 @@ const DecoratorTemplate = ({ tenantData }) => {
 
   const nextReview = () => setCurrentReviewIndex((prev) => (prev + 1) % reviews.length);
   const prevReview = () => setCurrentReviewIndex((prev) => (prev - 1 + reviews.length) % reviews.length);
+
+  const fontKey     = tenantData?.siteFont;
+  const displayFont = getFontFamily(fontKey, "playfair");
+  useEffect(() => { if (fontKey) loadGoogleFont(fontKey); }, [fontKey]);
 
   /* ── All content resolved from tenantData with fallbacks ── */
   const brandColor    = tenantData?.brandColor  || "#b5924c";
@@ -344,6 +393,11 @@ const DecoratorTemplate = ({ tenantData }) => {
   return (
     <>
       <GlobalStyles />
+      <style>{`
+        .dt-hero h1, .dt-section-title, .dt-nav-name, .dt-stat-num, .dt-review-quote, .dt-footer-brand {
+          font-family: ${displayFont} !important;
+        }
+      `}</style>
       <div className="dt-page">
 
         {/* ── NAV ── */}
@@ -360,7 +414,20 @@ const DecoratorTemplate = ({ tenantData }) => {
             ))}
           </div>
           <a href="#contact" className="dt-nav-cta" style={{ backgroundColor: brandColor }}>Free Quote</a>
+          <button className="dt-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Open menu">
+            <span /><span /><span />
+          </button>
         </nav>
+        {menuOpen && (
+          <div className="dt-mobile-menu">
+            {["home","about","portfolio","reviews","services","contact"].map(s => (
+              <a key={s} href={`#${s}`} onClick={() => setMenuOpen(false)}>{s}</a>
+            ))}
+            <a href="#contact" className="dt-mobile-menu-cta" style={{ backgroundColor: brandColor }} onClick={() => setMenuOpen(false)}>
+              Free Quote
+            </a>
+          </div>
+        )}
 
         {/* ── HERO ── */}
         <header id="home" className="dt-hero">

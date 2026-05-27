@@ -24,6 +24,7 @@ import {
 } from "@mui/icons-material";
 import {getFunctions, httpsCallable} from "firebase/functions";
 import {getFirestore, doc, onSnapshot} from "firebase/firestore";
+import { getApp } from "firebase/app";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -102,7 +103,7 @@ const STEPS = ["Search domain", "Purchase", "Auto-connected"];
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DomainTab({barber, brandColor}) {
-  const functions = getFunctions();
+  const functions = getFunctions(getApp(), "us-central1");
 
   // Search state
   const [query,         setQuery]         = useState("");

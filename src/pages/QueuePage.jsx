@@ -55,7 +55,7 @@ export default function QueuePage() {
             <Typography sx={{ fontFamily: displayFont, fontSize: "1.3rem", color: "#fff", lineHeight: 1.2 }}>
               {shop?.businessName || "The Barber Shop"}
             </Typography>
-            <Typography sx={{ fontFamily: SANS, fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", mt: 0.25 }}>
+            <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", mt: 0.25 }}>
               Live Queue
             </Typography>
           </Box>

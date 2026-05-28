@@ -38,6 +38,7 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
   const [joining, setJoining] = useState(false);
   const [error, setError]     = useState("");
   const notifiedRef           = useRef(false);
+  const calledRef             = useRef(false);
 
   // Restore session from localStorage
   useEffect(() => {
@@ -80,13 +81,30 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
     return unsub;
   }, [shopId]);
 
-  // "You're next" browser notification
+  // "You're next" browser notification (position 1)
   useEffect(() => {
     if (!myEntry || notifiedRef.current) return;
     const pos = queue.findIndex(e => e.id === myEntry.id);
     if (pos === 1) {
       notifiedRef.current = true;
       try { new Notification("You're up next!", { body: "Head to the shop — you're next in the queue." }); } catch {}
+    }
+  }, [queue, myEntry]);
+
+  // "You've been called" notification — fires when barber clicks Call Next
+  useEffect(() => {
+    if (!myEntry || calledRef.current) return;
+    const entry = queue.find(e => e.id === myEntry.id);
+    if (entry?.status === "called") {
+      calledRef.current = true;
+      try {
+        new Notification("It's your turn! 💈", {
+          body: "Head to the barber now — you've been called!",
+          requireInteraction: true,
+        });
+      } catch {}
+      // Vibrate on mobile (pattern: short-short-long)
+      try { navigator.vibrate?.([150, 80, 150, 80, 400]); } catch {}
     }
   }, [queue, myEntry]);
 
@@ -119,12 +137,15 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
     setMyEntry(null); setView("join");
     setForm({ name: "", haircutType: "", preferredBarber: "" });
     notifiedRef.current = false;
+    calledRef.current   = false;
   }
 
-  const myPos   = myEntry ? queue.findIndex(e => e.id === myEntry.id) : -1;
-  const avgCut  = config.avgCutMins  || 20;
-  const active  = config.activeBarbers || 1;
-  const waitMin = myPos > 0 ? Math.round((myPos * avgCut) / active) : 0;
+  const myQueueEntry = myEntry ? queue.find(e => e.id === myEntry.id) : null;
+  const isCalled = myQueueEntry?.status === "called";
+  const myPos    = myEntry ? queue.findIndex(e => e.id === myEntry.id) : -1;
+  const avgCut   = config.avgCutMins   || 20;
+  const active   = config.activeBarbers || 1;
+  const waitMin  = myPos > 0 ? Math.round((myPos * avgCut) / active) : 0;
 
   // Show loading state
   if (!configLoaded) return null;
@@ -243,7 +264,31 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
         {/* WAITING VIEW */}
         {view === "waiting" && (
           <>
-            {myPos === -1 ? (
+            {/* ── CALLED — your turn screen ── */}
+            {isCalled ? (
+              <Box sx={{
+                bgcolor: brandColor, p: { xs: 3, sm: 5 }, textAlign: "center",
+                animation: "pulse 1.2s ease-in-out infinite",
+                "@keyframes pulse": {
+                  "0%,100%": { boxShadow: `0 0 0 0 ${brandColor}80` },
+                  "50%":     { boxShadow: `0 0 0 20px ${brandColor}00` },
+                },
+              }}>
+                <Typography sx={{ fontFamily: SERIF, fontSize: "clamp(2.5rem, 8vw, 4.5rem)", color: "#fff", lineHeight: 1, mb: 1.5, fontWeight: 700 }}>
+                  IT'S YOUR TURN!
+                </Typography>
+                <Typography sx={{ fontFamily: SANS, fontWeight: 700, fontSize: "1.25rem", color: "rgba(0,0,0,0.75)", mb: 2 }}>
+                  {myEntry?.name}
+                </Typography>
+                <Typography sx={{ fontFamily: SANS, fontSize: "1rem", color: "rgba(0,0,0,0.6)", mb: 3, lineHeight: 1.6 }}>
+                  Head to the barber now — you've been called! 💈
+                </Typography>
+                <Button onClick={leaveQueue}
+                  sx={{ bgcolor: "rgba(0,0,0,0.25)", color: "#fff", border: "none", borderRadius: 0, px: 4, py: 1.2, fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", "&:hover": { bgcolor: "rgba(0,0,0,0.35)" } }}>
+                  Done — leave queue
+                </Button>
+              </Box>
+            ) : myPos === -1 ? (
               // Already served / removed
               <Box sx={{ bgcolor: "#111", border: `1px solid ${brandColor}35`, p: 4, textAlign: "center" }}>
                 <CheckCircleIcon sx={{ fontSize: 50, color: brandColor, mb: 2 }} />

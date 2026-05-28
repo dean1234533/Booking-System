@@ -165,22 +165,27 @@ exports.addCustomDomain = onCall(
       const {domain} = request.data;
       if (!domain) throw new HttpsError("invalid-argument", "domain is required");
 
-      // Strip www. prefix so we always store/match the bare domain
+      // Strip www. prefix — we always store the bare domain
       const clean = cleanDomain(domain).replace(/^www\./, "");
       if (!isValidDomain(clean)) {
         throw new HttpsError("invalid-argument", "Invalid domain format");
       }
 
-      // Register the www subdomain as the Cloudflare custom hostname.
-      // GoDaddy (and most registrars) reject CNAME on the root (@), so we
-      // target www.domain which supports CNAME, and handle the root via forwarding.
-      const wwwHostname = `www.${clean}`;
+      // DNS records to return — works for GoDaddy and all standard registrars:
+      // A records on @ (root) are universally supported; CNAME on www is also fine.
+      // Cloudflare IPs resolved from fallback.bookehtrim.co.uk (Cloudflare anycast).
+      const DNS_RECORDS = [
+        {type: "A", name: "@", value: "104.21.47.154", ttl: "Auto", description: "Root domain — Cloudflare IP (add both A records)"},
+        {type: "A", name: "@", value: "172.67.148.220", ttl: "Auto", description: "Root domain — Cloudflare IP (add both A records)"},
+        {type: "CNAME", name: "www", value: "fallback.bookehtrim.co.uk", ttl: "Auto", description: "www subdomain"},
+      ];
 
       try {
+        // Register the bare domain as the Cloudflare custom hostname
         const response = await axios.post(
             `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames`,
             {
-              hostname: wwwHostname,
+              hostname: clean,
               ssl: {
                 method: "http",
                 type: "dv",
@@ -192,62 +197,28 @@ exports.addCustomDomain = onCall(
 
         const result = response.data.result;
 
-        // Save the bare domain (no www) — getBarberByDomain also strips www
+        // Save the bare domain — getBarberByDomain strips www before querying
         await admin.firestore().collection("barbers").doc(request.auth.uid).update({
           customDomain: clean,
           domainStatus: "pending",
           customHostnameId: result.id,
         });
 
-        return {
-          cfHostnameId: result.id,
-          domain: clean,
-          dnsRecords: [
-            {
-              type: "CNAME",
-              name: "www",
-              value: "fallback.bookehtrim.co.uk",
-              ttl: "Auto",
-              description: "Points www to your booking site",
-            },
-            {
-              type: "FORWARD",
-              name: "@",
-              value: `https://www.${clean}`,
-              ttl: "Auto",
-              description: "Redirect root domain to www — use your registrar's domain forwarding",
-            },
-          ],
-        };
+        return {cfHostnameId: result.id, domain: clean, dnsRecords: DNS_RECORDS};
       } catch (error) {
         const detail = error.response?.data || error.message;
         console.error("addCustomDomain error:", detail);
 
         const errors = error.response?.data?.errors ?? [];
         if (errors.some((e) => e.code === 1406)) {
-          // Already registered — still return the correct DNS instructions
+          // Already registered with Cloudflare — update Firestore and return DNS instructions
           await admin.firestore().collection("barbers").doc(request.auth.uid).update({
             customDomain: clean,
             domainStatus: "pending",
           });
           return {
             domain: clean,
-            dnsRecords: [
-              {
-                type: "CNAME",
-                name: "www",
-                value: "fallback.bookehtrim.co.uk",
-                ttl: "Auto",
-                description: "Points www to your booking site",
-              },
-              {
-                type: "FORWARD",
-                name: "@",
-                value: `https://www.${clean}`,
-                ttl: "Auto",
-                description: "Redirect root domain to www — use your registrar's domain forwarding",
-              },
-            ],
+            dnsRecords: DNS_RECORDS,
           };
         }
 

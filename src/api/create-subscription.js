@@ -32,7 +32,7 @@ export async function onRequestPost(context) {
         price_data: {
           currency: "gbp",
           product_data: {
-            name: "Book-eh-Trim Platform Subscription",
+            name: "yr-bookd Platform Subscription",
             description: "Monthly subscription — keeps your booking site live and dashboard active",
           },
           unit_amount: 1000,

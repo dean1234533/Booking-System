@@ -10,7 +10,7 @@ export default function Footer() {
   const [modalContent, setModalContent] = useState(null);
 
   // Using the same branding tokens from your theme
-  const businessName = "BOOK-EH-TRIM";
+  const businessName = "yr-bookd";
   const G = { gold: "#C9A84C", dark: "#0d0d0d", dark2: "#1a1a1a" };
 
   const handleOpenModal = (type) => setModalContent(type);
@@ -67,8 +67,8 @@ export default function Footer() {
         <DialogContent dividers sx={{ borderColor: '#333' }}>
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', whiteSpace: 'pre-line' }}>
             {modalContent === 'privacy' 
-              ? "At BOOK-EH-TRIM, we prioritize your data security. We collect minimal information strictly for service matching and booking facilitation. We do not sell user data to third parties."
-              : "1. Liability: BOOK-EH-TRIM is a technology provider, not a party to service contracts.\n\n2. Refunds: Deposits are refundable per the individual professional's policy; booking fees are non-refundable.\n\n3. Domains: All custom domain purchases are final."
+              ? "At yr-bookd, we prioritize your data security. We collect minimal information strictly for service matching and booking facilitation. We do not sell user data to third parties."
+              : "1. Liability: yr-bookd is a technology provider, not a party to service contracts.\n\n2. Refunds: Deposits are refundable per the individual professional's policy; booking fees are non-refundable.\n\n3. Domains: All custom domain purchases are final."
             }
           </Typography>
         </DialogContent>

@@ -144,7 +144,7 @@ export async function onRequestPost(context) {
           <tr>
             <td style="background:#f8f9fa; padding:20px 32px; text-align:center; border-top:1px solid #eee;">
               <p style="margin:0; font-size:12px; color:#bbb;">
-                Powered by Book-eh-Trim
+                Powered by yr-bookd
               </p>
             </td>
           </tr>

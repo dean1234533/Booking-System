@@ -23,7 +23,7 @@ export default function Login() {
 
   // Default Platform Branding
   const brandColor = "#C9A84C";
-  const businessName = "Book-eh-Trim";
+  const businessName = "yr-bookd";
   const logoPath = "/images/Logo.png";
 
   // Effect to ensure the page starts at the top when mounted

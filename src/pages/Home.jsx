@@ -103,7 +103,7 @@ export default function Home({ tenant }) {
   const theme    = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const [activeCategory,  setActiveCategory]  = useState("All");
+  const [activeCategory,  setActiveCategory]  = useState(() => isMobile ? "Barbers" : "All");
   const [searchService,   setSearchService]   = useState("");
   const [searchLocation,  setSearchLocation]  = useState("");
   const [pendingService,  setPendingService]  = useState("");
@@ -545,7 +545,7 @@ export default function Home({ tenant }) {
             {/* Brand */}
             <Grid item xs={12} md={4}>
               <Typography sx={{ fontFamily: SERIF, fontSize: "1.3rem", fontWeight: 400, color: G.gold, mb: 1 }}>
-                Book-eh-Trim
+                yr-bookd
               </Typography>
               <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.8, maxWidth: 260 }}>
                 The UK's marketplace for vetted local professionals. Book online, pay securely, every time.
@@ -652,7 +652,7 @@ export default function Home({ tenant }) {
           {/* Bottom bar */}
           <Box sx={{ mt: 5, pt: 3, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
             <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(255,255,255,0.2)" }}>
-              © {new Date().getFullYear()} Book-eh-Trim. All rights reserved.
+              © {new Date().getFullYear()} yr-bookd. All rights reserved.
             </Typography>
             <Typography
               onClick={() => setPricingOpen(true)}

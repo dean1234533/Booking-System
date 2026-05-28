@@ -22,7 +22,7 @@ export default function HomeNav() {
   const [pricingOpen, setPricingOpen] = useState(false);
 
   const logoPath = "/images/Logo.png";
-  const platformName = "BOOK-EH-TRIM";
+  const platformName = "yr-bookd";
   const brandColor = "#C9A84C";
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);

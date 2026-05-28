@@ -519,7 +519,7 @@ const STEPS = [
     cardEyebrow: "Payments Setup",
     cardIcon: "💳",
     cardTitle: "Stripe — trusted by millions",
-    cardBody: "Your money goes straight to your bank. Book-eh-Trim never holds your funds.",
+    cardBody: "Your money goes straight to your bank. yr-bookd never holds your funds.",
     card: "stripe",
   },
   {

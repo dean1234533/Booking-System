@@ -24,7 +24,7 @@ export default function Signup() {
 
   const [isOwner, setIsOwner] = useState(true);
   const activeBrandColor = "#C9A84C";
-  const logoPath = "/images/Logo.png";
+  const logoPath = "/images/IMG_9763-removebg-preview.png";
 
   const [form, setForm] = useState({
     name: "",

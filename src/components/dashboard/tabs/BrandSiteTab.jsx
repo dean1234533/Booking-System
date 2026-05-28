@@ -7,6 +7,7 @@ import WebsiteTab  from "./WebsiteTab";
 
 export default function BrandSiteTab({
   profile, setProfile, brandColor,
+  businessType,
   showWebsite,
   logoPreview,          setLogoFile,          setLogoPreview,
   heroPreviewDesktop,   setHeroFileDesktop,   setHeroPreviewDesktop,
@@ -68,6 +69,7 @@ export default function BrandSiteTab({
           profile={profile}
           setProfile={setProfile}
           brandColor={brandColor}
+          businessType={businessType}
         />
       )}
     </Box>

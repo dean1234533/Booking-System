@@ -29,6 +29,7 @@ import Onboarding        from "./pages/Onboarding";
 import WorkoutPlanView      from "./pages/WorkoutPlanView";
 import FoodDiarySubmit      from "./pages/FoodDiarySubmit";
 import CheckInSubmit        from "./pages/CheckInSubmit";
+import ParQSubmit           from "./pages/ParQSubmit";
 import ColourApprovalPage   from "./pages/ColourApprovalPage";
 import QueuePage            from "./pages/QueuePage";
 import FoodGenerator       from "./pages/FoodGenerator";
@@ -201,6 +202,7 @@ function AppShell() {
   const isWorkoutView  = location.pathname.startsWith('/workout')
                       || location.pathname.startsWith('/food-diary')
                       || location.pathname.startsWith('/check-in')
+                      || location.pathname.startsWith('/par-q')
                       || location.pathname.startsWith('/colour-approval')
                       || location.pathname.startsWith('/queue')
                       || location.pathname.startsWith('/food-generator');
@@ -281,6 +283,7 @@ function AppShell() {
             <Route path="/workout/:trainerId/:planId"                element={<WorkoutPlanView />} />
             <Route path="/food-diary/:trainerId"                  element={<FoodDiarySubmit />} />
             <Route path="/check-in/:trainerId"                    element={<CheckInSubmit />} />
+            <Route path="/par-q/:trainerId"                       element={<ParQSubmit />} />
             <Route path="/colour-approval/:tradieId/:paletteId"   element={<ColourApprovalPage />} />
             <Route path="/queue/:shopId"                          element={<QueuePage />} />
             <Route path="/food-generator/:barberId/:token"        element={<FoodGenerator />} />

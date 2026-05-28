@@ -24,7 +24,7 @@ export default function Login() {
   // Default Platform Branding
   const brandColor = "#C9A84C";
   const businessName = "yr-bookd";
-  const logoPath = "/images/Logo.png";
+  const logoPath = "/images/IMG_9763-removebg-preview.png";
 
   // Effect to ensure the page starts at the top when mounted
   useEffect(() => {

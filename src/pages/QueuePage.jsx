@@ -6,8 +6,6 @@ import { db } from "../firebase/config";
 import LiveQueueSection from "../components/LiveQueueSection";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 
-const SANS  = "'DM Sans', sans-serif";
-const SERIF = "'Playfair Display', serif";
 
 export default function QueuePage() {
   const { shopId }    = useParams();
@@ -64,22 +62,13 @@ export default function QueuePage() {
         </Box>
       </Box>
 
-      {/* Queue section — handles its own open/closed state */}
+      {/* Queue section — handles open, paused, and closed states */}
       <LiveQueueSection
         shopId={shopId}
         brandColor={brandColor}
         displayFont={displayFont}
+        showWhenClosed
       />
-
-      {/* Fallback if queue is closed */}
-      <Box sx={{ textAlign: "center", py: 10, px: 3 }}>
-        <Typography sx={{ fontFamily: SERIF, fontSize: "1.2rem", color: "rgba(255,255,255,0.18)" }}>
-          {shop?.businessName || "The shop"}
-        </Typography>
-        <Typography sx={{ fontFamily: SANS, fontSize: "0.78rem", color: "rgba(255,255,255,0.15)", mt: 1 }}>
-          The queue is not currently active. Check back soon.
-        </Typography>
-      </Box>
     </Box>
   );
 }

@@ -211,8 +211,8 @@ export default function PricingModal({ open, onClose }) {
                 Example payout
               </Typography>
               <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "#2F855A", lineHeight: 1.75 }}>
-                On a £50 online booking: your client pays £51.25 (2.5% added on top).
-                After Stripe processing (~97p), you receive approximately <strong>£49.00</strong>.
+                On a £20 online booking: your client pays £20.50 (2.5% added on top).
+                After Stripe processing (~39p), you receive approximately <strong>£20.11</strong>.
               </Typography>
             </Paper>
           </Grid>

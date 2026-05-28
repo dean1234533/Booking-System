@@ -28,7 +28,7 @@ function fieldSx(brand) {
   };
 }
 
-export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displayFont, team = [] }) {
+export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displayFont, team = [], showWhenClosed = false }) {
   const [config, setConfig]   = useState({ avgCutMins: 20, activeBarbers: 1, isPaused: false, isOpen: false });
   const [configLoaded, setCL] = useState(false);
   const [queue, setQueue]     = useState([]);
@@ -126,8 +126,24 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
   const active  = config.activeBarbers || 1;
   const waitMin = myPos > 0 ? Math.round((myPos * avgCut) / active) : 0;
 
-  // Only render once config is loaded and queue is open
-  if (!configLoaded || !config.isOpen) return null;
+  // Show loading state
+  if (!configLoaded) return null;
+
+  // Queue closed — show a message only on the dedicated queue page
+  if (!config.isOpen) {
+    if (!showWhenClosed) return null;
+    return (
+      <Box sx={{ py: { xs: 10, md: 14 }, textAlign: "center", px: 3 }}>
+        <PeopleIcon sx={{ fontSize: 52, color: "rgba(255,255,255,0.1)", mb: 2 }} />
+        <Typography sx={{ fontFamily: displayFont || SERIF, fontSize: "1.6rem", color: "rgba(255,255,255,0.35)", mb: 1 }}>
+          Queue is currently closed
+        </Typography>
+        <Typography sx={{ fontFamily: SANS, fontSize: "0.82rem", color: "rgba(255,255,255,0.22)", lineHeight: 1.75 }}>
+          The barber hasn't opened the queue yet. Check back closer to opening time.
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ bgcolor: "#0a0a0a", py: { xs: 10, md: 14 }, borderTop: `3px solid ${brandColor}` }}>

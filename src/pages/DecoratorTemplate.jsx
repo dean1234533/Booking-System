@@ -3,11 +3,9 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { Star, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
-import {
-  Typography,
-  Dialog, DialogTitle, DialogContent, DialogActions, Button,
-} from "@mui/material";
-import RateReviewIcon from '@mui/icons-material/RateReview';
+import RateReviewIcon  from '@mui/icons-material/RateReview';
+import TenantNav       from '../components/TenantNav';
+import TenantFooter    from '../components/TenantFooter';
 
 /* ─── Global style injection ─────────────────────────────── */
 const GlobalStyles = () => (
@@ -309,12 +307,14 @@ const BeforeAfterSlider = ({ before, after }) => {
 
 const DecoratorTemplate = ({ tenantData }) => {
   const [reviews, setReviews] = useState([]);
-  const [modalContent, setModalContent] = useState(null);
   const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [enquiry, setEnquiry] = useState({ name: "", phone: "", message: "" });
-  const [enquiryStatus, setEnquiryStatus] = useState("idle"); // idle | sending | success | error
+  const [enquiryStatus, setEnquiryStatus] = useState("idle");
   const [enquiryError, setEnquiryError] = useState("");
+
+  useEffect(() => {
+    if (tenantData) localStorage.setItem('active_tenant_branding', JSON.stringify(tenantData));
+  }, [tenantData]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -436,40 +436,14 @@ const DecoratorTemplate = ({ tenantData }) => {
     <>
       <GlobalStyles />
       <style>{`
-        .dt-hero h1, .dt-section-title, .dt-nav-name, .dt-stat-num, .dt-review-quote, .dt-footer-brand {
+        .dt-hero h1, .dt-section-title, .dt-stat-num, .dt-review-quote {
           font-family: ${displayFont} !important;
         }
       `}</style>
-      <div className="dt-page">
 
-        {/* ── NAV ── */}
-        <nav className="dt-nav">
-          <div className="dt-nav-brand">
-            <div className="dt-nav-logo">
-              {logo && <img src={logo} alt="Logo" style={{ width: 28, height: 28, objectFit: 'contain' }} />}
-            </div>
-            <span className="dt-nav-name">{businessName}</span>
-          </div>
-          <div className="dt-nav-links">
-            {["home","about","portfolio","reviews","services","contact"].map(s => (
-              <a key={s} href={`#${s}`}>{s}</a>
-            ))}
-          </div>
-          <a href="#contact" className="dt-nav-cta" style={{ backgroundColor: brandColor }}>Free Quote</a>
-          <button className="dt-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Open menu">
-            <span /><span /><span />
-          </button>
-        </nav>
-        {menuOpen && (
-          <div className="dt-mobile-menu">
-            {["home","about","portfolio","reviews","services","contact"].map(s => (
-              <a key={s} href={`#${s}`} onClick={() => setMenuOpen(false)}>{s}</a>
-            ))}
-            <a href="#contact" className="dt-mobile-menu-cta" style={{ backgroundColor: brandColor }} onClick={() => setMenuOpen(false)}>
-              Free Quote
-            </a>
-          </div>
-        )}
+      <TenantNav tenant={tenantData} />
+
+      <div className="dt-page">
 
         {/* ── HERO ── */}
         <header id="home" className="dt-hero">
@@ -713,56 +687,9 @@ const DecoratorTemplate = ({ tenantData }) => {
           </div>
         </section>
 
-        {/* ── FOOTER ── */}
-        <footer className="dt-footer">
-          <div className="dt-footer-inner">
-            <div className="dt-footer-brand" style={{ color: brandColor }}>
-              {logo && <img src={logo} alt="Logo" style={{ height: 36, marginBottom: 8, display: 'block' }} />}
-              {businessName}
-            </div>
-            <div className="dt-footer-links">
-              {privacyText  && <span className="dt-footer-link" onClick={() => setModalContent('privacy')}>Privacy</span>}
-              {termsText    && <span className="dt-footer-link" onClick={() => setModalContent('terms')}>Terms</span>}
-              {instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="dt-footer-link">Instagram</a>}
-              {facebookUrl  && <a href={facebookUrl}  target="_blank" rel="noopener noreferrer" className="dt-footer-link">Facebook</a>}
-              {tiktokUrl    && <a href={tiktokUrl}    target="_blank" rel="noopener noreferrer" className="dt-footer-link">TikTok</a>}
-              <a
-                href="/login"
-                className="dt-footer-link"
-                style={{
-                  borderLeft: '1px solid rgba(255,255,255,0.1)',
-                  paddingLeft: '1.25rem',
-                  color: 'rgba(255,255,255,0.45)',
-                }}
-              >
-                Professional Login
-              </a>
-            </div>
-          </div>
-          <p className="dt-footer-copy">© {new Date().getFullYear()} {businessName}. All rights reserved.</p>
-        </footer>
+      </div>{/* end dt-page */}
 
-        {/* ── LEGAL MODAL ── */}
-        <Dialog
-          open={Boolean(modalContent)}
-          onClose={() => setModalContent(null)}
-          maxWidth="sm" fullWidth
-          PaperProps={{ sx: { bgcolor: '#1c1917', color: '#fff', borderRadius: '4px' } }}
-        >
-          <DialogTitle sx={{ fontFamily: 'Playfair Display, serif', fontWeight: 700 }}>
-            {modalContent === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions'}
-          </DialogTitle>
-          <DialogContent dividers sx={{ borderColor: '#333' }}>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', whiteSpace: 'pre-wrap', lineHeight: 1.75 }}>
-              {modalContent === 'privacy' ? privacyText : termsText}
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setModalContent(null)} sx={{ color: brandColor }}>Close</Button>
-          </DialogActions>
-        </Dialog>
-
-      </div>
+      <TenantFooter tenant={tenantData} businessType="decorator" />
     </>
   );
 };

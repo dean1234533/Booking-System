@@ -22,6 +22,7 @@ import {
   Today as TodayIcon,
   People as PeopleIcon,
   RestaurantMenu as RestaurantMenuIcon,
+  ContentCut as ContentCutIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -61,7 +62,7 @@ import QueueManagementTab from "../components/dashboard/tabs/QueueManagementTab"
 import FoodGeneratorTab  from "../components/dashboard/tabs/FoodGeneratorTab";
 import BrandSiteTab      from "../components/dashboard/tabs/BrandSiteTab";
 import ClientFormsTab    from "../components/dashboard/tabs/ClientFormsTab";
-import HaircutMemory     from "../components/HaircutMemory";
+import HaircutTab        from "../components/dashboard/tabs/HaircutTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -110,13 +111,33 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     domainStatus: "",
     customHostnameId: "",
     navBgColor: "", footerBgColor: "",
-    // ── Website content — editable via WebsiteTab ──
+    // ── Contact / social (shared across all types) ──
+    phone: "", businessEmail: "", contactEmail: "",
+    // ── Font ──
+    siteFont: "",
+    // ── Hero content (hairdresser / decorator / barber) ──
+    heroTagline: "", heroHeadingLine1: "", heroHeadingLine2: "",
+    heroSubtext: "", heroCtaText: "", heroReviewText: "",
+    // ── About section ──
+    aboutHeading: "", aboutTagline: "", aboutQuote: "",
+    // ── Services section ──
+    servicesHeading: "", servicesImage: "",
+    // ── Portfolio (decorator) ──
+    portfolioHeading: "", portfolioSubtext: "",
+    portfolioItems: [],
+    // ── Stats (shared keys used by hairdresser/decorator/barber) ──
+    stat1Value: "", stat1Label: "",
+    stat2Value: "", stat2Label: "",
+    stat3Value: "", stat3Label: "",
+    stat4Value: "", stat4Label: "",
+    // ── PT-specific website content ──
     heroTitle: "", heroSubtitle: "", heroBgImage: "",
     coachName: "",
     aboutText1: "", aboutText2: "",
     statBar1Num: "", statBar1Label: "",
     statBar2Num: "", statBar2Label: "",
     statBar3Num: "", statBar3Label: "",
+    youtubeUrl: "",
     specializations: [], pricingPlans: [],
   });
 
@@ -227,7 +248,36 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           customHostnameId: data.customHostnameId || "",
           navBgColor:       data.navBgColor       || "",
           footerBgColor:    data.footerBgColor    || "",
-          // ── Website content fields ──
+          // ── Contact / social ──
+          phone:            data.phone            || "",
+          businessEmail:    data.businessEmail    || "",
+          contactEmail:     data.contactEmail     || "",
+          // ── Font ──
+          siteFont:         data.siteFont         || "",
+          // ── Hero content ──
+          heroTagline:      data.heroTagline      || "",
+          heroHeadingLine1: data.heroHeadingLine1 || "",
+          heroHeadingLine2: data.heroHeadingLine2 || "",
+          heroSubtext:      data.heroSubtext      || "",
+          heroCtaText:      data.heroCtaText      || "",
+          heroReviewText:   data.heroReviewText   || "",
+          // ── About ──
+          aboutHeading:     data.aboutHeading     || "",
+          aboutTagline:     data.aboutTagline     || "",
+          aboutQuote:       data.aboutQuote       || "",
+          // ── Services ──
+          servicesHeading:  data.servicesHeading  || "",
+          servicesImage:    data.servicesImage    || "",
+          // ── Portfolio ──
+          portfolioHeading: data.portfolioHeading || "",
+          portfolioSubtext: data.portfolioSubtext || "",
+          portfolioItems:   Array.isArray(data.portfolioItems) ? data.portfolioItems : [],
+          // ── Stats ──
+          stat1Value: data.stat1Value || "", stat1Label: data.stat1Label || "",
+          stat2Value: data.stat2Value || "", stat2Label: data.stat2Label || "",
+          stat3Value: data.stat3Value || "", stat3Label: data.stat3Label || "",
+          stat4Value: data.stat4Value || "", stat4Label: data.stat4Label || "",
+          // ── PT website content ──
           heroTitle:        data.heroTitle        || "",
           heroSubtitle:     data.heroSubtitle     || "",
           heroBgImage:      data.heroBgImage      || "",
@@ -240,6 +290,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           statBar2Label:    data.statBar2Label    || "",
           statBar3Num:      data.statBar3Num      || "",
           statBar3Label:    data.statBar3Label    || "",
+          youtubeUrl:       data.youtubeUrl       || "",
           specializations:  Array.isArray(data.specializations) ? data.specializations : [],
           pricingPlans:     Array.isArray(data.pricingPlans)    ? data.pricingPlans    : [],
         }));
@@ -558,7 +609,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "profile",   label: "Profile",   icon: <PersonIcon /> },
     { key: "services",  label: "Services",  icon: <ListIcon /> },
     ...(isOwner ? [{ key: "reviews",    label: "Reviews",    icon: <ReviewsIcon /> }]  : []),
-    ...(isOwner && isBarber ? [{ key: "queue",   label: "Queue",      icon: <PeopleIcon /> }]   : []),
+    ...(isOwner && isBarber ? [{ key: "queue",        label: "Queue",           icon: <PeopleIcon /> }]      : []),
+    ...(isOwner && isBarber ? [{ key: "haircutrecords", label: "Client Records", icon: <ContentCutIcon /> }] : []),
     { key: "finance",   label: "Finance",   icon: <PaymentsIcon /> },
     ...(isOwner && (!initialTenant || isBarber || isHairdresser) ? [{ key: "brand",   label: "Brand & Site",   icon: <PaletteIcon /> }] : []),
     ...(isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
@@ -831,6 +883,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             <BrandSiteTab
               profile={profile} setProfile={setProfile}
               brandColor={brandColor}
+              businessType={profile.businessType}
               showWebsite={!initialTenant}
               logoPreview={logoPreview}               setLogoFile={setLogoFile}               setLogoPreview={setLogoPreview}
               heroPreviewDesktop={heroPreviewDesktop} setHeroFileDesktop={setHeroFileDesktop} setHeroPreviewDesktop={setHeroPreviewDesktop}
@@ -906,6 +959,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
+        {/* ── Haircut Records (barber owner only) ── */}
+        {isOwner && isBarber && (
+          <TabPanel value={tab} index={tabIdx("haircutrecords")}>
+            <HaircutTab barber={barber} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
         {/* ── Colour Approval (decorator owner only) ── */}
         {isOwner && isDecorator && (
           <TabPanel value={tab} index={tabIdx("colours")}>
@@ -930,9 +990,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         </Box>{/* end slide wrapper */}
       </Box>
 
-      {isOwner && isBarber && (
-        <HaircutMemory shopId={barber.uid} brandColor={brandColor} />
-      )}
     </Box>
   );
 }

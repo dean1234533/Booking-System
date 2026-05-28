@@ -21,7 +21,7 @@ export default function HomeNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pricingOpen, setPricingOpen] = useState(false);
 
-  const logoPath = "/images/Logo.png";
+  const logoPath = "/images/IMG_9763-removebg-preview.png";
   const platformName = "yr-bookd";
   const brandColor = "#C9A84C";
 

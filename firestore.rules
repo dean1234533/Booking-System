@@ -36,6 +36,13 @@ service cloud.firestore {
         allow update, delete: if request.auth != null && request.auth.uid == barberId;
       }
 
+      // ── PAR-Q health forms — anyone can submit, only owner reads ─────────
+      match /parQSubmissions/{subId} {
+        allow read: if request.auth != null && request.auth.uid == barberId;
+        allow create: if true;
+        allow update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
       // ── Config (check-in questions etc.) — public read ───────────────────
       match /config/{configId} {
         allow read: if true;

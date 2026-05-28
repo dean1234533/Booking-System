@@ -573,14 +573,14 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
     { num: profile?.statBar3Num || 'Pro',  label: profile?.statBar3Label || 'Certified Trainer' },
   ];
 
-  const specializations = profile?.specializations || [
+  const specializations = (profile?.specializations?.length > 0 ? profile.specializations : null) || [
     { title: 'Strength & Conditioning', description: 'Build raw power and muscular endurance through proven compound lifting and progressive overload.' },
     { title: 'Fat Loss & Transformation', description: 'Science-backed nutrition guidance paired with high-intensity training protocols for real results.' },
     { title: 'Functional Fitness', description: 'Outdoor resistance training focused on real-world movement patterns that carry over to daily life.' },
     { title: '1-to-1 Coaching', description: 'Fully personalised sessions tailored to your goals, schedule, and current level of fitness.' },
   ];
 
-  const pricingPlans = profile?.pricingPlans || [
+  const pricingPlans = (profile?.pricingPlans?.length > 0 ? profile.pricingPlans : null) || [
     { name: 'Taster',   price: '£40',  period: 'one-off',   features: ['60-min session', 'Fitness assessment'], highlight: false },
     { name: 'Monthly',  price: '£280', period: 'per month', features: ['8 sessions/month', 'Nutrition guidance', 'Progress tracking'], highlight: true },
     { name: '10-Block', price: '£350', period: 'block',     features: ['10 × 60-min sessions', 'Flexible scheduling', 'Priority booking'], highlight: false },

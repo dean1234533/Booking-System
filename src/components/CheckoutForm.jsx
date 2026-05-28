@@ -25,10 +25,6 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
 
   async function handleSubmit(e) {
 
-    console.log("barber object:", barber);
-    console.log("barberEmail resolved:", barberEmail);
-    console.log("fee breakdown:", fee);
-
     e.preventDefault();
     if (!stripe || !elements) return;
 

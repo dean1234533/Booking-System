@@ -253,24 +253,24 @@ export default function Home({ tenant }) {
         {/* Stats bar — pinned to bottom of hero */}
         <Box sx={{ borderTop: `1px solid rgba(255,255,255,0.08)`, position: "relative", zIndex: 1 }}>
           <Container maxWidth="lg">
-            <Stack
-              direction={{ xs: "row", sm: "row" }}
-              sx={{ flexWrap: { xs: "wrap", sm: "nowrap" } }}
-            >
+            <Stack direction="row" sx={{ flexWrap: "nowrap" }}>
               {[
                 { num: "2,400+", label: "Verified professionals" },
                 { num: "3",      label: "Trade categories" },
                 { num: "4.9★",   label: "Average rating" },
               ].map((s, i) => (
                 <Box key={i} sx={{
-                  py: 2.5, pr: { xs: 3, sm: 4 }, mr: { xs: 3, sm: 4 },
+                  flex: 1,
+                  py: 2.5,
+                  px: { xs: 0, sm: 0 },
+                  pr: { xs: 1, sm: 4 },
                   borderRight: i < 2 ? "1px solid rgba(255,255,255,0.08)" : "none",
-                  minWidth: { xs: "auto", sm: 0 },
+                  mr: { xs: 1, sm: 4 },
                 }}>
-                  <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.3rem", sm: "1.8rem" }, fontWeight: 400, color: G.gold, lineHeight: 1 }}>
+                  <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.1rem", sm: "1.8rem" }, fontWeight: 400, color: G.gold, lineHeight: 1 }}>
                     {s.num}
                   </Typography>
-                  <Typography sx={{ fontFamily: SANS, fontSize: { xs: "0.65rem", sm: "0.72rem" }, color: "rgba(255,255,255,0.35)", mt: 0.5, letterSpacing: "0.03em" }}>
+                  <Typography sx={{ fontFamily: SANS, fontSize: { xs: "0.6rem", sm: "0.72rem" }, color: "rgba(255,255,255,0.35)", mt: 0.5, letterSpacing: "0.02em", lineHeight: 1.3 }}>
                     {s.label}
                   </Typography>
                 </Box>
@@ -353,6 +353,7 @@ export default function Home({ tenant }) {
               color:       activeCategory === cat.label ? cat.color : "rgba(255,255,255,0.55)",
               borderColor: activeCategory === cat.label ? cat.color : "rgba(255,255,255,0.1)",
               border: "1.5px solid", borderRadius: "99px", flexShrink: 0,
+              display: cat.label === "All" ? { xs: "none", sm: "inline-flex" } : "inline-flex",
               transition: "all .2s",
               "&:hover": { bgcolor: cat.bg, color: cat.color, borderColor: cat.color },
               "& .MuiChip-icon": { ml: 1 },

@@ -31,6 +31,7 @@ import FoodDiarySubmit      from "./pages/FoodDiarySubmit";
 import CheckInSubmit        from "./pages/CheckInSubmit";
 import ColourApprovalPage   from "./pages/ColourApprovalPage";
 import QueuePage            from "./pages/QueuePage";
+import FoodGenerator       from "./pages/FoodGenerator";
 
 // Split Nav & Footer imports
 import Nav               from "./components/Nav";
@@ -81,7 +82,7 @@ function AppShell() {
     // ── FIX: Review page handles its own shopId via useParams.
     // Never resolve a tenant here — if the shop is a decorator/trainer,
     // isAlternativeBookingLayout would fire and break the review page layout.
-    if (path.startsWith("/review")) {
+    if (path.startsWith("/review") || path.startsWith("/food-generator")) {
       setIsFetchingTenant(false);
       return;
     }
@@ -201,7 +202,8 @@ function AppShell() {
                       || location.pathname.startsWith('/food-diary')
                       || location.pathname.startsWith('/check-in')
                       || location.pathname.startsWith('/colour-approval')
-                      || location.pathname.startsWith('/queue');
+                      || location.pathname.startsWith('/queue')
+                      || location.pathname.startsWith('/food-generator');
 
   const computedPageTitle = useMemo(() => {
     if (tenantBarber) {
@@ -281,6 +283,7 @@ function AppShell() {
             <Route path="/check-in/:trainerId"                    element={<CheckInSubmit />} />
             <Route path="/colour-approval/:tradieId/:paletteId"   element={<ColourApprovalPage />} />
             <Route path="/queue/:shopId"                          element={<QueuePage />} />
+            <Route path="/food-generator/:barberId/:token"        element={<FoodGenerator />} />
             <Route path="/onboarding" element={<BarberRoute><Onboarding /></BarberRoute>} />
             <Route path="/dashboard/*" element={<BarberRoute><Dashboard onProfileUpdate={identifyTenant} /></BarberRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />

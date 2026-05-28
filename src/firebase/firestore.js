@@ -55,9 +55,6 @@ export const getAllBarbers = async () => {
   const snap = await getDocs(collection(db, "barbers"));
   const rawData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-  console.log("🔍 FIREBASE RAW DATA:");
-  console.table(rawData.map(b => ({ id: b.id, name: b.name, business: b.businessName })));
-
   return rawData.filter(barber => {
     const hasValidName = 
       barber.name && 

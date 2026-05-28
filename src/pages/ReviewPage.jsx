@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { 
-  Box, Typography, Paper, TextField, Button, Rating, 
-  CircularProgress, Container 
+import {
+  Box, Typography, Paper, TextField, Button, Rating,
+  CircularProgress, Container, Alert
 } from "@mui/material";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
@@ -14,6 +14,7 @@ export default function ReviewPage() {
   
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
   const [review, setReview] = useState({
     customerName: "",
     rating: 5,
@@ -22,8 +23,8 @@ export default function ReviewPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!review.customerName) return alert("Please enter your name");
-    
+    if (!review.customerName) { setError("Please enter your name."); return; }
+    setError("");
     setLoading(true);
     try {
       // This path: db/barbers/{shopId}/reviews
@@ -41,7 +42,7 @@ export default function ReviewPage() {
       setSubmitted(true);
     } catch (err) {
       console.error("Error submitting review:", err);
-      alert("Failed to send review. Please try again.");
+      setError("Failed to send review. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -102,6 +103,10 @@ export default function ReviewPage() {
             onChange={(e) => setReview({...review, comment: e.target.value})}
             sx={{ mb: 4 }}
           />
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>
+          )}
 
           <Button
             fullWidth

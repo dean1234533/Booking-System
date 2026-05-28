@@ -91,7 +91,7 @@ export default function CancelBooking() {
             })
           })
           .then(res => res.json())
-          .then(data => console.log("Refund logic result:", data))
+          .then(() => {})
           .catch((err) => console.error("Refund endpoint error:", err));
         }
         
@@ -119,7 +119,7 @@ export default function CancelBooking() {
             })
           })
           .then(res => res.json())
-          .then(data => console.log("Email sent successfully:", data))
+          .then(() => {})
           .catch(err => console.warn("Email notification failed", err));
         }
 

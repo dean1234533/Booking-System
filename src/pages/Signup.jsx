@@ -35,7 +35,6 @@ export default function Signup() {
     confirm: "",
     shopId: "",
     businessName: "",
-    customDomain: "",
     businessType: "barber"
   });
 
@@ -124,9 +123,6 @@ export default function Signup() {
         shopId: isOwner ? "self" : form.shopId,
         brandColor: activeBrandColor,
         businessType: resolvedBusinessType,
-        customDomain: isOwner && form.customDomain
-          ? (form.customDomain.startsWith("http") ? form.customDomain : `https://${form.customDomain}`)
-          : "",
       });
 
       await waitForBarberDoc(user.uid, role);
@@ -248,18 +244,6 @@ export default function Signup() {
                 )}
               </Grid>
 
-              {isOwner && (
-                <Grid item xs={12}>
-                  <TextField
-                    label="Cloudflare Custom Domain"
-                    name="customDomain"
-                    fullWidth
-                    placeholder="e.g. tracking.yourdomain.com"
-                    value={form.customDomain}
-                    onChange={handleChange}
-                  />
-                </Grid>
-              )}
 
               <Grid item xs={12}><TextField label="Full Name" name="name" fullWidth required value={form.name} onChange={handleChange} /></Grid>
               <Grid item xs={12}><TextField label="Email" name="email" type="email" fullWidth required value={form.email} onChange={handleChange} /></Grid>

@@ -15,14 +15,13 @@ import {
   Language as LanguageIcon,
   CalendarMonth as CalendarMonthIcon,
   Receipt as ReceiptIcon,
-  Web as WebIcon,
   FitnessCenter as FitnessCenterIcon,
-  MenuBook as MenuBookIcon,
   Assignment as AssignmentIcon,
   ColorLens as ColorLensIcon,
   RequestQuote as RequestQuoteIcon,
   Today as TodayIcon,
   People as PeopleIcon,
+  RestaurantMenu as RestaurantMenuIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -51,18 +50,18 @@ import ProfileTab   from "../components/dashboard/tabs/ProfileTab";
 import ServicesTab  from "../components/dashboard/tabs/ServicesTab";
 import ReviewsTab   from "../components/dashboard/tabs/ReviewsTab";
 import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
-import DesignTab    from "../components/dashboard/tabs/DesignTab";
 import PayTab       from "../components/dashboard/tabs/PayTab";
 import DomainTab    from "../components/dashboard/tabs/DomainTab";
 import InvoiceTab   from "../components/dashboard/tabs/InvoiceTab";
-import WebsiteTab       from "../components/dashboard/tabs/WebsiteTab";
 import WorkoutPlansTab  from "../components/dashboard/tabs/WorkoutPlansTab";
-import FoodDiaryTab     from "../components/dashboard/tabs/FoodDiaryTab";
-import CheckInTab       from "../components/dashboard/tabs/CheckInTab";
 import ColourApprovalTab  from "../components/dashboard/tabs/ColourApprovalTab";
 import QuoteTab           from "../components/dashboard/tabs/QuoteTab";
 import DayPlannerTab      from "../components/dashboard/tabs/DayPlannerTab";
 import QueueManagementTab from "../components/dashboard/tabs/QueueManagementTab";
+import FoodGeneratorTab  from "../components/dashboard/tabs/FoodGeneratorTab";
+import BrandSiteTab      from "../components/dashboard/tabs/BrandSiteTab";
+import ClientFormsTab    from "../components/dashboard/tabs/ClientFormsTab";
+import HaircutMemory     from "../components/HaircutMemory";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -150,6 +149,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const [terminalStatus,  setTerminalStatus]  = useState("idle");
   const [terminalSession, setTerminalSession] = useState(null);
   const pollingRef = useRef(null);
+  const handledTabParam = useRef(false);
 
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => () => { if (pollingRef.current) clearInterval(pollingRef.current); }, []);
@@ -557,23 +557,35 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "bookings",  label: "Bookings",  icon: <StoreIcon /> },
     { key: "profile",   label: "Profile",   icon: <PersonIcon /> },
     { key: "services",  label: "Services",  icon: <ListIcon /> },
-    ...(isOwner && (isBarber || isHairdresser) ? [{ key: "reviews",  label: "Reviews",  icon: <ReviewsIcon /> }]  : []),
-    ...(isOwner && isBarber   ? [{ key: "queue",    label: "Queue",    icon: <PeopleIcon /> }]   : []),
+    ...(isOwner ? [{ key: "reviews",    label: "Reviews",    icon: <ReviewsIcon /> }]  : []),
+    ...(isOwner && isBarber ? [{ key: "queue",   label: "Queue",      icon: <PeopleIcon /> }]   : []),
     { key: "finance",   label: "Finance",   icon: <PaymentsIcon /> },
-    ...(isOwner && (!initialTenant || isBarber || isHairdresser) ? [{ key: "design",   label: "Design",   icon: <PaletteIcon /> }]  : []),
+    ...(isOwner && (!initialTenant || isBarber || isHairdresser) ? [{ key: "brand",   label: "Brand & Site",   icon: <PaletteIcon /> }] : []),
     ...(isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
-    ...(isOwner && !initialTenant ? [{ key: "website",  label: "Website",  icon: <WebIcon /> }]      : []),
     ...(!initialTenant ? [{ key: "invoices",  label: "Invoices",  icon: <ReceiptIcon /> }] : []),
-    ...(isOwner && isTrainer && !initialTenant ? [{ key: "workouts",  label: "Workouts",   icon: <FitnessCenterIcon /> }] : []),
-    ...(isOwner && isTrainer && !initialTenant ? [{ key: "fooddiary", label: "Food Diary", icon: <MenuBookIcon /> }]    : []),
-    ...(isOwner && isTrainer && !initialTenant ? [{ key: "checkin",   label: "Check-In",   icon: <AssignmentIcon /> }]  : []),
-    ...(isOwner && isTrainer   ? [{ key: "pay",       label: "Pay",        icon: <NfcIcon /> }]         : []),
+    ...(isOwner && isTrainer && !initialTenant ? [{ key: "workouts",    label: "Workouts",     icon: <FitnessCenterIcon /> }] : []),
+    ...(isOwner && isTrainer && !initialTenant ? [{ key: "clientforms", label: "Client Forms", icon: <AssignmentIcon /> }]   : []),
+    ...(isOwner && isTrainer && !initialTenant ? [{ key: "foodgen",     label: "Food Gen",     icon: <RestaurantMenuIcon /> }] : []),
+    ...(isOwner ? [{ key: "pay", label: "Pay", icon: <NfcIcon /> }] : []),
     ...(isOwner && isDecorator ? [{ key: "colours",  label: "Colours",    icon: <ColorLensIcon /> }]   : []),
     ...(isOwner && isDecorator ? [{ key: "quotes",   label: "Quotes",     icon: <RequestQuoteIcon /> }]: []),
     ...(isOwner && isDecorator ? [{ key: "dayplan",  label: "Day Plan",   icon: <TodayIcon /> }]       : []),
   ];
 
   const tabIdx = (key) => tabs.findIndex(t => t.key === key);
+
+  // ── Onboarding deep-link: ?tab=domain / ?tab=finance etc. ────────────────
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!barber?.uid || dataLoading || handledTabParam.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    if (!tabParam) return;
+    handledTabParam.current = true;
+    window.history.replaceState({}, "", "/dashboard");
+    const idx = tabIdx(tabParam);
+    if (idx >= 0) setTab(idx);
+  }, [barber, dataLoading, profile.businessType, userRole.isOwner]);
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (authLoading || (dataLoading && !barber)) {
@@ -793,8 +805,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 4 Reviews (barber/hairdresser owner only) ── */}
-        {isOwner && (isBarber || isHairdresser) && (
+        {/* ── Reviews (all owner types) ── */}
+        {isOwner && (
           <TabPanel value={tab} index={tabIdx("reviews")}>
             <ReviewsTab
               reviews={reviews}
@@ -813,11 +825,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── Design (owner only) ── */}
-        {isOwner && (
-          <TabPanel value={tab} index={tabIdx("design")}>
-            <DesignTab
+        {/* ── Brand & Site (owner — Branding always, Website Content if not tenant) ── */}
+        {isOwner && (!initialTenant || isBarber || isHairdresser) && (
+          <TabPanel value={tab} index={tabIdx("brand")}>
+            <BrandSiteTab
               profile={profile} setProfile={setProfile}
+              brandColor={brandColor}
+              showWebsite={!initialTenant}
               logoPreview={logoPreview}               setLogoFile={setLogoFile}               setLogoPreview={setLogoPreview}
               heroPreviewDesktop={heroPreviewDesktop} setHeroFileDesktop={setHeroFileDesktop} setHeroPreviewDesktop={setHeroPreviewDesktop}
               heroPreviewMobile={heroPreviewMobile}   setHeroFileMobile={setHeroFileMobile}   setHeroPreviewMobile={setHeroPreviewMobile}
@@ -832,17 +846,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             <DomainTab
               profile={profile}
               barber={barber}
-              brandColor={brandColor}
-            />
-          </TabPanel>
-        )}
-
-        {/* ── Website (owner only) ── */}
-        {isOwner && (
-          <TabPanel value={tab} index={tabIdx("website")}>
-            <WebsiteTab
-              profile={profile}
-              setProfile={setProfile}
               brandColor={brandColor}
             />
           </TabPanel>
@@ -864,22 +867,22 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
-        {/* ── Food Diary (trainer owner only) ── */}
+        {/* ── Client Forms — Food Diary + Check-In (trainer owner only) ── */}
         {isOwner && isTrainer && (
-          <TabPanel value={tab} index={tabIdx("fooddiary")}>
-            <FoodDiaryTab barber={barber} brandColor={brandColor} />
+          <TabPanel value={tab} index={tabIdx("clientforms")}>
+            <ClientFormsTab barber={barber} brandColor={brandColor} />
           </TabPanel>
         )}
 
-        {/* ── Check-In (trainer owner only) ── */}
+        {/* ── Food Generator (trainer owner only) ── */}
         {isOwner && isTrainer && (
-          <TabPanel value={tab} index={tabIdx("checkin")}>
-            <CheckInTab barber={barber} brandColor={brandColor} />
+          <TabPanel value={tab} index={tabIdx("foodgen")}>
+            <FoodGeneratorTab barber={barber} brandColor={brandColor} />
           </TabPanel>
         )}
 
-        {/* ── Pay / Tap-to-Pay (trainer owner only) ── */}
-        {isOwner && isTrainer && (
+        {/* ── Pay / Tap-to-Pay (all owner types) ── */}
+        {isOwner && (
           <TabPanel value={tab} index={tabIdx("pay")}>
             <PayTab
               profile={profile} barber={barber}
@@ -926,6 +929,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
         </Box>{/* end slide wrapper */}
       </Box>
+
+      {isOwner && isBarber && (
+        <HaircutMemory shopId={barber.uid} brandColor={brandColor} />
+      )}
     </Box>
   );
 }

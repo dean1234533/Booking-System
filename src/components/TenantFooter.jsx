@@ -18,7 +18,13 @@ function contrastColor(hex) {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? "#111111" : "#ffffff";
 }
 
-export default function TenantFooter({ tenant }) {
+const LOGIN_LABEL = {
+  hairdresser: 'STYLIST LOGIN',
+  decorator:   'PRO LOGIN',
+  trainer:     'TRAINER LOGIN',
+};
+
+export default function TenantFooter({ tenant, businessType }) {
   const [modal, setModal] = useState({ open: false, title: "", content: null });
 
   if (!tenant) return null;
@@ -184,7 +190,7 @@ export default function TenantFooter({ tenant }) {
                   © {new Date().getFullYear()} {businessName}
                 </Typography>
                 <Link component={RouterLink} to="/login" sx={{ fontSize: '0.7rem', color: brandColor, textDecoration: 'none', fontWeight: 900, letterSpacing: 1 }}>
-                  BARBER LOGIN
+                  {LOGIN_LABEL[businessType] || 'BARBER LOGIN'}
                 </Link>
               </Stack>
 

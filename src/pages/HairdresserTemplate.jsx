@@ -4,8 +4,9 @@ import { db } from '../firebase/config';
 import { useNavigate } from 'react-router-dom';
 import { getFontFamily, loadGoogleFont } from '../utils/fontOptions';
 import SlotPicker from '../components/SlotPicker';
+import TenantFooter from '../components/TenantFooter';
 import { formatCurrency } from '../stripe/formatters';
-import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography,
 } from '@mui/material';
@@ -320,12 +321,13 @@ const HairdresserStyles = () => (
 /* ─── Main component ──────────────────────────────────────────────────────── */
 export default function HairdresserTemplate({ tenantData }) {
   const navigate   = useNavigate();
-  const [slots,    setSlots]    = useState([]);
-  const [reviews,  setReviews]  = useState([]);
-  const [team,     setTeam]     = useState([]);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [modal,    setModal]    = useState(null);
-  const [revIdx,   setRevIdx]   = useState(0);
+  const [slots,      setSlots]      = useState([]);
+  const [reviews,    setReviews]    = useState([]);
+  const [team,       setTeam]       = useState([]);
+  const [menuOpen,   setMenuOpen]   = useState(false);
+  const [modal,      setModal]      = useState(null);
+  const [revIdx,     setRevIdx]     = useState(0);
+  const [teamMember, setTeamMember] = useState(null);
 
   const shopId      = tenantData?.id || tenantData?.uid;
   const brandColor  = tenantData?.brandColor  || '#a07850';
@@ -336,6 +338,13 @@ export default function HairdresserTemplate({ tenantData }) {
 
   useEffect(() => { if (fontKey) loadGoogleFont(fontKey); }, [fontKey]);
   useEffect(() => { window.scrollTo(0, 0); }, []);
+
+  // Save branding so TenantLogin/TenantSignup can pick it up if navigated directly
+  useEffect(() => {
+    if (tenantData) {
+      localStorage.setItem('active_tenant_branding', JSON.stringify(tenantData));
+    }
+  }, [tenantData]);
 
   useEffect(() => {
     if (!shopId) return;
@@ -374,14 +383,25 @@ export default function HairdresserTemplate({ tenantData }) {
   ];
 
   const services = (tenantData?.services?.length > 0 ? tenantData.services : [
-    { name: 'Cut & Blow Dry',         duration: '60 min',  price: 6500  },
-    { name: 'Full Colour',            duration: '2 hrs',   price: 11000 },
-    { name: 'Highlights / Balayage',  duration: '2.5 hrs', price: 14500 },
-    { name: 'Keratin Treatment',      duration: '2 hrs',   price: 13000 },
-    { name: 'Bridal Hair',            duration: '90 min',  price: 12000 },
-    { name: 'Men\'s Cut',             duration: '45 min',  price: 4000  },
-    { name: 'Blow Dry Only',          duration: '45 min',  price: 3500  },
+    { name: 'Cut & Blow Dry',         duration: '60 min',  price: 65  },
+    { name: 'Full Colour',            duration: '2 hrs',   price: 110 },
+    { name: 'Highlights / Balayage',  duration: '2.5 hrs', price: 145 },
+    { name: 'Keratin Treatment',      duration: '2 hrs',   price: 130 },
+    { name: 'Bridal Hair',            duration: '90 min',  price: 195 },
+    { name: 'Men\'s Cut',             duration: '45 min',  price: 45  },
+    { name: 'Blow Dry Only',          duration: '45 min',  price: 35  },
   ]);
+
+  // Owner always appears first in team
+  const ownerMember = {
+    id: shopId,
+    name: tenantData?.ownerName || businessName,
+    role: tenantData?.ownerRole || 'Owner / Lead Stylist',
+    profilePic: tenantData?.profilePic || tenantData?.logoUrl || null,
+    bio: tenantData?.bio || tenantData?.aboutBody || tenantData?.aboutUs || '',
+    isOwner: true,
+  };
+  const allTeam = [ownerMember, ...team];
 
   const privacyText = tenantData?.privacyPolicy   || `At ${businessName}, we take your privacy seriously. We collect only the information needed to manage your appointments and never share your data with third parties.`;
   const termsText   = tenantData?.termsConditions || `By booking with ${businessName}, you agree to our cancellation policy. We require 24 hours notice for cancellations. Late cancellations or no-shows may incur a charge.`;
@@ -545,36 +565,42 @@ export default function HairdresserTemplate({ tenantData }) {
               {aboutQuote}
             </blockquote>
             <p className="hs-about-body">{aboutBody}</p>
-            <a href="#booking" className="hs-btn-primary" style={{ background: '#1a1714' }}>
+            <a href="#team" className="hs-btn-primary" style={{ background: '#1a1714' }}>
               Meet the Team
             </a>
           </div>
         </section>
 
         {/* ─── TEAM ─── */}
-        {(team.length > 0) && (
-          <section id="team" className="hs-team">
-            <div className="hs-team-header">
-              <span className="hs-section-label" style={{ color: brandColor }}>The Stylists</span>
-              <h2 className="hs-section-title" style={{ textAlign: 'center' }}>Meet Our Team</h2>
-            </div>
-            <div className="hs-team-grid">
-              {team.map((member, i) => (
-                <div key={member.id || i} className="hs-team-card">
-                  {member.profilePic ? (
-                    <img src={member.profilePic} alt={member.name} className="hs-team-photo" />
-                  ) : (
-                    <div className="hs-team-avatar" style={{ background: brandColor }}>
-                      {member.name?.[0]?.toUpperCase()}
-                    </div>
-                  )}
-                  <div className="hs-team-name">{member.name}</div>
-                  <div className="hs-team-role">{member.specialty || 'Stylist'}</div>
+        <section id="team" className="hs-team">
+          <div className="hs-team-header">
+            <span className="hs-section-label" style={{ color: brandColor }}>The Stylists</span>
+            <h2 className="hs-section-title" style={{ textAlign: 'center' }}>Meet Our Team</h2>
+          </div>
+          <div className="hs-team-grid">
+            {allTeam.map((member, i) => (
+              <div
+                key={member.id || i}
+                className="hs-team-card"
+                onClick={() => setTeamMember(member)}
+                style={{ cursor: 'pointer' }}
+              >
+                {member.profilePic ? (
+                  <img src={member.profilePic} alt={member.name} className="hs-team-photo" />
+                ) : (
+                  <div className="hs-team-avatar" style={{ background: brandColor }}>
+                    {member.name?.[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div className="hs-team-name">{member.name}</div>
+                <div className="hs-team-role">{member.role || member.specialty || 'Stylist'}</div>
+                <div style={{ fontSize: '0.65rem', color: brandColor, marginTop: '0.4rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  View Profile →
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* ─── REVIEWS ─── */}
         <section id="reviews" className="hs-reviews">
@@ -656,50 +682,92 @@ export default function HairdresserTemplate({ tenantData }) {
           </div>
         </section>
 
-        {/* ─── FOOTER ─── */}
-        <footer className="hs-footer">
-          <div className="hs-footer-top">
-            <a href="#" className="hs-footer-brand" style={{ color: brandColor }}>
-              {logo && <img src={logo} alt="Logo" style={{ height: 32, display: 'block', marginBottom: 6 }} />}
-              {businessName}
-            </a>
-            <div className="hs-footer-links">
-              {privacyText && (
-                <span className="hs-footer-link" onClick={() => setModal('privacy')}>Privacy</span>
+        {/* ─── TEAM PROFILE MODAL ─── */}
+        {teamMember && (
+          <div
+            onClick={() => setTeamMember(null)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              background: 'rgba(26,23,20,0.75)', backdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem',
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: '#fdfcfa', borderRadius: 6, maxWidth: 460, width: '100%',
+                overflow: 'hidden', boxShadow: '0 40px 100px rgba(0,0,0,0.35)',
+                position: 'relative',
+              }}
+            >
+              {/* Header strip */}
+              <div style={{ height: 5, background: brandColor }} />
+              <button
+                onClick={() => setTeamMember(null)}
+                style={{
+                  position: 'absolute', top: 14, right: 14, background: 'transparent',
+                  border: 'none', cursor: 'pointer', color: '#a8a29e', padding: 4,
+                  display: 'flex', alignItems: 'center',
+                }}
+              >
+                <X size={20} />
+              </button>
+              <div style={{ display: 'flex', gap: '1.5rem', padding: '1.75rem', alignItems: 'flex-start' }}>
+                {teamMember.profilePic ? (
+                  <img
+                    src={teamMember.profilePic}
+                    alt={teamMember.name}
+                    style={{ width: 90, height: 110, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
+                  />
+                ) : (
+                  <div style={{
+                    width: 90, height: 110, borderRadius: 4, flexShrink: 0,
+                    background: brandColor, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: "'Playfair Display', serif", fontSize: '2.5rem', fontWeight: 700, color: '#fff',
+                  }}>
+                    {teamMember.name?.[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: '0.4rem' }}>
+                    {teamMember.isOwner ? 'The Team' : 'Our Stylist'}
+                  </p>
+                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', fontWeight: 700, color: '#1a1714', marginBottom: '0.3rem', lineHeight: 1.1 }}>
+                    {teamMember.name}
+                  </h3>
+                  <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#a8a29e' }}>
+                    {teamMember.role || teamMember.specialty || 'Stylist'}
+                  </p>
+                </div>
+              </div>
+              {teamMember.bio && (
+                <div style={{ padding: '0 1.75rem 1.75rem' }}>
+                  <p style={{ fontSize: '0.9rem', color: '#5c5449', lineHeight: 1.85, fontWeight: 300 }}>
+                    {teamMember.bio}
+                  </p>
+                </div>
               )}
-              {termsText && (
-                <span className="hs-footer-link" onClick={() => setModal('terms')}>Terms</span>
-              )}
-              {instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="hs-footer-link" style={{ color: 'inherit' }}>Instagram</a>}
-              {tiktokUrl    && <a href={tiktokUrl}    target="_blank" rel="noopener noreferrer" className="hs-footer-link" style={{ color: 'inherit' }}>TikTok</a>}
-              {facebookUrl  && <a href={facebookUrl}  target="_blank" rel="noopener noreferrer" className="hs-footer-link" style={{ color: 'inherit' }}>Facebook</a>}
+              <div style={{ padding: '0 1.75rem 1.75rem' }}>
+                <a
+                  href="#booking"
+                  onClick={() => setTeamMember(null)}
+                  style={{
+                    display: 'inline-block', padding: '0.85rem 2rem', background: brandColor,
+                    color: '#fff', textDecoration: 'none', borderRadius: 2,
+                    fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+                  }}
+                >
+                  Book with {teamMember.name?.split(' ')[0]}
+                </a>
+              </div>
             </div>
           </div>
-          <p className="hs-footer-copy">
-            © {new Date().getFullYear()} {businessName}. All rights reserved.
-          </p>
-        </footer>
+        )}
 
-        {/* ─── LEGAL MODAL ─── */}
-        <Dialog
-          open={Boolean(modal)} onClose={() => setModal(null)}
-          maxWidth="sm" fullWidth
-          PaperProps={{ sx: { bgcolor: '#1c1917', color: '#fff', borderRadius: '4px' } }}
-        >
-          <DialogTitle sx={{ fontFamily: `${displayFont} !important`, fontWeight: 700 }}>
-            {modal === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions'}
-          </DialogTitle>
-          <DialogContent dividers sx={{ borderColor: '#333' }}>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>
-              {modal === 'privacy' ? privacyText : termsText}
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setModal(null)} sx={{ color: brandColor }}>Close</Button>
-          </DialogActions>
-        </Dialog>
+      </div>{/* end hs-page */}
 
-      </div>
+      {/* ─── FOOTER (matches all other tenant pages) ─── */}
+      <TenantFooter tenant={tenantData} businessType={tenantData?.businessType} />
     </>
   );
 }

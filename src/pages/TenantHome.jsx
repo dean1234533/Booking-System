@@ -24,7 +24,6 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getShopStaff, getBarber } from "../firebase/firestore";
-import HaircutMemory  from "../components/HaircutMemory";
 import LiveQueueSection from "../components/LiveQueueSection";
 // ── TikTok SVG ────────────────────────────────────────────────────────────────
 const TikTokIcon = ({ size = 20 }) => (
@@ -575,10 +574,6 @@ export default function TenantHome({ tenant: initialTenant }) {
           </Box>
         </Container>
       </Box>
-      {/* ── Haircut Memory FAB (barber shops only) ────────────────────────── */}
-      {isBarberShop && freshTenant?.id && (
-        <HaircutMemory shopId={freshTenant.id} brandColor={brandColor} />
-      )}
 
     </Box>
   );

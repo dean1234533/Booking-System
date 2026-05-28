@@ -43,7 +43,6 @@ export default function Signup({ tenant }) {
     confirm:         "",
     shopId:          activeTenant ? (activeTenant.id || activeTenant.uid) : "",
     businessName:    "",
-    vercelUrl:       "",
   });
 
   const [shops,            setShops]            = useState([]);
@@ -119,9 +118,6 @@ export default function Signup({ tenant }) {
         role,
         shopId: isOwner ? "self" : form.shopId,
         brandColor: activeBrandColor,
-        vercelUrl: isOwner && form.vercelUrl
-          ? (form.vercelUrl.startsWith("http") ? form.vercelUrl : `https://${form.vercelUrl}`)
-          : "",
       });
 
       await waitForBarberDoc(user.uid, role);

@@ -634,19 +634,10 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   const current = STEPS[step];
-  const isLast  = step === STEPS.length - 1;
 
   function advance(tab) {
-    if (isLast) {
-      navigate("/dashboard");
-      return;
-    }
-    // Navigate to dashboard with the right tab open via query param
-    if (tab) {
-      navigate(`/dashboard?onboardingTab=${tab}`);
-    }
-    setStep(s => s + 1);
-    setKey(k => k + 1);
+    // CTA always navigates directly — to a specific tab or the root dashboard
+    navigate(tab ? `/dashboard?tab=${tab}` : "/dashboard");
   }
 
   function skip() {

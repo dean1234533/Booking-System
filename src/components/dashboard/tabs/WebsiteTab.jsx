@@ -189,13 +189,6 @@ function BarberContent({ profile, set, brandColor }) {
         </Grid>
       </Section>
 
-      <Section title="👤 About Section">
-        <TextField fullWidth multiline rows={4} label="About Us"
-          placeholder="Tell your story — your craft, your shop, what makes you different."
-          value={profile.aboutUs || ""}
-          onChange={e => set("aboutUs", e.target.value)} />
-      </Section>
-
       <SimpleServicesSection profile={profile} set={set} brandColor={brandColor} title="✂️ Services / Price List" />
       <StatsSection profile={profile} set={set} count={3} />
     </>
@@ -261,7 +254,7 @@ function HairdresserContent({ profile, set, brandColor }) {
             <TextField fullWidth multiline rows={4} label="About Body Text"
               placeholder="Founded on the belief that every person deserves hair they love…"
               value={profile.aboutBody || profile.aboutUs || ""}
-              onChange={e => { set("aboutBody", e.target.value); set("aboutUs", e.target.value); }} />
+              onChange={e => set("aboutBody", e.target.value)} />
           </Grid>
           <Grid item xs={12}>
             <ImageField label="About Section Image (portrait)"
@@ -359,7 +352,7 @@ function DecoratorContent({ profile, set, brandColor }) {
             <TextField fullWidth multiline rows={4} label="About Body Text"
               placeholder="With over 10 years of experience in high-end residential painting…"
               value={profile.aboutBody || profile.aboutUs || ""}
-              onChange={e => { set("aboutBody", e.target.value); set("aboutUs", e.target.value); }} />
+              onChange={e => set("aboutBody", e.target.value)} />
           </Grid>
         </Grid>
       </Section>

@@ -157,63 +157,6 @@ export default function DesignTab({
           </Box>
         </Grid>
 
-        {/* ── Social media ── */}
-        <Grid item xs={12}>
-          <Divider sx={{ my: 1 }} />
-          <Typography variant="subtitle1" fontWeight={700} mb={0.5} mt={1}>Social Media Links</Typography>
-          <Typography variant="caption" color="text.secondary" display="block" mb={2}>
-            These appear in the footer of your public page.
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth size="small" label="Instagram URL"
-                placeholder="https://instagram.com/yourhandle"
-                value={profile.instagramUrl || ""}
-                onChange={e => set("instagramUrl", e.target.value)} />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth size="small" label="TikTok URL"
-                placeholder="https://tiktok.com/@yourhandle"
-                value={profile.tiktokUrl || ""}
-                onChange={e => set("tiktokUrl", e.target.value)} />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField fullWidth size="small" label="Facebook URL"
-                placeholder="https://facebook.com/yourpage"
-                value={profile.facebookUrl || ""}
-                onChange={e => set("facebookUrl", e.target.value)} />
-            </Grid>
-          </Grid>
-        </Grid>
-
-        {/* ── Contact info ── */}
-        <Grid item xs={12}>
-          <Divider sx={{ my: 1 }} />
-          <Typography variant="subtitle1" fontWeight={700} mb={0.5} mt={1}>Contact Information</Typography>
-          <Typography variant="caption" color="text.secondary" display="block" mb={2}>
-            Shown in your footer so clients can reach you.
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TextField fullWidth size="small" label="Address"
-                placeholder="123 High Street, London, W1A 1AA"
-                value={profile.address || ""}
-                onChange={e => set("address", e.target.value)} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth size="small" label="Phone Number"
-                placeholder="+44 7700 900000"
-                value={profile.phone || ""}
-                onChange={e => set("phone", e.target.value)} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField fullWidth size="small" label="Business Email"
-                placeholder="hello@yourbusiness.com"
-                value={profile.businessEmail || profile.contactEmail || ""}
-                onChange={e => { set("businessEmail", e.target.value); set("contactEmail", e.target.value); }} />
-            </Grid>
-          </Grid>
-        </Grid>
 
         {/* ── Legal ── */}
         <Grid item xs={12}>

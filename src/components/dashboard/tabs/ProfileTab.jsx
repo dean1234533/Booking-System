@@ -9,7 +9,6 @@ import {
   Instagram as InstagramIcon,
   Facebook as FacebookIcon,
   Info as InfoIcon,
-  YouTube as YouTubeIcon,
 } from "@mui/icons-material";
 
 // ── TikTok SVG (no MUI icon available) ───────────────────────────────────────
@@ -93,6 +92,18 @@ export default function ProfileTab({
           />
         </Grid>
 
+        {/* Business Email */}
+        <Grid item xs={12} sm={6}>
+          <TextField
+            label="Business Email"
+            type="email"
+            placeholder="hello@yourbusiness.com"
+            value={profile.businessEmail || profile.contactEmail || ""}
+            fullWidth
+            onChange={e => setProfile(p => ({ ...p, businessEmail: e.target.value, contactEmail: e.target.value }))}
+          />
+        </Grid>
+
         {/* Address — owner only */}
         {userRole.isOwner && (
           <Grid item xs={12} sm={6}>
@@ -132,7 +143,7 @@ export default function ProfileTab({
             Social Media & Content
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block" mb={2}>
-            Add your social links and a YouTube video URL to showcase your work.
+            Add your social links — these appear in the footer of your public page.
           </Typography>
           <Grid container spacing={2}>
 
@@ -174,23 +185,6 @@ export default function ProfileTab({
               />
             </Grid>
 
-            {/* YouTube */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="YouTube Video URL"
-                placeholder="https://youtube.com/watch?v=..."
-                fullWidth
-                value={profile.youtubeUrl || ""}
-                onChange={e => setProfile(p => ({ ...p, youtubeUrl: e.target.value }))}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <YouTubeIcon fontSize="small" sx={{ color: "#FF0000" }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
 
             {/* Facebook — owners only */}
             {userRole.isOwner && (

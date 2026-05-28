@@ -39,6 +39,9 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
   const [error, setError]     = useState("");
   const notifiedRef           = useRef(false);
   const calledRef             = useRef(false);
+  const wakeLockRef           = useRef(null);
+  const vibIntervalRef        = useRef(null);
+  const audioCtxRef           = useRef(null);
 
   // Restore session from localStorage
   useEffect(() => {
@@ -91,22 +94,85 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
     }
   }, [queue, myEntry]);
 
-  // "You've been called" notification — fires when barber clicks Call Next
+  // "You've been called" — fires sound + vibration loop when barber calls them
   useEffect(() => {
     if (!myEntry || calledRef.current) return;
     const entry = queue.find(e => e.id === myEntry.id);
     if (entry?.status === "called") {
       calledRef.current = true;
+      startCallAlerts();
       try {
         new Notification("It's your turn! 💈", {
           body: "Head to the barber now — you've been called!",
           requireInteraction: true,
         });
       } catch {}
-      // Vibrate on mobile (pattern: short-short-long)
-      try { navigator.vibrate?.([150, 80, 150, 80, 400]); } catch {}
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue, myEntry]);
+
+  // ── Wake Lock — keeps screen on while waiting ──────────────────────────────
+  async function acquireWakeLock() {
+    try {
+      if ("wakeLock" in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+      }
+    } catch {}
+  }
+  function releaseWakeLock() {
+    try { wakeLockRef.current?.release(); } catch {}
+    wakeLockRef.current = null;
+  }
+
+  // ── Alert sound via Web Audio API (no file needed) ──────────────────────────
+  function playCallAlert() {
+    try {
+      // Resume or create AudioContext (must exist from a user-gesture context)
+      const ctx = audioCtxRef.current || new (window.AudioContext || window.webkitAudioContext)();
+      audioCtxRef.current = ctx;
+      if (ctx.state === "suspended") ctx.resume();
+
+      const now = ctx.currentTime;
+      const tone = (freq, t, dur) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.7, t + 0.03);
+        gain.gain.setValueAtTime(0.7, t + dur - 0.05);
+        gain.gain.linearRampToValueAtTime(0, t + dur);
+        osc.start(t);
+        osc.stop(t + dur);
+      };
+      // Rising three-tone alert, repeated twice
+      tone(523, now,       0.22);
+      tone(659, now + 0.28, 0.22);
+      tone(784, now + 0.56, 0.35);
+      tone(523, now + 1.2,  0.22);
+      tone(659, now + 1.48, 0.22);
+      tone(784, now + 1.76, 0.45);
+    } catch {}
+  }
+
+  // ── Start repeated vibration + sound until acknowledged ────────────────────
+  function startCallAlerts() {
+    playCallAlert();
+    try { navigator.vibrate?.([300, 100, 300, 100, 500]); } catch {}
+    // Repeat every 4 s until they see the screen
+    vibIntervalRef.current = setInterval(() => {
+      playCallAlert();
+      try { navigator.vibrate?.([300, 100, 300, 100, 500]); } catch {}
+    }, 4000);
+  }
+
+  function stopCallAlerts() {
+    clearInterval(vibIntervalRef.current);
+    vibIntervalRef.current = null;
+    try { navigator.vibrate?.(0); } catch {}
+  }
 
   async function joinQueue() {
     if (!form.name.trim()) { setError("Enter your name."); return; }
@@ -125,7 +191,10 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
       setMyEntry(entry);
       localStorage.setItem(`queue_${shopId}`, JSON.stringify(entry));
       setView("waiting");
+      // Initialise AudioContext on user gesture so it's ready when called
+      try { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
       try { Notification.requestPermission(); } catch {}
+      acquireWakeLock();
     } catch (e) {
       console.error(e);
       setError("Could not join queue — please try again.");
@@ -138,6 +207,8 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
     setForm({ name: "", haircutType: "", preferredBarber: "" });
     notifiedRef.current = false;
     calledRef.current   = false;
+    releaseWakeLock();
+    stopCallAlerts();
   }
 
   const myQueueEntry = myEntry ? queue.find(e => e.id === myEntry.id) : null;
@@ -341,7 +412,7 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
                 )}
 
                 <Typography sx={{ fontFamily: SANS, fontSize: "0.66rem", color: "rgba(255,255,255,0.22)", mb: 3 }}>
-                  Updates in real time — keep this page open
+                  Keep this page open — your phone will sound and vibrate when called
                 </Typography>
 
                 <Button onClick={leaveQueue}

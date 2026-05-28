@@ -125,12 +125,16 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
   }
 
   // ── Alert sound via Web Audio API (no file needed) ──────────────────────────
-  function playCallAlert() {
+  // ── Sound alert — async so AudioContext.resume() is properly awaited ─────────
+  async function playCallAlert() {
     try {
-      // Resume or create AudioContext (must exist from a user-gesture context)
-      const ctx = audioCtxRef.current || new (window.AudioContext || window.webkitAudioContext)();
-      audioCtxRef.current = ctx;
-      if (ctx.state === "suspended") ctx.resume();
+      let ctx = audioCtxRef.current;
+      if (!ctx) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        audioCtxRef.current = ctx;
+      }
+      // MUST await resume — otherwise tones schedule before audio is unblocked
+      if (ctx.state !== "running") await ctx.resume();
 
       const now = ctx.currentTime;
       const tone = (freq, t, dur) => {
@@ -138,33 +142,32 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.type = "triangle";
+        osc.type = "square"; // square wave is louder and cuts through noise
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.7, t + 0.03);
-        gain.gain.setValueAtTime(0.7, t + dur - 0.05);
+        gain.gain.linearRampToValueAtTime(1.0, t + 0.02);
+        gain.gain.setValueAtTime(1.0, t + dur - 0.04);
         gain.gain.linearRampToValueAtTime(0, t + dur);
         osc.start(t);
-        osc.stop(t + dur);
+        osc.stop(t + dur + 0.05);
       };
-      // Rising three-tone alert, repeated twice
-      tone(523, now,       0.22);
-      tone(659, now + 0.28, 0.22);
-      tone(784, now + 0.56, 0.35);
-      tone(523, now + 1.2,  0.22);
-      tone(659, now + 1.48, 0.22);
-      tone(784, now + 1.76, 0.45);
-    } catch {}
+      // Two-pulse alarm: beep-beep ... beep-beep
+      tone(880, now,        0.18);
+      tone(880, now + 0.22, 0.18);
+      tone(880, now + 0.7,  0.18);
+      tone(880, now + 0.92, 0.18);
+    } catch (e) { console.warn("Alert sound failed:", e); }
   }
 
-  // ── Start repeated vibration + sound until acknowledged ────────────────────
+  // ── Start repeated sound until they acknowledge ────────────────────────────
+  // Note: navigator.vibrate only works on Android Chrome — iOS does not support it.
+  // Sound is the primary alert mechanism for all devices.
   function startCallAlerts() {
     playCallAlert();
-    try { navigator.vibrate?.([300, 100, 300, 100, 500]); } catch {}
-    // Repeat every 4 s until they see the screen
+    try { navigator.vibrate?.([300, 100, 300, 100, 600]); } catch {}
     vibIntervalRef.current = setInterval(() => {
       playCallAlert();
-      try { navigator.vibrate?.([300, 100, 300, 100, 500]); } catch {}
+      try { navigator.vibrate?.([300, 100, 300, 100, 600]); } catch {}
     }, 4000);
   }
 
@@ -412,7 +415,7 @@ export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displ
                 )}
 
                 <Typography sx={{ fontFamily: SANS, fontSize: "0.66rem", color: "rgba(255,255,255,0.22)", mb: 3 }}>
-                  Keep this page open — your phone will sound and vibrate when called
+                  Keep this page open — your phone will play a sound when you're called
                 </Typography>
 
                 <Button onClick={leaveQueue}

@@ -24,7 +24,6 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getShopStaff, getBarber } from "../firebase/firestore";
-import LiveQueueSection from "../components/LiveQueueSection";
 // ── TikTok SVG ────────────────────────────────────────────────────────────────
 const TikTokIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: "block" }}>
@@ -424,16 +423,6 @@ export default function TenantHome({ tenant: initialTenant }) {
         </Grid>
       </Container>
  
-      {/* ── 4.5 LIVE QUEUE (barber shops only) ──────────────────────────────── */}
-      {isBarberShop && freshTenant?.id && (
-        <LiveQueueSection
-          shopId={freshTenant.id}
-          brandColor={brandColor}
-          displayFont={displayFont}
-          team={team}
-        />
-      )}
-
       {/* ── 5. REVIEWS ───────────────────────────────────────────────────────── */}
       <Box sx={{
         py: { xs: 10, md: 15 }, bgcolor: "#0d0d0d",

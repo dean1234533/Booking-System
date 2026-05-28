@@ -516,27 +516,44 @@ export default function DomainTab({barber, brandColor}) {
             {dnsRecords && (
               <Box mt={2}>
                 <Alert severity="success" sx={{mb: 2}}>
-                  Add these records in your domain registrar's DNS settings,
-                  then we'll verify automatically.
+                  Follow the steps below in your domain registrar's DNS settings.
                 </Alert>
+
                 {dnsRecords.map((rec, i) => (
-                  <Box key={i} mb={1.5}>
-                    <Typography
-                      variant="caption"
-                      fontWeight={700}
-                      color="text.secondary"
-                      display="block"
-                      mb={0.5}
-                    >
-                      {rec.type} Record — {rec.description}
-                    </Typography>
-                    <CopyField label="Name"  value={rec.name} />
-                    <CopyField label="Value" value={rec.value} />
-                  </Box>
+                  rec.type === "FORWARD" ? (
+                    /* Root domain — can't use CNAME, use registrar forwarding */
+                    <Box key={i} mb={2} p={2} sx={{ bgcolor: "#FFF8E1", border: "1px solid #FFE082", borderRadius: 2 }}>
+                      <Typography variant="caption" fontWeight={800} color="warning.dark" display="block" mb={0.5}>
+                        Step {i + 1} — Root Domain Forwarding (@ / naked domain)
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.7 }}>
+                        You <strong>cannot</strong> add a CNAME for <code>@</code> — GoDaddy and most registrars
+                        block this. Instead, set up a <strong>domain forward / redirect</strong>:
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        In GoDaddy: <strong>Domains → Manage → Forwarding → Add Forwarding</strong>
+                      </Typography>
+                      <CopyField label="Forward to" value={rec.value} />
+                      <Typography variant="caption" color="text.secondary">
+                        Set type to <strong>Permanent (301)</strong> and forward with path.
+                      </Typography>
+                    </Box>
+                  ) : (
+                    /* Normal DNS record */
+                    <Box key={i} mb={2}>
+                      <Typography variant="caption" fontWeight={800} color="text.secondary" display="block" mb={0.5}>
+                        Step {i + 1} — {rec.type} Record — {rec.description}
+                      </Typography>
+                      <CopyField label="Type"  value={rec.type} />
+                      <CopyField label="Name"  value={rec.name} />
+                      <CopyField label="Value" value={rec.value} />
+                    </Box>
+                  )
                 ))}
+
                 <Alert severity="info" sx={{mt: 1}}>
-                  DNS changes can take up to 48 hours to propagate. We'll update
-                  your status automatically once verified.
+                  DNS changes can take up to 48 hours to propagate. Your domain status
+                  will update automatically once verified.
                 </Alert>
               </Box>
             )}

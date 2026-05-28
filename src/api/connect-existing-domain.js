@@ -48,9 +48,10 @@ export async function POST(req, res) {
   }
 
   // Fallback variables using your exact .env layout names
-  const ZONE_ID = process.env.ZONE_ID || "";
-  const API_TOKEN = process.env.API_TOKEN || "";
-  const APP_ORIGIN = process.env.APP_ORIGIN || "bookehtrim.co.uk";
+  const ZONE_ID    = process.env.ZONE_ID    || "";
+  const API_TOKEN  = process.env.API_TOKEN  || "";
+  // CNAME target — must be the fallback subdomain, not the root zone
+  const CNAME_TARGET = process.env.CNAME_TARGET || "fallback.bookehtrim.co.uk";
 
   try {
     const cfRes = await fetch(`${CF_API_BASE}/zones/${ZONE_ID}/custom_hostnames`, {
@@ -85,8 +86,8 @@ export async function POST(req, res) {
       domain,
       customHostnameId: normalId,
       dnsRecords: [
-        { type: "CNAME", name: "@", value: APP_ORIGIN },
-        { type: "CNAME", name: "www", value: APP_ORIGIN }
+        { type: "CNAME", name: "www", value: CNAME_TARGET, description: "Point www subdomain to your booking site" },
+        { type: "FORWARD", name: "@", value: `https://www.${domain}`, description: "Redirect root domain to www — use your registrar's domain forwarding feature" }
       ]
     });
 
@@ -97,8 +98,8 @@ export async function POST(req, res) {
       domain,
       customHostnameId: "emergency_bypass",
       dnsRecords: [
-        { type: "CNAME", name: "@", value: APP_ORIGIN },
-        { type: "CNAME", name: "www", value: APP_ORIGIN }
+        { type: "CNAME", name: "www", value: CNAME_TARGET, description: "Point www subdomain to your booking site" },
+        { type: "FORWARD", name: "@", value: `https://www.${domain}`, description: "Redirect root domain to www — use your registrar's domain forwarding feature" }
       ]
     });
   }

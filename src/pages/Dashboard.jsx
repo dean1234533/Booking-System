@@ -22,6 +22,7 @@ import {
   ColorLens as ColorLensIcon,
   RequestQuote as RequestQuoteIcon,
   Today as TodayIcon,
+  People as PeopleIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -58,9 +59,10 @@ import WebsiteTab       from "../components/dashboard/tabs/WebsiteTab";
 import WorkoutPlansTab  from "../components/dashboard/tabs/WorkoutPlansTab";
 import FoodDiaryTab     from "../components/dashboard/tabs/FoodDiaryTab";
 import CheckInTab       from "../components/dashboard/tabs/CheckInTab";
-import ColourApprovalTab from "../components/dashboard/tabs/ColourApprovalTab";
-import QuoteTab          from "../components/dashboard/tabs/QuoteTab";
-import DayPlannerTab     from "../components/dashboard/tabs/DayPlannerTab";
+import ColourApprovalTab  from "../components/dashboard/tabs/ColourApprovalTab";
+import QuoteTab           from "../components/dashboard/tabs/QuoteTab";
+import DayPlannerTab      from "../components/dashboard/tabs/DayPlannerTab";
+import QueueManagementTab from "../components/dashboard/tabs/QueueManagementTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -100,7 +102,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     specialty: "", address: "", bio: "", role: "staff",
     openingHours: "", vercelUrl: "", customDomain: "", aboutUs: "",
     profilePic: "", logoUrl: "", heroImage: "", heroImageMobile: "",
-    stripeConnected: false,
+    stripeConnected: false, stripeAccountId: "",
+    subscriptionStatus: "", trialEndsAt: null,
+    stripeCustomerId: "", stripeSubscriptionId: "",
     // ── Social links — editable by ALL barbers (staff + owners) ──
     instagramUrl: "", tiktokUrl: "", facebookUrl: "",
     privacyPolicy: "", termsConditions: "",
@@ -186,6 +190,17 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         setToast("Could not verify Stripe connection. Please refresh.");
       }
     })();
+  }, [barber]);
+
+  // ── Handle post-subscription-checkout redirect ────────────────────────────
+  useEffect(() => {
+    if (!barber?.uid) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("subscriptionSuccess") !== "true") return;
+    window.history.replaceState({}, "", "/dashboard");
+    setToast("🎉 Subscription activated! Your site is now live.");
+    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [barber]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
@@ -489,12 +504,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount:      Math.round(Number(terminalAmount) * 100),
-          currency:    "gbp",
-          description: terminalService || terminalNote || "Haircut",
-          barberId:    barber.uid,
-          barberName:  profile.name || profile.businessName || "Barber",
-          note:        terminalNote,
+          amount:         Math.round(Number(terminalAmount) * 100),
+          currency:       "gbp",
+          description:    terminalService || terminalNote || "Haircut",
+          barberId:       barber.uid,
+          barberName:     profile.name || profile.businessName || "Barber",
+          barberStripeId: profile.stripeAccountId || "",
+          note:           terminalNote,
         }),
       });
       const data = await res.json();
@@ -530,9 +546,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     const b = parseInt(brandColor.slice(5, 7), 16) || 0;
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? "#1A1A1A" : "#ffffff";
   })();
-  const isBarber    = !profile.businessType || profile.businessType === "barber";
-  const isTrainer   = profile.businessType === "trainer";
-  const isDecorator = profile.businessType === "decorator";
+  const isBarber      = !profile.businessType || profile.businessType === "barber";
+  const isTrainer     = profile.businessType === "trainer";
+  const isDecorator   = profile.businessType === "decorator";
+  const isHairdresser = profile.businessType === "hairdresser";
   const isOwner     = userRole.isOwner;
 
   const tabs = [
@@ -540,15 +557,16 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "bookings",  label: "Bookings",  icon: <StoreIcon /> },
     { key: "profile",   label: "Profile",   icon: <PersonIcon /> },
     { key: "services",  label: "Services",  icon: <ListIcon /> },
-    ...(isOwner && isBarber   ? [{ key: "reviews",  label: "Reviews",  icon: <ReviewsIcon /> }]  : []),
+    ...(isOwner && (isBarber || isHairdresser) ? [{ key: "reviews",  label: "Reviews",  icon: <ReviewsIcon /> }]  : []),
+    ...(isOwner && isBarber   ? [{ key: "queue",    label: "Queue",    icon: <PeopleIcon /> }]   : []),
     { key: "finance",   label: "Finance",   icon: <PaymentsIcon /> },
-    ...(isOwner               ? [{ key: "design",   label: "Design",   icon: <PaletteIcon /> }]  : []),
+    ...(isOwner && (!initialTenant || isBarber || isHairdresser) ? [{ key: "design",   label: "Design",   icon: <PaletteIcon /> }]  : []),
     ...(isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
-    ...(isOwner               ? [{ key: "website",  label: "Website",  icon: <WebIcon /> }]      : []),
-    { key: "invoices",  label: "Invoices",  icon: <ReceiptIcon /> },
-    ...(isOwner && isTrainer   ? [{ key: "workouts",  label: "Workouts",   icon: <FitnessCenterIcon /> }] : []),
-    ...(isOwner && isTrainer   ? [{ key: "fooddiary", label: "Food Diary", icon: <MenuBookIcon /> }]    : []),
-    ...(isOwner && isTrainer   ? [{ key: "checkin",   label: "Check-In",   icon: <AssignmentIcon /> }]  : []),
+    ...(isOwner && !initialTenant ? [{ key: "website",  label: "Website",  icon: <WebIcon /> }]      : []),
+    ...(!initialTenant ? [{ key: "invoices",  label: "Invoices",  icon: <ReceiptIcon /> }] : []),
+    ...(isOwner && isTrainer && !initialTenant ? [{ key: "workouts",  label: "Workouts",   icon: <FitnessCenterIcon /> }] : []),
+    ...(isOwner && isTrainer && !initialTenant ? [{ key: "fooddiary", label: "Food Diary", icon: <MenuBookIcon /> }]    : []),
+    ...(isOwner && isTrainer && !initialTenant ? [{ key: "checkin",   label: "Check-In",   icon: <AssignmentIcon /> }]  : []),
     ...(isOwner && isTrainer   ? [{ key: "pay",       label: "Pay",        icon: <NfcIcon /> }]         : []),
     ...(isOwner && isDecorator ? [{ key: "colours",  label: "Colours",    icon: <ColorLensIcon /> }]   : []),
     ...(isOwner && isDecorator ? [{ key: "quotes",   label: "Quotes",     icon: <RequestQuoteIcon /> }]: []),
@@ -599,6 +617,71 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       />
 
       <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 1.5, md: 3 }, mt: 3 }}>
+
+        {/* ── Lapsed subscription overlay (owner's own dashboard only) ── */}
+        {!initialTenant && isOwner && (profile.subscriptionStatus === "past_due" || profile.subscriptionStatus === "canceled") && (
+          <Box sx={{
+            position: "fixed", inset: 0, zIndex: 1200,
+            bgcolor: "rgba(0,0,0,0.85)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            px: 2,
+          }}>
+            <Box sx={{
+              bgcolor: "#111",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 3,
+              p: { xs: 4, md: 5 },
+              maxWidth: 460,
+              width: "100%",
+              textAlign: "center",
+            }}>
+              <Box sx={{ fontSize: 48, mb: 2 }}>⚠️</Box>
+              <Box component="h2" sx={{ m: 0, mb: 1.5, color: "#fff", fontFamily: "'Playfair Display',serif", fontSize: "1.5rem", fontWeight: 800 }}>
+                {profile.subscriptionStatus === "canceled" ? "Subscription cancelled" : "Subscription lapsed"}
+              </Box>
+              <Box component="p" sx={{ m: 0, mb: 3, color: "#9ca3af", fontSize: "0.9rem", lineHeight: 1.75 }}>
+                {profile.subscriptionStatus === "canceled"
+                  ? "Your subscription has been cancelled. Reactivate to bring your booking site back online and regain full dashboard access."
+                  : "Your last payment failed. Reactivate your subscription to bring your site back online and unlock your dashboard."
+                }
+              </Box>
+              <Button
+                variant="contained"
+                onClick={async () => {
+                  if (!barber?.uid || !barber?.email) return;
+                  const res  = await fetch("/api/create-subscription", {
+                    method:  "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body:    JSON.stringify({ barberId: barber.uid, email: barber.email }),
+                  });
+                  const data = await res.json();
+                  if (data.url) window.location.href = data.url;
+                }}
+                sx={{
+                  bgcolor: "#C9A84C", color: "#0d0d0d",
+                  fontWeight: 700, fontSize: "0.85rem", letterSpacing: "0.06em",
+                  px: 5, py: 1.5,
+                  "&:hover": { bgcolor: "#b8943e" },
+                }}
+              >
+                Reactivate — £10/month
+              </Button>
+              <Box sx={{ mt: 2 }}>
+                <Box
+                  component="button"
+                  onClick={handleLogout}
+                  sx={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "#6b7280", fontSize: "0.8rem",
+                    "&:hover": { color: "#9ca3af" },
+                  }}
+                >
+                  Log out
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        )}
 
         {/* ── Premium pill tab bar ── */}
         <Box sx={{
@@ -710,8 +793,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 4 Reviews (barber owner only) ── */}
-        {isOwner && isBarber && (
+        {/* ── 4 Reviews (barber/hairdresser owner only) ── */}
+        {isOwner && (isBarber || isHairdresser) && (
           <TabPanel value={tab} index={tabIdx("reviews")}>
             <ReviewsTab
               reviews={reviews}
@@ -723,8 +806,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         {/* ── Finance ── */}
         <TabPanel value={tab} index={tabIdx("finance")}>
           <FinanceTab
+            barber={barber}
             profile={profile} setProfile={setProfile} userRole={userRole}
             stripeLoading={stripeLoading} handleConnectStripe={handleConnectStripe}
+            hideDeposit={Boolean(initialTenant) && !isBarber}
           />
         </TabPanel>
 
@@ -808,6 +893,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
               handleResetTerminal={handleResetTerminal}
               handleCopyPayLink={handleCopyPayLink}
             />
+          </TabPanel>
+        )}
+
+        {/* ── Queue Management (barber owner only) ── */}
+        {isOwner && isBarber && (
+          <TabPanel value={tab} index={tabIdx("queue")}>
+            <QueueManagementTab barber={barber} brandColor={brandColor} />
           </TabPanel>
         )}
 

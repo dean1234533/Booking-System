@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 // Grosses up the deposit so customer pays all fees
 // Barber always receives the exact deposit amount
 function calculateTotal(depositPence) {
-  const platformFeePercent = 0.05;       // Your 5% cut
+  const platformFeePercent = 0.025;      // 2.5% platform application fee
   const stripeTotalPercent = 0.0175;     // 1.5% standard + 0.25% connect
   const stripeTotalFixed = 45;           // 20p standard + 25p connect (in pence)
 

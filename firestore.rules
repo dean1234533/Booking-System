@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Top-level slots (read by BookingForm) ─────────────────────────────────
+    match /slots/{slotId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ── Barbers ───────────────────────────────────────────────────────────────
+    match /barbers/{barberId} {
+      // Public read — needed for all tenant pages, booking, search
+      allow read: if true;
+      // Only the authenticated owner can write their own document
+      allow write: if request.auth != null && request.auth.uid == barberId;
+
+      // ── Reviews — anyone can post, only owner can delete ─────────────────
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Food diary — anyone can submit via the shared link ────────────────
+      match /foodDiarySubmissions/{subId} {
+        allow read: if request.auth != null && request.auth.uid == barberId;
+        allow create: if true;
+        allow update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Check-in — anyone can submit via the shared link ─────────────────
+      match /checkInSubmissions/{subId} {
+        allow read: if request.auth != null && request.auth.uid == barberId;
+        allow create: if true;
+        allow update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Config (check-in questions etc.) — public read ───────────────────
+      match /config/{configId} {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Staff — public read (for team pages), auth create ────────────────
+      match /staff/{staffId} {
+        allow read: if true;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null
+          && (request.auth.uid == barberId || request.auth.uid == staffId);
+      }
+
+      // ── Live queue — anyone can join, owner manages ───────────────────────
+      match /liveQueue/{entryId} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Queue config — public read (open/closed banner) ──────────────────
+      match /queueConfig/{configId} {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Haircut memory — anyone can read/add cuts via the FAB ────────────
+      match /haircutMemories/{phoneKey}/cuts/{cutId} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Colour palettes — public read, owner writes ───────────────────────
+      match /colourPalettes/{paletteId} {
+        allow read: if true;
+        allow create, update, delete: if request.auth != null && request.auth.uid == barberId;
+
+        // Client approvals — anyone can submit ──────────────────────────────
+        match /approvals/{approvalId} {
+          allow read: if request.auth != null && request.auth.uid == barberId;
+          allow create: if true;
+          allow update, delete: if request.auth != null && request.auth.uid == barberId;
+        }
+      }
+
+      // ── Workout plans — public read (clients view via link) ──────────────
+      match /workoutPlans/{planId} {
+        allow read: if true;
+        allow create, update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Bookings (subcollection) — anyone can create, owner manages ───────
+      match /bookings/{bookingId} {
+        allow read: if request.auth != null && request.auth.uid == barberId;
+        allow create: if true;
+        allow update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Day planner — owner only ──────────────────────────────────────────
+      match /dayPlan/{dayKey}/jobs/{jobId} {
+        allow read, write: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Quotes — owner only ───────────────────────────────────────────────
+      match /quotes/{quoteId} {
+        allow read, write: if request.auth != null && request.auth.uid == barberId;
+      }
+    }
+
+    // ── Deny everything else ──────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

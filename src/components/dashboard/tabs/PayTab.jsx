@@ -30,10 +30,10 @@ export default function PayTab({
         <NfcIcon sx={{ color: "#38A169" }} />
         <Box flex={1}>
           <Typography variant="subtitle2" fontWeight={800} color="#276749">
-            In-Person Payments via Stripe — 1.5% + 10p per transaction · Free to set up · No hardware needed
+            In-Person Payments via Stripe — 1% platform fee + Stripe's ~1.5% + 10p · No hardware needed
           </Typography>
           <Typography variant="caption" color="#2F855A">
-            Customer scans the QR code and pays with Apple Pay, Google Pay, or card on their phone.
+            Customer scans the QR code and pays with Apple Pay, Google Pay, or card on their phone. Lower rate than online bookings (2.5%) since you're face-to-face.
           </Typography>
         </Box>
       </Paper>

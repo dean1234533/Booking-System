@@ -1,12 +1,13 @@
 import React, { useState } from "react";
-import { 
+import {
   AppBar, Toolbar, Typography, Button, Container, Box, IconButton,
-  useScrollTrigger, Slide, Stack, Drawer, List, ListItem, 
-  ListItemButton, ListItemText, Divider, useTheme
+  useScrollTrigger, Slide, Stack, Drawer, List, ListItem,
+  ListItemButton, ListItemText,
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
+import PricingModal from "./PricingModal";
 
 function HideOnScroll(props) {
   const { children } = props;
@@ -17,8 +18,8 @@ function HideOnScroll(props) {
 export default function HomeNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
 
   const logoPath = "/images/Logo.png";
   const platformName = "BOOK-EH-TRIM";
@@ -69,16 +70,22 @@ export default function HomeNav() {
 
               {/* DESKTOP NAV */}
               <Stack direction="row" spacing={3} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
+                <Button
+                  onClick={() => setPricingOpen(true)}
+                  sx={{ color: "rgba(255,255,255,0.7)", fontWeight: 600, fontSize: '0.85rem', '&:hover': { color: brandColor } }}
+                >
+                  PRICING
+                </Button>
                 <Button onClick={() => navigate("/login")} sx={{ color: "#FFF", fontWeight: 600, fontSize: '0.85rem', '&:hover': { color: brandColor } }}>
                   LOGIN
                 </Button>
-                <Button 
+                <Button
                   variant="outlined"
                   onClick={scrollToMarketplace}
-                  sx={{ 
-                    borderColor: brandColor, color: brandColor, fontWeight: 700, 
+                  sx={{
+                    borderColor: brandColor, color: brandColor, fontWeight: 700,
                     borderRadius: '50px', px: 3, py: 0.8, fontSize: '0.8rem',
-                    '&:hover': { bgcolor: brandColor, color: '#000', borderColor: brandColor } 
+                    '&:hover': { bgcolor: brandColor, color: '#000', borderColor: brandColor }
                   }}
                 >
                   BROWSE SERVICES
@@ -105,17 +112,23 @@ export default function HomeNav() {
             <CloseIcon />
           </IconButton>
           <List sx={{ mt: 2 }}>
-            {['LOGIN', 'BROWSE SERVICES'].map((text) => (
+            {['PRICING', 'LOGIN', 'BROWSE SERVICES'].map((text) => (
               <ListItem key={text} disablePadding sx={{ mb: 2 }}>
-                <ListItemButton 
-                  onClick={() => text === 'LOGIN' ? navigate('/login') : scrollToMarketplace()}
+                <ListItemButton
+                  onClick={() => {
+                    if (text === 'LOGIN') { setMobileOpen(false); navigate('/login'); }
+                    else if (text === 'BROWSE SERVICES') scrollToMarketplace();
+                    else { setMobileOpen(false); setPricingOpen(true); }
+                  }}
                   sx={{ borderRadius: 2, border: text === 'BROWSE SERVICES' ? `1px solid ${brandColor}` : 'none' }}
                 >
-                  <ListItemText 
-                    primary={text} 
-                    primaryTypographyProps={{ 
-                      textAlign: 'center', color: text === 'BROWSE SERVICES' ? brandColor : '#FFF', fontWeight: 800 
-                    }} 
+                  <ListItemText
+                    primary={text}
+                    primaryTypographyProps={{
+                      textAlign: 'center',
+                      color: text === 'BROWSE SERVICES' ? brandColor : text === 'PRICING' ? 'rgba(255,255,255,0.6)' : '#FFF',
+                      fontWeight: 800,
+                    }}
                   />
                 </ListItemButton>
               </ListItem>
@@ -123,6 +136,8 @@ export default function HomeNav() {
           </List>
         </Box>
       </Drawer>
+
+      <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
     </>
   );
 }

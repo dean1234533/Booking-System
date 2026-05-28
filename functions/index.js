@@ -1,6 +1,7 @@
 "use strict";
 
 const {onCall, HttpsError, onRequest} = require("firebase-functions/v2/https");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const axios = require("axios");
@@ -456,33 +457,91 @@ exports.createStripeInvoice = onCall(
 
       const stripe = new Stripe(STRIPE_SECRET.value());
 
+      // Route the invoice through the barber's own Stripe Connect account so
+      // the money lands in their account. The platform takes 2.5% as an
+      // application fee, consistent with online booking payments.
+      const barberSnap = await admin.firestore()
+          .collection("barbers").doc(request.auth.uid).get();
+      const stripeAccountId = barberSnap.data()?.stripeAccountId;
+
+      if (!stripeAccountId) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Connect your Stripe account in the Finance tab before sending invoices.",
+        );
+      }
+
+      const connectOpts = {stripeAccount: stripeAccountId};
+      const amountPence = Math.round(amount * 100);
+      const platformFee = Math.round(amountPence * 0.025); // 2.5%
+
       try {
-        const existing = await stripe.customers.list({email: clientEmail, limit: 1});
+        // Customer must exist on the connected account, not the platform account
+        const existing = await stripe.customers.list(
+            {email: clientEmail, limit: 1}, connectOpts,
+        );
         const customer = existing.data.length > 0 ?
           existing.data[0] :
-          await stripe.customers.create({email: clientEmail, name: clientName});
+          await stripe.customers.create(
+              {email: clientEmail, name: clientName || clientEmail}, connectOpts,
+          );
 
+        // Create the invoice on the connected account with the platform fee
         const invoice = await stripe.invoices.create({
           customer: customer.id,
           collection_method: "send_invoice",
           days_until_due: 7,
-        });
+          application_fee_amount: platformFee,
+        }, connectOpts);
 
         await stripe.invoiceItems.create({
           customer: customer.id,
           invoice: invoice.id,
-          amount: Math.round(amount * 100),
+          amount: amountPence,
           currency: "gbp",
           description,
-        });
+        }, connectOpts);
 
-        const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
-        await stripe.invoices.sendInvoice(invoice.id);
+        const finalized = await stripe.invoices.finalizeInvoice(
+            invoice.id, {}, connectOpts,
+        );
+        await stripe.invoices.sendInvoice(invoice.id, {}, connectOpts);
 
         return {success: true, invoiceUrl: finalized.hosted_invoice_url};
       } catch (error) {
         console.error("createStripeInvoice error:", error.message);
-        throw new HttpsError("internal", "Failed to create invoice.");
+        throw new HttpsError("internal", "Failed to create invoice: " + error.message);
       }
+    },
+);
+
+// ── Trial expiry — runs daily at 02:00 UTC ────────────────────────────────────
+// Finds any barber whose 30-day trial has ended and flips subscriptionStatus
+// from "trialing" to "past_due", which takes their public site offline until
+// they subscribe.
+exports.checkTrialExpiry = onSchedule(
+    {schedule: "every 24 hours", timeZone: "UTC", secrets: []},
+    async () => {
+      const db = admin.firestore();
+      const now = admin.firestore.Timestamp.now();
+
+      const snap = await db
+          .collection("barbers")
+          .where("subscriptionStatus", "==", "trialing")
+          .where("trialEndsAt", "<=", now)
+          .get();
+
+      if (snap.empty) {
+        console.log("checkTrialExpiry: no expired trials found");
+        return;
+      }
+
+      const batch = db.batch();
+      snap.docs.forEach((doc) => {
+        batch.update(doc.ref, {subscriptionStatus: "past_due"});
+      });
+      await batch.commit();
+
+      console.log(`checkTrialExpiry: flipped ${snap.size} trial(s) to past_due`);
     },
 );

@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { Star, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { 
-  Box, Typography, Container, Stack, Link, Divider, 
+import {
+  Typography,
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
-  Grid, Paper, Avatar, IconButton
 } from "@mui/material";
-import { TextField } from '@mui/material';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 
 /* ─── Global style injection ─────────────────────────────── */
@@ -149,9 +147,8 @@ const GlobalStyles = () => (
     .dt-reviews-header { text-align: center; margin-bottom: 4rem; }
     .dt-review-card {
       background: var(--cream); border: 1px solid var(--stone);
-      border-radius: 4px; padding: 2.25rem;
+      border-radius: 4px; padding: 2.5rem;
       display: flex; flex-direction: column; gap: 1.25rem;
-      max-width: 600px; margin: 0 auto;
     }
     .dt-review-quote { font-size: 2.5rem; color: var(--stone); line-height: 1; font-family: 'Playfair Display', serif; }
     .dt-review-text { font-size: 1.1rem; color: var(--ink-mid); line-height: 1.75; font-weight: 300; }
@@ -201,7 +198,7 @@ const GlobalStyles = () => (
       transition: color 0.2s;
     }
     .dt-footer-copy { font-size: 0.72rem; color: rgba(255,255,255,0.2); margin-top: 2rem; text-align: center; letter-spacing: 0.06em; }
-    .ba-slider { position: relative; width: 100%; aspect-ratio: 4/5; border-radius: 4px; overflow: hidden; cursor: col-resize; border: 1px solid var(--stone); }
+    .ba-slider { position: relative; width: 100%; aspect-ratio: 4/5; border-radius: 4px; overflow: hidden; cursor: col-resize; border: 1px solid var(--stone); touch-action: none; user-select: none; -webkit-user-select: none; }
     .ba-handle { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; z-index: 10; }
     .ba-handle-knob {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -273,13 +270,23 @@ const GlobalStyles = () => (
 
 const BeforeAfterSlider = ({ before, after }) => {
   const [sliderPos, setSliderPos] = useState(50);
-  const handleMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.pageX - rect.left) / rect.width) * 100;
+  const containerRef = useRef(null);
+
+  const updatePos = (clientX) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = ((clientX - rect.left) / rect.width) * 100;
     setSliderPos(Math.max(0, Math.min(100, x)));
   };
+
   return (
-    <div className="ba-slider" onMouseMove={handleMove} onTouchMove={(e) => handleMove(e.touches[0])}>
+    <div
+      ref={containerRef}
+      className="ba-slider"
+      onMouseMove={e => updatePos(e.clientX)}
+      onTouchStart={e => updatePos(e.touches[0].clientX)}
+      onTouchMove={e => updatePos(e.touches[0].clientX)}
+    >
       <div style={{ position: 'absolute', inset: 0 }}>
         <img src={after || 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=2070'} alt="After" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </div>
@@ -305,6 +312,9 @@ const DecoratorTemplate = ({ tenantData }) => {
   const [modalContent, setModalContent] = useState(null);
   const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [enquiry, setEnquiry] = useState({ name: "", phone: "", message: "" });
+  const [enquiryStatus, setEnquiryStatus] = useState("idle"); // idle | sending | success | error
+  const [enquiryError, setEnquiryError] = useState("");
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -387,8 +397,40 @@ const DecoratorTemplate = ({ tenantData }) => {
   const tiktokUrl    = tenantData?.tiktokUrl    || "";
   const facebookUrl  = tenantData?.facebookUrl  || "";
   const contactEmail = tenantData?.contactEmail || tenantData?.email || "";
+  const ownerEmail   = tenantData?.businessEmail || tenantData?.email || "";
 
   const currentReview = reviews[currentReviewIndex];
+
+  async function handleEnquirySubmit(e) {
+    e.preventDefault();
+    if (!ownerEmail) {
+      setEnquiryError("No contact email configured for this business.");
+      setEnquiryStatus("error");
+      return;
+    }
+    setEnquiryStatus("sending");
+    setEnquiryError("");
+    try {
+      const res = await fetch("/api/send-enquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ownerEmail,
+          businessName,
+          brandColor,
+          clientName: enquiry.name,
+          clientPhone: enquiry.phone,
+          projectDetails: enquiry.message,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error?.message || json.error || "Failed to send");
+      setEnquiryStatus("success");
+    } catch (err) {
+      setEnquiryError(err.message || "Something went wrong. Please try again.");
+      setEnquiryStatus("error");
+    }
+  }
 
   return (
     <>
@@ -529,29 +571,55 @@ const DecoratorTemplate = ({ tenantData }) => {
             <div className="dt-underline" style={{ backgroundColor: brandColor, margin: '1.25rem auto 0' }}></div>
           </div>
 
-          <Container maxWidth="md">
+          <div style={{ maxWidth: 680, margin: '0 auto' }}>
             {reviews.length > 0 && currentReview ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <IconButton onClick={prevReview}><ChevronLeft /></IconButton>
-                <Box sx={{ flex: 1 }}>
-                  <div className="dt-review-card">
-                    <div style={{ display: 'flex', color: brandColor }}>
-                      {[...Array(currentReview.rating || 5)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}
-                    </div>
-                    <div className="dt-review-quote">"</div>
-                    <p className="dt-review-text">{currentReview.comment}</p>
-                    <div className="dt-review-divider"></div>
-                    <div className="dt-review-footer">
-                      <div className="dt-review-avatar">{currentReview.customerName?.charAt(0) || 'U'}</div>
-                      <div>
-                        <div className="dt-review-name">{currentReview.customerName || "Anonymous"}</div>
-                        <div className="dt-review-verified">Verified Customer</div>
-                      </div>
+              <>
+                <div className="dt-review-card">
+                  <div style={{ display: 'flex', color: brandColor }}>
+                    {[...Array(currentReview.rating || 5)].map((_, i) => <Star key={i} size={18} fill="currentColor" />)}
+                  </div>
+                  <div className="dt-review-quote">"</div>
+                  <p className="dt-review-text">{currentReview.comment}</p>
+                  <div className="dt-review-divider"></div>
+                  <div className="dt-review-footer">
+                    <div className="dt-review-avatar">{currentReview.customerName?.charAt(0) || 'U'}</div>
+                    <div>
+                      <div className="dt-review-name">{currentReview.customerName || "Anonymous"}</div>
+                      <div className="dt-review-verified">Verified Customer</div>
                     </div>
                   </div>
-                </Box>
-                <IconButton onClick={nextReview}><ChevronRight /></IconButton>
-              </Box>
+                </div>
+
+                {reviews.length > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1.25rem', marginTop: '1.5rem' }}>
+                    <button
+                      onClick={prevReview}
+                      style={{
+                        width: 42, height: 42, borderRadius: '50%',
+                        border: '1.5px solid var(--stone)', background: 'var(--cream)',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--ink-mid)', transition: 'border-color 0.2s',
+                      }}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', fontWeight: 600, letterSpacing: '0.08em' }}>
+                      {currentReviewIndex + 1} / {reviews.length}
+                    </span>
+                    <button
+                      onClick={nextReview}
+                      style={{
+                        width: 42, height: 42, borderRadius: '50%',
+                        border: '1.5px solid var(--stone)', background: 'var(--cream)',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--ink-mid)', transition: 'border-color 0.2s',
+                      }}
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <p style={{ textAlign: 'center', color: 'var(--ink-soft)' }}>No reviews yet.</p>
             )}
@@ -565,7 +633,7 @@ const DecoratorTemplate = ({ tenantData }) => {
                 <RateReviewIcon style={{ fontSize: 16, marginRight: 8 }} /> Leave a Review
               </button>
             </div>
-          </Container>
+          </div>
         </section>
 
         {/* ── CONTACT ── */}
@@ -593,12 +661,55 @@ const DecoratorTemplate = ({ tenantData }) => {
                 </div>
               )}
             </div>
-            <form className="dt-form" onSubmit={(e) => { e.preventDefault(); alert("Message sent! We'll be in touch within 24 hours."); }}>
-              <input className="dt-input" placeholder="Full Name" required />
-              <input className="dt-input" placeholder="Phone Number" type="tel" required />
-              <textarea className="dt-input dt-textarea" placeholder="Tell me about your project…" />
-              <button type="submit" className="dt-form-btn" style={{ backgroundColor: brandColor }}>Send Request</button>
-            </form>
+            {enquiryStatus === "success" ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '3rem 2rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, textAlign: 'center' }}>
+                <CheckCircle2 size={48} style={{ color: brandColor }} />
+                <p style={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem', margin: 0 }}>Request sent!</p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem', margin: 0, lineHeight: 1.6 }}>We'll be in touch within 24 hours to discuss your project.</p>
+                <button
+                  className="dt-form-btn"
+                  style={{ backgroundColor: 'transparent', border: `1px solid ${brandColor}`, color: brandColor, marginTop: '0.5rem' }}
+                  onClick={() => { setEnquiryStatus("idle"); setEnquiry({ name: "", phone: "", message: "" }); }}
+                >
+                  Send another enquiry
+                </button>
+              </div>
+            ) : (
+              <form className="dt-form" onSubmit={handleEnquirySubmit}>
+                <input
+                  className="dt-input"
+                  placeholder="Full Name"
+                  required
+                  value={enquiry.name}
+                  onChange={e => setEnquiry(prev => ({ ...prev, name: e.target.value }))}
+                />
+                <input
+                  className="dt-input"
+                  placeholder="Phone Number"
+                  type="tel"
+                  required
+                  value={enquiry.phone}
+                  onChange={e => setEnquiry(prev => ({ ...prev, phone: e.target.value }))}
+                />
+                <textarea
+                  className="dt-input dt-textarea"
+                  placeholder="Tell me about your project…"
+                  value={enquiry.message}
+                  onChange={e => setEnquiry(prev => ({ ...prev, message: e.target.value }))}
+                />
+                {enquiryStatus === "error" && (
+                  <p style={{ color: '#f87171', fontSize: '0.82rem', margin: '-0.25rem 0 0', lineHeight: 1.5 }}>{enquiryError}</p>
+                )}
+                <button
+                  type="submit"
+                  className="dt-form-btn"
+                  style={{ backgroundColor: brandColor, opacity: enquiryStatus === "sending" ? 0.7 : 1, cursor: enquiryStatus === "sending" ? "not-allowed" : "pointer" }}
+                  disabled={enquiryStatus === "sending"}
+                >
+                  {enquiryStatus === "sending" ? "Sending…" : "Send Request"}
+                </button>
+              </form>
+            )}
           </div>
         </section>
 
@@ -615,6 +726,17 @@ const DecoratorTemplate = ({ tenantData }) => {
               {instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="dt-footer-link">Instagram</a>}
               {facebookUrl  && <a href={facebookUrl}  target="_blank" rel="noopener noreferrer" className="dt-footer-link">Facebook</a>}
               {tiktokUrl    && <a href={tiktokUrl}    target="_blank" rel="noopener noreferrer" className="dt-footer-link">TikTok</a>}
+              <a
+                href="/login"
+                className="dt-footer-link"
+                style={{
+                  borderLeft: '1px solid rgba(255,255,255,0.1)',
+                  paddingLeft: '1.25rem',
+                  color: 'rgba(255,255,255,0.45)',
+                }}
+              >
+                Professional Login
+              </a>
             </div>
           </div>
           <p className="dt-footer-copy">© {new Date().getFullYear()} {businessName}. All rights reserved.</p>

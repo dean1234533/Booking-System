@@ -31,6 +31,7 @@ function printPDF(sub) {
             <span class="time">${m.time || "—"}</span>
             <span class="type">${m.type || "—"}</span>
             <span class="desc">${m.description || "—"}</span>
+            ${m.amount ? `<span class="amount">${m.amount}</span>` : ""}
           </div>`).join("")}
       </div>`;
   }).join("");
@@ -50,6 +51,7 @@ function printPDF(sub) {
       .time{color:#aaa;font-family:monospace;width:50px;flex-shrink:0}
       .type{font-family:sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;width:72px;flex-shrink:0;padding-top:2px}
       .desc{flex:1;line-height:1.5}
+      .amount{font-family:sans-serif;font-size:11px;font-weight:700;color:#555;flex-shrink:0;padding-top:1px;min-width:64px;text-align:right}
       @media print{@page{margin:20px}}
     </style>
   </head><body>
@@ -138,18 +140,25 @@ export default function FoodDiaryTab({ barber, brandColor }) {
                 </Box>
                 <Stack spacing={0.75}>
                   {meals.map((m, i) => (
-                    <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 2, bgcolor: "#1a1a1a", px: 2.5, py: 1.4, border: "1px solid rgba(255,255,255,0.05)" }}>
-                      <Typography sx={{ color: "rgba(255,255,255,0.28)", fontSize: "0.78rem", fontFamily: "monospace", width: 44, flexShrink: 0 }}>
-                        {m.time || "—"}
-                      </Typography>
-                      <Chip
-                        label={m.type || "Other"}
-                        size="small"
-                        sx={{ bgcolor: `${TYPE_COLOUR[m.type] || TYPE_COLOUR.Other}1a`, color: TYPE_COLOUR[m.type] || TYPE_COLOUR.Other, fontSize: "0.6rem", fontWeight: 700, height: 20, borderRadius: 0, letterSpacing: "0.06em", minWidth: 72 }}
-                      />
-                      <Typography sx={{ color: "rgba(255,255,255,0.72)", fontSize: "0.88rem", fontWeight: 300, flex: 1, lineHeight: 1.5 }}>
-                        {m.description || "—"}
-                      </Typography>
+                    <Box key={i} sx={{ bgcolor: "#1a1a1a", px: 2.5, py: 1.4, border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                        <Typography sx={{ color: "rgba(255,255,255,0.28)", fontSize: "0.78rem", fontFamily: "monospace", width: 44, flexShrink: 0 }}>
+                          {m.time || "—"}
+                        </Typography>
+                        <Chip
+                          label={m.type || "Other"}
+                          size="small"
+                          sx={{ bgcolor: `${TYPE_COLOUR[m.type] || TYPE_COLOUR.Other}1a`, color: TYPE_COLOUR[m.type] || TYPE_COLOUR.Other, fontSize: "0.6rem", fontWeight: 700, height: 20, borderRadius: 0, letterSpacing: "0.06em", minWidth: 72 }}
+                        />
+                        <Typography sx={{ color: "rgba(255,255,255,0.72)", fontSize: "0.88rem", fontWeight: 300, flex: 1, lineHeight: 1.5 }}>
+                          {m.description || "—"}
+                        </Typography>
+                        {m.amount && (
+                          <Typography sx={{ color: "rgba(255,255,255,0.38)", fontSize: "0.78rem", fontWeight: 600, flexShrink: 0, ml: 1 }}>
+                            {m.amount}
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
                   ))}
                 </Stack>

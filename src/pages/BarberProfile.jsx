@@ -202,145 +202,160 @@ export default function BarberProfile({ tenant: initialTenant }) {
         </IconButton>
       </Box>
 
-      {/* ── Hero: split-screen ── */}
+      {/* ── Hero: centred profile ── */}
       <Box sx={{
         minHeight: "100vh",
-        display: "grid",
-        gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        px: { xs: 2.5, sm: 4, md: 6 },
+        py: { xs: 10, md: 7 },
+        bgcolor: "#0a0a0a",
       }}>
-        {/* Photo panel */}
-        <Box sx={{ position: "relative", minHeight: { xs: 460, md: "100vh" }, overflow: "hidden" }}>
-          {barber.profilePic ? (
-            <Box
-              component="img"
-              src={barber.profilePic}
-              alt={barber.name}
-              sx={{
-                width: "100%", height: "100%",
-                objectFit: "cover", objectPosition: "center top",
-                display: "block",
-              }}
-            />
-          ) : (
-            <Box sx={{
-              width: "100%", height: "100%",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              bgcolor: "#111",
-              minHeight: { xs: 460, md: "100vh" },
-            }}>
-              <Avatar sx={{ width: 180, height: 180, bgcolor: brandColor, fontSize: 64, fontWeight: 900 }}>
-                {barber.name?.[0]?.toUpperCase()}
-              </Avatar>
-            </Box>
-          )}
-          {/* Fade-right + fade-bottom overlay */}
-          <Box sx={{
-            position: "absolute", inset: 0,
-            background: {
-              xs: "linear-gradient(to bottom, transparent 50%, #0a0a0a 100%)",
-              md: "linear-gradient(to right, transparent 55%, #0a0a0a 100%), linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, transparent 30%)",
-            },
-          }} />
-          {/* Brand bottom stripe */}
-          <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, bgcolor: brandColor }} />
-        </Box>
-
-        {/* Info panel */}
         <Box sx={{
-          bgcolor: "#0a0a0a",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          px: { xs: 3, sm: 5, md: 7, lg: 9 },
-          py: { xs: 6, md: 10 },
-          position: "relative",
+          width: "100%",
+          maxWidth: 980,
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "360px 1fr" },
+          gap: { xs: 5, md: 7 },
+          alignItems: "center",
         }}>
-          {/* Eyebrow */}
-          <Typography sx={{
-            fontSize: "0.65rem", fontWeight: 800,
-            letterSpacing: "0.22em", textTransform: "uppercase",
-            color: brandColor, mb: 2,
+
+          {/* ── Photo ── */}
+          <Box sx={{
+            position: "relative",
+            overflow: "hidden",
+            borderTop: `4px solid ${brandColor}`,
+            aspectRatio: { xs: "4/5", md: "3/4" },
+            mx: { xs: "auto", md: 0 },
+            maxWidth: { xs: 340, md: "100%" },
+            width: "100%",
+            flexShrink: 0,
           }}>
-            Professional Barber
-          </Typography>
-
-          {/* Name */}
-          <Typography sx={{
-            fontFamily: "'Playfair Display', serif",
-            fontWeight: 900,
-            lineHeight: 1,
-            fontSize: { xs: "3rem", sm: "3.5rem", md: "3.8rem", lg: "4.5rem" },
-            color: "white",
-            mb: barber.specialty ? 3 : 4,
-          }}>
-            {barber.name}
-          </Typography>
-
-          {/* Specialty */}
-          {barber.specialty && (
-            <Typography sx={{
-              color: "rgba(255,255,255,0.5)",
-              lineHeight: 1.85,
-              fontSize: "0.95rem",
-              fontWeight: 300,
-              mb: 4,
-              maxWidth: 420,
-              borderLeft: `2px solid ${brandColor}`,
-              pl: 2,
-            }}>
-              {barber.specialty}
-            </Typography>
-          )}
-
-          {/* Services */}
-          {services.length > 0 && (
-            <Box sx={{ mb: 4 }}>
-              <Typography sx={{
-                fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.2em",
-                textTransform: "uppercase", color: brandColor,
-                display: "block", mb: 1.5,
+            {barber.profilePic ? (
+              <Box
+                component="img"
+                src={barber.profilePic}
+                alt={barber.name}
+                sx={{
+                  position: "absolute", inset: 0,
+                  width: "100%", height: "100%",
+                  objectFit: "cover", objectPosition: "center top",
+                  display: "block",
+                }}
+              />
+            ) : (
+              <Box sx={{
+                position: "absolute", inset: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                bgcolor: "#111",
               }}>
-                Services
-              </Typography>
-              <Box sx={{ display: "flex", flexDirection: "column" }}>
-                {visibleSvcs.map((svc, i) => (
-                  <Box key={i} sx={{
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                    py: 1.1,
-                    borderBottom: `1px solid rgba(255,255,255,0.07)`,
-                  }}>
-                    <Typography sx={{ color: "rgba(255,255,255,0.75)", fontSize: "0.9rem", fontWeight: 500 }}>
-                      {svc.name}
-                    </Typography>
-                    <Typography sx={{ color: brandColor, fontSize: "0.9rem", fontWeight: 800, ml: 3, flexShrink: 0 }}>
-                      {formatCurrency(svc.price)}
-                    </Typography>
-                  </Box>
-                ))}
+                <Avatar sx={{ width: 120, height: 120, bgcolor: brandColor, fontSize: 48, fontWeight: 900 }}>
+                  {barber.name?.[0]?.toUpperCase()}
+                </Avatar>
               </Box>
-              {services.length > 5 && (
-                <Button
-                  size="small"
-                  endIcon={<KeyboardArrowDownIcon sx={{ transition: "transform 0.2s", transform: showAllServices ? "rotate(180deg)" : "none" }} />}
-                  onClick={() => setShowAllServices(v => !v)}
-                  sx={{ mt: 1, color: "rgba(255,255,255,0.4)", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", p: 0, "&:hover": { color: brandColor, bgcolor: "transparent" } }}
-                >
-                  {showAllServices ? "Show less" : `+${services.length - 5} more`}
-                </Button>
-              )}
-            </Box>
-          )}
+            )}
+            {/* Subtle bottom fade */}
+            <Box sx={{
+              position: "absolute", bottom: 0, left: 0, right: 0, height: "25%",
+              background: "linear-gradient(to top, rgba(10,10,10,0.5) 0%, transparent 100%)",
+            }} />
+          </Box>
 
-          {/* Social links */}
-          {hasSocial && (
-            <Box sx={{ display: "flex", gap: 1, mb: 4 }}>
-              <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
-              <SocialLink href={tiktokUrl}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#ffffff" />
-            </Box>
-          )}
+          {/* ── Info ── */}
+          <Box sx={{
+            textAlign: { xs: "center", md: "left" },
+            display: "flex", flexDirection: "column",
+            alignItems: { xs: "center", md: "flex-start" },
+          }}>
+            {/* Eyebrow */}
+            <Typography sx={{
+              fontSize: "0.62rem", fontWeight: 800,
+              letterSpacing: "0.22em", textTransform: "uppercase",
+              color: brandColor, mb: 2,
+            }}>
+              Professional Barber
+            </Typography>
 
-          {/* CTA */}
-          <Box>
+            {/* Name */}
+            <Typography sx={{
+              fontFamily: "'Playfair Display', serif",
+              fontWeight: 900,
+              lineHeight: 1,
+              fontSize: { xs: "2.8rem", sm: "3.5rem", md: "3.8rem", lg: "4.2rem" },
+              color: "white",
+              mb: barber.specialty ? 3 : 4,
+            }}>
+              {barber.name}
+            </Typography>
+
+            {/* Specialty */}
+            {barber.specialty && (
+              <Typography sx={{
+                color: "rgba(255,255,255,0.5)",
+                lineHeight: 1.85,
+                fontSize: "0.95rem",
+                fontWeight: 300,
+                mb: 4,
+                maxWidth: 420,
+                borderLeft: { xs: "none", md: `2px solid ${brandColor}` },
+                borderTop: { xs: `1px solid ${alpha(brandColor, 0.4)}`, md: "none" },
+                borderBottom: { xs: `1px solid ${alpha(brandColor, 0.4)}`, md: "none" },
+                pl: { xs: 0, md: 2 },
+                py: { xs: 1.5, md: 0 },
+              }}>
+                {barber.specialty}
+              </Typography>
+            )}
+
+            {/* Services */}
+            {services.length > 0 && (
+              <Box sx={{ mb: 4, width: "100%", maxWidth: { xs: 380, md: "100%" } }}>
+                <Typography sx={{
+                  fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.2em",
+                  textTransform: "uppercase", color: brandColor,
+                  display: "block", mb: 1.5,
+                }}>
+                  Services
+                </Typography>
+                <Box sx={{ display: "flex", flexDirection: "column" }}>
+                  {visibleSvcs.map((svc, i) => (
+                    <Box key={i} sx={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      py: 1,
+                      borderBottom: "1px solid rgba(255,255,255,0.07)",
+                    }}>
+                      <Typography sx={{ color: "rgba(255,255,255,0.75)", fontSize: "0.88rem", fontWeight: 500 }}>
+                        {svc.name}
+                      </Typography>
+                      <Typography sx={{ color: brandColor, fontSize: "0.88rem", fontWeight: 800, ml: 3, flexShrink: 0 }}>
+                        {formatCurrency(svc.price)}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+                {services.length > 5 && (
+                  <Button
+                    size="small"
+                    endIcon={<KeyboardArrowDownIcon sx={{ transition: "transform 0.2s", transform: showAllServices ? "rotate(180deg)" : "none" }} />}
+                    onClick={() => setShowAllServices(v => !v)}
+                    sx={{ mt: 1, color: "rgba(255,255,255,0.4)", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", p: 0, "&:hover": { color: brandColor, bgcolor: "transparent" } }}
+                  >
+                    {showAllServices ? "Show less" : `+${services.length - 5} more`}
+                  </Button>
+                )}
+              </Box>
+            )}
+
+            {/* Social links */}
+            {hasSocial && (
+              <Box sx={{ display: "flex", gap: 1, mb: 4 }}>
+                <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
+                <SocialLink href={tiktokUrl}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#ffffff" />
+              </Box>
+            )}
+
+            {/* CTA */}
             <Button
               variant="contained"
               size="large"
@@ -348,11 +363,14 @@ export default function BarberProfile({ tenant: initialTenant }) {
               sx={{
                 bgcolor: brandColor,
                 color: btnText,
-                px: 5, py: 1.5,
+                px: { xs: 6, md: 5 },
+                py: 1.6,
                 borderRadius: 0,
                 fontSize: "0.78rem",
                 fontWeight: 900,
                 letterSpacing: "0.18em",
+                width: { xs: "100%", sm: "auto" },
+                maxWidth: { xs: 380, sm: "none" },
                 boxShadow: `0 0 32px ${alpha(brandColor, 0.35)}`,
                 "&:hover": { bgcolor: brandColor, filter: "brightness(1.1)", boxShadow: `0 0 48px ${alpha(brandColor, 0.5)}` },
               }}
@@ -360,6 +378,7 @@ export default function BarberProfile({ tenant: initialTenant }) {
               BOOK APPOINTMENT
             </Button>
           </Box>
+
         </Box>
       </Box>
 

@@ -20,10 +20,12 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
- 
+
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getShopStaff, getBarber } from "../firebase/firestore";
+import HaircutMemory  from "../components/HaircutMemory";
+import LiveQueueSection from "../components/LiveQueueSection";
 // ── TikTok SVG ────────────────────────────────────────────────────────────────
 const TikTokIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: "block" }}>
@@ -84,6 +86,7 @@ export default function TenantHome({ tenant: initialTenant }) {
   const displayFont = getFontFamily(fontKey, "playfair");
   useEffect(() => { if (fontKey) loadGoogleFont(fontKey); }, [fontKey]);
 
+  const isBarberShop    = !freshTenant?.businessType || freshTenant?.businessType === "barber";
   const brandColor      = freshTenant?.brandColor      || "#C9A84C";
   const businessName    = freshTenant?.businessName     || "TRIMZ"; 
   const address         = freshTenant?.address          || "Location TBD";
@@ -422,6 +425,16 @@ export default function TenantHome({ tenant: initialTenant }) {
         </Grid>
       </Container>
  
+      {/* ── 4.5 LIVE QUEUE (barber shops only) ──────────────────────────────── */}
+      {isBarberShop && freshTenant?.id && (
+        <LiveQueueSection
+          shopId={freshTenant.id}
+          brandColor={brandColor}
+          displayFont={displayFont}
+          team={team}
+        />
+      )}
+
       {/* ── 5. REVIEWS ───────────────────────────────────────────────────────── */}
       <Box sx={{
         py: { xs: 10, md: 15 }, bgcolor: "#0d0d0d",
@@ -562,6 +575,11 @@ export default function TenantHome({ tenant: initialTenant }) {
           </Box>
         </Container>
       </Box>
+      {/* ── Haircut Memory FAB (barber shops only) ────────────────────────── */}
+      {isBarberShop && freshTenant?.id && (
+        <HaircutMemory shopId={freshTenant.id} brandColor={brandColor} />
+      )}
+
     </Box>
   );
 }

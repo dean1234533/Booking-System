@@ -126,17 +126,7 @@ export default function Signup({ tenant }) {
 
       await waitForBarberDoc(user.uid, role);
 
-      if (isOwner) {
-        const response = await fetch("/api/connect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: user.email, barberId: user.uid, businessName: form.businessName }),
-        });
-        const { url } = await response.json();
-        if (url) { window.location.href = url; return; }
-      }
-
-      navigate("/dashboard");
+      navigate(isOwner ? "/onboarding" : "/dashboard");
     } catch (err) {
       setError(err.message || "Failed to create account.");
     } finally {

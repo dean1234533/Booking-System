@@ -46,9 +46,10 @@ export default function BarberCard({ barber, isMarketplace }) {
 
     let path = "";
     if (isMarketplace) {
-      if (businessType === "decorator")    path = `/decorator/${id}`;
-      else if (businessType === "trainer") path = `/pt-booking/${id}`;
-      else                                 path = `/shop/${id}`;
+      if (businessType === "decorator")      path = `/decorator/${id}`;
+      else if (businessType === "trainer")   path = `/pt-booking/${id}`;
+      else if (businessType === "hairdresser") path = `/hairdresser/${id}`;
+      else                                   path = `/shop/${id}`;
     } else {
       path = `/barber/${id}`;
     }
@@ -57,8 +58,9 @@ export default function BarberCard({ barber, isMarketplace }) {
 
   const getBadgeLabel = () => {
     if (isMarketplace) {
-      if (businessType === "decorator") return "Decorator";
-      if (businessType === "trainer")   return "Personal Trainer";
+      if (businessType === "decorator")    return "Decorator";
+      if (businessType === "trainer")      return "Personal Trainer";
+      if (businessType === "hairdresser")  return "Hair Salon";
       return "Barber Shop";
     }
     return businessType === "barber" ? "Barber" : "Professional";

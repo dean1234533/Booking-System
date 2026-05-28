@@ -131,21 +131,6 @@ export default function Signup() {
 
       await waitForBarberDoc(user.uid, role);
 
-      if (isOwner) {
-        const response = await fetch("/api/connect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: user.email,
-            barberId: user.uid,
-            businessName: form.businessName,
-            businessType: resolvedBusinessType
-          }),
-        });
-        const { url } = await response.json();
-        if (url) { window.location.href = url; return; }
-      }
-
       navigate(isOwner ? "/onboarding" : "/dashboard");
     } catch (err) {
       setError(err.message || "Failed to create account.");
@@ -218,6 +203,12 @@ export default function Signup() {
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                           <FitnessCenterIcon sx={{ fontSize: 16, color: "#3d2c0e" }} />
                           Personal Trainer
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="hairdresser">
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <ContentCutIcon sx={{ fontSize: 16, color: "#7c4e8a" }} />
+                          Hair Salon
                         </Box>
                       </MenuItem>
                       <MenuItem value="decorator">

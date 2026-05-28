@@ -9,7 +9,7 @@ import {
   browserLocalPersistence
 } from "firebase/auth";
 import { auth, db } from "./config";
-import { doc, setDoc, deleteDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, serverTimestamp, getDoc, Timestamp } from "firebase/firestore";
 
 /**
  * Updated to support business types and custom domains instead of Vercel URLs
@@ -44,8 +44,12 @@ export async function signUpBarber(data) {
   };
 
   if (role === "owner") {
-    profileData.businessName = businessName || "My Business Space";
-    profileData.customDomain = customDomain || ""; // 🌟 Replaced vercelUrl with customDomain completely
+    profileData.businessName      = businessName || "My Business Space";
+    profileData.customDomain      = customDomain || "";
+    profileData.subscriptionStatus = "trialing";
+    profileData.trialEndsAt        = Timestamp.fromDate(
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    );
   }
 
   // 3. Save to main 'barbers' collection

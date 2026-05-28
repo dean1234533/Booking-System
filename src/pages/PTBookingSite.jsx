@@ -253,12 +253,279 @@ function PricingCard({ plan, brandColor,displayFont }) {
   );
 }
 
+/* ─── Consultation Form Modal ────────────────────────────────── */
+const GOAL_OPTIONS = [
+  'Weight / fat reduction',
+  'Build muscle',
+  'Increase strength',
+  'Muscle toning',
+  'Increase fitness / stamina',
+  'Other',
+];
+
+function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, businessName, onClose }) {
+  const [form, setForm] = useState({
+    name: '', phone: '', email: '', age: '', address: '',
+    goalText: '', goalTypes: [],
+    diet: '', availability: '', holdingBack: '', startDate: '',
+  });
+  const [status, setStatus]   = useState('idle'); // idle | sending | success | error
+  const [errMsg, setErrMsg]   = useState('');
+
+  const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+
+  const toggleGoal = (g) => setForm(prev => {
+    const already = prev.goalTypes.includes(g);
+    return { ...prev, goalTypes: already ? prev.goalTypes.filter(x => x !== g) : [...prev.goalTypes, g] };
+  });
+
+  const slotDisplay = slot ? (() => {
+    try {
+      const d = new Date(slot.date);
+      return `${d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} at ${slot.time}`;
+    } catch { return `${slot.date} at ${slot.time}`; }
+  })() : '';
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.name || !form.phone || !form.email) {
+      setErrMsg('Please fill in your name, phone, and email.');
+      return;
+    }
+    setStatus('sending');
+    setErrMsg('');
+    try {
+      const res = await fetch('/api/send-consultation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ownerEmail,
+          businessName,
+          brandColor,
+          clientName:    form.name,
+          clientPhone:   form.phone,
+          clientEmail:   form.email,
+          clientAge:     form.age,
+          clientAddress: form.address,
+          slotDate:      slot?.date,
+          slotTime:      slot?.time,
+          goalText:      form.goalText,
+          goalTypes:     form.goalTypes,
+          diet:          form.diet,
+          availability:  form.availability,
+          holdingBack:   form.holdingBack,
+          startDate:     form.startDate,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error?.message || json.error || 'Failed to send');
+      setStatus('success');
+    } catch (err) {
+      setErrMsg(err.message || 'Something went wrong. Please try again.');
+      setStatus('error');
+    }
+  }
+
+  const inputStyle = {
+    width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)',
+    borderRadius: 8, padding: '12px 14px', color: '#fff', fontSize: 14,
+    fontFamily: "'DM Sans', sans-serif", outline: 'none', boxSizing: 'border-box',
+    transition: 'border-color 0.2s',
+  };
+  const labelStyle = {
+    display: 'block', fontSize: 11, fontWeight: 800, letterSpacing: '0.16em',
+    textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 6,
+  };
+  const fieldWrap = { marginBottom: 20 };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 16px', overflowY: 'auto' }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: '#111', borderRadius: 16, padding: 'clamp(24px,4vw,40px)', maxWidth: 560, width: '100%', border: '1px solid #222', boxShadow: '0 40px 100px rgba(0,0,0,0.9)', marginTop: 'auto', marginBottom: 'auto' }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+          <div>
+            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: brandColor }}>Consultation Request</p>
+            <h2 style={{ margin: 0, fontFamily: displayFont, fontSize: 'clamp(24px,4vw,32px)', color: '#fff', letterSpacing: '0.04em', lineHeight: 1.1 }}>Book Your Consultation</h2>
+          </div>
+          <button onClick={onClose} style={{ background: '#222', border: 'none', color: '#fff', width: 34, height: 34, borderRadius: '50%', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}>✕</button>
+        </div>
+
+        {/* Slot badge */}
+        <div style={{ background: `${brandColor}20`, border: `1px solid ${brandColor}55`, borderLeft: `4px solid ${brandColor}`, borderRadius: 8, padding: '12px 16px', marginBottom: 28 }}>
+          <p style={{ margin: '0 0 2px', fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)' }}>Selected Slot</p>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#fff' }}>{slotDisplay}</p>
+        </div>
+
+        {status === 'success' ? (
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
+            <h3 style={{ fontFamily: displayFont, fontSize: 28, color: '#fff', letterSpacing: '0.06em', marginBottom: 8 }}>Request Sent!</h3>
+            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>
+              Your consultation request for <strong style={{ color: '#fff' }}>{slotDisplay}</strong> has been submitted. We'll be in touch shortly to confirm.
+            </p>
+            <button onClick={onClose} style={{ background: brandColor, color: '#fff', border: 'none', borderRadius: 8, padding: '12px 32px', fontWeight: 800, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>Close</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            {/* ─── Personal details ─── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Full Name *</label>
+                <input style={inputStyle} placeholder="John Smith" value={form.name} onChange={e => set('name', e.target.value)} required
+                  onFocus={e => e.target.style.borderColor = brandColor} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'} />
+              </div>
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Age *</label>
+                <input style={inputStyle} placeholder="28" value={form.age} onChange={e => set('age', e.target.value)} required
+                  onFocus={e => e.target.style.borderColor = brandColor} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'} />
+              </div>
+            </div>
+
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Address</label>
+              <input style={inputStyle} placeholder="123 Example Street, London" value={form.address} onChange={e => set('address', e.target.value)}
+                onFocus={e => e.target.style.borderColor = brandColor} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Phone Number *</label>
+                <input style={inputStyle} type="tel" placeholder="07700 900000" value={form.phone} onChange={e => set('phone', e.target.value)} required
+                  onFocus={e => e.target.style.borderColor = brandColor} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'} />
+              </div>
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Email Address *</label>
+                <input style={inputStyle} type="email" placeholder="john@email.com" value={form.email} onChange={e => set('email', e.target.value)} required
+                  onFocus={e => e.target.style.borderColor = brandColor} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'} />
+              </div>
+            </div>
+
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '8px 0 24px' }} />
+
+            {/* ─── Goals ─── */}
+            <div style={fieldWrap}>
+              <label style={labelStyle}>What's the biggest goal you're trying to achieve right now?</label>
+              <textarea
+                style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
+                placeholder="Describe your main goal…"
+                value={form.goalText}
+                onChange={e => set('goalText', e.target.value)}
+                onFocus={e => e.target.style.borderColor = brandColor}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+              />
+            </div>
+
+            <div style={{ ...fieldWrap, marginBottom: 24 }}>
+              <label style={labelStyle}>Goal type (select all that apply)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {GOAL_OPTIONS.map(g => {
+                  const checked = form.goalTypes.includes(g);
+                  return (
+                    <button
+                      key={g} type="button" onClick={() => toggleGoal(g)}
+                      style={{
+                        padding: '7px 14px', borderRadius: 99, fontSize: 12, fontWeight: 700,
+                        letterSpacing: '0.04em', cursor: 'pointer', transition: 'all 0.2s',
+                        background: checked ? brandColor : 'rgba(255,255,255,0.07)',
+                        color: checked ? '#fff' : 'rgba(255,255,255,0.6)',
+                        border: `1.5px solid ${checked ? brandColor : 'rgba(255,255,255,0.15)'}`,
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >{g}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={fieldWrap}>
+              <label style={labelStyle}>How is your diet / nutrition currently?</label>
+              <textarea
+                style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
+                placeholder="e.g. I eat fairly well but snack a lot in the evenings…"
+                value={form.diet}
+                onChange={e => set('diet', e.target.value)}
+                onFocus={e => e.target.style.borderColor = brandColor}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+              />
+            </div>
+
+            <div style={fieldWrap}>
+              <label style={labelStyle}>What days and times are you available to train?</label>
+              <textarea
+                style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
+                placeholder="e.g. Weekday mornings before 9am, or Saturday afternoons…"
+                value={form.availability}
+                onChange={e => set('availability', e.target.value)}
+                onFocus={e => e.target.style.borderColor = brandColor}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+              />
+            </div>
+
+            <div style={fieldWrap}>
+              <label style={labelStyle}>What's the biggest thing holding you back from achieving your goals?</label>
+              <textarea
+                style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
+                placeholder="e.g. Lack of motivation, not sure where to start…"
+                value={form.holdingBack}
+                onChange={e => set('holdingBack', e.target.value)}
+                onFocus={e => e.target.style.borderColor = brandColor}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+              />
+            </div>
+
+            <div style={fieldWrap}>
+              <label style={labelStyle}>When are you able to start training from?</label>
+              <input
+                style={inputStyle}
+                placeholder="e.g. Immediately / 1st of next month"
+                value={form.startDate}
+                onChange={e => set('startDate', e.target.value)}
+                onFocus={e => e.target.style.borderColor = brandColor}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+              />
+            </div>
+
+            {errMsg && (
+              <p style={{ color: '#f87171', fontSize: 13, margin: '-8px 0 16px', lineHeight: 1.5 }}>{errMsg}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={status === 'sending'}
+              style={{
+                width: '100%', padding: '15px 0', background: brandColor, color: '#fff',
+                border: 'none', borderRadius: 8, fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 800, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase',
+                cursor: status === 'sending' ? 'not-allowed' : 'pointer',
+                opacity: status === 'sending' ? 0.7 : 1, transition: 'opacity 0.2s',
+              }}
+            >
+              {status === 'sending' ? 'Sending…' : 'Submit Consultation Request'}
+            </button>
+
+            <p style={{ margin: '14px 0 0', textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.3)', lineHeight: 1.5 }}>
+              Your details will be sent to {businessName}. We'll confirm your {slotDisplay} slot by phone or email.
+            </p>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Component ────────────────────────────────────────── */
 export default function PTBookingSite({ profile, barber, reviews: propReviews = [] }) {
   const [slots,    setSlots]    = useState([]);
   const [reviews,  setReviews]  = useState(propReviews);
   const [modal,    setModal]    = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [consultationSlot, setConsultationSlot] = useState(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   const fontKey     = barber?.siteFont || profile?.siteFont || "bebas";
@@ -543,7 +810,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 8 }}>Ready to Start?</p>
             <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,52px)', letterSpacing: '0.04em', marginBottom: 8 }}>Claim Your Slot</h2>
             <p style={{ color: 'var(--ink-soft)', fontWeight: 300, marginBottom: 40, fontSize: 15 }}>Choose a time that works for you and let's get to work.</p>
-            <SlotPicker slots={slots} brandColor={brandColor} onSelect={() => {}} />
+            <SlotPicker slots={slots} brandColor={brandColor} onSelect={slot => setConsultationSlot(slot)} />
           </div>
         </section>
       </FadeIn>
@@ -576,15 +843,42 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
               ))}
             </div>
           </div>
-          <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: 11, letterSpacing: '0.08em' }}>© {new Date().getFullYear()} {businessName}. All rights reserved.</p>
-            <a href="#" style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.color = brandColor}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.18)'}
-            >↑ Back to top</a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+              <a
+                href="/login"
+                style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.45)', textDecoration: 'none',
+                  border: '1px solid rgba(255,255,255,0.15)', borderRadius: 2,
+                  padding: '6px 14px', transition: 'color 0.2s, border-color 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = brandColor; e.currentTarget.style.borderColor = brandColor; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+              >
+                Professional Login
+              </a>
+              <a href="#" style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.color = brandColor}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.18)'}
+              >↑ Back to top</a>
+            </div>
           </div>
         </div>
       </footer>
+
+      {/* ══════════ CONSULTATION FORM ══════════ */}
+      {consultationSlot && (
+        <ConsultationModal
+          slot={consultationSlot}
+          brandColor={brandColor}
+          displayFont={displayFont}
+          ownerEmail={barber?.email || profile?.businessEmail || profile?.email || ''}
+          businessName={businessName}
+          onClose={() => setConsultationSlot(null)}
+        />
+      )}
 
       {/* ══════════ MODAL ══════════ */}
       {modal && (

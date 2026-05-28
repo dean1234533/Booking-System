@@ -21,13 +21,16 @@ import TenantLogin       from "./pages/TenantLogin";
 import TenantSignup      from "./pages/TenantSignup";
 import CancelBooking     from "./pages/CancelBooking";
 import ReviewPage        from "./pages/ReviewPage"; 
-import PTBookingSite     from "./pages/PTBookingSite";
-import DecoratorTemplate from "./pages/DecoratorTemplate";
+import PTBookingSite       from "./pages/PTBookingSite";
+import DecoratorTemplate   from "./pages/DecoratorTemplate";
+import HairdresserTemplate from "./pages/HairdresserTemplate";
+import OfflinePage         from "./pages/OfflinePage";
 import Onboarding        from "./pages/Onboarding";
 import WorkoutPlanView      from "./pages/WorkoutPlanView";
 import FoodDiarySubmit      from "./pages/FoodDiarySubmit";
 import CheckInSubmit        from "./pages/CheckInSubmit";
 import ColourApprovalPage   from "./pages/ColourApprovalPage";
+import QueuePage            from "./pages/QueuePage";
 
 // Split Nav & Footer imports
 import Nav               from "./components/Nav";
@@ -83,17 +86,19 @@ function AppShell() {
       return;
     }
 
-    const shopMatch    = matchPath("/shop/:tenantId", path);
-    const ptMatch      = matchPath("/pt-booking/:tenantId", path);
-    const barberMatch  = matchPath("/barber/:id", path);
+    const shopMatch          = matchPath("/shop/:tenantId", path);
+    const ptMatch            = matchPath("/pt-booking/:tenantId", path);
+    const hairdresserMatch   = matchPath("/hairdresser/:tenantId", path);
+    const barberMatch        = matchPath("/barber/:id", path);
     const bookingMatch = matchPath("/book/:barberId/*", path);
     
     const isAuthPath = matchPath("/login", path) || matchPath("/signup", path);
 
-    const targetId = 
-      shopMatch?.params.tenantId || 
+    const targetId =
+      shopMatch?.params.tenantId ||
       ptMatch?.params.tenantId ||
-      barberMatch?.params.id || 
+      hairdresserMatch?.params.tenantId ||
+      barberMatch?.params.id ||
       bookingMatch?.params.barberId;
 
     try {
@@ -195,7 +200,8 @@ function AppShell() {
   const isWorkoutView  = location.pathname.startsWith('/workout')
                       || location.pathname.startsWith('/food-diary')
                       || location.pathname.startsWith('/check-in')
-                      || location.pathname.startsWith('/colour-approval');
+                      || location.pathname.startsWith('/colour-approval')
+                      || location.pathname.startsWith('/queue');
 
   const computedPageTitle = useMemo(() => {
     if (tenantBarber) {
@@ -215,15 +221,23 @@ function AppShell() {
   // Only apply alternative layout for genuine tenant routes —
   // never for /dashboard or /review (review has its own standalone layout)
   const isAlternativeBookingLayout = !isDashboard && !isReviewPath && (
-    location.pathname.includes("/pt-booking/") || 
+    location.pathname.includes("/pt-booking/") ||
     location.pathname.includes("/decorator/") ||
+    location.pathname.includes("/hairdresser/") ||
     (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber" && !isPlatformDomain)
+  );
+
+  // A lapsed subscription takes the public site offline (not the dashboard)
+  const isTenantOffline = Boolean(
+    tenantBarber?.subscriptionStatus === "past_due" ||
+    tenantBarber?.subscriptionStatus === "canceled"
   );
 
   // Choose the right landing component based on business type
   const renderTenantHome = (tenant) => {
-    if (tenant.businessType === "trainer")   return <PTBookingSite barber={tenant} profile={tenant} />;
-    if (tenant.businessType === "decorator") return <DecoratorTemplate tenantData={tenant} />;
+    if (tenant.businessType === "trainer")     return <PTBookingSite barber={tenant} profile={tenant} />;
+    if (tenant.businessType === "decorator")   return <DecoratorTemplate tenantData={tenant} />;
+    if (tenant.businessType === "hairdresser") return <HairdresserTemplate tenantData={tenant} />;
     return <TenantHome tenant={tenant} />;
   };
 
@@ -250,10 +264,11 @@ function AppShell() {
 
         <Box component="main" sx={{ flex: 1 }}>
           <Routes>
-            <Route path="/" element={(!isPlatformDomain && tenantBarber) ? renderTenantHome(tenantBarber) : <Home />} />
-            <Route path="/shop/:tenantId" element={tenantBarber ? renderTenantHome(tenantBarber) : <TenantHome tenant={tenantBarber} />} />
-            <Route path="/pt-booking/:tenantId" element={<PTBookingSite barber={tenantBarber} profile={tenantBarber} />} />
-            <Route path="/decorator/:tenantId" element={<DecoratorTemplate tenantData={tenantBarber} />} />
+            <Route path="/" element={(!isPlatformDomain && tenantBarber) ? (isTenantOffline ? <OfflinePage /> : renderTenantHome(tenantBarber)) : <Home />} />
+            <Route path="/shop/:tenantId" element={isTenantOffline ? <OfflinePage /> : (tenantBarber ? renderTenantHome(tenantBarber) : <TenantHome tenant={tenantBarber} />)} />
+            <Route path="/pt-booking/:tenantId" element={isTenantOffline ? <OfflinePage /> : <PTBookingSite barber={tenantBarber} profile={tenantBarber} />} />
+            <Route path="/decorator/:tenantId" element={isTenantOffline ? <OfflinePage /> : <DecoratorTemplate tenantData={tenantBarber} />} />
+            <Route path="/hairdresser/:tenantId" element={isTenantOffline ? <OfflinePage /> : <HairdresserTemplate tenantData={tenantBarber} />} />
             <Route path="/barber/:id" element={<BarberProfile tenant={tenantBarber} />} />
             <Route path="/book/:barberId/:slotId" element={<BookingForm />} />
             <Route path="/confirmation/:bookingId?" element={<Confirmation />} />
@@ -265,6 +280,7 @@ function AppShell() {
             <Route path="/food-diary/:trainerId"                  element={<FoodDiarySubmit />} />
             <Route path="/check-in/:trainerId"                    element={<CheckInSubmit />} />
             <Route path="/colour-approval/:tradieId/:paletteId"   element={<ColourApprovalPage />} />
+            <Route path="/queue/:shopId"                          element={<QueuePage />} />
             <Route path="/onboarding" element={<BarberRoute><Onboarding /></BarberRoute>} />
             <Route path="/dashboard/*" element={<BarberRoute><Dashboard onProfileUpdate={identifyTenant} /></BarberRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />

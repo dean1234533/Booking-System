@@ -18,7 +18,7 @@ const SERIF = "'Playfair Display', serif";
 const DAYS  = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const TYPES = ["Breakfast", "Lunch", "Dinner", "Snack", "Drink", "Other"];
 
-const blankMeal = () => ({ id: `m-${Date.now()}-${Math.random()}`, time: "", type: "Breakfast", description: "" });
+const blankMeal = () => ({ id: `m-${Date.now()}-${Math.random()}`, time: "", type: "Breakfast", description: "", amount: "" });
 
 function inputSx(brand) {
   return {
@@ -204,43 +204,61 @@ export default function FoodDiarySubmit() {
                 <Collapse in={isOpen}>
                   <Box sx={{ p: 2 }}>
                     <Stack spacing={1.5}>
-                      {meals.map(m => (
-                        <Box key={m.id} sx={{ display: "flex", gap: 1, alignItems: "flex-start", bgcolor: "rgba(255,255,255,0.025)", p: 1.5 }}>
-                          <TextField
-                            label="Time"
-                            type="time"
-                            value={m.time}
-                            onChange={e => updateMeal(day, m.id, "time", e.target.value)}
-                            size="small"
-                            InputLabelProps={{ shrink: true }}
-                            sx={{ ...sx, width: 120, flexShrink: 0 }}
-                          />
-                          <FormControl size="small" sx={{ ...sx, width: 130, flexShrink: 0 }}>
-                            <InputLabel>Type</InputLabel>
-                            <Select
-                              value={m.type}
-                              label="Type"
-                              onChange={e => updateMeal(day, m.id, "type", e.target.value)}
-                              MenuProps={{ PaperProps: { sx: { bgcolor: "#1a1a1a", color: "#fff", borderRadius: 0 } } }}
-                            >
-                              {TYPES.map(t => (
-                                <MenuItem key={t} value={t} sx={{ fontSize: "0.84rem", "&:hover": { bgcolor: `${brand}20` }, "&.Mui-selected": { bgcolor: `${brand}30` } }}>{t}</MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                          <TextField
-                            label="What did you have?"
-                            value={m.description}
-                            onChange={e => updateMeal(day, m.id, "description", e.target.value)}
-                            size="small"
-                            fullWidth
-                            sx={sx}
-                          />
-                          <IconButton size="small" onClick={() => removeMeal(day, m.id)} sx={{ color: "rgba(255,255,255,0.2)", mt: 0.25, flexShrink: 0, "&:hover": { color: "#ff6b6b" } }}>
-                            <DeleteIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Box>
-                      ))}
+                      {meals.map(m => {
+                        const isDrink = m.type === "Drink";
+                        return (
+                          <Box key={m.id} sx={{ bgcolor: "rgba(255,255,255,0.025)", p: 1.5 }}>
+                            {/* Row 1: Time + Type + Delete */}
+                            <Box sx={{ display: "flex", gap: 1, alignItems: "center", mb: 1 }}>
+                              <TextField
+                                label="Time"
+                                type="time"
+                                value={m.time}
+                                onChange={e => updateMeal(day, m.id, "time", e.target.value)}
+                                size="small"
+                                InputLabelProps={{ shrink: true }}
+                                sx={{ ...sx, width: 120, flexShrink: 0 }}
+                              />
+                              <FormControl size="small" sx={{ ...sx, flex: 1 }}>
+                                <InputLabel>Type</InputLabel>
+                                <Select
+                                  value={m.type}
+                                  label="Type"
+                                  onChange={e => updateMeal(day, m.id, "type", e.target.value)}
+                                  MenuProps={{ PaperProps: { sx: { bgcolor: "#1a1a1a", color: "#fff", borderRadius: 0 } } }}
+                                >
+                                  {TYPES.map(t => (
+                                    <MenuItem key={t} value={t} sx={{ fontSize: "0.84rem", "&:hover": { bgcolor: `${brand}20` }, "&.Mui-selected": { bgcolor: `${brand}30` } }}>{t}</MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                              <IconButton size="small" onClick={() => removeMeal(day, m.id)} sx={{ color: "rgba(255,255,255,0.2)", flexShrink: 0, "&:hover": { color: "#ff6b6b" } }}>
+                                <DeleteIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Box>
+                            {/* Row 2: Description + Amount */}
+                            <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}>
+                              <TextField
+                                label={isDrink ? "What did you drink?" : "What did you eat?"}
+                                value={m.description}
+                                onChange={e => updateMeal(day, m.id, "description", e.target.value)}
+                                size="small"
+                                fullWidth
+                                sx={sx}
+                              />
+                              <TextField
+                                label={isDrink ? "How much?" : "Portion"}
+                                placeholder={isDrink ? "e.g. 500ml, 2 glasses" : "e.g. 1 bowl, 200g"}
+                                value={m.amount}
+                                onChange={e => updateMeal(day, m.id, "amount", e.target.value)}
+                                size="small"
+                                InputLabelProps={{ shrink: m.amount ? true : undefined }}
+                                sx={{ ...sx, width: 148, flexShrink: 0 }}
+                              />
+                            </Box>
+                          </Box>
+                        );
+                      })}
                     </Stack>
                   </Box>
                 </Collapse>

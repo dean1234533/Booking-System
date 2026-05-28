@@ -121,16 +121,21 @@ export default function HaircutMemory({ shopId, brandColor = "#C9A84C" }) {
   return (
     <>
       <Fab
+        variant="extended"
         onClick={() => setOpen(true)}
         size="medium"
         sx={{
           position: "fixed", bottom: 24, right: 24, zIndex: 1200,
           bgcolor: brandColor, color: "#0d0d0d",
           boxShadow: `0 4px 20px ${brandColor}55`,
+          fontFamily: SANS, fontWeight: 700, fontSize: "0.75rem",
+          letterSpacing: "0.06em", textTransform: "uppercase",
+          gap: 1, px: 2.5,
           "&:hover": { bgcolor: brandColor, filter: "brightness(1.1)" },
         }}
       >
-        <ContentCutIcon sx={{ fontSize: 22 }} />
+        <ContentCutIcon sx={{ fontSize: 20 }} />
+        Haircut Memory
       </Fab>
 
       <Drawer
@@ -176,8 +181,11 @@ export default function HaircutMemory({ shopId, brandColor = "#C9A84C" }) {
           {/* ── SEARCH ── */}
           {view === "search" && (
             <Box>
-              <Typography sx={{ fontFamily: SANS, fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", mb: 2 }}>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", mb: 1.5 }}>
                 Look up customer
+              </Typography>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.82rem", color: "rgba(255,255,255,0.38)", lineHeight: 1.75, mb: 2.5 }}>
+                Pull up a customer's full cut history by their phone number — guard sizes, barber notes, and reference photos from every previous visit.
               </Typography>
               <Stack spacing={2}>
                 <TextField

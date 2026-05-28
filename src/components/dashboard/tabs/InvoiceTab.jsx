@@ -119,8 +119,9 @@ export default function InvoiceTab({ barber, profile, brandColor = "#C9A84C" }) 
             <Divider sx={{ my: 2.5 }} />
 
             <Typography variant="caption" color="text.secondary" lineHeight={1.6}>
-              Invoices are sent via Stripe. The client receives an email with a secure payment
-              link and 7 days to pay. Funds land in your connected Stripe account.
+              Invoices are sent via Stripe and routed through your connected account.
+              The client receives a secure payment link and has 7 days to pay.
+              A 2.5% platform fee is deducted automatically — the same rate as online bookings.
             </Typography>
           </Paper>
         </Grid>

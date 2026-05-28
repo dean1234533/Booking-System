@@ -22,6 +22,7 @@ import InstagramIcon          from "@mui/icons-material/Instagram";
 import YouTubeIcon            from "@mui/icons-material/YouTube";
 import CategoryRow            from "../components/CategoryRow";
 import TenantHome             from "./TenantHome";
+import PricingModal           from "../components/PricingModal";
 import { useBarbers }         from "../hooks/useBarbers";
 import { useNavigate }        from "react-router-dom";
 
@@ -45,20 +46,23 @@ const ITALIC = "'Cormorant Garamond', serif";
 const CATEGORIES = [
   { label: "All",               icon: <GridViewRoundedIcon />, color: G.gold,    bg: G.goldPale  },
   { label: "Barbers",           icon: <ContentCutIcon />,      color: G.gold,    bg: G.goldPale  },
+  { label: "Hairdressers",      icon: <ContentCutIcon />,      color: "#7c4e8a", bg: "#f5e8f5"   },
   { label: "Decorators",        icon: <BrushIcon />,           color: "#7a3520", bg: "#f5e8e3"   },
   { label: "Personal Trainers", icon: <FitnessCenterIcon />,   color: "#3d2c0e", bg: "#f0e4cc"   },
 ];
 
 const CAT_TYPE_MAP = {
   "Barbers":           "barber",
+  "Hairdressers":      "hairdresser",
   "Decorators":        "decorator",
   "Personal Trainers": "trainer",
 };
 
 const SECTIONS = [
-  { label: "Grooming",          title: "Top-rated barbers near you",      type: "barber"    },
-  { label: "Home Decorating",   title: "Skilled decorators near you",     type: "decorator" },
-  { label: "Health & Fitness",  title: "Personal trainers in your area",  type: "trainer"   },
+  { label: "Grooming",          title: "Top-rated barbers near you",         type: "barber"      },
+  { label: "Beauty & Hair",     title: "Top hairdressers near you",          type: "hairdresser" },
+  { label: "Home Decorating",   title: "Skilled decorators near you",        type: "decorator"   },
+  { label: "Health & Fitness",  title: "Personal trainers in your area",     type: "trainer"     },
 ];
 
 const REVIEWS = [
@@ -104,7 +108,8 @@ export default function Home({ tenant }) {
   const [searchLocation,  setSearchLocation]  = useState("");
   const [pendingService,  setPendingService]  = useState("");
   const [pendingLocation, setPendingLocation] = useState("");
-  const [revIdx, setRevIdx] = useState(0);
+  const [revIdx,          setRevIdx]          = useState(0);
+  const [pricingOpen,     setPricingOpen]     = useState(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, [tenant]);
 
@@ -158,7 +163,7 @@ export default function Home({ tenant }) {
       {/* ── HERO ── */}
       <Box sx={{
         bgcolor: G.dark,
-        minHeight: "100vh",
+        minHeight: { xs: "auto", md: "100vh" },
         display: "flex",
         flexDirection: "column",
         position: "relative",
@@ -180,7 +185,7 @@ export default function Home({ tenant }) {
         {/* Main content — vertically centred */}
         <Container maxWidth="lg" sx={{
           flex: 1, display: "flex", alignItems: "center",
-          pt: { xs: "80px", md: "96px" }, pb: { xs: 4, md: 6 },
+          pt: { xs: "80px", md: "96px" }, pb: { xs: 6, md: 6 },
           position: "relative", zIndex: 1,
         }}>
           <Box sx={{ width: "100%", maxWidth: { md: 680 } }}>
@@ -531,6 +536,138 @@ export default function Home({ tenant }) {
         </Container>
       </Box>
 
+      {/* ── FOOTER ── */}
+      <Box sx={{ bgcolor: G.dark, borderTop: `1px solid rgba(255,255,255,0.08)`, py: { xs: 5, md: 6 }, px: { xs: 2, md: 5 } }}>
+        <Container maxWidth="lg">
+          <Grid container spacing={4} alignItems="flex-start">
+
+            {/* Brand */}
+            <Grid item xs={12} md={4}>
+              <Typography sx={{ fontFamily: SERIF, fontSize: "1.3rem", fontWeight: 400, color: G.gold, mb: 1 }}>
+                Book-eh-Trim
+              </Typography>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.8, maxWidth: 260 }}>
+                The UK's marketplace for vetted local professionals. Book online, pay securely, every time.
+              </Typography>
+            </Grid>
+
+            {/* Platform links */}
+            <Grid item xs={6} md={2}>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", mb: 2 }}>
+                Platform
+              </Typography>
+              <Stack spacing={1.2}>
+                {[
+                  { label: "Browse services", action: () => document.getElementById("browse-section")?.scrollIntoView({ behavior: "smooth" }) },
+                  { label: "List your business", action: () => navigate("/signup") },
+                  { label: "Pricing", action: () => setPricingOpen(true) },
+                ].map(link => (
+                  <Typography
+                    key={link.label}
+                    onClick={link.action}
+                    sx={{
+                      fontFamily: SANS, fontSize: "0.82rem", color: "rgba(255,255,255,0.5)",
+                      cursor: "pointer", transition: "color .2s",
+                      "&:hover": { color: G.gold },
+                    }}
+                  >
+                    {link.label}
+                  </Typography>
+                ))}
+              </Stack>
+            </Grid>
+
+            {/* Account links */}
+            <Grid item xs={6} md={2}>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", mb: 2 }}>
+                Account
+              </Typography>
+              <Stack spacing={1.2}>
+                {[
+                  { label: "Log in", action: () => navigate("/login") },
+                  { label: "Sign up", action: () => navigate("/signup") },
+                ].map(link => (
+                  <Typography
+                    key={link.label}
+                    onClick={link.action}
+                    sx={{
+                      fontFamily: SANS, fontSize: "0.82rem", color: "rgba(255,255,255,0.5)",
+                      cursor: "pointer", transition: "color .2s",
+                      "&:hover": { color: G.gold },
+                    }}
+                  >
+                    {link.label}
+                  </Typography>
+                ))}
+              </Stack>
+            </Grid>
+
+            {/* CTA */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{
+                p: 2.5, borderRadius: 2,
+                border: "1px solid rgba(201,168,76,0.2)",
+                bgcolor: "rgba(201,168,76,0.04)",
+              }}>
+                <Typography sx={{ fontFamily: SERIF, fontSize: "1.05rem", color: "#fff", mb: 0.75 }}>
+                  Start your free trial
+                </Typography>
+                <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "rgba(255,255,255,0.45)", mb: 2, lineHeight: 1.7 }}>
+                  30 days free, then £10/month. No card required.
+                </Typography>
+                <Stack direction="row" spacing={1.5}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => navigate("/signup")}
+                    sx={{
+                      bgcolor: G.gold, color: G.dark,
+                      fontFamily: SANS, fontWeight: 700, fontSize: "0.75rem",
+                      letterSpacing: "0.08em", textTransform: "uppercase",
+                      borderRadius: "2px", boxShadow: "none",
+                      "&:hover": { bgcolor: G.goldLight, boxShadow: "none" },
+                    }}
+                  >
+                    Get started
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => setPricingOpen(true)}
+                    sx={{
+                      color: G.gold, fontFamily: SANS, fontWeight: 600,
+                      fontSize: "0.75rem", letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      "&:hover": { bgcolor: "transparent", color: G.goldLight },
+                    }}
+                  >
+                    See pricing →
+                  </Button>
+                </Stack>
+              </Box>
+            </Grid>
+          </Grid>
+
+          {/* Bottom bar */}
+          <Box sx={{ mt: 5, pt: 3, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
+            <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(255,255,255,0.2)" }}>
+              © {new Date().getFullYear()} Book-eh-Trim. All rights reserved.
+            </Typography>
+            <Typography
+              onClick={() => setPricingOpen(true)}
+              sx={{
+                fontFamily: SANS, fontSize: "0.72rem", color: "rgba(255,255,255,0.3)",
+                cursor: "pointer", letterSpacing: "0.08em",
+                "&:hover": { color: G.gold },
+              }}
+            >
+              Pricing & Fees
+            </Typography>
+          </Box>
+        </Container>
+      </Box>
+
+      <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
 
     </Box>
   );

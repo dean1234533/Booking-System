@@ -22,12 +22,14 @@ export const getBarberById = getBarber;
 export const getBarberByDomain = async (rawDomain) => {
   if (!rawDomain) return null;
 
-  // Normalise: strip protocol prefix and trailing slash so queries always match.
-  // Stored values like "my-shop.co.uk" will match "https://my-shop.co.uk/" etc.
+  // Normalise: strip protocol, trailing slash, and www. prefix.
+  // We always store the bare domain (no www), so both bellaflorjewellery.co.uk
+  // and www.bellaflorjewellery.co.uk resolve to the same tenant.
   const domain = rawDomain
     .replace(/^https?:\/\//i, "")
     .replace(/\/+$/, "")
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/^www\./, "");
 
   // 1. Check customDomain field first — new field used for Cloudflare Pages barbers
   const customSnap = await getDocs(

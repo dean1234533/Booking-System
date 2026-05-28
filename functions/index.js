@@ -165,16 +165,22 @@ exports.addCustomDomain = onCall(
       const {domain} = request.data;
       if (!domain) throw new HttpsError("invalid-argument", "domain is required");
 
-      const clean = cleanDomain(domain);
+      // Strip www. prefix so we always store/match the bare domain
+      const clean = cleanDomain(domain).replace(/^www\./, "");
       if (!isValidDomain(clean)) {
         throw new HttpsError("invalid-argument", "Invalid domain format");
       }
+
+      // Register the www subdomain as the Cloudflare custom hostname.
+      // GoDaddy (and most registrars) reject CNAME on the root (@), so we
+      // target www.domain which supports CNAME, and handle the root via forwarding.
+      const wwwHostname = `www.${clean}`;
 
       try {
         const response = await axios.post(
             `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames`,
             {
-              hostname: clean,
+              hostname: wwwHostname,
               ssl: {
                 method: "http",
                 type: "dv",
@@ -186,29 +192,30 @@ exports.addCustomDomain = onCall(
 
         const result = response.data.result;
 
+        // Save the bare domain (no www) — getBarberByDomain also strips www
         await admin.firestore().collection("barbers").doc(request.auth.uid).update({
-          customDomain: result.hostname,
+          customDomain: clean,
           domainStatus: "pending",
           customHostnameId: result.id,
         });
 
         return {
           cfHostnameId: result.id,
-          domain: result.hostname,
+          domain: clean,
           dnsRecords: [
-            {
-              type: "CNAME",
-              name: "@",
-              value: "fallback.bookehtrim.co.uk",
-              ttl: "Auto",
-              description: "Points your domain to our servers",
-            },
             {
               type: "CNAME",
               name: "www",
               value: "fallback.bookehtrim.co.uk",
               ttl: "Auto",
-              description: "Points www to our servers",
+              description: "Points www to your booking site",
+            },
+            {
+              type: "FORWARD",
+              name: "@",
+              value: `https://www.${clean}`,
+              ttl: "Auto",
+              description: "Redirect root domain to www — use your registrar's domain forwarding",
             },
           ],
         };
@@ -218,7 +225,30 @@ exports.addCustomDomain = onCall(
 
         const errors = error.response?.data?.errors ?? [];
         if (errors.some((e) => e.code === 1406)) {
-          throw new HttpsError("already-exists", "This domain is already connected to our platform.");
+          // Already registered — still return the correct DNS instructions
+          await admin.firestore().collection("barbers").doc(request.auth.uid).update({
+            customDomain: clean,
+            domainStatus: "pending",
+          });
+          return {
+            domain: clean,
+            dnsRecords: [
+              {
+                type: "CNAME",
+                name: "www",
+                value: "fallback.bookehtrim.co.uk",
+                ttl: "Auto",
+                description: "Points www to your booking site",
+              },
+              {
+                type: "FORWARD",
+                name: "@",
+                value: `https://www.${clean}`,
+                ttl: "Auto",
+                description: "Redirect root domain to www — use your registrar's domain forwarding",
+              },
+            ],
+          };
         }
 
         throw new HttpsError("internal", "Failed to connect domain.");

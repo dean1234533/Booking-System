@@ -13,8 +13,8 @@ export default function SlotPicker({
   onSelect // New prop to handle click actions
 }) {
   const activeColor = brandColor || "#C9A84C";
-  
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const [selectedDate, setSelectedDate] = useState(null);
 
   const availableSlots = useMemo(() => {
     return (slots || []).filter(slot => !slot.status || slot.status.toLowerCase() === "open");
@@ -32,6 +32,12 @@ export default function SlotPicker({
     return Object.keys(groupedSlots).sort((a, b) => new Date(a) - new Date(b));
   }, [groupedSlots]);
 
+  // Always show the first available date when the user hasn't picked one,
+  // or when their previously selected date no longer has slots.
+  const effectiveDate = (selectedDate && groupedSlots[selectedDate])
+    ? selectedDate
+    : (uniqueDates[0] || null);
+
   if (loading) return <Box display="flex" justifyContent="center" py={4}><CircularProgress sx={{ color: activeColor }} /></Box>;
   if (error) return <Typography color="error" textAlign="center">{error}</Typography>;
 
@@ -43,7 +49,7 @@ export default function SlotPicker({
     );
   }
 
-  const slotsForSelectedDate = groupedSlots[selectedDate] || [];
+  const slotsForSelectedDate = effectiveDate ? (groupedSlots[effectiveDate] || []) : [];
 
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -64,7 +70,7 @@ export default function SlotPicker({
         
         <Box sx={{ display: 'flex', overflowX: 'auto', pb: 2, gap: 1.5, scrollSnapType: 'x mandatory' }}>
           {uniqueDates.map((dateStr) => {
-            const isSelected = selectedDate === dateStr;
+            const isSelected = effectiveDate === dateStr;
             const meta = formatDate(dateStr);
             return (
               <Button key={dateStr} onClick={() => setSelectedDate(dateStr)} sx={{
@@ -86,7 +92,7 @@ export default function SlotPicker({
 
       <Box>
         <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>
-          Available Times for {new Date(selectedDate).toLocaleDateString('en-GB', { dateStyle: 'full' })}
+          Available Times for {effectiveDate ? new Date(effectiveDate + 'T12:00:00').toLocaleDateString('en-GB', { dateStyle: 'full' }) : ''}
         </Typography>
 
         {slotsForSelectedDate.length > 0 ? (

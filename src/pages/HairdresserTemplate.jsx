@@ -310,10 +310,33 @@ const HairdresserStyles = () => (
       .hs-nav-links, .hs-nav-cta { display: none !important; }
       .hs-hamburger { display: flex; }
     }
+    @media (max-width: 600px) {
+      .hs-service-row { flex-wrap: wrap; gap: 0.4rem; }
+      .hs-service-meta { width: 100%; justify-content: flex-start; }
+      .hs-section-title { font-size: clamp(1.6rem, 6vw, 2.4rem); }
+    }
     @media (max-width: 480px) {
       .hs-hero-actions { flex-direction: column; }
-      .hs-btn-primary, .hs-btn-outline { text-align: center; width: 100%; }
+      .hs-btn-primary, .hs-btn-outline { text-align: center; width: 100%; display: block; }
       .hs-team-grid { grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+      /* Section padding */
+      .hs-services, .hs-about, .hs-team, .hs-reviews, .hs-booking {
+        padding: 3rem 1.25rem;
+      }
+      /* Stats bar — stack to single column */
+      .hs-stats { grid-template-columns: 1fr; padding: 0; }
+      .hs-stat { padding: 0.75rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.15); }
+      .hs-stat:last-child { border-bottom: none; }
+      .hs-stat + .hs-stat::before { display: none; }
+      .hs-stat-num { font-size: 1.8rem; }
+      .hs-stat-label { font-size: 0.62rem; letter-spacing: 0.1em; }
+      /* About section */
+      .hs-about-img img { height: 240px; }
+      .hs-about-quote { font-size: 1.15rem; padding-left: 1rem; }
+      /* Reviews */
+      .hs-review-text { font-size: 1.1rem; }
+      /* Booking */
+      .hs-booking-header { margin-bottom: 2rem; }
     }
   `}</style>
 );

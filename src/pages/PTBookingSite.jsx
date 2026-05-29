@@ -264,6 +264,7 @@ const GOAL_OPTIONS = [
 ];
 
 function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, businessName, onClose }) {
+  const isSmall = useMediaQuery('(max-width: 480px)');
   const [form, setForm] = useState({
     name: '', phone: '', email: '', age: '', address: '',
     goalText: '', goalTypes: [],
@@ -374,7 +375,7 @@ function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, business
         ) : (
           <form onSubmit={handleSubmit}>
             {/* ─── Personal details ─── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isSmall ? '1fr' : '1fr 1fr', gap: '0 16px' }}>
               <div style={fieldWrap}>
                 <label style={labelStyle}>Full Name *</label>
                 <input style={inputStyle} placeholder="John Smith" value={form.name} onChange={e => set('name', e.target.value)} required
@@ -393,7 +394,7 @@ function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, business
                 onFocus={e => e.target.style.borderColor = brandColor} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isSmall ? '1fr' : '1fr 1fr', gap: '0 16px' }}>
               <div style={fieldWrap}>
                 <label style={labelStyle}>Phone Number *</label>
                 <input style={inputStyle} type="tel" placeholder="07700 900000" value={form.phone} onChange={e => set('phone', e.target.value)} required
@@ -527,6 +528,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   const [menuOpen, setMenuOpen] = useState(false);
   const [consultationSlot, setConsultationSlot] = useState(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
+  const isSmall  = useMediaQuery('(max-width: 480px)');
 
   const fontKey     = barber?.siteFont || profile?.siteFont || "bebas";
   const displayFont = getFontFamily(fontKey, "bebas");
@@ -659,7 +661,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             <span style={{ display: 'inline-block', background: brandColor, color: '#fff', fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', padding: '5px 14px', borderRadius: 4, marginBottom: 24 }}>Personal Training</span>
           </div>
           <h1 className="fade-up" style={{ animationDelay: '200ms', fontFamily: displayFont, fontSize: 'clamp(40px, 12vw, 110px)', lineHeight: 0.95, letterSpacing: '0.02em', color: '#fff', margin: '0 0 28px', whiteSpace: 'pre-line' }}>{heroTitle}</h1>
-          <p className="fade-up" style={{ animationDelay: '340ms', fontSize: 'clamp(15px, 1.8vw, 18px)', color: 'rgba(255,255,255,0.65)', maxWidth: 440, lineHeight: 1.7, marginBottom: 40, fontWeight: 300 }}>{heroSubtitle}</p>
+          <p className="fade-up" style={{ animationDelay: '340ms', fontSize: 'clamp(15px, 3.5vw, 18px)', color: 'rgba(255,255,255,0.65)', maxWidth: 440, lineHeight: 1.7, marginBottom: 40, fontWeight: 300 }}>{heroSubtitle}</p>
           <div className="fade-up" style={{ animationDelay: '460ms', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="#booking-section" style={{ padding: '14px 36px', background: brandColor, color: '#fff', borderRadius: 8, fontWeight: 800, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none', transition: 'opacity 0.2s, transform 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
@@ -680,12 +682,15 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
 
       {/* ══════════ STATS BAR ══════════ */}
       <FadeIn>
-        <section style={{ background: brandColor, padding: 'clamp(24px,4vw,36px) 24px' }}>
-          <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, textAlign: 'center' }}>
+        <section style={{ background: brandColor, padding: 'clamp(20px,4vw,36px) clamp(16px,4vw,24px)' }}>
+          <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: isSmall ? '1fr' : 'repeat(3, 1fr)', gap: isSmall ? 0 : 16, textAlign: 'center' }}>
             {statBar.map((s, i) => (
-              <div key={i} style={{ padding: '4px 0' }}>
-                <div className="stat-num" style={{ fontSize: 'clamp(28px, 5vw, 44px)', color: '#fff', letterSpacing: '0.04em' }}>{s.num}</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{s.label}</div>
+              <div key={i} style={{
+                padding: isSmall ? '0.6rem 0' : '4px 0',
+                borderBottom: isSmall && i < statBar.length - 1 ? '1px solid rgba(255,255,255,0.2)' : 'none',
+              }}>
+                <div className="stat-num" style={{ fontSize: isSmall ? 'clamp(26px,7vw,36px)' : 'clamp(28px, 5vw, 44px)', color: '#fff', letterSpacing: '0.04em' }}>{s.num}</div>
+                <div style={{ fontSize: isSmall ? 10 : 11, color: 'rgba(255,255,255,0.72)', fontWeight: 700, letterSpacing: isSmall ? '0.06em' : '0.14em', textTransform: 'uppercase' }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -750,10 +755,10 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <section id="specializations" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: '#fff' }}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>What I Do</p>
-            <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 56 }}>Areas of Expertise</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
+            <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: isMobile ? 32 : 56 }}>Areas of Expertise</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
               {specializations.map((spec, i) => (
-                <div key={i} className="card-hover" style={{ background: 'var(--cream)', borderRadius: 12, padding: 32, borderLeft: `4px solid ${brandColor}`, position: 'relative', overflow: 'hidden' }}>
+                <div key={i} className="card-hover" style={{ background: 'var(--cream)', borderRadius: 12, padding: isMobile ? 20 : 32, borderLeft: `4px solid ${brandColor}`, position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: -8, right: 12, fontFamily: displayFont, fontSize: 72, color: brandColor, opacity: 0.07, lineHeight: 1, userSelect: 'none', pointerEvents: 'none' }}>0{i + 1}</div>
                   <div style={{ width: 36, height: 36, borderRadius: 8, background: brandColor, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 16, color: '#fff', fontWeight: 900 }}>
                     {['💪', '🔥', '⚡', '🎯'][i % 4]}

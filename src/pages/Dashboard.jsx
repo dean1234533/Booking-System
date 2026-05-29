@@ -23,6 +23,7 @@ import {
   People as PeopleIcon,
   RestaurantMenu as RestaurantMenuIcon,
   ContentCut as ContentCutIcon,
+  Web as WebIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -48,6 +49,7 @@ import ManualBookingDialog from "../components/dashboard/ManualBookingDialog";
 import ScheduleTab  from "../components/dashboard/tabs/ScheduleTab";
 import BookingsTab  from "../components/dashboard/tabs/BookingsTab";
 import ProfileTab   from "../components/dashboard/tabs/ProfileTab";
+import EditPageTab  from "../components/dashboard/tabs/EditPageTab";
 import ServicesTab  from "../components/dashboard/tabs/ServicesTab";
 import ReviewsTab   from "../components/dashboard/tabs/ReviewsTab";
 import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
@@ -606,7 +608,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const tabs = [
     { key: "schedule",  label: "Schedule",  icon: <AccessTimeIcon /> },
     { key: "bookings",  label: "Bookings",  icon: <StoreIcon /> },
-    { key: "profile",   label: "Profile",   icon: <PersonIcon /> },
+    isBarber
+      ? { key: "profile",   label: "Profile",   icon: <PersonIcon /> }
+      : { key: "editpage",  label: "Edit Page",  icon: <WebIcon /> },
     { key: "services",  label: "Services",  icon: <ListIcon /> },
     ...(isOwner ? [{ key: "reviews",    label: "Reviews",    icon: <ReviewsIcon /> }]  : []),
     ...(isOwner && isBarber ? [{ key: "queue",        label: "Queue",           icon: <PeopleIcon /> }]      : []),
@@ -835,16 +839,28 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 2 Profile ── */}
+        {/* ── 2 Profile (barber) / Edit Page (decorator, hairdresser, trainer) ── */}
         <TabPanel value={tab} index={2}>
-          <ProfileTab
-            profile={profile} setProfile={setProfile}
-            brandColor={brandColor} userRole={userRole}
-            profilePreview={profilePreview}
-            setProfileFile={setProfileFile} setProfilePreview={setProfilePreview}
-            handleDeleteProfile={handleDeleteProfile}
-            handleImageChange={handleImageChange}
-          />
+          {isBarber ? (
+            <ProfileTab
+              profile={profile} setProfile={setProfile}
+              brandColor={brandColor} userRole={userRole}
+              profilePreview={profilePreview}
+              setProfileFile={setProfileFile} setProfilePreview={setProfilePreview}
+              handleDeleteProfile={handleDeleteProfile}
+              handleImageChange={handleImageChange}
+            />
+          ) : (
+            <EditPageTab
+              profile={profile} setProfile={setProfile}
+              brandColor={brandColor} userRole={userRole}
+              profilePreview={profilePreview}
+              setProfileFile={setProfileFile} setProfilePreview={setProfilePreview}
+              handleDeleteProfile={handleDeleteProfile}
+              handleImageChange={handleImageChange}
+              businessType={profile.businessType}
+            />
+          )}
         </TabPanel>
 
         {/* ── 3 Services ── */}
@@ -884,7 +900,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
               profile={profile} setProfile={setProfile}
               brandColor={brandColor}
               businessType={profile.businessType}
-              showWebsite={!initialTenant}
+              showWebsite={!initialTenant && isBarber}
               logoPreview={logoPreview}               setLogoFile={setLogoFile}               setLogoPreview={setLogoPreview}
               heroPreviewDesktop={heroPreviewDesktop} setHeroFileDesktop={setHeroFileDesktop} setHeroPreviewDesktop={setHeroPreviewDesktop}
               heroPreviewMobile={heroPreviewMobile}   setHeroFileMobile={setHeroFileMobile}   setHeroPreviewMobile={setHeroPreviewMobile}

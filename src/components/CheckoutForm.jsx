@@ -39,7 +39,7 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
         return;
       }
 
-      const amountInPence = Math.round(Number(barber.depositAmount || 1) * 100);
+      const amountInPence = Math.round(Math.max(10, Number(barber.depositAmount) || 10) * 100);
 
       const response = await fetch("/api/create-intent", {
         method: "POST",

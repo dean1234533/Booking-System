@@ -109,7 +109,7 @@ export default function BookingForm({ tenant }) {
 
     return {
       brandColor:        tenant?.brandColor    || barber?.brandColor    || "#C9A84C",
-      depositAmount:     isNaN(numericAmount)  || numericAmount === null ? 1.0 : numericAmount,
+      depositAmount:     Math.max(10, isNaN(numericAmount) || numericAmount === null ? 10 : numericAmount),
       barberName:        barber?.name          || "Professional",
       businessName:      tenant?.businessName  || barber?.businessName  || "the salon",
       businessType,
@@ -125,8 +125,8 @@ export default function BookingForm({ tenant }) {
       const finalNumericValue = Number(ui.depositAmount);
       const amountInPence = Math.round(finalNumericValue * 100);
 
-      if (amountInPence < 30) {
-        throw new Error(`Amount (£${finalNumericValue.toFixed(2)}) is below the £0.30 minimum required.`);
+      if (amountInPence < 1000) {
+        throw new Error(`Deposit amount (£${finalNumericValue.toFixed(2)}) is below the £10.00 minimum. Please ask the business owner to update their deposit setting.`);
       }
 
       const response = await fetch('/api/create-intent', {

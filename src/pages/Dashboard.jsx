@@ -299,14 +299,24 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       }
       setUserRole({ isOwner, shopId: activeShopId });
 
-      const bSnap = await getDocs(
-        query(collection(db, "bookings"), where("barberId", "==", barber.uid))
-      );
-      const allB = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setBookings(allB.filter(b => b.status !== "completed" && b.status !== "cancelled"));
+      try {
+        const bSnap = await getDocs(
+          query(collection(db, "bookings"), where("barberId", "==", barber.uid))
+        );
+        const allB = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setBookings(allB.filter(b => b.status !== "completed" && b.status !== "cancelled"));
+      } catch (err) {
+        console.error("[loadData] bookings:", err);
+        setBookings([]);
+      }
 
-      const mySlots = await getProfessionalSlots(barber.uid);
-      setSlots(mySlots || []);
+      try {
+        const mySlots = await getProfessionalSlots(barber.uid);
+        setSlots(mySlots || []);
+      } catch (err) {
+        console.error("[loadData] slots:", err);
+        setSlots([]);
+      }
 
       if (isOwner) {
         try {
@@ -314,7 +324,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           setReviews(rSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         } catch { setReviews([]); }
       }
-    } catch { setToast("Error loading dashboard data"); }
+    } catch (err) {
+      console.error("[loadData] critical:", err);
+      setToast("Error loading dashboard data");
+    }
     finally  { setDataLoading(false); }
   }
 

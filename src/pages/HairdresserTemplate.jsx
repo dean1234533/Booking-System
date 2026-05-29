@@ -4,6 +4,7 @@ import { db } from '../firebase/config';
 import { useNavigate } from 'react-router-dom';
 import { getFontFamily, loadGoogleFont } from '../utils/fontOptions';
 import SlotPicker from '../components/SlotPicker';
+import TenantFooter from '../components/TenantFooter';
 import { formatCurrency } from '../stripe/formatters';
 import { Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import {
@@ -787,6 +788,8 @@ export default function HairdresserTemplate({ tenantData }) {
         )}
 
       </div>{/* end hs-page */}
+
+      <TenantFooter tenant={tenantData} businessType={tenantData?.businessType} />
     </>
   );
 }

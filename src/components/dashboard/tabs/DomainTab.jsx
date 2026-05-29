@@ -121,6 +121,8 @@ export default function DomainTab({barber, brandColor}) {
   const [linking,        setLinking]        = useState(false);
   const [linkError,      setLinkError]      = useState("");
   const [dnsRecords,     setDnsRecords]     = useState(null);
+  const [verifying,      setVerifying]      = useState(false);
+  const [verifyError,    setVerifyError]    = useState("");
 
   // Live barber doc from Firestore (real-time)
   const [barberDoc, setBarberDoc] = useState(null);
@@ -232,6 +234,32 @@ export default function DomainTab({barber, brandColor}) {
       setLinkError(err.message);
     } finally {
       setLinking(false);
+    }
+  }
+
+  async function handleVerifyDns() {
+    const cfId = barberDoc?.customHostnameId;
+    if (!cfId) {
+      setVerifyError("No domain ID found. Please try again.");
+      return;
+    }
+
+    setVerifying(true);
+    setVerifyError("");
+
+    try {
+      const checkStatus = httpsCallable(functions, "checkDomainStatus");
+      const res = await checkStatus({cfHostnameId: cfId});
+
+      if (res.data.isLive) {
+        setDnsRecords(null);
+      } else {
+        setVerifyError(`DNS not yet active. Status: ${res.data.domainStatus}, SSL: ${res.data.sslStatus}. Try again in a few moments.`);
+      }
+    } catch (err) {
+      setVerifyError(err.message || "Verification failed. DNS may not be propagated yet.");
+    } finally {
+      setVerifying(false);
     }
   }
 
@@ -519,6 +547,10 @@ export default function DomainTab({barber, brandColor}) {
                   Follow the steps below in your domain registrar's DNS settings.
                 </Alert>
 
+                {verifyError && (
+                  <Alert severity="warning" sx={{mb: 2}}>{verifyError}</Alert>
+                )}
+
                 {dnsRecords.map((rec, i) => (
                   rec.type === "FORWARD" ? (
                     /* Root domain — can't use CNAME, use registrar forwarding */
@@ -555,6 +587,23 @@ export default function DomainTab({barber, brandColor}) {
                   DNS changes can take up to 48 hours to propagate. Your domain status
                   will update automatically once verified.
                 </Alert>
+
+                <Button
+                  fullWidth
+                  variant="contained"
+                  size="small"
+                  onClick={handleVerifyDns}
+                  disabled={verifying}
+                  startIcon={verifying ? <CircularProgress size={18} color="inherit" /> : null}
+                  sx={{
+                    mt: 2,
+                    bgcolor: brandColor,
+                    fontWeight: 700,
+                    "&:hover": { bgcolor: brandColor, opacity: 0.9 }
+                  }}
+                >
+                  {verifying ? "Checking DNS..." : "Verify DNS Records"}
+                </Button>
               </Box>
             )}
           </Paper>

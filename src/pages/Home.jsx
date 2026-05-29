@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import {
   Box, Container, Typography, Grid, Paper,
-  Skeleton, Button, Stack, Chip, InputBase,
-  useMediaQuery, useTheme, IconButton,
+  Skeleton, Button, Stack, Chip, InputBase, TextField, Alert,
+  useMediaQuery, useTheme, IconButton, CircularProgress,
 } from "@mui/material";
 import SearchIcon             from "@mui/icons-material/Search";
 import LocationOnIcon         from "@mui/icons-material/LocationOn";
@@ -66,9 +66,9 @@ const SECTIONS = [
 ];
 
 const REVIEWS = [
-  { name: "Marcus J.", initials: "MJ", text: "Found my go-to barber in minutes. The booking was seamless — proper quality.", trade: "Barber" },
-  { name: "Elena R.",  initials: "ER", text: "Got a decorator sorted within a day. The reviews are genuine — only verified pros.", trade: "Decorator" },
-  { name: "Jordan T.", initials: "JT", text: "My PT is brilliant. Booked him entirely through here. Easiest experience I've ever had.", trade: "Personal Trainer" },
+  { name: "Sarah M.", initials: "SM", text: "Finally found a platform that actually works. Booked my hairdresser online and it was painless — no endless emails back and forth.", trade: "Hairdresser" },
+  { name: "Tom W.",  initials: "TW", text: "As a barber, I set my availability once and clients book directly. No more phone calls. It's brilliant.", trade: "Barber" },
+  { name: "Alex K.", initials: "AK", text: "We signed up as a decorator last month. The booking system is clean and the dashboard actually makes sense. Worth every penny.", trade: "Decorator" },
 ];
 
 const PLATFORM_FEATURES = [
@@ -110,6 +110,11 @@ export default function Home({ tenant }) {
   const [pendingLocation, setPendingLocation] = useState("");
   const [revIdx,          setRevIdx]          = useState(0);
   const [pricingOpen,     setPricingOpen]     = useState(false);
+  const [feedbackName,    setFeedbackName]    = useState("");
+  const [feedbackEmail,   setFeedbackEmail]   = useState("");
+  const [feedbackText,    setFeedbackText]    = useState("");
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState(null);
 
   useEffect(() => { window.scrollTo(0, 0); }, [tenant]);
 
@@ -121,6 +126,44 @@ export default function Home({ tenant }) {
 
   const prevRev = () => setRevIdx(i => (i - 1 + REVIEWS.length) % REVIEWS.length);
   const nextRev = () => setRevIdx(i => (i + 1) % REVIEWS.length);
+
+  const handleFeedbackSubmit = async (e) => {
+    e.preventDefault();
+    if (!feedbackName.trim() || !feedbackEmail.trim() || !feedbackText.trim()) {
+      setFeedbackMessage({ type: "error", text: "Please fill in all fields." });
+      return;
+    }
+
+    setFeedbackSubmitting(true);
+    setFeedbackMessage(null);
+
+    try {
+      const res = await fetch("/api/send-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: feedbackName,
+          email: feedbackEmail,
+          message: feedbackText,
+        }),
+      });
+
+      if (res.ok) {
+        setFeedbackMessage({ type: "success", text: "Thanks! Your feedback has been sent." });
+        setFeedbackName("");
+        setFeedbackEmail("");
+        setFeedbackText("");
+      } else {
+        const data = await res.json();
+        setFeedbackMessage({ type: "error", text: data.error || "Failed to send feedback. Try again." });
+      }
+    } catch (err) {
+      console.error("Feedback submission error:", err);
+      setFeedbackMessage({ type: "error", text: "Network error. Please try again." });
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
 
   if (tenant) return <TenantHome tenant={tenant} />;
 
@@ -255,9 +298,9 @@ export default function Home({ tenant }) {
           <Container maxWidth="lg">
             <Stack direction="row" sx={{ flexWrap: "nowrap" }}>
               {[
-                { num: "2,400+", label: "Verified professionals" },
-                { num: "3",      label: "Trade categories" },
-                { num: "4.9★",   label: "Average rating" },
+                { num: "20+", label: "Vetted professionals" },
+                { num: "4",      label: "Service types" },
+                { num: "100%", label: "Verified bookings" },
               ].map((s, i) => (
                 <Box key={i} sx={{
                   flex: 1,
@@ -513,7 +556,7 @@ export default function Home({ tenant }) {
           <Box sx={{ textAlign: "center", mb: 6 }}>
             <SectionLabel text="Testimonials" />
             <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.9rem", md: "2.4rem" }, fontWeight: 400, color: G.dark, mt: 0.5 }}>
-              Trusted by thousands
+              Real bookings, real results
             </Typography>
           </Box>
 
@@ -565,6 +608,115 @@ export default function Home({ tenant }) {
               <ArrowForwardIcon fontSize="small" />
             </IconButton>
           </Stack>
+        </Container>
+      </Box>
+
+      {/* ── FEEDBACK SECTION ── */}
+      <Box sx={{ bgcolor: G.warmWhite, py: { xs: 8, md: 12 }, px: { xs: 2, md: 5 }, borderTop: `1px solid ${G.border}` }}>
+        <Container maxWidth="md">
+          <Box sx={{ textAlign: "center", mb: 6 }}>
+            <SectionLabel text="Feature Request" />
+            <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.9rem", md: "2.4rem" }, fontWeight: 400, color: G.dark, mt: 0.5 }}>
+              Missing a service type?
+            </Typography>
+            <Typography sx={{ fontFamily: SANS, fontSize: "0.95rem", color: G.muted, mt: 2, maxWidth: 500, mx: "auto" }}>
+              Let us know what business type or feature you'd like to see on yr-bookd. We read every suggestion.
+            </Typography>
+          </Box>
+
+          <Paper elevation={0} sx={{
+            p: { xs: 3, md: 4 }, bgcolor: "#fff",
+            border: `1px solid ${G.border}`, borderRadius: 0,
+          }}>
+            {feedbackMessage && (
+              <Alert severity={feedbackMessage.type} sx={{ mb: 2 }} onClose={() => setFeedbackMessage(null)}>
+                {feedbackMessage.text}
+              </Alert>
+            )}
+
+            <Box component="form" onSubmit={handleFeedbackSubmit}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Your name"
+                    size="small"
+                    value={feedbackName}
+                    onChange={(e) => setFeedbackName(e.target.value)}
+                    disabled={feedbackSubmitting}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: G.border },
+                        "&:hover fieldset": { borderColor: G.gold },
+                        "&.Mui-focused fieldset": { borderColor: G.gold },
+                      },
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Your email"
+                    type="email"
+                    size="small"
+                    value={feedbackEmail}
+                    onChange={(e) => setFeedbackEmail(e.target.value)}
+                    disabled={feedbackSubmitting}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: G.border },
+                        "&:hover fieldset": { borderColor: G.gold },
+                        "&.Mui-focused fieldset": { borderColor: G.gold },
+                      },
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Your suggestion"
+                    multiline
+                    rows={4}
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    disabled={feedbackSubmitting}
+                    placeholder="E.g. 'I'd love to see a plumber marketplace' or 'Feature idea: custom booking duration options'"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: G.border },
+                        "&:hover fieldset": { borderColor: G.gold },
+                        "&.Mui-focused fieldset": { borderColor: G.gold },
+                      },
+                    }}
+                  />
+                </Grid>
+              </Grid>
+
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                disabled={feedbackSubmitting}
+                startIcon={feedbackSubmitting ? <CircularProgress size={18} color="inherit" /> : null}
+                sx={{
+                  mt: 3,
+                  py: 1.5,
+                  bgcolor: G.gold,
+                  color: G.dark,
+                  fontFamily: SANS,
+                  fontWeight: 700,
+                  fontSize: "0.85rem",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  borderRadius: "2px",
+                  "&:hover": { bgcolor: G.goldLight },
+                  "&.Mui-disabled": { bgcolor: "#d0d0d0", color: "#666" },
+                }}
+              >
+                {feedbackSubmitting ? "Sending…" : "Send Feedback"}
+              </Button>
+            </Box>
+          </Paper>
         </Container>
       </Box>
 

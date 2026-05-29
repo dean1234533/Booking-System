@@ -7,6 +7,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import ArrowBackIcon    from "@mui/icons-material/ArrowBack";
 import InstagramIcon    from "@mui/icons-material/Instagram";
+import FacebookIcon     from "@mui/icons-material/Facebook";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 import SlotPicker from "../components/SlotPicker";
@@ -146,7 +147,8 @@ export default function BarberProfile({ tenant: initialTenant }) {
 
   const instagramUrl = barber?.instagramUrl || "";
   const tiktokUrl    = barber?.tiktokUrl    || "";
-  const hasSocial    = instagramUrl || tiktokUrl;
+  const facebookUrl  = barber?.facebookUrl  || "";
+  const hasSocial    = instagramUrl || tiktokUrl || facebookUrl;
 
   const services    = barber?.services || [];
   const visibleSvcs = showAllServices ? services : services.slice(0, 5);
@@ -351,6 +353,7 @@ export default function BarberProfile({ tenant: initialTenant }) {
             {hasSocial && (
               <Box sx={{ display: "flex", gap: 1, mb: 4 }}>
                 <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
+                <SocialLink href={facebookUrl}  label="Facebook"  icon={<FacebookIcon  sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />
                 <SocialLink href={tiktokUrl}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#ffffff" />
               </Box>
             )}
@@ -412,6 +415,52 @@ export default function BarberProfile({ tenant: initialTenant }) {
           />
         </Container>
       </Box>
+
+      {/* ── Footer ── */}
+      <Box component="footer" sx={{ bgcolor: "#0a0a0a", borderTop: "1px solid rgba(255,255,255,0.06)", py: { xs: 5, md: 6 }, px: { xs: 2, md: 5 } }}>
+        <Container maxWidth="lg">
+          <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 4, mb: 4 }}>
+
+            {/* Brand */}
+            <Box>
+              <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", fontWeight: 700, color: brandColor, mb: 0.5 }}>
+                {barber?.businessName || barber?.name || ""}
+              </Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.3)", lineHeight: 1.7, maxWidth: 220 }}>
+                {barber?.address || ""}
+              </Typography>
+            </Box>
+
+            {/* Social icons */}
+            {hasSocial && (
+              <Box>
+                <Typography sx={{ fontSize: "0.65rem", fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", mb: 1.5 }}>
+                  Follow Us
+                </Typography>
+                <Box sx={{ display: "flex", gap: 1.5 }}>
+                  <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
+                  <SocialLink href={facebookUrl}  label="Facebook"  icon={<FacebookIcon  sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />
+                  <SocialLink href={tiktokUrl}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#ffffff" />
+                </Box>
+              </Box>
+            )}
+
+          </Box>
+
+          <Box sx={{ pt: 3, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
+            <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.2)", letterSpacing: "0.04em" }}>
+              © {new Date().getFullYear()} {barber?.businessName || barber?.name || ""}. All rights reserved.
+            </Typography>
+            <Typography
+              component="a" href="/login"
+              sx={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", textDecoration: "none", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "2px", px: 1.5, py: 0.6, transition: "color 0.2s, border-color 0.2s", "&:hover": { color: brandColor, borderColor: brandColor } }}
+            >
+              Barber Login
+            </Typography>
+          </Box>
+        </Container>
+      </Box>
+
     </Box>
   );
 }

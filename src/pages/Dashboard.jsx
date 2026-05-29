@@ -889,7 +889,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             barber={barber}
             profile={profile} setProfile={setProfile} userRole={userRole}
             stripeLoading={stripeLoading} handleConnectStripe={handleConnectStripe}
-            hideDeposit={Boolean(initialTenant) && !isBarber}
+            hideDeposit={isDecorator || isTrainer || (Boolean(initialTenant) && !isBarber)}
           />
         </TabPanel>
 

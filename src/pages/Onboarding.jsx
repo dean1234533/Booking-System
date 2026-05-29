@@ -652,7 +652,7 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
 
         {/* Top bar */}
         <div className="ob-topbar">
-          <div className="ob-logo">book<span>-eh-</span>trim</div>
+          <div className="ob-logo">yr-bookd</div>
           <button className="ob-skip" onClick={() => navigate("/dashboard")}>
             Skip setup →
           </button>

@@ -618,7 +618,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "finance",   label: "Finance",   icon: <PaymentsIcon /> },
     ...(isOwner && (!initialTenant || isBarber || isHairdresser) ? [{ key: "brand",   label: "Brand & Site",   icon: <PaletteIcon /> }] : []),
     ...(isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
-    ...(isOwner && !initialTenant ? [{ key: "invoices",  label: "Invoices",  icon: <ReceiptIcon /> }] : []),
+    ...(isOwner && !initialTenant && !isDecorator ? [{ key: "invoices",  label: "Invoices",  icon: <ReceiptIcon /> }] : []),
     ...(isOwner && isTrainer && !initialTenant ? [{ key: "workouts",    label: "Workouts",     icon: <FitnessCenterIcon /> }] : []),
     ...(isOwner && isTrainer && !initialTenant ? [{ key: "clientforms", label: "Client Forms", icon: <AssignmentIcon /> }]   : []),
     ...(isOwner && isTrainer && !initialTenant ? [{ key: "foodgen",     label: "Food Gen",     icon: <RestaurantMenuIcon /> }] : []),
@@ -920,8 +920,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
-        {/* ── Invoices (owner on own dashboard only) ── */}
-        {isOwner && !initialTenant && (
+        {/* ── Invoices (owner on own dashboard only — not decorator) ── */}
+        {isOwner && !initialTenant && !isDecorator && (
           <TabPanel value={tab} index={tabIdx("invoices")}>
             <InvoiceTab
               barber={barber}

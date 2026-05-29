@@ -99,12 +99,21 @@ export default function BookingForm({ tenant }) {
   const ui = useMemo(() => {
     const rawAmount = barber?.depositAmount ?? tenant?.depositAmount;
     const numericAmount = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount;
-    
+    const businessType = tenant?.businessType || barber?.businessType || "barber";
+
+    const professionalLabel = {
+      hairdresser: "Hair Stylist",
+      decorator:   "Decorator",
+      trainer:     "Personal Trainer",
+    }[businessType] || "Barber";
+
     return {
-      brandColor: tenant?.brandColor || barber?.brandColor || "#C9A84C",
-      depositAmount: isNaN(numericAmount) || numericAmount === null ? 1.0 : numericAmount, 
-      barberName: barber?.name || "Professional Barber",
-      businessName: tenant?.businessName || barber?.businessName || "the Barber"
+      brandColor:        tenant?.brandColor    || barber?.brandColor    || "#C9A84C",
+      depositAmount:     isNaN(numericAmount)  || numericAmount === null ? 1.0 : numericAmount,
+      barberName:        barber?.name          || "Professional",
+      businessName:      tenant?.businessName  || barber?.businessName  || "the salon",
+      businessType,
+      professionalLabel,
     };
   }, [barber, tenant]);
 
@@ -172,7 +181,7 @@ export default function BookingForm({ tenant }) {
         
         <Box sx={{ my: 2 }}>
             <Box display="flex" justifyContent="space-between" mb={1}>
-              <Typography variant="body1" fontWeight={700}>Barber</Typography>
+              <Typography variant="body1" fontWeight={700}>{ui.professionalLabel}</Typography>
               <Typography variant="body1">{ui.barberName}</Typography>
             </Box>
             
@@ -224,7 +233,15 @@ export default function BookingForm({ tenant }) {
                 {GENDER_OPTIONS.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={12}><TextField label="Style / Requirements" fullWidth multiline rows={3} value={formData.haircutStyle} onChange={(e) => setFormData({...formData, haircutStyle: e.target.value})} /></Grid>
+            <Grid item xs={12}>
+              <TextField
+                label={ui.businessType === "hairdresser" ? "Hair Style / Requirements" : ui.businessType === "decorator" ? "Project Details" : ui.businessType === "trainer" ? "Goals / Requirements" : "Style / Requirements"}
+                placeholder={ui.businessType === "hairdresser" ? "e.g. balayage, trim, colour treatment…" : ui.businessType === "decorator" ? "e.g. living room repaint, colour scheme…" : ui.businessType === "trainer" ? "e.g. weight loss, build muscle…" : ""}
+                fullWidth multiline rows={3}
+                value={formData.haircutStyle}
+                onChange={(e) => setFormData({...formData, haircutStyle: e.target.value})}
+              />
+            </Grid>
           </Grid>
 
           <Button 
@@ -235,7 +252,7 @@ export default function BookingForm({ tenant }) {
                 "&.Mui-disabled": { bgcolor: "#e0e0e0" }
             }}
           >
-            {isStripeActive ? `Confirm & Pay £${ui.depositAmount.toFixed(2)}` : "Barber Not Accepting Payments"}
+            {isStripeActive ? `Confirm & Pay £${ui.depositAmount.toFixed(2)}` : `${ui.professionalLabel} Not Accepting Payments`}
           </Button>
         </Box>
       )}

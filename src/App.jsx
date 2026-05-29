@@ -274,7 +274,7 @@ function AppShell() {
             <Route path="/decorator/:tenantId" element={isTenantOffline ? <OfflinePage /> : <DecoratorTemplate tenantData={tenantBarber} />} />
             <Route path="/hairdresser/:tenantId" element={isTenantOffline ? <OfflinePage /> : <HairdresserTemplate tenantData={tenantBarber} />} />
             <Route path="/barber/:id" element={<BarberProfile tenant={tenantBarber} />} />
-            <Route path="/book/:barberId/:slotId" element={<BookingForm />} />
+            <Route path="/book/:barberId/:slotId" element={<BookingForm tenant={tenantBarber} />} />
             <Route path="/confirmation/:bookingId?" element={<Confirmation />} />
             <Route path="/review/:shopId" element={<ReviewPage />} />
             <Route path="/login" element={tenantBarber ? <TenantLogin tenant={tenantBarber} /> : <Login />} />

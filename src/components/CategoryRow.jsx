@@ -8,15 +8,17 @@ const G = { gold: "#C9A84C", goldLight: "#e8c97a", dark: "#0d0d0d", warmWhite: "
 const SERIF = "'Playfair Display', serif";
 const SANS = "'DM Sans', sans-serif";
 
-export default function CategoryRow({ label, title, businessType, businesses = [] }) {
+export default function CategoryRow({ label, title, businessType, businesses = [], searchActive = false }) {
   const [showAll, setShowAll] = useState(false);
 
   const filtered = businesses.filter(b => (b.businessType || "barber") === businessType);
 
   if (filtered.length === 0) return (
-    <Box sx={{ py: 6, textAlign: "center" }}>
-      <Typography sx={{ fontFamily: SANS, fontSize: "0.9rem", color: "rgba(0,0,0,0.35)", fontWeight: 300 }}>
-        No {label.toLowerCase()} found matching your search.
+    <Box sx={{ py: 5, textAlign: "center", mb: 4 }}>
+      <Typography sx={{ fontFamily: SANS, fontSize: "0.88rem", color: "rgba(0,0,0,0.3)", fontWeight: 300 }}>
+        {searchActive
+          ? `No ${label.toLowerCase()} match your search.`
+          : `No active ${label.toLowerCase()} listed yet.`}
       </Typography>
     </Box>
   );

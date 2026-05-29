@@ -567,6 +567,8 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   const privacyText  = profile?.privacyPolicy   || `At ${businessName}, we value your privacy. We collect only information necessary to provide our services and never sell your data.`;
   const termsText    = profile?.termsConditions || `By using ${businessName}, you agree to our terms of service. All bookings are subject to our cancellation policy.`;
   const youtubeUrl   = getYouTubeEmbedUrl(profile?.youtubeUrl);
+  const contactPhone = profile?.phone || '';
+  const contactEmail = profile?.businessEmail || profile?.contactEmail || barber?.email || '';
 
   /* ── Stats bar — editable from Dashboard > Website tab ── */
   const statBar = [
@@ -827,7 +829,23 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             <div>
               {logo ? <img src={logo} alt="Logo" style={{ height: 48, marginBottom: 12, display: 'block' }} /> : null}
               <div style={{ fontFamily: displayFont, fontSize: 22, letterSpacing: '0.12em', color: brandColor, marginBottom: 6 }}>{businessName}</div>
-              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: 300, maxWidth: 220, lineHeight: 1.6 }}>High-performance personal training tailored to your goals.</p>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: 300, maxWidth: 220, lineHeight: 1.6, marginBottom: (contactPhone || contactEmail) ? 12 : 0 }}>High-performance personal training tailored to your goals.</p>
+              {contactPhone && (
+                <a href={`tel:${contactPhone}`} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.55)', fontSize: 13, textDecoration: 'none', marginBottom: 8, transition: 'color 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = brandColor}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
+                >
+                  <span style={{ fontSize: 14 }}>📞</span> {contactPhone}
+                </a>
+              )}
+              {contactEmail && (
+                <a href={`mailto:${contactEmail}`} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.55)', fontSize: 13, textDecoration: 'none', transition: 'color 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = brandColor}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
+                >
+                  <span style={{ fontSize: 14 }}>✉</span> {contactEmail}
+                </a>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>Navigate</div>

@@ -373,6 +373,36 @@ export default function Home({ tenant }) {
                 </Grid>
               ))}
             </Grid>
+          ) : barbers.length === 0 ? (
+            /* ── No businesses registered on the platform yet ── */
+            <Box sx={{ textAlign: "center", py: { xs: 10, md: 14 } }}>
+              <Box sx={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                width: 72, height: 72, borderRadius: "50%",
+                bgcolor: G.goldAlpha, border: `1px solid rgba(201,168,76,0.25)`, mb: 3,
+              }}>
+                <SearchIcon sx={{ fontSize: 30, color: G.gold, opacity: 0.7 }} />
+              </Box>
+              <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.6rem", md: "2rem" }, fontWeight: 400, color: G.dark, mb: 1.5 }}>
+                No active listings yet
+              </Typography>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.95rem", fontWeight: 300, color: G.muted, lineHeight: 1.8, maxWidth: 400, mx: "auto", mb: 4 }}>
+                We're just getting started. Be the first professional to list your business and start taking bookings today.
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => navigate("/signup")}
+                sx={{
+                  bgcolor: G.gold, color: G.dark,
+                  fontFamily: SANS, fontWeight: 700, fontSize: "0.82rem",
+                  letterSpacing: "0.06em", textTransform: "uppercase",
+                  px: 4, py: 1.5, borderRadius: "2px", boxShadow: "none",
+                  "&:hover": { bgcolor: G.goldLight, boxShadow: "none" },
+                }}
+              >
+                List your business
+              </Button>
+            </Box>
           ) : (
             <>
               {visibleSections.map(({ label, title, type }) => (
@@ -382,10 +412,11 @@ export default function Home({ tenant }) {
                   title={title}
                   businessType={type}
                   businesses={filteredBarbers}
+                  searchActive={!!(searchService || searchLocation)}
                 />
               ))}
 
-              {/* Empty state when search returns nothing */}
+              {/* Empty state when search/filter returns nothing */}
               {filteredBarbers.length === 0 && (
                 <Box sx={{ textAlign: "center", py: 10 }}>
                   <Typography sx={{ fontFamily: SERIF, fontSize: "1.5rem", color: G.dark, mb: 1 }}>

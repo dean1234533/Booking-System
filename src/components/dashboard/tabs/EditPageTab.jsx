@@ -639,16 +639,20 @@ export default function EditPageTab({
         </Box>
 
         <Grid container spacing={2.5}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Full Name"
-              value={profile.name || ""}
-              fullWidth
-              onChange={e => set("name", e.target.value)}
-            />
-          </Grid>
+          {/* Full Name — hairdresser only */}
+          {type === "hairdresser" && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Full Name"
+                value={profile.name || ""}
+                fullWidth
+                onChange={e => set("name", e.target.value)}
+              />
+            </Grid>
+          )}
 
-          {userRole.isOwner && (
+          {/* Opening Times — hairdresser only */}
+          {type === "hairdresser" && userRole.isOwner && (
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Opening Times"
@@ -698,23 +702,29 @@ export default function EditPageTab({
             </Grid>
           )}
 
-          <Grid item xs={12}>
-            <TextField
-              label="Specialty"
-              value={profile.specialty || ""}
-              fullWidth
-              onChange={e => set("specialty", e.target.value)}
-            />
-          </Grid>
+          {/* Specialty — hairdresser only */}
+          {type === "hairdresser" && (
+            <Grid item xs={12}>
+              <TextField
+                label="Specialty"
+                value={profile.specialty || ""}
+                fullWidth
+                onChange={e => set("specialty", e.target.value)}
+              />
+            </Grid>
+          )}
 
-          <Grid item xs={12}>
-            <TextField
-              label="Personal Bio"
-              value={profile.bio || ""}
-              fullWidth multiline rows={2}
-              onChange={e => set("bio", e.target.value)}
-            />
-          </Grid>
+          {/* Personal Bio — hairdresser only */}
+          {type === "hairdresser" && (
+            <Grid item xs={12}>
+              <TextField
+                label="Personal Bio"
+                value={profile.bio || ""}
+                fullWidth multiline rows={2}
+                onChange={e => set("bio", e.target.value)}
+              />
+            </Grid>
+          )}
         </Grid>
       </Section>
 

@@ -702,13 +702,17 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
             </ul>
 
             <div className="ob-cta-row">
-              <button className="ob-cta" onClick={() => advance(current.ctaTab)}>
-                {current.ctaLabel}
-                <span className="ob-cta-arrow">→</span>
-              </button>
-              {current.skipLabel && (
-                <button className="ob-cta-secondary" onClick={skip}>
-                  {current.skipLabel}
+              {step < STEPS.length - 1 ? (
+                /* Steps 1 & 2 — informational only, just advance */
+                <button className="ob-cta" onClick={skip}>
+                  Next
+                  <span className="ob-cta-arrow">→</span>
+                </button>
+              ) : (
+                /* Step 3 — final, go to dashboard */
+                <button className="ob-cta" onClick={() => advance(current.ctaTab)}>
+                  {current.ctaLabel}
+                  <span className="ob-cta-arrow">→</span>
                 </button>
               )}
             </div>

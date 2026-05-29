@@ -614,11 +614,11 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "finance",   label: "Finance",   icon: <PaymentsIcon /> },
     ...(isOwner && (!initialTenant || isBarber || isHairdresser) ? [{ key: "brand",   label: "Brand & Site",   icon: <PaletteIcon /> }] : []),
     ...(isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
-    ...(!initialTenant ? [{ key: "invoices",  label: "Invoices",  icon: <ReceiptIcon /> }] : []),
+    ...(isOwner && !initialTenant ? [{ key: "invoices",  label: "Invoices",  icon: <ReceiptIcon /> }] : []),
     ...(isOwner && isTrainer && !initialTenant ? [{ key: "workouts",    label: "Workouts",     icon: <FitnessCenterIcon /> }] : []),
     ...(isOwner && isTrainer && !initialTenant ? [{ key: "clientforms", label: "Client Forms", icon: <AssignmentIcon /> }]   : []),
     ...(isOwner && isTrainer && !initialTenant ? [{ key: "foodgen",     label: "Food Gen",     icon: <RestaurantMenuIcon /> }] : []),
-    ...(isOwner ? [{ key: "pay", label: "Pay", icon: <NfcIcon /> }] : []),
+    ...(isOwner || initialTenant ? [{ key: "pay", label: "Pay", icon: <NfcIcon /> }] : []),
     ...(isOwner && isDecorator ? [{ key: "colours",  label: "Colours",    icon: <ColorLensIcon /> }]   : []),
     ...(isOwner && isDecorator ? [{ key: "quotes",   label: "Quotes",     icon: <RequestQuoteIcon /> }]: []),
     ...(isOwner && isDecorator ? [{ key: "dayplan",  label: "Day Plan",   icon: <TodayIcon /> }]       : []),
@@ -904,14 +904,16 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
-        {/* ── Invoices ── */}
-        <TabPanel value={tab} index={tabIdx("invoices")}>
-          <InvoiceTab
-            barber={barber}
-            profile={profile}
-            brandColor={brandColor}
-          />
-        </TabPanel>
+        {/* ── Invoices (owner on own dashboard only) ── */}
+        {isOwner && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("invoices")}>
+            <InvoiceTab
+              barber={barber}
+              profile={profile}
+              brandColor={brandColor}
+            />
+          </TabPanel>
+        )}
 
         {/* ── Workout Plans (trainer owner only) ── */}
         {isOwner && isTrainer && (
@@ -934,8 +936,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
-        {/* ── Pay / Tap-to-Pay (all owner types) ── */}
-        {isOwner && (
+        {/* ── Pay / Tap-to-Pay (owners + staff in tenant context) ── */}
+        {(isOwner || initialTenant) && (
           <TabPanel value={tab} index={tabIdx("pay")}>
             <PayTab
               profile={profile} barber={barber}

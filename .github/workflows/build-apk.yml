@@ -35,21 +35,21 @@ jobs:
       - name: Install dependencies
         run: npm install --force
 
+      - name: Install Capacitor packages
+        run: npm install @capacitor/android @capacitor/core --force
+
       - name: Build web app
         run: npm run build
 
-      - name: Verify dist folder
-        run: ls -la dist/
-
-      - name: Update Capacitor
-        run: npm install -g @capacitor/cli && npx cap sync android || true
-
       - name: Copy web assets to Android
-        run: cp -r dist/* android/app/src/main/assets/public/
+        run: rm -rf android/app/src/main/assets/public && mkdir -p android/app/src/main/assets/public && cp -r dist/* android/app/src/main/assets/public/
+
+      - name: Update capacitor.config in assets
+        run: cp capacitor.config.json android/app/src/main/assets/capacitor.config.json
 
       - name: Build APK
         working-directory: ./android
-        run: chmod +x gradlew && ./gradlew assembleRelease
+        run: chmod +x gradlew && ./gradlew assembleRelease --stacktrace
 
       - name: Upload APK
         if: success()

@@ -17,40 +17,37 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
 
-      - name: Setup Java
+      - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '17'
+          distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install npm dependencies
+        run: npm install --force --legacy-peer-deps
 
-      - name: Clear npm cache
-        run: npm cache clean --force
-
-      - name: Install dependencies
-        run: npm install --force
-
-      - name: Install Capacitor packages
-        run: npm install @capacitor/android @capacitor/core --force
+      - name: Install Capacitor
+        run: npm install @capacitor/android @capacitor/core --force --legacy-peer-deps
 
       - name: Build web app
         run: npm run build
 
       - name: Copy web assets to Android
-        run: rm -rf android/app/src/main/assets/public && mkdir -p android/app/src/main/assets/public && cp -r dist/* android/app/src/main/assets/public/
+        run: |
+          rm -rf android/app/src/main/assets/public
+          mkdir -p android/app/src/main/assets/public
+          cp -r dist/* android/app/src/main/assets/public/
 
-      - name: Build APK
+      - name: Build APK with Gradle
         working-directory: ./android
-        run: chmod +x gradlew && ./gradlew assembleRelease --stacktrace
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
 
-      - name: Upload APK
+      - name: Upload APK artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: app-release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 30

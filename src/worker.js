@@ -6,6 +6,7 @@
  */
 
 import Stripe from "stripe";
+import * as billingPortal from "./api/billing-portal.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -545,6 +546,8 @@ export default {
         return handleCheckStripe(request, env);
       case "/api/stripe-webhook":
         return handleStripeWebhook(request, env);
+      case "/api/billing-portal":
+        return billingPortal.onRequestPost({ request, env });
 
       default:
         // 3. Cloudflare SSL Challenge Bypass

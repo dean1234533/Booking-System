@@ -18,27 +18,54 @@ async function getDoc(path, base) {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  const stripe = new Stripe(env.STRIPE_SECRET_KEY);
-
-  const body = await request.json().catch(() => ({}));
-  const { barberId } = body;
-
-  if (!barberId) {
-    return new Response(JSON.stringify({ error: "Missing barberId" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const FIREBASE_PROJECT_ID = env.VITE_FIREBASE_PROJECT_ID;
-  const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
   try {
+    if (!env.STRIPE_SECRET_KEY) {
+      console.error("Missing STRIPE_SECRET_KEY");
+      return new Response(JSON.stringify({ error: "Server not configured" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+
+    const body = await request.json().catch(() => ({}));
+    const { barberId } = body;
+
+    if (!barberId) {
+      return new Response(JSON.stringify({ error: "Missing barberId" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const FIREBASE_PROJECT_ID = env.VITE_FIREBASE_PROJECT_ID;
+    if (!FIREBASE_PROJECT_ID) {
+      console.error("Missing VITE_FIREBASE_PROJECT_ID");
+      return new Response(JSON.stringify({ error: "Server not configured" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+
     const barber = await getDoc(`barbers/${barberId}`, FIRESTORE_BASE);
+
+    if (!barber) {
+      console.error("Barber not found:", barberId);
+      return new Response(JSON.stringify({ error: "Barber not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const customerId = barber?.stripeCustomerId;
 
     if (!customerId) {
-      return new Response(JSON.stringify({ error: "No subscription found for this account" }), {
+      console.error("No Stripe customer ID for barber:", barberId);
+      return new Response(JSON.stringify({ error: "Stripe not connected. Go to Finance tab to connect Stripe." }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
@@ -57,7 +84,7 @@ export async function onRequestPost(context) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("billing-portal error:", err.message);
+    console.error("billing-portal error:", err.message, err.stack);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

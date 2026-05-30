@@ -11,10 +11,16 @@ import {
   Grid,
   Paper,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { CreditCard, CheckCircle, WarningAmber } from "@mui/icons-material";
 import { useAuth } from "../../../context/AuthContext";
 import { getBillingInfo, reportUsageToStripe, calculateTrainerCost } from "../../../utils/billingUtils";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../../../firebase/config";
 
 export default function BillingTab({ barber: passedBarber, profile, brandColor }) {
   const { barber: authBarber, user } = useAuth();
@@ -23,12 +29,16 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
   const [loading, setLoading] = useState(true);
   const [reporting, setReporting] = useState(false);
   const [message, setMessage] = useState(null);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [invoices, setInvoices] = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
 
   useEffect(() => {
     async function loadBilling() {
       try {
         setLoading(true);
-        const billingInfo = await getBillingInfo(barber.id);
+        const userId = barber?.uid || barber?.id;
+        const billingInfo = await getBillingInfo(userId);
         setBilling(billingInfo);
       } catch (error) {
         console.error("Error loading billing:", error);
@@ -38,19 +48,20 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
       }
     }
 
-    if (barber?.id) {
+    if (barber?.uid || barber?.id) {
       loadBilling();
     }
-  }, [barber?.id]);
+  }, [barber?.uid, barber?.id]);
 
   const handleReportUsage = async () => {
-    if (!barber?.id || !user?.email || !billing) return;
+    const userId = barber?.uid || barber?.id;
+    if (!userId || !user?.email || !billing) return;
 
     setReporting(true);
     setMessage(null);
 
     try {
-      const result = await reportUsageToStripe(barber.id, user.email, billing.clientCount);
+      const result = await reportUsageToStripe(userId, user.email, billing.clientCount);
 
       if (result?.success) {
         setMessage({
@@ -70,6 +81,70 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
       });
     } finally {
       setReporting(false);
+    }
+  };
+
+  const handleBillingPortal = async () => {
+    const userId = barber?.uid || barber?.id;
+    if (!userId) return;
+
+    try {
+      const res = await fetch("/api/billing-portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barberId: userId }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+
+      const text = await res.text();
+      if (!text) {
+        throw new Error("Empty response from server");
+      }
+
+      const data = JSON.parse(text);
+      if (data.url) {
+        window.location.href = data.url;
+      } else if (data.error) {
+        setMessage({ type: "error", text: `Billing error: ${data.error}` });
+      } else {
+        throw new Error("No URL in response");
+      }
+    } catch (error) {
+      console.error("Failed to open billing portal:", error);
+      setMessage({
+        type: "error",
+        text: "Failed to open billing portal. Please ensure Stripe is connected in the Finance tab."
+      });
+    }
+  };
+
+  const handleViewInvoices = async () => {
+    const userId = barber?.uid || barber?.id;
+    if (!userId) return;
+
+    setInvoiceDialogOpen(true);
+    setInvoicesLoading(true);
+
+    try {
+      const invoicesRef = collection(db, "barbers", userId, "invoices");
+      const snapshot = await getDocs(invoicesRef);
+      const invoiceList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })).sort((a, b) => {
+        const dateA = a.date?.toDate?.() || new Date(a.date);
+        const dateB = b.date?.toDate?.() || new Date(b.date);
+        return dateB - dateA;
+      });
+      setInvoices(invoiceList);
+    } catch (error) {
+      console.error("Failed to load invoices:", error);
+      setMessage({ type: "error", text: "Failed to load invoices" });
+    } finally {
+      setInvoicesLoading(false);
     }
   };
 
@@ -280,16 +355,16 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
           <Button
             variant="outlined"
             fullWidth
-            href="https://billing.stripe.com/login"
-            target="_blank"
+            onClick={handleBillingPortal}
             sx={{ mb: 1 }}
           >
-            Manage Payment Methods
+            Manage Payment Methods (via Stripe)
           </Button>
 
           <Button
             variant="outlined"
             fullWidth
+            onClick={handleViewInvoices}
             sx={{ mb: 2 }}
           >
             View Invoice History
@@ -300,6 +375,54 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
           </Typography>
         </CardContent>
       </Card>
+
+      {/* Invoice History Dialog */}
+      <Dialog open={invoiceDialogOpen} onClose={() => setInvoiceDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Invoice History</DialogTitle>
+        <DialogContent>
+          {invoicesLoading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : invoices.length === 0 ? (
+            <Typography color="text.secondary">No invoices found</Typography>
+          ) : (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+              {invoices.map(invoice => {
+                const invoiceDate = invoice.date?.toDate?.() || new Date(invoice.date);
+                const formattedDate = invoiceDate.toLocaleDateString("en-GB", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                });
+                return (
+                  <Paper key={invoice.id} sx={{ p: 2, bgcolor: "#F5F5F5" }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        Invoice {invoice.invoiceNumber || invoice.id.slice(0, 8)}
+                      </Typography>
+                      <Typography variant="body2" fontWeight={700}>
+                        £{invoice.amount || "0.00"}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      {formattedDate}
+                    </Typography>
+                    {invoice.description && (
+                      <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                        {invoice.description}
+                      </Typography>
+                    )}
+                  </Paper>
+                );
+              })}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setInvoiceDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

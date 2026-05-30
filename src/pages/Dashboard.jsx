@@ -709,14 +709,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
   const tabIdx = (key) => tabs.findIndex(t => t.key === key);
 
-  // State for collapsed groups
-  const [collapsedGroups, setCollapsedGroups] = useState({});
-
   const toggleGroup = (groupName) => {
-    setCollapsedGroups(prev => ({
-      ...prev,
-      [groupName]: !prev[groupName]
-    }));
+    setExpandedGroup(expandedGroup === groupName ? null : groupName);
   };
 
   // ── Onboarding deep-link: ?tab=domain / ?tab=finance etc. ────────────────
@@ -877,13 +871,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
                   px: 1.5,
                   py: 1,
                   borderRadius: 1,
-                  bgcolor: collapsedGroups[group.group] ? "rgba(255,255,255,0.04)" : `${brandColor}20`,
-                  border: collapsedGroups[group.group] ? "1px solid rgba(255,255,255,0.1)" : `1px solid ${brandColor}`,
+                  bgcolor: expandedGroup === group.group ? `${brandColor}20` : "rgba(255,255,255,0.04)",
+                  border: expandedGroup === group.group ? `1px solid ${brandColor}` : "1px solid rgba(255,255,255,0.1)",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
                   transition: "all .2s",
-                  color: collapsedGroups[group.group] ? "rgba(255,255,255,0.6)" : brandColor,
-                  fontWeight: collapsedGroups[group.group] ? 500 : 600,
+                  color: expandedGroup === group.group ? brandColor : "rgba(255,255,255,0.6)",
+                  fontWeight: expandedGroup === group.group ? 600 : 500,
                   fontSize: "0.85rem",
                   "&:hover": {
                     bgcolor: `${brandColor}30`,
@@ -909,7 +903,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
           {/* Active Group's Tabs (Horizontal Row) */}
           {tabGroups.map((group, groupIdx) => (
-            !collapsedGroups[group.group] && (
+            expandedGroup === group.group && (
               <Box
                 key={`tabs-${groupIdx}`}
                 sx={{

@@ -198,8 +198,6 @@ export default function Home({ tenant }) {
     document.getElementById("browse-section")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const rev = REVIEWS[revIdx];
-
   return (
     <Box sx={{ bgcolor: "#fff", minHeight: "100vh", overflowX: "hidden", fontFamily: SANS }}>
 
@@ -551,7 +549,6 @@ export default function Home({ tenant }) {
 
       {/* ── REVIEWS (auto-sliding) ── */}
       <Box sx={{ bgcolor: "#fff", py: { xs: 8, md: 12 }, px: { xs: 2, md: 5 }, borderTop: `1px solid ${G.border}` }}>
-        <style>{`@keyframes revFade { from { opacity:0; } to { opacity:1; } }`}</style>
         <Container maxWidth="md">
           <Box sx={{ textAlign: "center", mb: 6 }}>
             <SectionLabel text="Testimonials" />
@@ -560,34 +557,42 @@ export default function Home({ tenant }) {
             </Typography>
           </Box>
 
-          {/* Review card — stable outer Paper, animated inner content */}
+          {/* Review card — all reviews stacked in one grid cell so the card
+              height stays fixed to the tallest review (no page shift on change) */}
           <Paper elevation={0} sx={{
             p: { xs: 3, md: 5 }, bgcolor: G.warmWhite,
             border: `1px solid ${G.border}`, borderRadius: 0,
-            minHeight: { xs: 240, md: 260 },
+            display: "grid",
           }}>
-            <Box key={revIdx} sx={{ animation: "revFade 0.4s ease both" }}>
-              <Stack direction="row" spacing={0.4} mb={2.5} justifyContent="center">
-                {[1,2,3,4,5].map(j => <StarIcon key={j} sx={{ color: G.gold, fontSize: { xs: 16, md: 18 } }} />)}
-              </Stack>
-              <Typography sx={{
-                fontFamily: ITALIC, fontStyle: "italic",
-                fontSize: { xs: "1.1rem", md: "1.3rem" },
-                color: G.dark2, lineHeight: 1.75, mb: 3, textAlign: "center",
+            {REVIEWS.map((r, i) => (
+              <Box key={i} sx={{
+                gridArea: "1 / 1",
+                opacity: i === revIdx ? 1 : 0,
+                transition: "opacity 0.4s ease",
+                pointerEvents: i === revIdx ? "auto" : "none",
               }}>
-                "{rev.text}"
-              </Typography>
-              <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
-                <Box sx={{ width: 42, height: 42, borderRadius: "50%", bgcolor: G.goldPale, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Typography sx={{ fontFamily: SANS, fontSize: "0.78rem", fontWeight: 700, color: G.gold }}>{rev.initials}</Typography>
-                </Box>
-                <Box sx={{ textAlign: "left" }}>
-                  <Typography sx={{ fontFamily: SANS, fontWeight: 700, fontSize: "0.85rem", color: G.dark }}>{rev.name}</Typography>
-                  <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: G.muted }}>Booked: {rev.trade}</Typography>
-                </Box>
-                <VerifiedIcon sx={{ color: G.gold, fontSize: 18, ml: 1 }} />
-              </Stack>
-            </Box>
+                <Stack direction="row" spacing={0.4} mb={2.5} justifyContent="center">
+                  {[1,2,3,4,5].map(j => <StarIcon key={j} sx={{ color: G.gold, fontSize: { xs: 16, md: 18 } }} />)}
+                </Stack>
+                <Typography sx={{
+                  fontFamily: ITALIC, fontStyle: "italic",
+                  fontSize: { xs: "1.1rem", md: "1.3rem" },
+                  color: G.dark2, lineHeight: 1.75, mb: 3, textAlign: "center",
+                }}>
+                  "{r.text}"
+                </Typography>
+                <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
+                  <Box sx={{ width: 42, height: 42, borderRadius: "50%", bgcolor: G.goldPale, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.78rem", fontWeight: 700, color: G.gold }}>{r.initials}</Typography>
+                  </Box>
+                  <Box sx={{ textAlign: "left" }}>
+                    <Typography sx={{ fontFamily: SANS, fontWeight: 700, fontSize: "0.85rem", color: G.dark }}>{r.name}</Typography>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: G.muted }}>Booked: {r.trade}</Typography>
+                  </Box>
+                  <VerifiedIcon sx={{ color: G.gold, fontSize: 18, ml: 1 }} />
+                </Stack>
+              </Box>
+            ))}
           </Paper>
 
           {/* Controls */}

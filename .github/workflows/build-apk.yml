@@ -13,21 +13,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Setup Java JDK
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Setup Android SDK
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q commandlinetools-linux-11076708_latest.zip
+          mv cmdline-tools latest
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install npm dependencies
         run: npm install --force --legacy-peer-deps
 
-      - name: Install Capacitor
+      - name: Install Capacitor packages
         run: npm install @capacitor/android @capacitor/core --force --legacy-peer-deps
 
       - name: Build web app
@@ -39,15 +49,23 @@ jobs:
           mkdir -p android/app/src/main/assets/public
           cp -r dist/* android/app/src/main/assets/public/
 
-      - name: Build APK with Gradle
+      - name: Build APK
         working-directory: ./android
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      - name: Upload APK artifact
+      - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Create Release with APK
+        if: success()
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "android/app/build/outputs/apk/release/app-release.apk"
+          tag: "v${{ github.run_number }}"
+          body: "APK build #${{ github.run_number }}"

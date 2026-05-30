@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Book-eh-Trim</string>
+    <string name="title_activity_main">Book-eh-Trim</string>
+    <string name="package_name">uk.co.bookehtrim</string>
+    <string name="custom_url_scheme">uk.co.bookehtrim</string>
+</resources>

@@ -6,7 +6,6 @@
  */
 
 import Stripe from "stripe";
-import * as billingPortal from "./api/billing-portal.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -408,6 +407,64 @@ async function handleStripeWebhook(request, env) {
   return json({ received: true });
 }
 
+async function handleBillingPortal(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  try {
+    if (!env.STRIPE_SECRET_KEY) {
+      console.error("Missing STRIPE_SECRET_KEY");
+      return json({ error: "Server not configured" }, 500);
+    }
+
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+
+    let body;
+    try { body = await request.json(); }
+    catch { body = {}; }
+
+    const { barberId } = body;
+
+    if (!barberId) {
+      return json({ error: "Missing barberId" }, 400);
+    }
+
+    const FIREBASE_PROJECT_ID = env.VITE_FIREBASE_PROJECT_ID;
+    if (!FIREBASE_PROJECT_ID) {
+      console.error("Missing VITE_FIREBASE_PROJECT_ID");
+      return json({ error: "Server not configured" }, 500);
+    }
+
+    const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+
+    const fbRes = await fetch(`${FIRESTORE_BASE}/barbers/${barberId}`);
+    if (!fbRes.ok) {
+      console.error("Barber not found:", barberId);
+      return json({ error: "Barber not found" }, 404);
+    }
+
+    const fbData = await fbRes.json();
+    const customerId = fbData.fields?.stripeCustomerId?.stringValue;
+
+    if (!customerId) {
+      console.error("No Stripe customer ID for barber:", barberId);
+      return json({ error: "Stripe not connected. Go to Finance tab to connect Stripe." }, 404);
+    }
+
+    const host   = request.headers.get("host") || "bookehtrim.co.uk";
+    const origin = host.startsWith("localhost") ? `http://${host}` : `https://${host}`;
+
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer:   customerId,
+      return_url: `${origin}/dashboard`,
+    });
+
+    return json({ url: portalSession.url });
+  } catch (err) {
+    console.error("[billing-portal] Error:", err.message);
+    return json({ error: err.message }, 500);
+  }
+}
+
 // ── Porkbun Registration Engine ───────────────────────────────────────────────
 
 async function registerDomain(domain, env) {
@@ -547,7 +604,7 @@ export default {
       case "/api/stripe-webhook":
         return handleStripeWebhook(request, env);
       case "/api/billing-portal":
-        return billingPortal.onRequestPost({ request, env });
+        return handleBillingPortal(request, env);
 
       default:
         // 3. Cloudflare SSL Challenge Bypass

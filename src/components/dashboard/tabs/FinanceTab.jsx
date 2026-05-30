@@ -10,6 +10,14 @@ import {
   Info as InfoIcon,
 } from "@mui/icons-material";
 
+// ── Get pricing based on business type ──────────────────────────────────────
+function getPricingLabel(businessType) {
+  if (businessType === "trainer") {
+    return "£20/month (plus £1.50 per 3 extra clients)";
+  }
+  return "£10/month";
+}
+
 // ── Fee calculator (mirrors create-intent.js) ────────────────────────────────
 function calcFees(depositGbp) {
   const depositPence      = Math.round(Number(depositGbp) * 100);
@@ -60,7 +68,11 @@ function SubscriptionSection({ profile, barber, brandColor }) {
       const res  = await fetch("/api/create-subscription", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ barberId: barber.uid, email: barber.email }),
+        body:    JSON.stringify({
+          barberId: barber.uid,
+          email: barber.email,
+          businessType: profile.businessType || "barber"
+        }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
@@ -156,7 +168,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
             "&:hover": { bgcolor: brandColor, opacity: 0.9 },
           }}
         >
-          {loading ? "Redirecting…" : "Subscribe early — £10/month"}
+          {loading ? "Redirecting…" : `Subscribe early — ${getPricingLabel(profile.businessType || "barber")}`}
         </Button>
       </Box>
     );
@@ -172,7 +184,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
           icon={<CheckCircleIcon />}
           sx={{ mb: 2 }}
         >
-          Active — £10/month
+          Active — {getPricingLabel(profile.businessType || "barber")}
         </Alert>
         <Typography sx={{ fontSize: "0.82rem", color: "#6b7280", mb: 2, lineHeight: 1.7 }}>
           Your subscription is active. Your booking site is live and taking appointments.
@@ -223,7 +235,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
           "&:hover": { bgcolor: "#b91c1c" },
         }}
       >
-        {loading ? "Redirecting…" : "Reactivate — £10/month"}
+        {loading ? "Redirecting…" : `Reactivate — ${getPricingLabel(profile.businessType || "barber")}`}
       </Button>
     </Box>
   );

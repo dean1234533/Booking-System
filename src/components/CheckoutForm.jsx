@@ -104,7 +104,7 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
             clientName:    formData.name,
             barberEmail:   barberEmail,                // ✅ resolved via helper — checks all known field names
             barberName:    barber.name,
-            businessName:  tenant?.businessName || barber?.businessName, 
+            businessName:  tenant?.businessName || barber?.businessName,
             brandColor:    brandColor,
             slotDate:      formatDate(appointmentDate),
             slotTime:      formatTime(appointmentTime),
@@ -115,6 +115,22 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
             bookingFee:    bookingFeePounds,            // ✅ always a clean "2.18" string
           }),
         }).catch(err => console.error("Email fail:", err));
+
+        // ✅ Calendar Sync (if owner has Google Calendar connected)
+        fetch("/api/google-calendar/create-event", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId:       barberId,
+            bookingId:    bookingId,
+            clientEmail:  formData.email,
+            clientName:   formData.name,
+            date:         appointmentDate,
+            time:         appointmentTime,
+            service:      formData.haircutStyle || "Appointment",
+            barberName:   barber.name,
+          }),
+        }).catch(err => console.error("Calendar sync fail (non-critical):", err));
 
         navigate(`/confirmation/${bookingId}`, { state: { tenant } });
       }

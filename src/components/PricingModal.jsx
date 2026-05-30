@@ -89,7 +89,7 @@ export default function PricingModal({ open, onClose }) {
           fontFamily: SANS, fontSize: "0.9rem",
           color: "rgba(255,255,255,0.5)", mt: 1.5, maxWidth: 480, lineHeight: 1.75,
         }}>
-          30-day free trial, then £10/month. Small per-transaction fees only when you earn — no surprises.
+          30-day free trial, then from £10-20/month depending on your business type. Small per-transaction fees only when you earn — no surprises.
         </Typography>
       </Box>
 
@@ -112,14 +112,44 @@ export default function PricingModal({ open, onClose }) {
                 Platform subscription
               </Typography>
 
-              <Box display="flex" alignItems="baseline" gap={0.5} mb={0.5}>
-                <Typography sx={{ fontFamily: SERIF, fontSize: "3rem", fontWeight: 400, color: G.dark, lineHeight: 1 }}>
-                  £10
-                </Typography>
-                <Typography sx={{ fontFamily: SANS, fontSize: "0.9rem", color: "#7a7060" }}>
-                  /month
-                </Typography>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "#7a7060", mb: 2.5, fontWeight: 600 }}>
+                Pricing by business type:
+              </Typography>
+
+              <Box sx={{ mb: 2.5, p: 2, bgcolor: "#f9f9f9", borderRadius: 1.5, border: "1px solid #e8e2d8" }}>
+                <Stack spacing={1.5}>
+                  <Box>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", fontWeight: 600, color: G.dark }}>
+                      Barber, Hairdresser, Decorator
+                    </Typography>
+                    <Box display="flex" alignItems="baseline" gap={0.5}>
+                      <Typography sx={{ fontFamily: SERIF, fontSize: "1.8rem", fontWeight: 400, color: G.dark }}>
+                        £10
+                      </Typography>
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.85rem", color: "#7a7060" }}>
+                        /month
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", fontWeight: 600, color: G.dark }}>
+                      Personal Trainers
+                    </Typography>
+                    <Box display="flex" alignItems="baseline" gap={0.5}>
+                      <Typography sx={{ fontFamily: SERIF, fontSize: "1.8rem", fontWeight: 400, color: G.dark }}>
+                        £20
+                      </Typography>
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.85rem", color: "#7a7060" }}>
+                        /month
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "#7a7060", mt: 0.5 }}>
+                      (includes 10 clients, then £1.50 per 3 extra)
+                    </Typography>
+                  </Box>
+                </Stack>
               </Box>
+
               <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "#7a7060", mb: 2.5 }}>
                 After your 30-day free trial — no card required to start
               </Typography>

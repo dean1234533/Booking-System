@@ -23,6 +23,7 @@ import YouTubeIcon            from "@mui/icons-material/YouTube";
 import CategoryRow            from "../components/CategoryRow";
 import TenantHome             from "./TenantHome";
 import PricingModal           from "../components/PricingModal";
+import FeatureComparisonModal from "../components/FeatureComparisonModal";
 import { useBarbers }         from "../hooks/useBarbers";
 import { useNavigate }        from "react-router-dom";
 
@@ -110,6 +111,7 @@ export default function Home({ tenant }) {
   const [pendingLocation, setPendingLocation] = useState("");
   const [revIdx,          setRevIdx]          = useState(0);
   const [pricingOpen,     setPricingOpen]     = useState(false);
+  const [featureModalOpen, setFeatureModalOpen] = useState(false);
   const [feedbackName,    setFeedbackName]    = useState("");
   const [feedbackEmail,   setFeedbackEmail]   = useState("");
   const [feedbackText,    setFeedbackText]    = useState("");
@@ -514,10 +516,16 @@ export default function Home({ tenant }) {
           </Grid>
 
           <Box sx={{ textAlign: "center", mt: { xs: 8, md: 11 } }}>
-            <Button variant="contained" onClick={() => navigate("/signup")}
-              sx={{ bgcolor: G.gold, color: G.dark, fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", px: 5, py: 1.8, borderRadius: "2px", boxShadow: "none", "&:hover": { bgcolor: G.goldLight, boxShadow: "none" } }}>
-              Get listed for free
-            </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="center" alignItems="center">
+              <Button variant="contained" onClick={() => navigate("/signup")}
+                sx={{ bgcolor: G.gold, color: G.dark, fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", px: 5, py: 1.8, borderRadius: "2px", boxShadow: "none", "&:hover": { bgcolor: G.goldLight, boxShadow: "none" } }}>
+                Get listed for free
+              </Button>
+              <Button variant="outlined" onClick={() => setFeatureModalOpen(true)}
+                sx={{ border: `2px solid ${G.gold}`, color: G.gold, fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", px: 5, py: 1.5, borderRadius: "2px", "&:hover": { borderColor: G.goldLight, color: G.goldLight, bgcolor: "rgba(201,168,76,0.08)" } }}>
+                View features by type
+              </Button>
+            </Stack>
           </Box>
         </Container>
       </Box>
@@ -802,7 +810,7 @@ export default function Home({ tenant }) {
                   Start your free trial
                 </Typography>
                 <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "rgba(255,255,255,0.45)", mb: 2, lineHeight: 1.7 }}>
-                  30 days free, then £10/month. No card required.
+                  30 days free, then £10-20/month depending on your business type. No card required.
                 </Typography>
                 <Stack direction="row" spacing={1.5}>
                   <Button
@@ -857,6 +865,7 @@ export default function Home({ tenant }) {
       </Box>
 
       <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
+      <FeatureComparisonModal open={featureModalOpen} onClose={() => setFeatureModalOpen(false)} />
 
     </Box>
   );

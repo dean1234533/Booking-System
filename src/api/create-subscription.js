@@ -5,7 +5,7 @@ export async function onRequestPost(context) {
   const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
   const body = await request.json().catch(() => ({}));
-  const { barberId, email } = body;
+  const { barberId, email, businessType = "barber" } = body;
 
   if (!barberId || !email) {
     return new Response(JSON.stringify({ error: "Missing barberId or email" }), {
@@ -22,26 +22,41 @@ export async function onRequestPost(context) {
     const existing = await stripe.customers.list({ email, limit: 1 });
     const customer = existing.data.length > 0
       ? existing.data[0]
-      : await stripe.customers.create({ email, metadata: { barberId } });
+      : await stripe.customers.create({ email, metadata: { barberId, businessType } });
+
+    // Determine pricing based on business type
+    let lineItems;
+
+    if (businessType === "trainer") {
+      // PT Booking System: £20/month + £1.50 per 3 extra clients (usage-based)
+      lineItems = [{
+        price: env.STRIPE_PT_BASE_PRICE_ID, // Must be created in Stripe: £20/month
+        quantity: 1,
+      }];
+    } else {
+      // Other businesses: £10/month (flat)
+      lineItems = [{
+        price: env.STRIPE_BASE_PRICE_ID, // Must be created in Stripe: £10/month
+        quantity: 1,
+      }];
+    }
 
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
       mode: "subscription",
       payment_method_types: ["card"],
-      line_items: [{
-        price_data: {
-          currency: "gbp",
-          product_data: {
-            name: "yr-bookd Platform Subscription",
-            description: "Monthly subscription — keeps your booking site live and dashboard active",
-          },
-          unit_amount: 1000,
-          recurring: { interval: "month" },
-        },
-        quantity: 1,
-      }],
-      metadata: { type: "platform_subscription", barberId },
-      subscription_data: { metadata: { barberId } },
+      line_items: lineItems,
+      metadata: {
+        type: "platform_subscription",
+        barberId,
+        businessType,
+      },
+      subscription_data: {
+        metadata: {
+          barberId,
+          businessType,
+        }
+      },
       success_url: `${origin}/dashboard?subscriptionSuccess=true`,
       cancel_url:  `${origin}/dashboard`,
     });

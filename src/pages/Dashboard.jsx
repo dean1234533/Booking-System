@@ -24,6 +24,8 @@ import {
   RestaurantMenu as RestaurantMenuIcon,
   ContentCut as ContentCutIcon,
   Web as WebIcon,
+  TrendingUp as TrendingUpIcon,
+  AutoAwesome as AutoAwesomeIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -65,6 +67,16 @@ import FoodGeneratorTab  from "../components/dashboard/tabs/FoodGeneratorTab";
 import BrandSiteTab      from "../components/dashboard/tabs/BrandSiteTab";
 import ClientFormsTab    from "../components/dashboard/tabs/ClientFormsTab";
 import HaircutTab        from "../components/dashboard/tabs/HaircutTab";
+import BillingTab        from "../components/dashboard/tabs/BillingTab";
+import TaxFinanceTab     from "../components/dashboard/tabs/TaxFinanceTab";
+import ClientProfileTab  from "../components/dashboard/tabs/ClientProfileTab";
+import ClientActivityTab from "../components/dashboard/tabs/ClientActivityTab";
+import NutritionPlanTab  from "../components/dashboard/tabs/NutritionPlanTab";
+import AutomationTab     from "../components/dashboard/tabs/AutomationTab";
+import ProgressTrackerTab from "../components/dashboard/tabs/ProgressTrackerTab";
+import SessionPrepTab    from "../components/dashboard/tabs/SessionPrepTab";
+import ExerciseGeneratorTab from "../components/dashboard/tabs/ExerciseGeneratorTab";
+import NotepadTab        from "../components/dashboard/tabs/NotepadTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -90,6 +102,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   // ── UI state ──────────────────────────────────────────────────────────────
   const [tab,          setTab]          = useState(0);
   const [slideDir,     setSlideDir]     = useState("right");
+  const [expandedGroup, setExpandedGroup] = useState(null);
   const touchStartX = useRef(null);
   const [dataLoading,  setDataLoading]  = useState(true);
   const [stripeLoading,setStripeLoading]= useState(false);
@@ -618,30 +631,93 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const isHairdresser = profile.businessType === "hairdresser";
   const isOwner     = userRole.isOwner;
 
-  const tabs = [
-    { key: "schedule",  label: "Schedule",  icon: <AccessTimeIcon /> },
-    { key: "bookings",  label: "Bookings",  icon: <StoreIcon /> },
-    isBarber
-      ? { key: "profile",   label: "Profile",   icon: <PersonIcon /> }
-      : { key: "editpage",  label: "Edit Page",  icon: <WebIcon /> },
-    { key: "services",  label: "Services",  icon: <ListIcon /> },
-    ...(isOwner ? [{ key: "reviews",    label: "Reviews",    icon: <ReviewsIcon /> }]  : []),
-    ...(isOwner && isBarber ? [{ key: "queue",        label: "Queue",           icon: <PeopleIcon /> }]      : []),
-    ...(isOwner && isBarber ? [{ key: "haircutrecords", label: "Client Records", icon: <ContentCutIcon /> }] : []),
-    { key: "finance",   label: "Finance",   icon: <PaymentsIcon /> },
-    ...(isOwner && (!initialTenant || isBarber || isHairdresser) ? [{ key: "brand",   label: "Brand & Site",   icon: <PaletteIcon /> }] : []),
-    ...(isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
-    ...(isOwner && !initialTenant && !isDecorator && !isHairdresser ? [{ key: "invoices",  label: "Invoices",  icon: <ReceiptIcon /> }] : []),
-    ...(isOwner && isTrainer && !initialTenant ? [{ key: "workouts",    label: "Workouts",     icon: <FitnessCenterIcon /> }] : []),
-    ...(isOwner && isTrainer && !initialTenant ? [{ key: "clientforms", label: "Client Forms", icon: <AssignmentIcon /> }]   : []),
-    ...(isOwner && isTrainer && !initialTenant ? [{ key: "foodgen",     label: "Food Gen",     icon: <RestaurantMenuIcon /> }] : []),
-    ...(isOwner || initialTenant ? [{ key: "pay", label: "Pay", icon: <NfcIcon /> }] : []),
-    ...(isOwner && isDecorator ? [{ key: "colours",  label: "Colours",    icon: <ColorLensIcon /> }]   : []),
-    ...(isOwner && isDecorator ? [{ key: "quotes",   label: "Quotes",     icon: <RequestQuoteIcon /> }]: []),
-    ...(isOwner && isDecorator ? [{ key: "dayplan",  label: "Day Plan",   icon: <TodayIcon /> }]       : []),
+  // ── Grouped tab structure for organized menu ──
+  const tabGroups = [
+    {
+      group: "Schedule",
+      items: [
+        { key: "schedule", label: "Schedule", icon: <AccessTimeIcon /> },
+      ]
+    },
+    {
+      group: "Bookings",
+      items: [
+        { key: "bookings", label: "Bookings", icon: <StoreIcon /> },
+      ]
+    },
+    {
+      group: "Business",
+      items: [
+        isBarber
+          ? { key: "profile", label: "Profile", icon: <PersonIcon /> }
+          : { key: "editpage", label: "Edit Page", icon: <WebIcon /> },
+        { key: "services", label: "Services", icon: <ListIcon /> },
+        ...(isOwner && (!initialTenant || isBarber || isHairdresser) ? [{ key: "brand", label: "Brand & Site", icon: <PaletteIcon /> }] : []),
+        ...(isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
+      ]
+    },
+    ...(isOwner ? [{
+      group: "Reviews",
+      items: [
+        { key: "reviews", label: "Reviews", icon: <ReviewsIcon /> },
+        ...(isBarber ? [{ key: "queue", label: "Queue", icon: <PeopleIcon /> }] : []),
+        ...(isBarber ? [{ key: "haircutrecords", label: "Client Records", icon: <ContentCutIcon /> }] : []),
+      ]
+    }] : []),
+    {
+      group: "Money",
+      items: [
+        { key: "finance", label: "Finance", icon: <PaymentsIcon /> },
+        ...(isOwner && !initialTenant ? [{ key: "billing", label: "Billing", icon: <PaymentsIcon /> }] : []),
+        ...(isOwner && !initialTenant ? [{ key: "tax", label: "Tax & Finance", icon: <ReceiptIcon /> }] : []),
+        ...(isOwner && !initialTenant && !isDecorator && !isHairdresser ? [{ key: "invoices", label: "Invoices", icon: <ReceiptIcon /> }] : []),
+      ]
+    },
+    ...(isOwner && isTrainer && !initialTenant ? [{
+      group: "Trainer Center",
+      items: [
+        { key: "clients", label: "Clients", icon: <PeopleIcon /> },
+        { key: "workouts", label: "Workouts", icon: <FitnessCenterIcon /> },
+        { key: "nutrition", label: "Nutrition", icon: <RestaurantMenuIcon /> },
+        { key: "automation", label: "Automation", icon: <AutoAwesomeIcon /> },
+        { key: "progress", label: "Progress", icon: <TrendingUpIcon /> },
+        { key: "sessionprep", label: "Session Prep", icon: <AccessTimeIcon /> },
+        { key: "exercise-gen", label: "Exercises", icon: <AutoAwesomeIcon /> },
+        { key: "notepad", label: "Notepad", icon: <ListIcon /> },
+        { key: "clientforms", label: "Client Forms", icon: <AssignmentIcon /> },
+        { key: "foodgen", label: "Food Gen", icon: <RestaurantMenuIcon /> },
+      ]
+    }] : []),
+    ...(isOwner && isDecorator ? [{
+      group: "Decorator",
+      items: [
+        { key: "colours", label: "Colours", icon: <ColorLensIcon /> },
+        { key: "quotes", label: "Quotes", icon: <RequestQuoteIcon /> },
+        { key: "dayplan", label: "Day Plan", icon: <TodayIcon /> },
+      ]
+    }] : []),
+    ...(isOwner || initialTenant ? [{
+      group: "Pay",
+      items: [
+        { key: "pay", label: "Pay", icon: <NfcIcon /> },
+      ]
+    }] : []),
   ];
 
+  // Flatten tabs for backward compatibility
+  const tabs = tabGroups.flatMap(g => g.items);
+
   const tabIdx = (key) => tabs.findIndex(t => t.key === key);
+
+  // State for collapsed groups
+  const [collapsedGroups, setCollapsedGroups] = useState({});
+
+  const toggleGroup = (groupName) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }));
+  };
 
   // ── Onboarding deep-link: ?tab=domain / ?tab=finance etc. ────────────────
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -764,52 +840,129 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </Box>
         )}
 
-        {/* ── Premium pill tab bar ── */}
+        {/* ── Horizontal Grouped Tab Navigation ── */}
         <Box sx={{
-          bgcolor: "#111",
-          border: "1px solid rgba(255,255,255,0.06)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 1.5,
           mb: 3,
-          px: 0.75,
-          py: 0.75,
-          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4)`,
         }}>
-          <Tabs
-            value={tab}
-            onChange={(_, v) => { setSlideDir(v > tab ? "right" : "left"); setTab(v); }}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              minHeight: 40,
-              "& .MuiTabs-indicator": { display: "none" },
-              "& .MuiTabs-scrollButtons": { color: "rgba(255,255,255,0.35)" },
-              "& .MuiTab-root": {
-                color: "rgba(255,255,255,0.35)",
-                minHeight: 40,
-                borderRadius: 0,
-                px: { xs: 1.5, sm: 2 },
-                fontSize: "0.71rem",
-                fontWeight: 600,
-                letterSpacing: "0.05em",
-                transition: "color .18s, background-color .18s",
-                "& .MuiSvgIcon-root": { color: "rgba(255,255,255,0.28)", fontSize: "1rem" },
-              },
-              "& .MuiTab-root:hover:not(.Mui-selected)": {
-                color: "rgba(255,255,255,0.6)",
-                bgcolor: "rgba(255,255,255,0.04)",
-              },
-              "& .MuiTab-root.Mui-selected": {
-                color: textOnBrand,
-                bgcolor: brandColor,
-                fontWeight: 700,
-                boxShadow: `0 0 14px ${brandColor}45`,
-                "& .MuiSvgIcon-root": { color: textOnBrand },
-              },
-            }}
-          >
-            {tabs.map((t, i) => (
-              <Tab key={i} icon={t.icon} iconPosition="start" label={isMobile ? "" : t.label} />
+          {/* Main Group Navigation (Horizontal) */}
+          <Box sx={{
+            display: "flex",
+            gap: 0.75,
+            overflowX: "auto",
+            overflowY: "hidden",
+            pb: 1,
+            px: 0.75,
+            "&::-webkit-scrollbar": {
+              height: "4px",
+            },
+            "&::-webkit-scrollbar-track": {
+              bgcolor: "rgba(255,255,255,0.02)",
+            },
+            "&::-webkit-scrollbar-thumb": {
+              bgcolor: "rgba(255,255,255,0.1)",
+              borderRadius: "2px",
+            },
+          }}>
+            {tabGroups.map((group, groupIdx) => (
+              <Box
+                key={groupIdx}
+                onClick={() => toggleGroup(group.group)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.8,
+                  px: 1.5,
+                  py: 1,
+                  borderRadius: 1,
+                  bgcolor: collapsedGroups[group.group] ? "rgba(255,255,255,0.04)" : `${brandColor}20`,
+                  border: collapsedGroups[group.group] ? "1px solid rgba(255,255,255,0.1)" : `1px solid ${brandColor}`,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  transition: "all .2s",
+                  color: collapsedGroups[group.group] ? "rgba(255,255,255,0.6)" : brandColor,
+                  fontWeight: collapsedGroups[group.group] ? 500 : 600,
+                  fontSize: "0.85rem",
+                  "&:hover": {
+                    bgcolor: `${brandColor}30`,
+                    borderColor: brandColor,
+                    color: brandColor,
+                  }
+                }}
+              >
+                <Box sx={{ fontSize: "1rem", display: "flex", alignItems: "center" }}>
+                  {group.items[0]?.icon}
+                </Box>
+                {group.group}
+                <Box sx={{
+                  fontSize: "0.7rem",
+                  color: "currentColor",
+                  opacity: 0.6,
+                }}>
+                  ({group.items.length})
+                </Box>
+              </Box>
             ))}
-          </Tabs>
+          </Box>
+
+          {/* Active Group's Tabs (Horizontal Row) */}
+          {tabGroups.map((group, groupIdx) => (
+            !collapsedGroups[group.group] && (
+              <Box
+                key={`tabs-${groupIdx}`}
+                sx={{
+                  display: "flex",
+                  gap: 0.5,
+                  flexWrap: "wrap",
+                  px: 0.75,
+                  py: 1,
+                  bgcolor: "rgba(255,255,255,0.02)",
+                  borderRadius: 1,
+                  border: "1px solid rgba(255,255,255,0.04)",
+                }}
+              >
+                {group.items.map((t, itemIdx) => {
+                  const tIdx = tabIdx(t.key);
+                  return (
+                    <Box
+                      key={itemIdx}
+                      onClick={() => { setSlideDir(tIdx > tab ? "right" : "left"); setTab(tIdx); }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.6,
+                        px: 1.2,
+                        py: 0.7,
+                        borderRadius: 1,
+                        bgcolor: tIdx === tab ? brandColor : "rgba(255,255,255,0.06)",
+                        color: tIdx === tab ? (() => {
+                          const r = parseInt(brandColor.slice(1, 3), 16) || 0;
+                          const g = parseInt(brandColor.slice(3, 5), 16) || 0;
+                          const b = parseInt(brandColor.slice(5, 7), 16) || 0;
+                          return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? "#1A1A1A" : "#ffffff";
+                        })() : "rgba(255,255,255,0.7)",
+                        cursor: "pointer",
+                        fontSize: "0.82rem",
+                        fontWeight: tIdx === tab ? 600 : 500,
+                        transition: "all .2s",
+                        "&:hover": {
+                          bgcolor: tIdx === tab ? brandColor : "rgba(255,255,255,0.1)",
+                          color: tIdx === tab ? textOnBrand : "rgba(255,255,255,0.9)",
+                        }
+                      }}
+                    >
+                      <Box sx={{ fontSize: "0.95rem", display: "flex", alignItems: "center" }}>
+                        {t.icon}
+                      </Box>
+                      <Box>{t.label}</Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            )
+          ))}
         </Box>
 
         <style>{`
@@ -933,6 +1086,20 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
+        {/* ── Billing (owner only) ── */}
+        {isOwner && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("billing")}>
+            <BillingTab barber={barber} profile={profile} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Tax & Finance (owner only) ── */}
+        {isOwner && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("tax")}>
+            <TaxFinanceTab barber={barber} profile={profile} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
         {/* ── Invoices (owner on own dashboard only — not decorator or hairdresser) ── */}
         {isOwner && !initialTenant && !isDecorator && !isHairdresser && (
           <TabPanel value={tab} index={tabIdx("invoices")}>
@@ -962,6 +1129,55 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         {isOwner && isTrainer && (
           <TabPanel value={tab} index={tabIdx("foodgen")}>
             <FoodGeneratorTab barber={barber} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Clients (trainer owner only) ── */}
+        {isOwner && isTrainer && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("clients")}>
+            <ClientProfileTab barber={barber} profile={profile} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Nutrition Plans (trainer owner only) ── */}
+        {isOwner && isTrainer && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("nutrition")}>
+            <NutritionPlanTab barber={barber} profile={profile} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Automation (trainer owner only) ── */}
+        {isOwner && isTrainer && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("automation")}>
+            <AutomationTab barber={barber} profile={profile} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Progress Tracker (trainer owner only) ── */}
+        {isOwner && isTrainer && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("progress")}>
+            <ProgressTrackerTab barber={barber} profile={profile} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Session Prep (trainer owner only) ── */}
+        {isOwner && isTrainer && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("sessionprep")}>
+            <SessionPrepTab barber={barber} profile={profile} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Exercises / Exercise Generator (trainer owner only) ── */}
+        {isOwner && isTrainer && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("exercise-gen")}>
+            <ExerciseGeneratorTab barber={barber} profile={profile} brandColor={brandColor} />
+          </TabPanel>
+        )}
+
+        {/* ── Notepad (trainer owner only) ── */}
+        {isOwner && isTrainer && !initialTenant && (
+          <TabPanel value={tab} index={tabIdx("notepad")}>
+            <NotepadTab barber={barber} profile={profile} brandColor={brandColor} />
           </TabPanel>
         )}
 

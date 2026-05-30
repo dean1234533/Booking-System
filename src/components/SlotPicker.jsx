@@ -5,20 +5,37 @@ import {
 } from "@mui/material";
 import { CalendarMonth as CalendarIcon } from "@mui/icons-material";
 
-export default function SlotPicker({ 
-  slots, 
-  loading, 
-  error, 
-  brandColor, 
-  onSelect // New prop to handle click actions
+export default function SlotPicker({
+  slots,
+  loading,
+  error,
+  brandColor,
+  onSelect,
+  displayMode = "all-times",
+  busyBlocks = []
 }) {
   const activeColor = brandColor || "#C9A84C";
 
   const [selectedDate, setSelectedDate] = useState(null);
 
   const availableSlots = useMemo(() => {
-    return (slots || []).filter(slot => !slot.status || slot.status.toLowerCase() === "open");
-  }, [slots]);
+    let filtered = (slots || []).filter(slot => !slot.status || slot.status.toLowerCase() === "open");
+
+    // Filter based on calendar sync display mode
+    if (displayMode === "free-slots") {
+      // Hide slots that overlap with calendar events
+      filtered = filtered.filter(slot =>
+        !busyBlocks.some(busy => busy.date === slot.date && busy.time === slot.time)
+      );
+    } else if (displayMode === "availability-blocks") {
+      // Show only slots that are explicitly marked as available
+      // This would require a separate availability blocks array
+      // For now, we'll keep all (this feature needs admin-side availability marking)
+      // TODO: Implement availability blocks for business owners
+    }
+
+    return filtered;
+  }, [slots, displayMode, busyBlocks]);
 
   const groupedSlots = useMemo(() => {
     return availableSlots.reduce((acc, slot) => {

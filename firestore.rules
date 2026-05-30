@@ -8,6 +8,13 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
+    // ── Top-level bookings (Dashboard queries these filtered by barberId) ──────
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null && resource.data.barberId == request.auth.uid;
+      allow create: if true;
+      allow update, delete: if request.auth != null && resource.data.barberId == request.auth.uid;
+    }
+
     // ── Barbers ───────────────────────────────────────────────────────────────
     match /barbers/{barberId} {
       // Public read — needed for all tenant pages, booking, search
@@ -117,6 +124,45 @@ service cloud.firestore {
       match /foodGeneratorLinks/{token} {
         allow read: if true;
         allow create, update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Income & Expenses (Tax & Finance Tab) — owner only ────────────────
+      match /income/{incomeId} {
+        allow read, write: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      match /expenses/{expenseId} {
+        allow read, write: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Invoices (Tax & Finance Tab) — owner only ──────────────────────────
+      match /invoices/{invoiceId} {
+        allow read, write: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Calendar Settings (Google Calendar sync) — owner only ──────────────
+      match /calendarSettings/{settingsId} {
+        allow read, write: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Clients (PT feature) — owner only ──────────────────────────────────
+      match /clients/{clientId} {
+        allow read, write: if request.auth != null && request.auth.uid == barberId;
+
+        // ── Client messages ───────────────────────────────────────────────────
+        match /messages/{messageId} {
+          allow read, write: if request.auth != null && request.auth.uid == barberId;
+        }
+
+        // ── Client activities (workouts) ──────────────────────────────────────
+        match /activities/{activityId} {
+          allow read, write: if request.auth != null && request.auth.uid == barberId;
+        }
+
+        // ── Consultation notes (voice recordings) ─────────────────────────────
+        match /consultationNotes/{noteId} {
+          allow read, write: if request.auth != null && request.auth.uid == barberId;
+        }
       }
     }
 

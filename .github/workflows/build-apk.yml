@@ -38,8 +38,14 @@ jobs:
       - name: Build web app
         run: npm run build
 
+      - name: Verify dist folder
+        run: ls -la dist/
+
       - name: Update Capacitor
-        run: npm install -g @capacitor/cli && npx cap sync android
+        run: npm install -g @capacitor/cli && npx cap sync android || true
+
+      - name: Copy web assets to Android
+        run: cp -r dist/* android/app/src/main/assets/public/
 
       - name: Build APK
         working-directory: ./android

@@ -142,7 +142,7 @@ export default function Signup() {
           <Box
             component="img"
             src={logoPath}
-            alt="yr-bookd Logo"
+            alt="Bookrty Logo"
             sx={{ height: 120, width: "auto", mb: 2, mx: "auto", display: "block", filter: "drop-shadow(0px 4px 10px rgba(0,0,0,0.1))" }}
           />
           <Typography variant="h4" fontWeight={900}>

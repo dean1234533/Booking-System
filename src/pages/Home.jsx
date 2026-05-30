@@ -633,7 +633,7 @@ export default function Home({ tenant }) {
               Missing a service type?
             </Typography>
             <Typography sx={{ fontFamily: SANS, fontSize: "0.95rem", color: G.muted, mt: 2, maxWidth: 500, mx: "auto" }}>
-              Let us know what business type or feature you'd like to see on yr-bookd. We read every suggestion.
+              Let us know what business type or feature you'd like to see on Bookrty. We read every suggestion.
             </Typography>
           </Box>
 
@@ -741,7 +741,7 @@ export default function Home({ tenant }) {
             {/* Brand */}
             <Grid item xs={12} md={4}>
               <Typography sx={{ fontFamily: SERIF, fontSize: "1.3rem", fontWeight: 400, color: G.gold, mb: 1 }}>
-                yr-bookd
+                Bookrty
               </Typography>
               <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "rgba(255,255,255,0.35)", lineHeight: 1.8, maxWidth: 260 }}>
                 The UK's marketplace for vetted local professionals. Book online, pay securely, every time.
@@ -848,7 +848,7 @@ export default function Home({ tenant }) {
           {/* Bottom bar */}
           <Box sx={{ mt: 5, pt: 3, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
             <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(255,255,255,0.2)" }}>
-              © {new Date().getFullYear()} yr-bookd. All rights reserved.
+              © {new Date().getFullYear()} Bookrty. All rights reserved.
             </Typography>
             <Typography
               onClick={() => setPricingOpen(true)}

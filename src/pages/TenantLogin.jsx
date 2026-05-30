@@ -29,7 +29,7 @@ export default function TenantLogin({ tenant }) {
   }, [tenant, location.state?.tenant]);
 
   const brandColor = activeTenant?.brandColor || "#C9A84C";
-  const businessName = activeTenant?.businessName || "yr-bookd";
+  const businessName = activeTenant?.businessName || "Bookrty";
   const logoUrl = activeTenant?.businessLogo || activeTenant?.logoUrl || null;
 
   async function handleSubmit(e) {

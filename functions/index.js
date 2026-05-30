@@ -413,7 +413,7 @@ exports.sendBookingConfirmation = onCall(
       const icsContent = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//BookehTrim//BookingSystem//EN",
+        "PRODID:-//Bookrty//BookingSystem//EN",
         "BEGIN:VEVENT",
         `UID:${uid}`,
         `DTSTART:${startDt}`,
@@ -427,7 +427,7 @@ exports.sendBookingConfirmation = onCall(
 
       try {
         await transporter.sendMail({
-          from: `"${businessName || "BookehTrim"}" <${GMAIL_USER.value()}>`,
+          from: `"${businessName || "Bookrty"}" <${GMAIL_USER.value()}>`,
           to: clientEmail,
           subject: `Booking Confirmed — ${date} at ${time}`,
           html: `<p>Hi ${clientName || "there"},</p><p>Your session with <strong>${trainerName || "your trainer"}</strong> is confirmed.</p><p><strong>Date:</strong> ${date}<br/><strong>Time:</strong> ${time}<br/><strong>Location:</strong> ${location || "TBC"}</p><p>The calendar invite is attached below.</p>`,

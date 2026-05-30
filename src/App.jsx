@@ -211,7 +211,7 @@ function AppShell() {
     if (tenantBarber) {
       return `${tenantBarber.businessName.toUpperCase()} | Booking Portal`;
     }
-    return "yr-bookd | The Multi-Industry Appointment Booking Network";
+    return "Bookrty | The Multi-Industry Appointment Booking Network";
   }, [tenantBarber]);
 
   if (isFetchingTenant) {
@@ -262,7 +262,7 @@ function AppShell() {
               businessType={tenantBarber.businessType} 
             /> 
           ) : (
-            <Nav isMainSite={true} platformName="yr-bookd" />
+            <Nav isMainSite={true} platformName="Bookrty" />
           )
         )}
 

@@ -47,7 +47,7 @@ export async function onRequestPost(context) {
       });
     }
 
-    const platformName = "yr-bookd";
+    const platformName = "Bookrty";
     const displayBrand = businessName || platformName;
     const ref = bookingId.slice(-8).toUpperCase();
 

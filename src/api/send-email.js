@@ -43,7 +43,7 @@ export async function onRequestPost(context) {
       });
     }
 
-    const platformName = "yr-bookd";
+    const platformName = "Bookrty";
     const displayBrand = businessName || platformName;
     const displayColor = brandColor || "#C9A84C";
 

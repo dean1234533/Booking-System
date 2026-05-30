@@ -78,7 +78,7 @@ export default function OfflinePage() {
             "&:hover": { borderColor: "rgba(255,255,255,0.35)", bgcolor: "rgba(255,255,255,0.04)" },
           }}
         >
-          Back to yr-bookd
+          Back to Bookrty
         </Button>
       </Box>
 
@@ -90,7 +90,7 @@ export default function OfflinePage() {
         letterSpacing: "0.1em",
         textTransform: "uppercase",
       }}>
-        Powered by yr-bookd
+        Powered by Bookrty
       </Typography>
     </Box>
   );

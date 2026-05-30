@@ -197,6 +197,7 @@ function AppShell() {
   }, [tenantBarber]);
 
   const isDashboard    = location.pathname.startsWith('/dashboard');
+  const isHomePage     = location.pathname === '/';
   const isReviewPath   = location.pathname.startsWith('/review');
   const isOnboarding   = location.pathname.startsWith('/onboarding');
   const isWorkoutView  = location.pathname.startsWith('/workout')
@@ -301,7 +302,8 @@ function AppShell() {
               businessType={tenantBarber.businessType} 
             />
           ) : (
-            <Footer isMainSite={true} />
+            // Home page renders its own footer inline, so skip the global one there
+            !isHomePage && <Footer isMainSite={true} />
           )
         )}
       </Box>

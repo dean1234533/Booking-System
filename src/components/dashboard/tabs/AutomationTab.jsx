@@ -332,7 +332,7 @@ export default function AutomationTab({ trainerId, barber }) {
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow sx={{ bgcolor: "grey.100" }}>
+              <TableRow sx={{ bgcolor: "rgba(255,255,255,0.06)" }}>
                 <TableCell>Template</TableCell>
                 <TableCell>Frequency</TableCell>
                 <TableCell>Recipients</TableCell>
@@ -481,7 +481,7 @@ export default function AutomationTab({ trainerId, barber }) {
 
           {/* Template Preview */}
           {formData.templateId && (
-            <Paper sx={{ p: 2, mb: 2, bgcolor: "grey.50", mt: 2 }}>
+            <Paper sx={{ p: 2, mb: 2, bgcolor: "rgba(255,255,255,0.03)", mt: 2 }}>
               <Typography variant="caption" color="textSecondary">
                 Message Preview:
               </Typography>
@@ -544,7 +544,7 @@ export default function AutomationTab({ trainerId, barber }) {
                   alignItems: "center",
                   borderBottom: "1px solid #eee",
                   cursor: "pointer",
-                  "&:hover": { bgcolor: "grey.50" },
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.03)" },
                 }}
                 onClick={() => {
                   const isSelected = formData.recipients.includes(client.id);

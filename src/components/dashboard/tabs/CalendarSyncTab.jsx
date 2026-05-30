@@ -321,7 +321,7 @@ export default function CalendarSyncTab({ barber, brandColor, profile }) {
               onChange={(e) => handleDisplayModeChange(e.target.value)}
             >
               {/* Option 1: Free Slots */}
-              <Box sx={{ mb: 2, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}>
+              <Box sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1 }}>
                 <FormControlLabel
                   value="free-slots"
                   control={<Radio />}
@@ -339,7 +339,7 @@ export default function CalendarSyncTab({ barber, brandColor, profile }) {
               </Box>
 
               {/* Option 2: Availability Blocks */}
-              <Box sx={{ mb: 2, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}>
+              <Box sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1 }}>
                 <FormControlLabel
                   value="availability-blocks"
                   control={<Radio />}
@@ -357,7 +357,7 @@ export default function CalendarSyncTab({ barber, brandColor, profile }) {
               </Box>
 
               {/* Option 3: All Times */}
-              <Box sx={{ mb: 2, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}>
+              <Box sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1 }}>
                 <FormControlLabel
                   value="all-times"
                   control={<Radio />}
@@ -377,7 +377,7 @@ export default function CalendarSyncTab({ barber, brandColor, profile }) {
 
             <Divider sx={{ my: 2 }} />
 
-            <Box sx={{ p: 2, bgcolor: "#e3f2fd", borderRadius: 1 }}>
+            <Box sx={{ p: 2, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1 }}>
               <Stack direction="row" spacing={1} alignItems="flex-start">
                 <InfoIcon sx={{ color: "#1976d2", mt: 0.5, flexShrink: 0 }} />
                 <Box>
@@ -397,7 +397,7 @@ export default function CalendarSyncTab({ barber, brandColor, profile }) {
 
       {/* Info Section */}
       {calendarSettings?.syncEnabled && (
-        <Paper sx={{ p: 3, mt: 3, borderRadius: 2, bgcolor: "#f9f9f9" }}>
+        <Paper sx={{ p: 3, mt: 3, borderRadius: 2, bgcolor: "rgba(255,255,255,0.03)" }}>
           <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>
             ✨ What happens when someone books:
           </Typography>

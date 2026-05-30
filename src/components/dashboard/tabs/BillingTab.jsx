@@ -187,7 +187,7 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
           <Grid container spacing={2} sx={{ mb: 3 }}>
             {/* Base Cost */}
             <Grid item xs={12} sm={6}>
-              <Paper sx={{ p: 2, bgcolor: "#F5F5F5", borderRadius: 2 }}>
+              <Paper sx={{ p: 2, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 2 }}>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   Base Monthly Fee
                 </Typography>
@@ -203,7 +203,7 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
             {/* Overage Cost */}
             {isTrainer && (
               <Grid item xs={12} sm={6}>
-                <Paper sx={{ p: 2, bgcolor: "#E3F2FD", borderRadius: 2 }}>
+                <Paper sx={{ p: 2, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 2 }}>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     Extra Clients
                   </Typography>
@@ -219,13 +219,13 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
 
             {/* Total Cost */}
             <Grid item xs={12}>
-              <Paper sx={{ p: 3, bgcolor: "#C8E6C9", borderRadius: 2, border: "2px solid #4CAF50" }}>
+              <Paper sx={{ p: 3, bgcolor: "rgba(76,175,80,0.12)", borderRadius: 2, border: "1px solid rgba(76,175,80,0.4)" }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                       Total Monthly Cost
                     </Typography>
-                    <Typography variant="h4" fontWeight={900} sx={{ color: "#1B5E20" }}>
+                    <Typography variant="h4" fontWeight={900} sx={{ color: "#7ae8a0" }}>
                       {billing.totalCost}
                     </Typography>
                   </Box>
@@ -309,7 +309,7 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
               <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
                 Calculation Example:
               </Typography>
-              <Typography variant="caption" display="block" sx={{ mb: 2, fontFamily: "monospace", bgcolor: "#F5F5F5", p: 1, borderRadius: 1 }}>
+              <Typography variant="caption" display="block" sx={{ mb: 2, fontFamily: "monospace", bgcolor: "rgba(255,255,255,0.04)", p: 1, borderRadius: 1 }}>
                 {billing.overageClients > 0
                   ? `£20 (base) + (${billing.overageClients} extra clients ÷ 3 = ${billing.overageUnits} units) × £1.50 = ${billing.totalCost}`
                   : `£20 (base, all 10 clients included) = ${billing.totalCost}`}
@@ -331,7 +331,7 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
 
           <Divider sx={{ my: 2 }} />
 
-          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, p: 1, bgcolor: "#FFF3CD", borderRadius: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, p: 1, bgcolor: "rgba(224,168,0,0.12)", borderRadius: 1 }}>
             <WarningAmber sx={{ fontSize: 20, marginTop: 0.25, flexShrink: 0 }} />
             <Box>
               <Typography variant="body2" fontWeight={600}>
@@ -396,7 +396,7 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
                   day: "numeric",
                 });
                 return (
-                  <Paper key={invoice.id} sx={{ p: 2, bgcolor: "#F5F5F5" }}>
+                  <Paper key={invoice.id} sx={{ p: 2, bgcolor: "rgba(255,255,255,0.04)" }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
                       <Typography variant="subtitle2" fontWeight={600}>
                         Invoice {invoice.invoiceNumber || invoice.id.slice(0, 8)}

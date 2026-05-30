@@ -163,7 +163,7 @@ export default function BookingsTab({
                 {/* Notes */}
                 {(b.notes || b.additionalInfo) && (
                   <Grid item xs={12}>
-                    <Box sx={{ mt: 1, p: 1.5, bgcolor: "#f8f9fa", borderRadius: 1 }}>
+                    <Box sx={{ mt: 1, p: 1.5, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1 }}>
                       <Typography variant="caption" color="text.secondary" fontWeight={700}>📝 Notes</Typography>
                       <Typography variant="caption" display="block">{b.notes || b.additionalInfo}</Typography>
                     </Box>

@@ -469,7 +469,7 @@ export default function ProgressTrackerTab({ trainerId }) {
                         <TableContainer sx={{ mt: 2 }}>
                           <Table size="small">
                             <TableHead>
-                              <TableRow sx={{ bgcolor: "grey.100" }}>
+                              <TableRow sx={{ bgcolor: "rgba(255,255,255,0.06)" }}>
                                 <TableCell>Date</TableCell>
                                 <TableCell align="right">Value</TableCell>
                                 <TableCell>Notes</TableCell>
@@ -566,7 +566,7 @@ export default function ProgressTrackerTab({ trainerId }) {
                   ) : (
                     <Box
                       sx={{
-                        bgcolor: "grey.100",
+                        bgcolor: "rgba(255,255,255,0.06)",
                         p: 4,
                         textAlign: "center",
                         borderRadius: 1,
@@ -620,7 +620,7 @@ export default function ProgressTrackerTab({ trainerId }) {
             ) : (
               <Box>
                 {/* Report Summary */}
-                <Box sx={{ mb: 3, p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
+                <Box sx={{ mb: 3, p: 2, bgcolor: "rgba(255,255,255,0.03)", borderRadius: 1 }}>
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Client:</strong> {selectedClientName}
                   </Typography>

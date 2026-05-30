@@ -83,7 +83,7 @@ export default function DesignTab({
           </Typography>
           <Box display="flex" alignItems="center" gap={2}>
             <Box sx={{
-              width: 100, height: 56, borderRadius: 1, bgcolor: "#eee",
+              width: 100, height: 56, borderRadius: 1, bgcolor: "rgba(255,255,255,0.08)",
               backgroundImage:    `url(${heroPreviewDesktop || profile.heroImage})`,
               backgroundSize:     "cover", backgroundPosition: "center",
             }} />
@@ -101,7 +101,7 @@ export default function DesignTab({
           </Typography>
           <Box display="flex" alignItems="center" gap={2}>
             <Box sx={{
-              width: 100, height: 56, borderRadius: 1, bgcolor: "#eee",
+              width: 100, height: 56, borderRadius: 1, bgcolor: "rgba(255,255,255,0.08)",
               backgroundImage:    `url(${heroPreviewMobile || profile.heroImageMobile})`,
               backgroundSize:     "cover", backgroundPosition: "center",
             }} />

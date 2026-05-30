@@ -272,7 +272,7 @@ export default function TaxFinanceTab({ barberId, profile }) {
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {/* Tax Year Info */}
           <Grid item xs={12}>
-            <Card sx={{ bgcolor: "#E3F2FD" }}>
+            <Card sx={{ bgcolor: "rgba(255,255,255,0.04)" }}>
               <CardContent>
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
                   {taxYear.year} Tax Year
@@ -286,11 +286,11 @@ export default function TaxFinanceTab({ barberId, profile }) {
 
           {/* Income Card */}
           <Grid item xs={12} sm={6}>
-            <Paper sx={{ p: 2, bgcolor: "#E8F5E9", borderRadius: 2 }}>
+            <Paper sx={{ p: 2, bgcolor: "rgba(76,175,80,0.12)", borderRadius: 2 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Total Income
               </Typography>
-              <Typography variant="h4" fontWeight={700} sx={{ color: "#2E7D32" }}>
+              <Typography variant="h4" fontWeight={700} sx={{ color: "#7ae8a0" }}>
                 {formatCurrency(totalIncome)}
               </Typography>
               <Typography variant="caption" display="block" sx={{ mt: 1 }}>
@@ -301,11 +301,11 @@ export default function TaxFinanceTab({ barberId, profile }) {
 
           {/* Expenses Card */}
           <Grid item xs={12} sm={6}>
-            <Paper sx={{ p: 2, bgcolor: "#FFEBEE", borderRadius: 2 }}>
+            <Paper sx={{ p: 2, bgcolor: "rgba(244,67,54,0.12)", borderRadius: 2 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Total Expenses
               </Typography>
-              <Typography variant="h4" fontWeight={700} sx={{ color: "#C62828" }}>
+              <Typography variant="h4" fontWeight={700} sx={{ color: "#ff8a80" }}>
                 {formatCurrency(totalExpenses)}
               </Typography>
               <Typography variant="caption" display="block" sx={{ mt: 1 }}>
@@ -316,11 +316,11 @@ export default function TaxFinanceTab({ barberId, profile }) {
 
           {/* Profit Card */}
           <Grid item xs={12} sm={6}>
-            <Paper sx={{ p: 2, bgcolor: "#FFF3E0", borderRadius: 2 }}>
+            <Paper sx={{ p: 2, bgcolor: "rgba(255,152,0,0.12)", borderRadius: 2 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Profit (before tax)
               </Typography>
-              <Typography variant="h4" fontWeight={700} sx={{ color: "#E65100" }}>
+              <Typography variant="h4" fontWeight={700} sx={{ color: "#ffb74d" }}>
                 {formatCurrency(taxData.profit)}
               </Typography>
             </Paper>
@@ -328,7 +328,7 @@ export default function TaxFinanceTab({ barberId, profile }) {
 
           {/* Total Tax Card */}
           <Grid item xs={12} sm={6}>
-            <Paper sx={{ p: 2, bgcolor: "#FCE4EC", borderRadius: 2, border: "2px solid #E91E63" }}>
+            <Paper sx={{ p: 2, bgcolor: "rgba(233,30,99,0.12)", borderRadius: 2, border: "1px solid rgba(233,30,99,0.4)" }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Estimated Tax Owed
               </Typography>
@@ -343,11 +343,11 @@ export default function TaxFinanceTab({ barberId, profile }) {
 
           {/* Net Profit Card */}
           <Grid item xs={12}>
-            <Paper sx={{ p: 3, bgcolor: "#C8E6C9", border: "2px solid #4CAF50", borderRadius: 2 }}>
+            <Paper sx={{ p: 3, bgcolor: "rgba(76,175,80,0.12)", border: "1px solid rgba(76,175,80,0.4)", borderRadius: 2 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Net Profit (after tax)
               </Typography>
-              <Typography variant="h3" fontWeight={900} sx={{ color: "#1B5E20" }}>
+              <Typography variant="h3" fontWeight={900} sx={{ color: "#7ae8a0" }}>
                 {formatCurrency(taxData.netProfit)}
               </Typography>
             </Paper>
@@ -433,7 +433,7 @@ export default function TaxFinanceTab({ barberId, profile }) {
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow sx={{ bgcolor: "#f5f5f5" }}>
+              <TableRow sx={{ bgcolor: "rgba(255,255,255,0.05)" }}>
                 <TableCell fontWeight={700}>Date</TableCell>
                 <TableCell fontWeight={700}>Description</TableCell>
                 <TableCell align="right" fontWeight={700}>
@@ -508,7 +508,7 @@ export default function TaxFinanceTab({ barberId, profile }) {
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow sx={{ bgcolor: "#f5f5f5" }}>
+              <TableRow sx={{ bgcolor: "rgba(255,255,255,0.05)" }}>
                 <TableCell fontWeight={700}>Date</TableCell>
                 <TableCell fontWeight={700}>Name</TableCell>
                 <TableCell align="right" fontWeight={700}>
@@ -564,7 +564,7 @@ export default function TaxFinanceTab({ barberId, profile }) {
         </Box>
 
         {invoices.length === 0 ? (
-          <Paper sx={{ p: 4, textAlign: "center", bgcolor: "#f9f9f9" }}>
+          <Paper sx={{ p: 4, textAlign: "center", bgcolor: "rgba(255,255,255,0.03)" }}>
             <Typography color="text.secondary">No invoices uploaded yet</Typography>
           </Paper>
         ) : (

@@ -97,7 +97,7 @@ export default function ScheduleTab({
           </Typography>
           <Stack spacing={1}>
             {reminderBlocks.map((block, idx) => (
-              <Box key={idx} sx={{ px: 2, py: 1, borderRadius: 2, bgcolor: "white", border: "1px solid #eee", display: "flex", alignItems: "center", gap: 2 }}>
+              <Box key={idx} sx={{ px: 2, py: 1, borderRadius: 2, bgcolor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", gap: 2 }}>
                 <AccessTimeIcon fontSize="small" sx={{ color: brandColor }} />
                 <Typography variant="body2" fontWeight={700}>
                   {block.length === 1 ? (
@@ -136,7 +136,7 @@ export default function ScheduleTab({
               <Paper variant="outlined" sx={{
                 p: 2, borderRadius: 2, display: "flex", justifyContent: "space-between",
                 alignItems: "center",
-                bgcolor:      isDone ? "#f5f5f5" : isBooked ? "#FFF8E1" : "white",
+                bgcolor:      isDone ? "rgba(255,255,255,0.05)" : isBooked ? "rgba(224,168,0,0.12)" : "rgba(255,255,255,0.03)",
                 borderColor:  isManual ? brandColor : undefined,
                 borderWidth:  isManual ? 2 : 1,
               }}>

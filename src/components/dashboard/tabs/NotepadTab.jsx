@@ -215,7 +215,7 @@ export default function NotepadTab({ barber, brandColor, profile }) {
         {/* Right: Notes View */}
         <Grid item xs={12} md={9}>
           {!selectedCategory ? (
-            <Paper sx={{ p: 4, textAlign: "center", bgcolor: "#f5f5f5" }}>
+            <Paper sx={{ p: 4, textAlign: "center", bgcolor: "rgba(255,255,255,0.04)" }}>
               <Typography color="text.secondary">Select a category or create a new one</Typography>
             </Paper>
           ) : (
@@ -263,8 +263,8 @@ export default function NotepadTab({ barber, brandColor, profile }) {
                         key={note.id}
                         sx={{
                           p: 2,
-                          bgcolor: "#fafafa",
-                          border: "1px solid #e0e0e0",
+                          bgcolor: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.1)",
                           borderRadius: 1,
                         }}
                       >

@@ -206,7 +206,7 @@ export default function ClientMessagesTab({ trainerId, clientId, clientName }) {
           p: 2,
           display: "flex",
           flexDirection: "column",
-          bgcolor: "#f9f9f9",
+          bgcolor: "rgba(255,255,255,0.03)",
         }}
       >
         {loading && (

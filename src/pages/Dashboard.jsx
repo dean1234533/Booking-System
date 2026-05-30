@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Box, Snackbar, Tabs, Tab, CircularProgress,
-  useMediaQuery, useTheme
+  useMediaQuery, useTheme, ThemeProvider, createTheme
 } from "@mui/material";
 import {
   AccessTime as AccessTimeIcon,
@@ -625,6 +625,56 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     const b = parseInt(brandColor.slice(5, 7), 16) || 0;
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? "#1A1A1A" : "#ffffff";
   })();
+
+  // ── Scoped dark theme so every tab inherits the "Workouts" aesthetic ────────
+  // Sets sensible dark defaults (dark paper, white text, branded inputs/buttons,
+  // square corners). Any tab that sets its own colors via `sx` overrides these,
+  // so already-styled tabs are untouched while plain tabs gain the look.
+  const tabTheme = useMemo(() => createTheme({
+    palette: {
+      mode: "dark",
+      primary:    { main: brandColor },
+      background: { paper: "#1a1a1a", default: "transparent" },
+      text:       { primary: "#fff", secondary: "rgba(255,255,255,0.55)" },
+      divider:    "rgba(255,255,255,0.08)",
+    },
+    shape: { borderRadius: 0 },
+    components: {
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundColor: "#1a1a1a",
+            backgroundImage: "none",
+            border: "1px solid rgba(255,255,255,0.07)",
+          },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            backgroundColor: "#1a1a1a",
+            backgroundImage: "none",
+            border: "1px solid rgba(255,255,255,0.07)",
+          },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            color: "#fff",
+            "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" },
+            "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.25)" },
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: brandColor },
+          },
+        },
+      },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: { color: "rgba(255,255,255,0.4)", "&.Mui-focused": { color: brandColor } },
+        },
+      },
+    },
+  }), [brandColor]);
   const isBarber      = !profile.businessType || profile.businessType === "barber";
   const isTrainer     = profile.businessType === "trainer";
   const isDecorator   = profile.businessType === "decorator";
@@ -964,6 +1014,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           @keyframes dashSlideInL { from { opacity: 0; transform: translateX(-42px); } to { opacity: 1; transform: translateX(0); } }
         `}</style>
 
+        <ThemeProvider theme={tabTheme}>
         <Box
           key={tab}
           onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
@@ -1229,6 +1280,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         )}
 
         </Box>{/* end slide wrapper */}
+        </ThemeProvider>
       </Box>
 
     </Box>

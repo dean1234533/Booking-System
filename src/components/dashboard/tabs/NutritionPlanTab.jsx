@@ -375,7 +375,7 @@ export default function NutritionPlanTab({ trainerId, bookings = [] }) {
                           value={Math.min((totals.protein / 150) * 100, 100)}
                           sx={{
                             mt: 1,
-                            bgcolor: "grey.300",
+                            bgcolor: "rgba(255,255,255,0.15)",
                             "& .MuiLinearProgress-bar": {
                               bgcolor: MACRO_COLORS.protein,
                             },
@@ -399,7 +399,7 @@ export default function NutritionPlanTab({ trainerId, bookings = [] }) {
                           value={Math.min((totals.carbs / 300) * 100, 100)}
                           sx={{
                             mt: 1,
-                            bgcolor: "grey.300",
+                            bgcolor: "rgba(255,255,255,0.15)",
                             "& .MuiLinearProgress-bar": {
                               bgcolor: MACRO_COLORS.carbs,
                             },
@@ -423,7 +423,7 @@ export default function NutritionPlanTab({ trainerId, bookings = [] }) {
                           value={Math.min((totals.fat / 80) * 100, 100)}
                           sx={{
                             mt: 1,
-                            bgcolor: "grey.300",
+                            bgcolor: "rgba(255,255,255,0.15)",
                             "& .MuiLinearProgress-bar": {
                               bgcolor: MACRO_COLORS.fat,
                             },

@@ -69,7 +69,7 @@ function CopyField({label, value}) {
       justifyContent="space-between"
       p={1.5}
       sx={{
-        bgcolor: "#F1F5F9",
+        bgcolor: "rgba(255,255,255,0.04)",
         borderRadius: 1.5,
         border: "1px solid #E2E8F0",
         mb: 1,
@@ -419,7 +419,7 @@ export default function DomainTab({barber, brandColor}) {
         <Stack spacing={3}>
 
           {/* Live status */}
-          <Paper sx={{p: 3, borderRadius: 3, bgcolor: "#F8F9FA"}}>
+          <Paper sx={{p: 3, borderRadius: 3, bgcolor: "rgba(255,255,255,0.04)"}}>
             <Typography variant="subtitle1" fontWeight={800} mb={2}>
               Your Connected Domain
             </Typography>
@@ -432,7 +432,7 @@ export default function DomainTab({barber, brandColor}) {
                   justifyContent="space-between"
                   p={2}
                   mb={2}
-                  sx={{bgcolor: "#fff", borderRadius: 2, border: "1px solid #E0E0E0"}}
+                  sx={{bgcolor: "rgba(255,255,255,0.04)", borderRadius: 2, border: "1px solid rgba(255,255,255,0.1)"}}
                 >
                   <Box>
                     <Typography fontWeight={700}>{connectedDomain}</Typography>
@@ -554,7 +554,7 @@ export default function DomainTab({barber, brandColor}) {
                 {dnsRecords.map((rec, i) => (
                   rec.type === "FORWARD" ? (
                     /* Root domain — can't use CNAME, use registrar forwarding */
-                    <Box key={i} mb={2} p={2} sx={{ bgcolor: "#FFF8E1", border: "1px solid #FFE082", borderRadius: 2 }}>
+                    <Box key={i} mb={2} p={2} sx={{ bgcolor: "rgba(224,168,0,0.12)", border: "1px solid rgba(224,168,0,0.35)", borderRadius: 2 }}>
                       <Typography variant="caption" fontWeight={800} color="warning.dark" display="block" mb={0.5}>
                         Step {i + 1} — Root Domain Forwarding (@ / naked domain)
                       </Typography>

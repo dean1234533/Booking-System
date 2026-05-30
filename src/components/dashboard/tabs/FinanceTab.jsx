@@ -134,7 +134,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
             sx={{
               height: 6,
               borderRadius: 3,
-              bgcolor: "#e5e7eb",
+              bgcolor: "rgba(255,255,255,0.12)",
               "& .MuiLinearProgress-bar": {
                 bgcolor: trialUrgent ? "#f59e0b" : brandColor,
                 borderRadius: 3,
@@ -250,8 +250,8 @@ function FeeBreakdown({ depositAmount, brandColor }) {
   return (
     <Box sx={{
       mt: 2,
-      bgcolor: "#f8fafc",
-      border: "1px solid #e2e8f0",
+      bgcolor: "rgba(255,255,255,0.04)",
+      border: "1px solid rgba(255,255,255,0.1)",
       borderRadius: 2,
       p: 2,
     }}>

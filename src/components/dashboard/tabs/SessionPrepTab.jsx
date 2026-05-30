@@ -92,7 +92,7 @@ export default function SessionPrepTab({ barber, brandColor, profile }) {
 
       {/* Sessions List */}
       {sessions.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: "center", bgcolor: "#f5f5f5" }}>
+        <Paper sx={{ p: 4, textAlign: "center", bgcolor: "rgba(255,255,255,0.04)" }}>
           <Typography color="text.secondary">No sessions in the next 2 hours</Typography>
         </Paper>
       ) : (
@@ -107,8 +107,8 @@ export default function SessionPrepTab({ barber, brandColor, profile }) {
                 sx={{
                   p: 2,
                   borderRadius: 2,
-                  border: isUrgent ? `2px solid #ff9800` : "1px solid #e0e0e0",
-                  bgcolor: isUrgent ? "#fff3e0" : "#fff",
+                  border: isUrgent ? "1px solid rgba(255,152,0,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                  bgcolor: isUrgent ? "rgba(255,152,0,0.12)" : "rgba(255,255,255,0.03)",
                   transition: "all 0.2s",
                   cursor: "pointer",
                   "&:hover": {
@@ -272,7 +272,7 @@ export default function SessionPrepTab({ barber, brandColor, profile }) {
 
                 {/* PAR-Q Status */}
                 {sessionDetails.parq && (
-                  <Box sx={{ p: 1.5, bgcolor: "#f5f5f5", borderRadius: 1 }}>
+                  <Box sx={{ p: 1.5, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1 }}>
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                       <CheckCircleIcon fontSize="small" sx={{ color: "#4caf50" }} />
                       <Typography variant="subtitle2" fontWeight={700}>
@@ -298,7 +298,7 @@ export default function SessionPrepTab({ barber, brandColor, profile }) {
                     <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: brandColor }}>
                       Session Notes
                     </Typography>
-                    <Typography variant="body2" sx={{ p: 1, bgcolor: "#f9f9f9", borderRadius: 1, whiteSpace: "pre-wrap" }}>
+                    <Typography variant="body2" sx={{ p: 1, bgcolor: "rgba(255,255,255,0.03)", borderRadius: 1, whiteSpace: "pre-wrap" }}>
                       {sessionDetails.session.notes}
                     </Typography>
                   </Box>
@@ -310,7 +310,7 @@ export default function SessionPrepTab({ barber, brandColor, profile }) {
                     <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: brandColor }}>
                       Health Check-in (Today)
                     </Typography>
-                    <Typography variant="body2" sx={{ p: 1, bgcolor: "#e8f5e9", borderRadius: 1 }}>
+                    <Typography variant="body2" sx={{ p: 1, bgcolor: "rgba(76,175,80,0.12)", borderRadius: 1 }}>
                       ✅ Check-in completed at {new Date(sessionDetails.checkin.submittedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </Typography>
                   </Box>

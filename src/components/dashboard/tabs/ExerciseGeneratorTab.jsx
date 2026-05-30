@@ -271,12 +271,12 @@ export default function ExerciseGeneratorTab({ barber, brandColor, profile }) {
             ))}
           </Grid>
         ) : (
-          <Paper sx={{ p: 4, textAlign: "center", bgcolor: "#f5f5f5" }}>
+          <Paper sx={{ p: 4, textAlign: "center", bgcolor: "rgba(255,255,255,0.04)" }}>
             <Typography color="text.secondary">No exercises found for "{searchTerm}"</Typography>
           </Paper>
         )
       ) : (
-        <Paper sx={{ p: 4, textAlign: "center", bgcolor: "#f5f5f5" }}>
+        <Paper sx={{ p: 4, textAlign: "center", bgcolor: "rgba(255,255,255,0.04)" }}>
           <Typography color="text.secondary">Enter a body part to get started</Typography>
         </Paper>
       )}
@@ -350,7 +350,7 @@ export default function ExerciseGeneratorTab({ barber, brandColor, profile }) {
                   sx={{
                     mb: 2,
                     p: 2,
-                    bgcolor: "#f9f9f9",
+                    bgcolor: "rgba(255,255,255,0.03)",
                     borderRadius: 1,
                     border: "1px solid #e0e0e0",
                     textAlign: "center",

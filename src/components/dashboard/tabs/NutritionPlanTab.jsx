@@ -39,11 +39,12 @@ const MACRO_COLORS = {
  * Nutrition Plan Tab - Create and manage nutrition plans for clients
  * Features: Food database, macro tracking, custom foods, plan saving
  */
-export default function NutritionPlanTab({ trainerId, bookings = [] }) {
+export default function NutritionPlanTab({ barber, profile, brandColor, trainerId: trainerIdProp, bookings = [] }) {
+  const trainerId = trainerIdProp || barber?.uid || barber?.id;
   const [selectedClientId, setSelectedClientId] = useState("");
   const [selectedClientName, setSelectedClientName] = useState("");
   const [clients, setClients] = useState([]);
-  const [plan, setPlan] = useState(null);
+  const [plan, setPlan] = useState({ foods: [], totals: {} });
   const [foodList, setFoodList] = useState(foodDatabaseJson.foods);
   const [customFoods, setCustomFoods] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +97,10 @@ export default function NutritionPlanTab({ trainerId, bookings = [] }) {
       if (data && data.length > 0) {
         setSelectedClientId(data[0].id);
         setSelectedClientName(data[0].customerName);
+      } else {
+        // No clients yet — allow building a shareable template plan
+        setSelectedClientId("template");
+        setSelectedClientName("Template (no client)");
       }
     } catch (err) {
       console.error("Error loading clients:", err);
@@ -105,14 +110,14 @@ export default function NutritionPlanTab({ trainerId, bookings = [] }) {
   };
 
   const loadPlan = async () => {
-    if (!trainerId || !clientId) return;
+    if (!trainerId || !selectedClientId) return;
     setLoading(true);
     setError("");
 
     try {
-      const existingPlan = await getNutritionPlan(trainerId, clientId);
+      const existingPlan = await getNutritionPlan(trainerId, selectedClientId);
       if (existingPlan) {
-        setPlan(existingPlan);
+        setPlan({ foods: [], totals: {}, ...existingPlan });
         setNotes(existingPlan.notes || "");
       } else {
         setPlan({ foods: [], totals: {} });
@@ -208,7 +213,7 @@ export default function NutritionPlanTab({ trainerId, bookings = [] }) {
   };
 
   const handleSavePlan = async () => {
-    if (!trainerId || !clientId) return;
+    if (!trainerId || !selectedClientId) return;
 
     setSaving(true);
     setError("");
@@ -278,7 +283,9 @@ export default function NutritionPlanTab({ trainerId, bookings = [] }) {
                   setSelectedClientName(client?.customerName || "");
                 }}
                 disabled={loading}
+                helperText={selectedClientId === "template" ? "No client selected — building a shareable template plan." : ""}
               >
+                <MenuItem value="template">Template (no client)</MenuItem>
                 {clients.map((client) => (
                   <MenuItem key={client.id} value={client.id}>
                     {client.customerName} ({client.customerEmail})

@@ -78,7 +78,8 @@ const METRIC_TYPES = [
  * Progress Tracker Tab - Track and visualize client progress
  * Features: Metric logging, progress charts, photos, reports
  */
-export default function ProgressTrackerTab({ trainerId }) {
+export default function ProgressTrackerTab({ barber, profile, brandColor, trainerId: trainerIdProp }) {
+  const trainerId = trainerIdProp || barber?.uid || barber?.id;
   const [selectedClientId, setSelectedClientId] = useState("");
   const [selectedClientName, setSelectedClientName] = useState("");
   const [clients, setClients] = useState([]);

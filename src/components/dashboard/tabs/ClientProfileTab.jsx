@@ -40,7 +40,8 @@ import ConsultationTab from "./ConsultationTab";
  * Client Profile Tab - Unified view for all client information
  * Features: Client selection, profile viewing, message/activity/consultation tabs
  */
-export default function ClientProfileTab({ trainerId, bookings = [] }) {
+export default function ClientProfileTab({ barber, profile, brandColor, trainerId: trainerIdProp, bookings = [] }) {
+  const trainerId = trainerIdProp || barber?.uid || barber?.id;
   const [selectedClientId, setSelectedClientId] = useState("");
   const [clientProfile, setClientProfile] = useState(null);
   const [clients, setClients] = useState([]);

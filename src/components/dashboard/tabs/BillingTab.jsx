@@ -95,28 +95,35 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
         body: JSON.stringify({ barberId: userId }),
       });
 
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-
       const text = await res.text();
-      if (!text) {
-        throw new Error("Empty response from server");
+
+      // In local `npm run dev` the serverless /api function isn't running, so
+      // the dev server returns the SPA HTML instead of JSON.
+      if (text.trim().startsWith("<")) {
+        setMessage({
+          type: "error",
+          text: "Billing portal only works on the live (deployed) site — the /api backend isn't running locally.",
+        });
+        return;
       }
 
-      const data = JSON.parse(text);
-      if (data.url) {
+      let data = {};
+      try { data = JSON.parse(text); } catch { /* ignore */ }
+
+      if (res.ok && data.url) {
         window.location.href = data.url;
-      } else if (data.error) {
-        setMessage({ type: "error", text: `Billing error: ${data.error}` });
       } else {
-        throw new Error("No URL in response");
+        // Surface the real reason from the server (e.g. "Stripe not connected").
+        setMessage({
+          type: "error",
+          text: data.error || `Could not open billing portal (server returned ${res.status}).`,
+        });
       }
     } catch (error) {
       console.error("Failed to open billing portal:", error);
       setMessage({
         type: "error",
-        text: "Failed to open billing portal. Please ensure Stripe is connected in the Finance tab."
+        text: "Failed to open billing portal. Please ensure Stripe is connected in the Finance tab.",
       });
     }
   };

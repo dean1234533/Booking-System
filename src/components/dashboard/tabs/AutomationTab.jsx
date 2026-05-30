@@ -55,7 +55,8 @@ import {
  * Automation Tab - Schedule recurring messages for clients
  * PTs can set up automated check-ins, reminders, etc.
  */
-export default function AutomationTab({ trainerId, barber }) {
+export default function AutomationTab({ trainerId: trainerIdProp, barber, profile, brandColor }) {
+  const trainerId = trainerIdProp || barber?.uid || barber?.id;
   const [schedules, setSchedules] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +82,7 @@ export default function AutomationTab({ trainerId, barber }) {
   }, [trainerId]);
 
   const loadData = async () => {
-    if (!trainerId) return;
+    if (!trainerId) { setLoading(false); return; }
     setLoading(true);
     setError("");
 

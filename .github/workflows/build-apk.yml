@@ -29,14 +29,17 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Clear npm cache
+        run: npm cache clean --force
+
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm install --force
 
       - name: Build web app
         run: npm run build
 
       - name: Update Capacitor
-        run: npx cap sync android
+        run: npm install -g @capacitor/cli && npx cap sync android
 
       - name: Build APK
         working-directory: ./android

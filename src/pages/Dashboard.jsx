@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box, Snackbar, Tabs, Tab, CircularProgress,
-  useMediaQuery, useTheme, ThemeProvider, createTheme
+  useMediaQuery, useTheme
 } from "@mui/material";
 import {
   AccessTime as AccessTimeIcon,
@@ -13,19 +13,6 @@ import {
   Palette as PaletteIcon,
   Nfc as NfcIcon,
   Language as LanguageIcon,
-  CalendarMonth as CalendarMonthIcon,
-  Receipt as ReceiptIcon,
-  FitnessCenter as FitnessCenterIcon,
-  Assignment as AssignmentIcon,
-  ColorLens as ColorLensIcon,
-  RequestQuote as RequestQuoteIcon,
-  Today as TodayIcon,
-  People as PeopleIcon,
-  RestaurantMenu as RestaurantMenuIcon,
-  ContentCut as ContentCutIcon,
-  Web as WebIcon,
-  TrendingUp as TrendingUpIcon,
-  AutoAwesome as AutoAwesomeIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -51,32 +38,12 @@ import ManualBookingDialog from "../components/dashboard/ManualBookingDialog";
 import ScheduleTab  from "../components/dashboard/tabs/ScheduleTab";
 import BookingsTab  from "../components/dashboard/tabs/BookingsTab";
 import ProfileTab   from "../components/dashboard/tabs/ProfileTab";
-import EditPageTab  from "../components/dashboard/tabs/EditPageTab";
 import ServicesTab  from "../components/dashboard/tabs/ServicesTab";
 import ReviewsTab   from "../components/dashboard/tabs/ReviewsTab";
 import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
+import DesignTab    from "../components/dashboard/tabs/DesignTab";
 import PayTab       from "../components/dashboard/tabs/PayTab";
 import DomainTab    from "../components/dashboard/tabs/DomainTab";
-import InvoiceTab   from "../components/dashboard/tabs/InvoiceTab";
-import WorkoutPlansTab  from "../components/dashboard/tabs/WorkoutPlansTab";
-import ColourApprovalTab  from "../components/dashboard/tabs/ColourApprovalTab";
-import QuoteTab           from "../components/dashboard/tabs/QuoteTab";
-import DayPlannerTab      from "../components/dashboard/tabs/DayPlannerTab";
-import QueueManagementTab from "../components/dashboard/tabs/QueueManagementTab";
-import FoodGeneratorTab  from "../components/dashboard/tabs/FoodGeneratorTab";
-import BrandSiteTab      from "../components/dashboard/tabs/BrandSiteTab";
-import ClientFormsTab    from "../components/dashboard/tabs/ClientFormsTab";
-import HaircutTab        from "../components/dashboard/tabs/HaircutTab";
-import BillingTab        from "../components/dashboard/tabs/BillingTab";
-import TaxFinanceTab     from "../components/dashboard/tabs/TaxFinanceTab";
-import ClientProfileTab  from "../components/dashboard/tabs/ClientProfileTab";
-import ClientActivityTab from "../components/dashboard/tabs/ClientActivityTab";
-import NutritionPlanTab  from "../components/dashboard/tabs/NutritionPlanTab";
-import AutomationTab     from "../components/dashboard/tabs/AutomationTab";
-import ProgressTrackerTab from "../components/dashboard/tabs/ProgressTrackerTab";
-import SessionPrepTab    from "../components/dashboard/tabs/SessionPrepTab";
-import ExerciseGeneratorTab from "../components/dashboard/tabs/ExerciseGeneratorTab";
-import NotepadTab        from "../components/dashboard/tabs/NotepadTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -101,9 +68,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [tab,          setTab]          = useState(0);
-  const [slideDir,     setSlideDir]     = useState("right");
-  const [expandedGroup, setExpandedGroup] = useState(null);
-  const touchStartX = useRef(null);
   const [dataLoading,  setDataLoading]  = useState(true);
   const [stripeLoading,setStripeLoading]= useState(false);
   const [uploading,    setUploading]    = useState(false);
@@ -117,43 +81,12 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     specialty: "", address: "", bio: "", role: "staff",
     openingHours: "", vercelUrl: "", customDomain: "", aboutUs: "",
     profilePic: "", logoUrl: "", heroImage: "", heroImageMobile: "",
-    stripeConnected: false, stripeAccountId: "",
-    subscriptionStatus: "", trialEndsAt: null,
-    stripeCustomerId: "", stripeSubscriptionId: "",
+    stripeConnected: false,
     // ── Social links — editable by ALL barbers (staff + owners) ──
     instagramUrl: "", tiktokUrl: "", facebookUrl: "",
     privacyPolicy: "", termsConditions: "",
     domainStatus: "",
     customHostnameId: "",
-    navBgColor: "", footerBgColor: "",
-    // ── Contact / social (shared across all types) ──
-    phone: "", businessEmail: "", contactEmail: "",
-    // ── Font ──
-    siteFont: "",
-    // ── Hero content (hairdresser / decorator / barber) ──
-    heroTagline: "", heroHeadingLine1: "", heroHeadingLine2: "",
-    heroSubtext: "", heroCtaText: "", heroReviewText: "",
-    // ── About section ──
-    aboutHeading: "", aboutTagline: "", aboutQuote: "",
-    // ── Services section ──
-    servicesHeading: "", servicesImage: "",
-    // ── Portfolio (decorator) ──
-    portfolioHeading: "", portfolioSubtext: "",
-    portfolioItems: [],
-    // ── Stats (shared keys used by hairdresser/decorator/barber) ──
-    stat1Value: "", stat1Label: "",
-    stat2Value: "", stat2Label: "",
-    stat3Value: "", stat3Label: "",
-    stat4Value: "", stat4Label: "",
-    // ── PT-specific website content ──
-    heroTitle: "", heroSubtitle: "", heroBgImage: "",
-    coachName: "",
-    aboutText1: "", aboutText2: "",
-    statBar1Num: "", statBar1Label: "",
-    statBar2Num: "", statBar2Label: "",
-    statBar3Num: "", statBar3Label: "",
-    youtubeUrl: "",
-    specializations: [], pricingPlans: [],
   });
 
   const [bookings,    setBookings]    = useState([]);
@@ -185,58 +118,31 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const [terminalStatus,  setTerminalStatus]  = useState("idle");
   const [terminalSession, setTerminalSession] = useState(null);
   const pollingRef = useRef(null);
-  const handledTabParam = useRef(false);
 
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => () => { if (pollingRef.current) clearInterval(pollingRef.current); }, []);
   useEffect(() => { if (!authLoading && barber) loadData(); }, [barber, authLoading]);
 
-  // ── Handle post-Stripe-connect redirect ───────────────────────────────────
+  // Handle post-Stripe-connect redirect
   useEffect(() => {
     if (!barber?.uid) return;
-
     const params = new URLSearchParams(window.location.search);
     if (params.get("stripeSuccess") !== "true") return;
-
     window.history.replaceState({}, "", "/dashboard");
-
     const acct = params.get("acct");
-    if (!acct || acct === "undefined") {
-      setToast("Stripe connection incomplete — no account returned.");
-      return;
-    }
-
     (async () => {
       try {
-        const res  = await fetch("/api/stripe/callback", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ userId: barber.uid, stripeAccountId: acct }),
-        });
+        if (acct && acct !== "undefined") {
+          await updateDoc(doc(db, "barbers", barber.uid), { stripeAccountId: acct });
+        }
+        const res  = await fetch(`/api/check-stripe?userId=${barber.uid}`);
         const data = await res.json();
-
         if (data.connected) {
           setProfile(prev => ({ ...prev, stripeConnected: true }));
           setToast("🎉 Stripe connected!");
-        } else {
-          setToast("Stripe onboarding incomplete — please connect again to finish.");
         }
-      } catch (e) {
-        console.error("Post-Stripe callback failed:", e);
-        setToast("Could not verify Stripe connection. Please refresh.");
-      }
+      } catch (e) { console.error("Post-Stripe return check failed:", e); }
     })();
-  }, [barber]);
-
-  // ── Handle post-subscription-checkout redirect ────────────────────────────
-  useEffect(() => {
-    if (!barber?.uid) return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("subscriptionSuccess") !== "true") return;
-    window.history.replaceState({}, "", "/dashboard");
-    setToast("🎉 Subscription activated! Your site is now live.");
-    loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [barber]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
@@ -261,75 +167,18 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           facebookUrl:      data.facebookUrl      || "",
           domainStatus:     data.domainStatus     || "",
           customHostnameId: data.customHostnameId || "",
-          navBgColor:       data.navBgColor       || "",
-          footerBgColor:    data.footerBgColor    || "",
-          // ── Contact / social ──
-          phone:            data.phone            || "",
-          businessEmail:    data.businessEmail    || "",
-          contactEmail:     data.contactEmail     || "",
-          // ── Font ──
-          siteFont:         data.siteFont         || "",
-          // ── Hero content ──
-          heroTagline:      data.heroTagline      || "",
-          heroHeadingLine1: data.heroHeadingLine1 || "",
-          heroHeadingLine2: data.heroHeadingLine2 || "",
-          heroSubtext:      data.heroSubtext      || "",
-          heroCtaText:      data.heroCtaText      || "",
-          heroReviewText:   data.heroReviewText   || "",
-          // ── About ──
-          aboutHeading:     data.aboutHeading     || "",
-          aboutTagline:     data.aboutTagline     || "",
-          aboutQuote:       data.aboutQuote       || "",
-          // ── Services ──
-          servicesHeading:  data.servicesHeading  || "",
-          servicesImage:    data.servicesImage    || "",
-          // ── Portfolio ──
-          portfolioHeading: data.portfolioHeading || "",
-          portfolioSubtext: data.portfolioSubtext || "",
-          portfolioItems:   Array.isArray(data.portfolioItems) ? data.portfolioItems : [],
-          // ── Stats ──
-          stat1Value: data.stat1Value || "", stat1Label: data.stat1Label || "",
-          stat2Value: data.stat2Value || "", stat2Label: data.stat2Label || "",
-          stat3Value: data.stat3Value || "", stat3Label: data.stat3Label || "",
-          stat4Value: data.stat4Value || "", stat4Label: data.stat4Label || "",
-          // ── PT website content ──
-          heroTitle:        data.heroTitle        || "",
-          heroSubtitle:     data.heroSubtitle     || "",
-          heroBgImage:      data.heroBgImage      || "",
-          coachName:        data.coachName        || "",
-          aboutText1:       data.aboutText1       || "",
-          aboutText2:       data.aboutText2       || "",
-          statBar1Num:      data.statBar1Num      || "",
-          statBar1Label:    data.statBar1Label    || "",
-          statBar2Num:      data.statBar2Num      || "",
-          statBar2Label:    data.statBar2Label    || "",
-          statBar3Num:      data.statBar3Num      || "",
-          statBar3Label:    data.statBar3Label    || "",
-          youtubeUrl:       data.youtubeUrl       || "",
-          specializations:  Array.isArray(data.specializations) ? data.specializations : [],
-          pricingPlans:     Array.isArray(data.pricingPlans)    ? data.pricingPlans    : [],
         }));
       }
       setUserRole({ isOwner, shopId: activeShopId });
 
-      try {
-        const bSnap = await getDocs(
-          query(collection(db, "bookings"), where("barberId", "==", barber.uid))
-        );
-        const allB = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setBookings(allB.filter(b => b.status !== "completed" && b.status !== "cancelled"));
-      } catch (err) {
-        console.error("[loadData] bookings:", err);
-        setBookings([]);
-      }
+      const bSnap = await getDocs(
+        query(collection(db, "bookings"), where("barberId", "==", barber.uid))
+      );
+      const allB = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setBookings(allB.filter(b => b.status !== "completed" && b.status !== "cancelled"));
 
-      try {
-        const mySlots = await getProfessionalSlots(barber.uid);
-        setSlots(mySlots || []);
-      } catch (err) {
-        console.error("[loadData] slots:", err);
-        setSlots([]);
-      }
+      const mySlots = await getProfessionalSlots(barber.uid);
+      setSlots(mySlots || []);
 
       if (isOwner) {
         try {
@@ -337,10 +186,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           setReviews(rSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         } catch { setReviews([]); }
       }
-    } catch (err) {
-      console.error("[loadData] critical:", err);
-      setToast("Error loading dashboard data");
-    }
+    } catch { setToast("Error loading dashboard data"); }
     finally  { setDataLoading(false); }
   }
 
@@ -387,6 +233,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         customDomain: profile.customDomain  || "",
         openingHours: profile.openingHours  || "",
         aboutUs:      profile.aboutUs       || "",
+        // ── Social links — persisted for both staff and owners ──
         instagramUrl: profile.instagramUrl  || "",
         tiktokUrl:    profile.tiktokUrl     || "",
         facebookUrl:  profile.facebookUrl   || "",
@@ -397,8 +244,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       if (heroFileDesktop){ const c = await imageCompression(heroFileDesktop, options); updatedData.heroImage       = await uploadBarberImage(c, barber.uid, "hero_banner_desktop"); }
       if (heroFileMobile) { const c = await imageCompression(heroFileMobile, options);  updatedData.heroImageMobile = await uploadBarberImage(c, barber.uid, "hero_banner_mobile"); }
 
+      // Always write to the barber's own top-level doc
       await updateBarber(barber.uid, updatedData);
 
+      // For staff: also write to the staff subcollection so BarberProfile can read it
       if (!userRole.isOwner && userRole.shopId) {
         await updateDoc(
           doc(db, "barbers", userRole.shopId, "staff", barber.uid),
@@ -583,13 +432,12 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount:         Math.round(Number(terminalAmount) * 100),
-          currency:       "gbp",
-          description:    terminalService || terminalNote || "Haircut",
-          barberId:       barber.uid,
-          barberName:     profile.name || profile.businessName || "Barber",
-          barberStripeId: profile.stripeAccountId || "",
-          note:           terminalNote,
+          amount:      Math.round(Number(terminalAmount) * 100),
+          currency:    "gbp",
+          description: terminalService || terminalNote || "Haircut",
+          barberId:    barber.uid,
+          barberName:  profile.name || profile.businessName || "Barber",
+          note:        terminalNote,
         }),
       });
       const data = await res.json();
@@ -618,176 +466,41 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   };
 
   // ── Tab config ────────────────────────────────────────────────────────────
-  const brandColor   = profile.brandColor || "#C9A84C";
-  const textOnBrand = (() => {
-    const r = parseInt(brandColor.slice(1, 3), 16) || 0;
-    const g = parseInt(brandColor.slice(3, 5), 16) || 0;
-    const b = parseInt(brandColor.slice(5, 7), 16) || 0;
-    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? "#1A1A1A" : "#ffffff";
-  })();
+  // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
+  const brandColor = profile.brandColor || "#C9A84C";
 
-  // ── Scoped dark theme so every tab inherits the "Workouts" aesthetic ────────
-  // Sets sensible dark defaults (dark paper, white text, branded inputs/buttons,
-  // square corners). Any tab that sets its own colors via `sx` overrides these,
-  // so already-styled tabs are untouched while plain tabs gain the look.
-  const tabTheme = useMemo(() => createTheme({
-    palette: {
-      mode: "dark",
-      primary:    { main: brandColor },
-      background: { paper: "#1a1a1a", default: "transparent" },
-      text:       { primary: "#fff", secondary: "rgba(255,255,255,0.55)" },
-      divider:    "rgba(255,255,255,0.08)",
-    },
-    shape: { borderRadius: 0 },
-    components: {
-      MuiPaper: {
-        styleOverrides: {
-          root: {
-            backgroundColor: "#1a1a1a",
-            backgroundImage: "none",
-            border: "1px solid rgba(255,255,255,0.07)",
-          },
-        },
-      },
-      MuiCard: {
-        styleOverrides: {
-          root: {
-            backgroundColor: "#1a1a1a",
-            backgroundImage: "none",
-            border: "1px solid rgba(255,255,255,0.07)",
-          },
-        },
-      },
-      MuiOutlinedInput: {
-        styleOverrides: {
-          root: {
-            color: "#fff",
-            "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" },
-            "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.25)" },
-            "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: brandColor },
-          },
-        },
-      },
-      MuiInputLabel: {
-        styleOverrides: {
-          root: { color: "rgba(255,255,255,0.4)", "&.Mui-focused": { color: brandColor } },
-        },
-      },
-    },
-  }), [brandColor]);
-  const isBarber      = !profile.businessType || profile.businessType === "barber";
-  const isTrainer     = profile.businessType === "trainer";
-  const isDecorator   = profile.businessType === "decorator";
-  const isHairdresser = profile.businessType === "hairdresser";
-  const isOwner     = userRole.isOwner;
-
-  // ── Grouped tab structure for organized menu ──
-  const tabGroups = [
-    {
-      group: "Schedule",
-      items: [
-        { key: "schedule", label: "Schedule", icon: <AccessTimeIcon /> },
-      ]
-    },
-    {
-      group: "Bookings",
-      items: [
-        { key: "bookings", label: "Bookings", icon: <StoreIcon /> },
-      ]
-    },
-    {
-      group: "Business",
-      items: [
-        isBarber
-          ? { key: "profile", label: "Profile", icon: <PersonIcon /> }
-          : { key: "editpage", label: "Edit Page", icon: <WebIcon /> },
-        { key: "services", label: "Services", icon: <ListIcon /> },
-        ...(isOwner && (!initialTenant || isBarber || isHairdresser) ? [{ key: "brand", label: "Brand & Site", icon: <PaletteIcon /> }] : []),
-        ...(isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
-      ]
-    },
-    ...(isOwner ? [{
-      group: "Reviews",
-      items: [
-        { key: "reviews", label: "Reviews", icon: <ReviewsIcon /> },
-        ...(isBarber ? [{ key: "queue", label: "Queue", icon: <PeopleIcon /> }] : []),
-        ...(isBarber ? [{ key: "haircutrecords", label: "Client Records", icon: <ContentCutIcon /> }] : []),
-      ]
-    }] : []),
-    {
-      group: "Money",
-      items: [
-        { key: "finance", label: "Finance", icon: <PaymentsIcon /> },
-        ...(isOwner && !initialTenant ? [{ key: "billing", label: "Billing", icon: <PaymentsIcon /> }] : []),
-        ...(isOwner && !initialTenant ? [{ key: "tax", label: "Tax & Finance", icon: <ReceiptIcon /> }] : []),
-        ...(isOwner && !initialTenant && !isDecorator && !isHairdresser ? [{ key: "invoices", label: "Invoices", icon: <ReceiptIcon /> }] : []),
-      ]
-    },
-    ...(isOwner && isTrainer && !initialTenant ? [{
-      group: "Trainer Center",
-      items: [
-        { key: "clients", label: "Clients", icon: <PeopleIcon /> },
-        { key: "workouts", label: "Workouts", icon: <FitnessCenterIcon /> },
-        { key: "nutrition", label: "Nutrition", icon: <RestaurantMenuIcon /> },
-        { key: "automation", label: "Automation", icon: <AutoAwesomeIcon /> },
-        { key: "progress", label: "Progress", icon: <TrendingUpIcon /> },
-        { key: "sessionprep", label: "Session Prep", icon: <AccessTimeIcon /> },
-        { key: "exercise-gen", label: "Exercises", icon: <AutoAwesomeIcon /> },
-        { key: "notepad", label: "Notepad", icon: <ListIcon /> },
-        { key: "clientforms", label: "Client Forms", icon: <AssignmentIcon /> },
-        { key: "foodgen", label: "Food Gen", icon: <RestaurantMenuIcon /> },
-      ]
-    }] : []),
-    ...(isOwner && isDecorator ? [{
-      group: "Decorator",
-      items: [
-        { key: "colours", label: "Colours", icon: <ColorLensIcon /> },
-        { key: "quotes", label: "Quotes", icon: <RequestQuoteIcon /> },
-        { key: "dayplan", label: "Day Plan", icon: <TodayIcon /> },
-      ]
-    }] : []),
-    ...(isOwner || initialTenant ? [{
-      group: "Pay",
-      items: [
-        { key: "pay", label: "Pay", icon: <NfcIcon /> },
-      ]
-    }] : []),
+  const tabs = [
+    { label: "Schedule", icon: <AccessTimeIcon /> },
+    { label: "Bookings", icon: <StoreIcon /> },
+    { label: "Profile",  icon: <PersonIcon /> },
+    { label: "Services", icon: <ListIcon /> },
+    ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }]  : []),
+    { label: "Finance",  icon: <PaymentsIcon /> },
+    ...(userRole.isOwner ? [{ label: "Design",  icon: <PaletteIcon /> }]  : []),
+    // Domain tab: owner only AND not inside a tenant dashboard
+    ...(userRole.isOwner && !initialTenant ? [{ label: "Domain", icon: <LanguageIcon /> }] : []),
+    { label: "Pay",      icon: <NfcIcon /> },
   ];
 
-  // Flatten tabs for backward compatibility
-  const tabs = tabGroups.flatMap(g => g.items);
-
-  const tabIdx = (key) => tabs.findIndex(t => t.key === key);
-
-  const toggleGroup = (groupName) => {
-    setExpandedGroup(expandedGroup === groupName ? null : groupName);
-  };
-
-  // ── Onboarding deep-link: ?tab=domain / ?tab=finance etc. ────────────────
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!barber?.uid || dataLoading || handledTabParam.current) return;
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get("tab");
-    if (!tabParam) return;
-    handledTabParam.current = true;
-    window.history.replaceState({}, "", "/dashboard");
-    const idx = tabIdx(tabParam);
-    if (idx >= 0) setTab(idx);
-  }, [barber, dataLoading, profile.businessType, userRole.isOwner]);
+  // Derive tab indices dynamically based on role so panels always align
+  const IDX_REVIEWS = 4;
+  const IDX_FINANCE = userRole.isOwner ? 5 : 4;
+  const IDX_DESIGN  = 6;  // owner only
+  const IDX_DOMAIN  = 7;  // owner only
+  const IDX_PAY = userRole.isOwner ? (initialTenant ? 7 : 8) : 5;
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (authLoading || (dataLoading && !barber)) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", bgcolor: "#0a0a0a" }}>
-        <CircularProgress sx={{ color: brandColor }} thickness={2} size={48} />
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
       </Box>
     );
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ pb: isMobile ? 12 : 6, minHeight: "100vh", background: `radial-gradient(ellipse 90% 30% at 50% 0%, ${brandColor}09 0%, transparent 65%), #0a0a0a` }}>
+    <Box sx={{ pb: isMobile ? 12 : 6, bgcolor: "#F8F9FA", minHeight: "100vh" }}>
       <Snackbar
         open={Boolean(toast)} autoHideDuration={4000}
         onClose={() => setToast(null)} message={toast}
@@ -809,7 +522,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
       <DashboardHeader
         profile={profile}
-        setProfile={setProfile}
         profilePreview={profilePreview}
         brandColor={brandColor}
         uploading={uploading}
@@ -818,218 +530,16 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       />
 
       <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 1.5, md: 3 }, mt: 3 }}>
-
-        {/* ── Lapsed subscription overlay (owner's own dashboard only) ── */}
-        {!initialTenant && isOwner && (profile.subscriptionStatus === "past_due" || profile.subscriptionStatus === "canceled") && (
-          <Box sx={{
-            position: "fixed", inset: 0, zIndex: 1200,
-            bgcolor: "rgba(0,0,0,0.85)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            px: 2,
-          }}>
-            <Box sx={{
-              bgcolor: "#111",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 3,
-              p: { xs: 4, md: 5 },
-              maxWidth: 460,
-              width: "100%",
-              textAlign: "center",
-            }}>
-              <Box sx={{ fontSize: 48, mb: 2 }}>⚠️</Box>
-              <Box component="h2" sx={{ m: 0, mb: 1.5, color: "#fff", fontFamily: "'Playfair Display',serif", fontSize: "1.5rem", fontWeight: 800 }}>
-                {profile.subscriptionStatus === "canceled" ? "Subscription cancelled" : "Subscription lapsed"}
-              </Box>
-              <Box component="p" sx={{ m: 0, mb: 3, color: "#9ca3af", fontSize: "0.9rem", lineHeight: 1.75 }}>
-                {profile.subscriptionStatus === "canceled"
-                  ? "Your subscription has been cancelled. Reactivate to bring your booking site back online and regain full dashboard access."
-                  : "Your last payment failed. Reactivate your subscription to bring your site back online and unlock your dashboard."
-                }
-              </Box>
-              <Button
-                variant="contained"
-                onClick={async () => {
-                  if (!barber?.uid || !barber?.email) return;
-                  const res  = await fetch("/api/create-subscription", {
-                    method:  "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body:    JSON.stringify({ barberId: barber.uid, email: barber.email }),
-                  });
-                  const data = await res.json();
-                  if (data.url) window.location.href = data.url;
-                }}
-                sx={{
-                  bgcolor: "#C9A84C", color: "#0d0d0d",
-                  fontWeight: 700, fontSize: "0.85rem", letterSpacing: "0.06em",
-                  px: 5, py: 1.5,
-                  "&:hover": { bgcolor: "#b8943e" },
-                }}
-              >
-                Reactivate — £10/month
-              </Button>
-              <Box sx={{ mt: 2 }}>
-                <Box
-                  component="button"
-                  onClick={handleLogout}
-                  sx={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: "#6b7280", fontSize: "0.8rem",
-                    "&:hover": { color: "#9ca3af" },
-                  }}
-                >
-                  Log out
-                </Box>
-              </Box>
-            </Box>
-          </Box>
-        )}
-
-        {/* ── Horizontal Grouped Tab Navigation ── */}
-        <Box sx={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 1.5,
-          mb: 3,
-        }}>
-          {/* Main Group Navigation (Horizontal) */}
-          <Box sx={{
-            display: "flex",
-            gap: 0.75,
-            overflowX: "auto",
-            overflowY: "hidden",
-            pb: 1,
-            px: 0.75,
-            "&::-webkit-scrollbar": {
-              height: "4px",
-            },
-            "&::-webkit-scrollbar-track": {
-              bgcolor: "rgba(255,255,255,0.02)",
-            },
-            "&::-webkit-scrollbar-thumb": {
-              bgcolor: "rgba(255,255,255,0.1)",
-              borderRadius: "2px",
-            },
-          }}>
-            {tabGroups.map((group, groupIdx) => (
-              <Box
-                key={groupIdx}
-                onClick={() => toggleGroup(group.group)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.8,
-                  px: 1.5,
-                  py: 1,
-                  borderRadius: 1,
-                  bgcolor: expandedGroup === group.group ? `${brandColor}20` : "rgba(255,255,255,0.04)",
-                  border: expandedGroup === group.group ? `1px solid ${brandColor}` : "1px solid rgba(255,255,255,0.1)",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  transition: "all .2s",
-                  color: expandedGroup === group.group ? brandColor : "rgba(255,255,255,0.6)",
-                  fontWeight: expandedGroup === group.group ? 600 : 500,
-                  fontSize: "0.85rem",
-                  "&:hover": {
-                    bgcolor: `${brandColor}30`,
-                    borderColor: brandColor,
-                    color: brandColor,
-                  }
-                }}
-              >
-                <Box sx={{ fontSize: "1rem", display: "flex", alignItems: "center" }}>
-                  {group.items[0]?.icon}
-                </Box>
-                {group.group}
-                <Box sx={{
-                  fontSize: "0.7rem",
-                  color: "currentColor",
-                  opacity: 0.6,
-                }}>
-                  ({group.items.length})
-                </Box>
-              </Box>
-            ))}
-          </Box>
-
-          {/* Active Group's Tabs (Horizontal Row) */}
-          {tabGroups.map((group, groupIdx) => (
-            expandedGroup === group.group && (
-              <Box
-                key={`tabs-${groupIdx}`}
-                sx={{
-                  display: "flex",
-                  gap: 0.5,
-                  flexWrap: "wrap",
-                  px: 0.75,
-                  py: 1,
-                  bgcolor: "rgba(255,255,255,0.02)",
-                  borderRadius: 1,
-                  border: "1px solid rgba(255,255,255,0.04)",
-                }}
-              >
-                {group.items.map((t, itemIdx) => {
-                  const tIdx = tabIdx(t.key);
-                  return (
-                    <Box
-                      key={itemIdx}
-                      onClick={() => { setSlideDir(tIdx > tab ? "right" : "left"); setTab(tIdx); }}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.6,
-                        px: 1.2,
-                        py: 0.7,
-                        borderRadius: 1,
-                        bgcolor: tIdx === tab ? brandColor : "rgba(255,255,255,0.06)",
-                        color: tIdx === tab ? (() => {
-                          const r = parseInt(brandColor.slice(1, 3), 16) || 0;
-                          const g = parseInt(brandColor.slice(3, 5), 16) || 0;
-                          const b = parseInt(brandColor.slice(5, 7), 16) || 0;
-                          return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? "#1A1A1A" : "#ffffff";
-                        })() : "rgba(255,255,255,0.7)",
-                        cursor: "pointer",
-                        fontSize: "0.82rem",
-                        fontWeight: tIdx === tab ? 600 : 500,
-                        transition: "all .2s",
-                        "&:hover": {
-                          bgcolor: tIdx === tab ? brandColor : "rgba(255,255,255,0.1)",
-                          color: tIdx === tab ? textOnBrand : "rgba(255,255,255,0.9)",
-                        }
-                      }}
-                    >
-                      <Box sx={{ fontSize: "0.95rem", display: "flex", alignItems: "center" }}>
-                        {t.icon}
-                      </Box>
-                      <Box>{t.label}</Box>
-                    </Box>
-                  );
-                })}
-              </Box>
-            )
-          ))}
-        </Box>
-
-        <style>{`
-          @keyframes dashSlideInR { from { opacity: 0; transform: translateX(42px); } to { opacity: 1; transform: translateX(0); } }
-          @keyframes dashSlideInL { from { opacity: 0; transform: translateX(-42px); } to { opacity: 1; transform: translateX(0); } }
-        `}</style>
-
-        <ThemeProvider theme={tabTheme}>
-        <Box
-          key={tab}
-          onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
-          onTouchEnd={e => {
-            if (touchStartX.current === null) return;
-            const dx = e.changedTouches[0].clientX - touchStartX.current;
-            touchStartX.current = null;
-            if      (dx < -55 && tab < tabs.length - 1) { setSlideDir("right"); setTab(t => t + 1); }
-            else if (dx >  55 && tab > 0)               { setSlideDir("left");  setTab(t => t - 1); }
-          }}
-          sx={{
-            animation: `${slideDir === "right" ? "dashSlideInR" : "dashSlideInL"} 0.26s cubic-bezier(0.4,0,0.2,1) both`,
-            overflow: "hidden",
-          }}
+        <Tabs
+          value={tab} onChange={(_, v) => setTab(v)}
+          sx={{ mb: 2, borderBottom: "1px solid #eee" }}
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons="auto"
         >
+          {tabs.map((t, i) => (
+            <Tab key={i} icon={t.icon} iconPosition="start" label={isMobile ? "" : t.label} />
+          ))}
+        </Tabs>
 
         {/* ── 0 Schedule ── */}
         <TabPanel value={tab} index={0}>
@@ -1050,28 +560,19 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 2 Profile (barber) / Edit Page (decorator, hairdresser, trainer) ── */}
+        {/* ── 2 Profile (staff + owners) ──
+              ProfileTab contains Instagram & TikTok fields for ALL barbers.
+              Facebook is owner-only (gated inside ProfileTab via userRole.isOwner).
+              Domain tab is NOT shown to staff — see tab array above.            */}
         <TabPanel value={tab} index={2}>
-          {isBarber ? (
-            <ProfileTab
-              profile={profile} setProfile={setProfile}
-              brandColor={brandColor} userRole={userRole}
-              profilePreview={profilePreview}
-              setProfileFile={setProfileFile} setProfilePreview={setProfilePreview}
-              handleDeleteProfile={handleDeleteProfile}
-              handleImageChange={handleImageChange}
-            />
-          ) : (
-            <EditPageTab
-              profile={profile} setProfile={setProfile}
-              brandColor={brandColor} userRole={userRole}
-              profilePreview={profilePreview}
-              setProfileFile={setProfileFile} setProfilePreview={setProfilePreview}
-              handleDeleteProfile={handleDeleteProfile}
-              handleImageChange={handleImageChange}
-              businessType={profile.businessType}
-            />
-          )}
+          <ProfileTab
+            profile={profile} setProfile={setProfile}
+            brandColor={brandColor} userRole={userRole}
+            profilePreview={profilePreview}
+            setProfileFile={setProfileFile} setProfilePreview={setProfilePreview}
+            handleDeleteProfile={handleDeleteProfile}
+            handleImageChange={handleImageChange}
+          />
         </TabPanel>
 
         {/* ── 3 Services ── */}
@@ -1084,9 +585,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── Reviews (all owner types) ── */}
-        {isOwner && (
-          <TabPanel value={tab} index={tabIdx("reviews")}>
+        {/* ── 4 Reviews (owner only) ── */}
+        {userRole.isOwner && (
+          <TabPanel value={tab} index={IDX_REVIEWS}>
             <ReviewsTab
               reviews={reviews}
               onDeleteReview={handleDeleteReview}
@@ -1095,23 +596,18 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         )}
 
         {/* ── Finance ── */}
-        <TabPanel value={tab} index={tabIdx("finance")}>
+        <TabPanel value={tab} index={IDX_FINANCE}>
           <FinanceTab
-            barber={barber}
             profile={profile} setProfile={setProfile} userRole={userRole}
             stripeLoading={stripeLoading} handleConnectStripe={handleConnectStripe}
-            hideDeposit={isDecorator || isTrainer || (Boolean(initialTenant) && !isBarber)}
           />
         </TabPanel>
 
-        {/* ── Brand & Site (owner — Branding always, Website Content if not tenant) ── */}
-        {isOwner && (!initialTenant || isBarber || isHairdresser) && (
-          <TabPanel value={tab} index={tabIdx("brand")}>
-            <BrandSiteTab
+        {/* ── Design (owner only) ── */}
+        {userRole.isOwner && (
+          <TabPanel value={tab} index={IDX_DESIGN}>
+            <DesignTab
               profile={profile} setProfile={setProfile}
-              brandColor={brandColor}
-              businessType={profile.businessType}
-              showWebsite={!initialTenant && isBarber}
               logoPreview={logoPreview}               setLogoFile={setLogoFile}               setLogoPreview={setLogoPreview}
               heroPreviewDesktop={heroPreviewDesktop} setHeroFileDesktop={setHeroFileDesktop} setHeroPreviewDesktop={setHeroPreviewDesktop}
               heroPreviewMobile={heroPreviewMobile}   setHeroFileMobile={setHeroFileMobile}   setHeroPreviewMobile={setHeroPreviewMobile}
@@ -1120,9 +616,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
-        {/* ── Domain (owner only, no tenant context) ── */}
-        {isOwner && !initialTenant && (
-          <TabPanel value={tab} index={tabIdx("domain")}>
+        {/* ── Domain (owner only on main dashboard — hidden in tenant context) ── */}
+        {userRole.isOwner && !initialTenant && (
+          <TabPanel value={tab} index={IDX_DOMAIN}>
             <DomainTab
               profile={profile}
               barber={barber}
@@ -1131,158 +627,22 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
-        {/* ── Billing (owner only) ── */}
-        {isOwner && !initialTenant && (
-          <TabPanel value={tab} index={tabIdx("billing")}>
-            <BillingTab barber={barber} profile={profile} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Tax & Finance (owner only) ── */}
-        {isOwner && !initialTenant && (
-          <TabPanel value={tab} index={tabIdx("tax")}>
-            <TaxFinanceTab barber={barber} profile={profile} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Invoices (owner on own dashboard only — not decorator or hairdresser) ── */}
-        {isOwner && !initialTenant && !isDecorator && !isHairdresser && (
-          <TabPanel value={tab} index={tabIdx("invoices")}>
-            <InvoiceTab
-              barber={barber}
-              profile={profile}
-              brandColor={brandColor}
-            />
-          </TabPanel>
-        )}
-
-        {/* ── Workout Plans (trainer owner only) ── */}
-        {isOwner && isTrainer && (
-          <TabPanel value={tab} index={tabIdx("workouts")}>
-            <WorkoutPlansTab barber={barber} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Client Forms — Food Diary + Check-In (trainer owner only) ── */}
-        {isOwner && isTrainer && (
-          <TabPanel value={tab} index={tabIdx("clientforms")}>
-            <ClientFormsTab barber={barber} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Food Generator (trainer owner only) ── */}
-        {isOwner && isTrainer && (
-          <TabPanel value={tab} index={tabIdx("foodgen")}>
-            <FoodGeneratorTab barber={barber} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Clients (trainer owner only) ── */}
-        {isOwner && isTrainer && !initialTenant && (
-          <TabPanel value={tab} index={tabIdx("clients")}>
-            <ClientProfileTab barber={barber} profile={profile} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Nutrition Plans (trainer owner only) ── */}
-        {isOwner && isTrainer && !initialTenant && (
-          <TabPanel value={tab} index={tabIdx("nutrition")}>
-            <NutritionPlanTab barber={barber} profile={profile} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Automation (trainer owner only) ── */}
-        {isOwner && isTrainer && !initialTenant && (
-          <TabPanel value={tab} index={tabIdx("automation")}>
-            <AutomationTab barber={barber} profile={profile} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Progress Tracker (trainer owner only) ── */}
-        {isOwner && isTrainer && !initialTenant && (
-          <TabPanel value={tab} index={tabIdx("progress")}>
-            <ProgressTrackerTab barber={barber} profile={profile} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Session Prep (trainer owner only) ── */}
-        {isOwner && isTrainer && !initialTenant && (
-          <TabPanel value={tab} index={tabIdx("sessionprep")}>
-            <SessionPrepTab barber={barber} profile={profile} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Exercises / Exercise Generator (trainer owner only) ── */}
-        {isOwner && isTrainer && !initialTenant && (
-          <TabPanel value={tab} index={tabIdx("exercise-gen")}>
-            <ExerciseGeneratorTab barber={barber} profile={profile} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Notepad (trainer owner only) ── */}
-        {isOwner && isTrainer && !initialTenant && (
-          <TabPanel value={tab} index={tabIdx("notepad")}>
-            <NotepadTab barber={barber} profile={profile} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Pay / Tap-to-Pay (owners + staff in tenant context) ── */}
-        {(isOwner || initialTenant) && (
-          <TabPanel value={tab} index={tabIdx("pay")}>
-            <PayTab
-              profile={profile} barber={barber}
-              setTab={setTab} financeTabIndex={tabIdx("finance")} brandColor={brandColor}
-              terminalAmount={terminalAmount}   setTerminalAmount={setTerminalAmount}
-              terminalService={terminalService} setTerminalService={setTerminalService}
-              terminalNote={terminalNote}       setTerminalNote={setTerminalNote}
-              terminalStatus={terminalStatus}   terminalSession={terminalSession}
-              handleCreateTerminalCharge={handleCreateTerminalCharge}
-              handleCancelTerminal={handleCancelTerminal}
-              handleResetTerminal={handleResetTerminal}
-              handleCopyPayLink={handleCopyPayLink}
-            />
-          </TabPanel>
-        )}
-
-        {/* ── Queue Management (barber owner only) ── */}
-        {isOwner && isBarber && (
-          <TabPanel value={tab} index={tabIdx("queue")}>
-            <QueueManagementTab barber={barber} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Haircut Records (barber owner only) ── */}
-        {isOwner && isBarber && (
-          <TabPanel value={tab} index={tabIdx("haircutrecords")}>
-            <HaircutTab barber={barber} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Colour Approval (decorator owner only) ── */}
-        {isOwner && isDecorator && (
-          <TabPanel value={tab} index={tabIdx("colours")}>
-            <ColourApprovalTab barber={barber} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Quote Generator (decorator owner only) ── */}
-        {isOwner && isDecorator && (
-          <TabPanel value={tab} index={tabIdx("quotes")}>
-            <QuoteTab barber={barber} profile={profile} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        {/* ── Day Planner (decorator owner only) ── */}
-        {isOwner && isDecorator && (
-          <TabPanel value={tab} index={tabIdx("dayplan")}>
-            <DayPlannerTab barber={barber} brandColor={brandColor} />
-          </TabPanel>
-        )}
-
-        </Box>{/* end slide wrapper */}
-        </ThemeProvider>
+        {/* ── Pay ── */}
+        <TabPanel value={tab} index={IDX_PAY}>
+          <PayTab
+            profile={profile} barber={barber}
+            setTab={setTab} financeTabIndex={IDX_FINANCE} brandColor={brandColor}
+            terminalAmount={terminalAmount}   setTerminalAmount={setTerminalAmount}
+            terminalService={terminalService} setTerminalService={setTerminalService}
+            terminalNote={terminalNote}       setTerminalNote={setTerminalNote}
+            terminalStatus={terminalStatus}   terminalSession={terminalSession}
+            handleCreateTerminalCharge={handleCreateTerminalCharge}
+            handleCancelTerminal={handleCancelTerminal}
+            handleResetTerminal={handleResetTerminal}
+            handleCopyPayLink={handleCopyPayLink}
+          />
+        </TabPanel>
       </Box>
-
     </Box>
   );
 }

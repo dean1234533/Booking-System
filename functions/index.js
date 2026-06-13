@@ -12,6 +12,18 @@ admin.initializeApp();
 
 const CF_API_TOKEN = defineSecret("API_TOKEN");
 const CF_ZONE_ID = defineSecret("ZONE_ID");
+// Email tied to the Cloudflare Global API Key (required for X-Auth-Key auth).
+const CF_EMAIL = defineSecret("CLOUDFLARE_EMAIL");
+
+// Cloudflare auth headers using the account's Global API Key.
+// (Global API Keys authenticate with X-Auth-Email + X-Auth-Key, NOT Bearer.)
+function cfAuthHeaders(extra = {}) {
+  return {
+    "X-Auth-Email": CF_EMAIL.value(),
+    "X-Auth-Key": CF_API_TOKEN.value(),
+    ...extra,
+  };
+}
 const STRIPE_SECRET = defineSecret("STRIPE_SECRET_KEY");
 const STRIPE_WEBHOOK_SECRET = defineSecret("STRIPE_WEBHOOK_SECRET");
 const GMAIL_USER = defineSecret("GMAIL_USER");
@@ -158,7 +170,7 @@ exports.createDomainCheckout = onCall(
 );
 
 exports.addCustomDomain = onCall(
-    {secrets: [CF_API_TOKEN, CF_ZONE_ID], invoker: "public"},
+    {secrets: [CF_API_TOKEN, CF_ZONE_ID, CF_EMAIL], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -192,7 +204,7 @@ exports.addCustomDomain = onCall(
                 settings: {min_tls_version: "1.2", http2: "on"},
               },
             },
-            {headers: {"Authorization": `Bearer ${CF_API_TOKEN.value()}`, "Content-Type": "application/json"}},
+            {headers: cfAuthHeaders({"Content-Type": "application/json"})},
         );
 
         const result = response.data.result;
@@ -228,7 +240,7 @@ exports.addCustomDomain = onCall(
 );
 
 exports.checkDomainStatus = onCall(
-    {secrets: [CF_API_TOKEN, CF_ZONE_ID], invoker: "public"},
+    {secrets: [CF_API_TOKEN, CF_ZONE_ID, CF_EMAIL], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -238,7 +250,7 @@ exports.checkDomainStatus = onCall(
       try {
         const response = await axios.get(
             `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames/${cfHostnameId}`,
-            {headers: {Authorization: `Bearer ${CF_API_TOKEN.value()}`}},
+            {headers: cfAuthHeaders()},
         );
 
         const {status, ssl} = response.data.result;
@@ -268,7 +280,7 @@ exports.stripeWebhook = onRequest(
       secrets: [
         STRIPE_SECRET, STRIPE_WEBHOOK_SECRET,
         PORKBUN_API_KEY, PORKBUN_SECRET_KEY,
-        CF_API_TOKEN, CF_ZONE_ID,
+        CF_API_TOKEN, CF_ZONE_ID, CF_EMAIL,
       ],
       consumeAppEngineMiddleware: true,
     },
@@ -347,10 +359,7 @@ exports.stripeWebhook = onRequest(
               },
             },
             {
-              headers: {
-                "Authorization": `Bearer ${CF_API_TOKEN.value()}`,
-                "Content-Type": "application/json",
-              },
+              headers: cfAuthHeaders({"Content-Type": "application/json"}),
             },
         );
 

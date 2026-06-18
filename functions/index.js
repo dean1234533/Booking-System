@@ -5,8 +5,9 @@ const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const axios = require("axios");
-const Stripe = require("stripe");
-const nodemailer = require("nodemailer");
+// stripe and nodemailer are heavy (~3.5s combined to require). They are loaded
+// lazily inside the handlers that use them to keep cold module-load under the
+// Cloud Functions deploy/analysis timeout.
 
 admin.initializeApp();
 
@@ -129,7 +130,7 @@ exports.createDomainCheckout = onCall(
         throw new HttpsError("invalid-argument", "domain, barberId and priceUsd are required");
       }
 
-      const stripe = new Stripe(STRIPE_SECRET.value());
+      const stripe = new (require("stripe"))(STRIPE_SECRET.value());
       const pricePence = Math.round(toGbp(priceUsd) * 100);
 
       try {
@@ -307,7 +308,7 @@ exports.stripeWebhook = onRequest(
       consumeAppEngineMiddleware: true,
     },
     async (req, res) => {
-      const stripe = new Stripe(STRIPE_SECRET.value());
+      const stripe = new (require("stripe"))(STRIPE_SECRET.value());
 
       let event;
       try {
@@ -426,7 +427,7 @@ exports.sendBookingConfirmation = onCall(
         throw new HttpsError("invalid-argument", "clientEmail, date and time are required");
       }
 
-      const transporter = nodemailer.createTransport({
+      const transporter = require("nodemailer").createTransport({
         service: "gmail",
         auth: {user: GMAIL_USER.value(), pass: GMAIL_PASS.value()},
       });
@@ -487,7 +488,7 @@ exports.createStripeInvoice = onCall(
         throw new HttpsError("invalid-argument", "clientEmail, amount and description are required");
       }
 
-      const stripe = new Stripe(STRIPE_SECRET.value());
+      const stripe = new (require("stripe"))(STRIPE_SECRET.value());
 
       // Route the invoice through the barber's own Stripe Connect account so
       // the money lands in their account. The platform takes 2.5% as an

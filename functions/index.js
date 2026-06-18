@@ -189,13 +189,16 @@ exports.addCustomDomain = onCall(
       ];
 
       try {
-        // Register the bare domain as the Cloudflare custom hostname
+        // Register the bare domain as a Cloudflare custom hostname using TXT (DNS)
+        // validation. TXT validation proves domain control via a DNS record and does
+        // NOT depend on the Worker serving an HTTP /.well-known/acme-challenge path —
+        // so SSL issues reliably regardless of routing.
         const response = await axios.post(
             `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames`,
             {
               hostname: clean,
               ssl: {
-                method: "http",
+                method: "txt",
                 type: "dv",
                 settings: {min_tls_version: "1.2", http2: "on"},
               },
@@ -205,6 +208,27 @@ exports.addCustomDomain = onCall(
 
         const result = response.data.result;
 
+        // The TXT validation record is generated asynchronously — poll briefly for it.
+        let txtRecord = null;
+        for (let i = 0; i < 5; i++) {
+          const vr = (result.ssl?.validation_records || [])[0];
+          if (vr?.txt_name && vr?.txt_value) {
+            txtRecord = {
+              type: "TXT",
+              name: vr.txt_name,
+              value: vr.txt_value,
+              description: "SSL validation — add this to activate HTTPS (can be removed once active)",
+            };
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 1500));
+          const detail = await axios.get(
+              `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames/${result.id}`,
+              {headers: cfAuthHeaders()},
+          );
+          result.ssl = detail.data.result?.ssl || result.ssl;
+        }
+
         // Save the bare domain — getBarberByDomain strips www before querying
         await admin.firestore().collection("barbers").doc(request.auth.uid).update({
           customDomain: clean,
@@ -212,7 +236,9 @@ exports.addCustomDomain = onCall(
           customHostnameId: result.id,
         });
 
-        return {cfHostnameId: result.id, domain: clean, dnsRecords: DNS_RECORDS};
+        // Show the TXT validation record first, then the A/CNAME records that route traffic.
+        const records = txtRecord ? [txtRecord, ...DNS_RECORDS] : DNS_RECORDS;
+        return {cfHostnameId: result.id, domain: clean, dnsRecords: records};
       } catch (error) {
         const detail = error.response?.data || error.message;
         console.error("addCustomDomain error:", detail);

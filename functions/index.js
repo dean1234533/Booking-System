@@ -12,15 +12,11 @@ admin.initializeApp();
 
 const CF_API_TOKEN = defineSecret("API_TOKEN");
 const CF_ZONE_ID = defineSecret("ZONE_ID");
-// Email tied to the Cloudflare Global API Key (required for X-Auth-Key auth).
-const CF_EMAIL = defineSecret("CLOUDFLARE_EMAIL");
 
-// Cloudflare auth headers using the account's Global API Key.
-// (Global API Keys authenticate with X-Auth-Email + X-Auth-Key, NOT Bearer.)
+// Cloudflare auth headers. API_TOKEN holds a scoped API token → Bearer auth.
 function cfAuthHeaders(extra = {}) {
   return {
-    "X-Auth-Email": CF_EMAIL.value(),
-    "X-Auth-Key": CF_API_TOKEN.value(),
+    "Authorization": `Bearer ${CF_API_TOKEN.value()}`,
     ...extra,
   };
 }
@@ -170,7 +166,7 @@ exports.createDomainCheckout = onCall(
 );
 
 exports.addCustomDomain = onCall(
-    {secrets: [CF_API_TOKEN, CF_ZONE_ID, CF_EMAIL], invoker: "public"},
+    {secrets: [CF_API_TOKEN, CF_ZONE_ID], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -240,7 +236,7 @@ exports.addCustomDomain = onCall(
 );
 
 exports.checkDomainStatus = onCall(
-    {secrets: [CF_API_TOKEN, CF_ZONE_ID, CF_EMAIL], invoker: "public"},
+    {secrets: [CF_API_TOKEN, CF_ZONE_ID], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -280,7 +276,7 @@ exports.stripeWebhook = onRequest(
       secrets: [
         STRIPE_SECRET, STRIPE_WEBHOOK_SECRET,
         PORKBUN_API_KEY, PORKBUN_SECRET_KEY,
-        CF_API_TOKEN, CF_ZONE_ID, CF_EMAIL,
+        CF_API_TOKEN, CF_ZONE_ID,
       ],
       consumeAppEngineMiddleware: true,
     },

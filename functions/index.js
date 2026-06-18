@@ -4,10 +4,12 @@ const {onCall, HttpsError, onRequest} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
-const axios = require("axios");
-// stripe and nodemailer are heavy (~3.5s combined to require). They are loaded
-// lazily inside the handlers that use them to keep cold module-load under the
-// Cloud Functions deploy/analysis timeout.
+// stripe, nodemailer and axios are heavy to require (~5s combined) and pushed
+// cold module-load past the Cloud Functions 10s analysis timeout on deploy.
+// Load them lazily. axios is wrapped in a Proxy so existing `axios.get/post/put`
+// call sites keep working unchanged while deferring the require to first use.
+let _axios;
+const axios = new Proxy({}, {get: (_t, p) => (_axios || (_axios = require("axios")))[p]});
 
 admin.initializeApp();
 
@@ -31,6 +33,9 @@ const PORKBUN_SECRET_KEY = defineSecret("PORKBUN_SECRET_KEY");
 const CF_API = "https://api.cloudflare.com/client/v4";
 const PORKBUN_API = "https://api.porkbun.com/api/json/v3";
 const APP_ORIGIN = "https://bookehtrim.co.uk";
+// Cloudflare account that owns the zones + the booking Worker.
+const CF_ACCOUNT_ID = "74303e7cc790df1d034459f9cb1faf1e";
+const WORKER_SERVICE = "booking-system";
 
 const SUPPORTED_TLDS = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
 const USD_TO_GBP = 0.79;
@@ -294,6 +299,118 @@ exports.checkDomainStatus = onCall(
         const detail = error.response?.data || error.message;
         console.error("checkDomainStatus error:", detail);
         throw new HttpsError("internal", "Failed to fetch domain status.");
+      }
+    },
+);
+
+// ── Automatic domain connection via nameserver delegation ────────────────────
+// The customer changes their domain's nameservers to Cloudflare once; after that
+// the platform owns the zone and provisions everything (records, routing, SSL)
+// automatically — no manual DNS records to copy.
+
+exports.connectDomainAuto = onCall(
+    {secrets: [CF_API_TOKEN], invoker: "public"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+
+      const {domain} = request.data;
+      if (!domain) throw new HttpsError("invalid-argument", "domain is required");
+
+      const clean = cleanDomain(domain).replace(/^www\./, "");
+      if (!isValidDomain(clean)) {
+        throw new HttpsError("invalid-argument", "Invalid domain format");
+      }
+
+      try {
+        // Create a full zone for the domain (this is the nameserver-delegation model).
+        const createRes = await axios.post(
+            `${CF_API}/zones`,
+            {name: clean, account: {id: CF_ACCOUNT_ID}, type: "full"},
+            {headers: cfAuthHeaders({"Content-Type": "application/json"})},
+        ).catch((e) => e.response);
+
+        let zone;
+        if (createRes && createRes.data && createRes.data.success) {
+          zone = createRes.data.result;
+        } else {
+          // Zone likely already exists in the account — fetch it.
+          const existing = await axios.get(
+              `${CF_API}/zones?name=${encodeURIComponent(clean)}`,
+              {headers: cfAuthHeaders()},
+          );
+          zone = (existing.data.result || [])[0];
+          if (!zone) {
+            const errs = createRes?.data?.errors || [];
+            console.error("connectDomainAuto create failed:", JSON.stringify(errs));
+            throw new HttpsError("internal", errs[0]?.message || "Could not create a zone for that domain.");
+          }
+        }
+
+        const nameservers = zone.name_servers || [];
+
+        await admin.firestore().collection("barbers").doc(request.auth.uid).update({
+          customDomain: clean,
+          cfZoneId: zone.id,
+          nameservers,
+          connectMethod: "delegation",
+          domainStatus: zone.status === "active" ? "pending" : "pending_ns",
+        });
+
+        return {zoneId: zone.id, domain: clean, nameservers, zoneStatus: zone.status};
+      } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        const detail = error.response?.data || error.message;
+        console.error("connectDomainAuto error:", detail);
+        throw new HttpsError("internal", "Failed to start domain connection.");
+      }
+    },
+);
+
+exports.checkDomainAuto = onCall(
+    {secrets: [CF_API_TOKEN], invoker: "public"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+
+      const {zoneId, domain} = request.data;
+      if (!zoneId || !domain) {
+        throw new HttpsError("invalid-argument", "zoneId and domain are required");
+      }
+      const clean = cleanDomain(domain).replace(/^www\./, "");
+
+      try {
+        const zoneRes = await axios.get(
+            `${CF_API}/zones/${zoneId}`,
+            {headers: cfAuthHeaders()},
+        );
+        const status = zoneRes.data.result?.status;
+        const isActive = status === "active";
+
+        if (isActive) {
+          // Nameservers are delegated — attach the booking Worker to the apex and
+          // www. A Worker custom domain auto-creates the proxied DNS record, the
+          // route and the SSL certificate. PUT is idempotent, so re-runs are safe.
+          for (const host of [clean, `www.${clean}`]) {
+            await axios.put(
+                `${CF_API}/accounts/${CF_ACCOUNT_ID}/workers/domains`,
+                {zone_id: zoneId, hostname: host, service: WORKER_SERVICE, environment: "production"},
+                {headers: cfAuthHeaders({"Content-Type": "application/json"})},
+            ).catch((e) => {
+              const errs = e.response?.data?.errors || [];
+              console.warn(`workers/domains ${host}:`, JSON.stringify(errs));
+            });
+          }
+
+          await admin.firestore().collection("barbers").doc(request.auth.uid).update({
+            domainStatus: "active",
+            verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        return {zoneStatus: status, isLive: isActive};
+      } catch (error) {
+        const detail = error.response?.data || error.message;
+        console.error("checkDomainAuto error:", detail);
+        throw new HttpsError("internal", "Failed to check domain status.");
       }
     },
 );

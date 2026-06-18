@@ -124,6 +124,12 @@ export default function DomainTab({barber, brandColor}) {
   const [verifying,      setVerifying]      = useState(false);
   const [verifyError,    setVerifyError]    = useState("");
 
+  // Automatic (nameserver-delegation) connection state
+  const [autoDomain,  setAutoDomain]  = useState("");
+  const [autoLinking, setAutoLinking] = useState(false);
+  const [autoError,   setAutoError]   = useState("");
+  const autoPollRef = useRef(null);
+
   // Live barber doc from Firestore (real-time)
   const [barberDoc, setBarberDoc] = useState(null);
   const pollRef = useRef(null);
@@ -171,7 +177,51 @@ export default function DomainTab({barber, brandColor}) {
     return () => clearInterval(pollRef.current);
   }, [barberDoc?.customHostnameId, barberDoc?.domainStatus]);
 
+  // Poll checkDomainAuto while a delegated domain waits for its nameservers
+  useEffect(() => {
+    const zoneId = barberDoc?.cfZoneId;
+    const method = barberDoc?.connectMethod;
+    const status = barberDoc?.domainStatus;
+    const domain = barberDoc?.customDomain;
+
+    if (method !== "delegation" || !zoneId || status === "active") {
+      clearInterval(autoPollRef.current);
+      return;
+    }
+
+    const checkAuto = httpsCallable(functions, "checkDomainAuto");
+    autoPollRef.current = setInterval(async () => {
+      try {
+        const res = await checkAuto({zoneId, domain});
+        if (res.data.isLive) clearInterval(autoPollRef.current);
+      } catch (e) {
+        console.error("Auto poll error:", e);
+      }
+    }, 15000);
+
+    return () => clearInterval(autoPollRef.current);
+  }, [barberDoc?.cfZoneId, barberDoc?.connectMethod, barberDoc?.domainStatus, barberDoc?.customDomain]);
+
   // ── Handlers ────────────────────────────────────────────────────────────────
+
+  async function handleConnectAuto(e) {
+    e?.preventDefault();
+    const clean = autoDomain.toLowerCase().trim()
+        .replace(/^https?:\/\//, "").replace(/\/$/, "").replace(/^www\./, "");
+    if (!clean || !barber?.uid) return;
+
+    setAutoLinking(true);
+    setAutoError("");
+    try {
+      const connect = httpsCallable(functions, "connectDomainAuto");
+      await connect({domain: clean});
+      setAutoDomain("");
+    } catch (err) {
+      setAutoError(err.message || "Could not start automatic connection.");
+    } finally {
+      setAutoLinking(false);
+    }
+  }
 
   async function handleSearch(e) {
     e?.preventDefault();
@@ -489,12 +539,78 @@ export default function DomainTab({barber, brandColor}) {
             </Typography>
           </Paper>
 
+          {/* Connect automatically via nameserver delegation */}
+          <Paper sx={{p: 3, borderRadius: 3, border: `1px solid ${brandColor}55`, mb: 2}}>
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <LinkIcon sx={{color: brandColor}} />
+              <Typography variant="subtitle1" fontWeight={800}>
+                Connect Automatically&nbsp;
+                <Box component="span" sx={{fontSize: "0.7rem", fontWeight: 700, color: brandColor, border: `1px solid ${brandColor}`, borderRadius: 1, px: 0.6, py: 0.1, verticalAlign: "middle"}}>RECOMMENDED</Box>
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              Change your domain's nameservers to us once — then we set up everything
+              (DNS, HTTPS and routing) for you. No records to copy by hand.
+            </Typography>
+
+            {autoError && <Alert severity="error" sx={{mb: 2}}>{autoError}</Alert>}
+
+            {barberDoc?.connectMethod === "delegation" && barberDoc?.nameservers?.length ? (
+              <Box>
+                {barberDoc.domainStatus === "active" ? (
+                  <Alert severity="success">
+                    ✅ <strong>{barberDoc.customDomain}</strong> is live and connected.
+                  </Alert>
+                ) : (
+                  <>
+                    <Alert severity="info" sx={{mb: 2}}>
+                      At your registrar, replace the nameservers for{" "}
+                      <strong>{barberDoc.customDomain}</strong> with these two.
+                      It goes live automatically once they propagate (can take a few hours).
+                    </Alert>
+                    {barberDoc.nameservers.map((ns, i) => (
+                      <CopyField key={i} label={`Nameserver ${i + 1}`} value={ns} />
+                    ))}
+                    <Box display="flex" alignItems="center" gap={1} mt={1.5}>
+                      <CircularProgress size={14} sx={{color: brandColor}} />
+                      <Typography variant="caption" color="text.secondary">
+                        Waiting for nameserver change… (status: {barberDoc.domainStatus})
+                      </Typography>
+                    </Box>
+                  </>
+                )}
+              </Box>
+            ) : (
+              <Box component="form" onSubmit={handleConnectAuto} display="flex" flexDirection="column" gap={1.5}>
+                <TextField
+                  fullWidth size="small" label="Your domain"
+                  placeholder="mybusiness.co.uk"
+                  value={autoDomain}
+                  onChange={(e) => setAutoDomain(e.target.value)}
+                  disabled={autoLinking}
+                />
+                <Button
+                  fullWidth type="submit" variant="contained"
+                  disabled={autoLinking || !autoDomain.trim()}
+                  sx={{bgcolor: brandColor, color: "#0d0d0d", fontWeight: 700, boxShadow: "none", "&:hover": {bgcolor: brandColor, filter: "brightness(1.1)"}}}
+                >
+                  {autoLinking ? <CircularProgress size={18} color="inherit" /> : "Connect Automatically"}
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  Best for domains used only for your booking site. If you also run
+                  email on this domain, use the manual option below so your existing
+                  records aren't affected.
+                </Typography>
+              </Box>
+            )}
+          </Paper>
+
           {/* Connect existing domain */}
           <Paper sx={{p: 3, borderRadius: 3, border: "1px solid #E0E0E0"}}>
             <Box display="flex" alignItems="center" gap={1} mb={1}>
               <LinkIcon sx={{color: brandColor}} />
               <Typography variant="subtitle1" fontWeight={800}>
-                Connect Existing Domain
+                Connect Existing Domain (manual)
               </Typography>
             </Box>
             <Typography variant="body2" color="text.secondary" mb={2}>

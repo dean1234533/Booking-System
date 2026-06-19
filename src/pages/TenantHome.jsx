@@ -199,8 +199,10 @@ export default function TenantHome({ tenant: initialTenant }) {
     <Box sx={{ bgcolor: "#FFFFFF", minHeight: "100vh", overflowX: 'hidden' }}>
       
       {/* ── 1. HERO ──────────────────────────────────────────────────────── */}
+      {/* Subtract the sticky nav height (80px mobile / 100px desktop) so the hero
+          fits exactly one screen below the nav instead of overflowing. */}
       <Box sx={{
-        height: "100vh",
+        height: { xs: "calc(100vh - 80px)", sm: "calc(100vh - 100px)" },
         display: "flex", alignItems: "center", justifyContent: "center",
         background: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('${heroImageUrl}')`,
         backgroundSize: "cover", 

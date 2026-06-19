@@ -200,44 +200,59 @@ exports.addCustomDomain = onCall(
       const base = `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames`;
 
       try {
-        // Remove any stale hostnames for this domain (apex or www) so we start clean.
-        for (const host of [clean, wwwHost]) {
-          try {
-            const existing = await axios.get(
-                `${base}?hostname=${encodeURIComponent(host)}`,
-                {headers: cfAuthHeaders()},
-            );
-            for (const h of (existing.data.result || [])) {
-              await axios.delete(`${base}/${h.id}`, {headers: cfAuthHeaders()}).catch(() => {});
-            }
-          } catch (e) {
-            // nothing to clean up
-          }
+        let result = null;
+
+        // If the www hostname already exists and is active, reuse it — reconnecting
+        // is then idempotent and causes no downtime for an already-live domain.
+        try {
+          const existingWww = await axios.get(
+              `${base}?hostname=${encodeURIComponent(wwwHost)}`,
+              {headers: cfAuthHeaders()},
+          );
+          result = (existingWww.data.result || []).find((h) => h.status === "active") || null;
+        } catch (e) {
+          // fall through to create
         }
 
-        // Register the www subdomain as the custom hostname. HTTP validation works
-        // automatically once the www CNAME points to the fallback — no TXT records
-        // for the user to copy.
-        const response = await axios.post(
-            base,
-            {
-              hostname: wwwHost,
-              ssl: {
-                method: "http",
-                type: "dv",
-                settings: {min_tls_version: "1.2", http2: "on"},
-              },
-            },
-            {headers: cfAuthHeaders({"Content-Type": "application/json"})},
-        );
+        if (!result) {
+          // Remove any stale hostnames (failed apex attempts or non-active www),
+          // then register the www subdomain fresh.
+          for (const host of [clean, wwwHost]) {
+            try {
+              const existing = await axios.get(
+                  `${base}?hostname=${encodeURIComponent(host)}`,
+                  {headers: cfAuthHeaders()},
+              );
+              for (const h of (existing.data.result || [])) {
+                await axios.delete(`${base}/${h.id}`, {headers: cfAuthHeaders()}).catch(() => {});
+              }
+            } catch (e) {
+              // nothing to clean up
+            }
+          }
 
-        const result = response.data.result;
+          // HTTP validation completes automatically once the www CNAME points to the
+          // fallback — no TXT records for the user to copy.
+          const response = await axios.post(
+              base,
+              {
+                hostname: wwwHost,
+                ssl: {
+                  method: "http",
+                  type: "dv",
+                  settings: {min_tls_version: "1.2", http2: "on"},
+                },
+              },
+              {headers: cfAuthHeaders({"Content-Type": "application/json"})},
+          );
+          result = response.data.result;
+        }
 
         // Store the bare domain — getBarberByDomain strips www, so visitors on both
         // www.<domain> and the forwarded root resolve to this tenant.
         await admin.firestore().collection("barbers").doc(request.auth.uid).update({
           customDomain: clean,
-          domainStatus: "pending",
+          domainStatus: result.status === "active" ? "active" : "pending",
           customHostnameId: result.id,
         });
 

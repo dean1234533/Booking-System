@@ -494,7 +494,7 @@ export default function DomainTab({barber, brandColor}) {
                     size="small"
                     endIcon={<OpenInNewIcon fontSize="small" />}
                     component="a"
-                    href={`https://${connectedDomain}`}
+                    href={`https://www.${connectedDomain.replace(/^www\./, "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

@@ -194,13 +194,30 @@ exports.addCustomDomain = onCall(
         {type: "CNAME", name: "www", value: "fallback.bookehtrim.co.uk", ttl: "Auto", description: "www subdomain"},
       ];
 
+      const base = `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames`;
+
       try {
+        // Remove any existing/stale hostname for this domain so we always create a
+        // fresh one with TXT validation. (Old HTTP-validation hostnames get stuck in
+        // "validation_timed_out"/"deleted" and never issue a TXT record.)
+        try {
+          const existing = await axios.get(
+              `${base}?hostname=${encodeURIComponent(clean)}`,
+              {headers: cfAuthHeaders()},
+          );
+          for (const h of (existing.data.result || [])) {
+            await axios.delete(`${base}/${h.id}`, {headers: cfAuthHeaders()}).catch(() => {});
+          }
+        } catch (e) {
+          // nothing to clean up
+        }
+
         // Register the bare domain as a Cloudflare custom hostname using TXT (DNS)
         // validation. TXT validation proves domain control via a DNS record and does
         // NOT depend on the Worker serving an HTTP /.well-known/acme-challenge path —
         // so SSL issues reliably regardless of routing.
         const response = await axios.post(
-            `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames`,
+            base,
             {
               hostname: clean,
               ssl: {
@@ -214,9 +231,9 @@ exports.addCustomDomain = onCall(
 
         const result = response.data.result;
 
-        // The TXT validation record is generated asynchronously — poll briefly for it.
+        // The TXT validation record is generated asynchronously — poll for it.
         let txtRecord = null;
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 8; i++) {
           const vr = (result.ssl?.validation_records || [])[0];
           if (vr?.txt_name && vr?.txt_value) {
             txtRecord = {
@@ -228,10 +245,7 @@ exports.addCustomDomain = onCall(
             break;
           }
           await new Promise((r) => setTimeout(r, 1500));
-          const detail = await axios.get(
-              `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames/${result.id}`,
-              {headers: cfAuthHeaders()},
-          );
+          const detail = await axios.get(`${base}/${result.id}`, {headers: cfAuthHeaders()});
           result.ssl = detail.data.result?.ssl || result.ssl;
         }
 
@@ -247,21 +261,7 @@ exports.addCustomDomain = onCall(
         return {cfHostnameId: result.id, domain: clean, dnsRecords: records};
       } catch (error) {
         const detail = error.response?.data || error.message;
-        console.error("addCustomDomain error:", detail);
-
-        const errors = error.response?.data?.errors ?? [];
-        if (errors.some((e) => e.code === 1406)) {
-          // Already registered with Cloudflare — update Firestore and return DNS instructions
-          await admin.firestore().collection("barbers").doc(request.auth.uid).update({
-            customDomain: clean,
-            domainStatus: "pending",
-          });
-          return {
-            domain: clean,
-            dnsRecords: DNS_RECORDS,
-          };
-        }
-
+        console.error("addCustomDomain error:", JSON.stringify(detail));
         throw new HttpsError("internal", "Failed to connect domain.");
       }
     },

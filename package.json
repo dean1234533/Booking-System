@@ -10,7 +10,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build && wrangler deploy"
+    "deploy": "vite build && wrangler deploy && firebase deploy --only hosting",
+    "deploy:worker": "vite build && wrangler deploy",
+    "deploy:hosting": "vite build && firebase deploy --only hosting"
   },
   "dependencies": {
     "@emailjs/browser": "^4.3.3",

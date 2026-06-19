@@ -1,0 +1,7 @@
+# Content-hashed bundles never change — cache them forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML (and SPA routes) must always revalidate so a new deploy is seen immediately.
+/*
+  Cache-Control: no-cache

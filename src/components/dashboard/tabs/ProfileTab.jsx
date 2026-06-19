@@ -1,7 +1,7 @@
 import React from "react";
 import {
   Box, Paper, Avatar, Button, Grid, TextField, Typography,
-  Divider, InputAdornment
+  Divider, InputAdornment, MenuItem
 } from "@mui/material";
 import {
   AccessTime as AccessTimeIcon,
@@ -51,6 +51,25 @@ export default function ProfileTab({
       </Box>
 
       <Grid container spacing={2.5}>
+
+        {/* Business Type — owner only. Switches the dashboard + public site. */}
+        {userRole.isOwner && (
+          <Grid item xs={12}>
+            <TextField
+              select
+              label="Business Type"
+              value={profile.businessType || "barber"}
+              fullWidth
+              onChange={e => setProfile(p => ({ ...p, businessType: e.target.value }))}
+              helperText="Switches your dashboard tabs and public site to match. Press Save to apply."
+            >
+              <MenuItem value="barber">Barber</MenuItem>
+              <MenuItem value="hairdresser">Hairdresser</MenuItem>
+              <MenuItem value="decorator">Decorator</MenuItem>
+              <MenuItem value="trainer">Personal Trainer</MenuItem>
+            </TextField>
+          </Grid>
+        )}
 
         {/* Full Name */}
         <Grid item xs={12} sm={6}>

@@ -14,6 +14,11 @@ import {
   Nfc as NfcIcon,
   Language as LanguageIcon,
   AutoAwesome as AutoAwesomeIcon,
+  People as PeopleIcon,
+  FitnessCenter as FitnessCenterIcon,
+  RestaurantMenu as RestaurantMenuIcon,
+  TrendingUp as TrendingUpIcon,
+  Assignment as AssignmentIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -46,6 +51,17 @@ import DesignTab    from "../components/dashboard/tabs/DesignTab";
 import PayTab       from "../components/dashboard/tabs/PayTab";
 import DomainTab    from "../components/dashboard/tabs/DomainTab";
 import ToolkitTab   from "../components/dashboard/tabs/ToolkitTab";
+// ── Trainer-only tabs ──
+import ClientProfileTab    from "../components/dashboard/tabs/ClientProfileTab";
+import WorkoutPlansTab     from "../components/dashboard/tabs/WorkoutPlansTab";
+import NutritionPlanTab    from "../components/dashboard/tabs/NutritionPlanTab";
+import ProgressTrackerTab  from "../components/dashboard/tabs/ProgressTrackerTab";
+import SessionPrepTab      from "../components/dashboard/tabs/SessionPrepTab";
+import ExerciseGeneratorTab from "../components/dashboard/tabs/ExerciseGeneratorTab";
+import ClientFormsTab      from "../components/dashboard/tabs/ClientFormsTab";
+import FoodGeneratorTab    from "../components/dashboard/tabs/FoodGeneratorTab";
+import AutomationTab       from "../components/dashboard/tabs/AutomationTab";
+import NotepadTab          from "../components/dashboard/tabs/NotepadTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -472,6 +488,21 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const brandColor = profile.brandColor || "#C9A84C";
   const isTrainer  = profile.businessType === "trainer";
 
+  // Trainer-only tabs — appended after the standard tabs and addressed by key.
+  const trainerTabs = isTrainer ? [
+    { key: "clients",     label: "Clients",      icon: <PeopleIcon /> },
+    { key: "workouts",    label: "Workouts",     icon: <FitnessCenterIcon /> },
+    { key: "nutrition",   label: "Nutrition",    icon: <RestaurantMenuIcon /> },
+    { key: "progress",    label: "Progress",     icon: <TrendingUpIcon /> },
+    { key: "sessionprep", label: "Session Prep", icon: <AccessTimeIcon /> },
+    { key: "exercises",   label: "Exercises",    icon: <FitnessCenterIcon /> },
+    { key: "forms",       label: "Forms",        icon: <AssignmentIcon /> },
+    { key: "foodgen",     label: "Food Gen",     icon: <RestaurantMenuIcon /> },
+    { key: "automation",  label: "Automation",   icon: <AutoAwesomeIcon /> },
+    { key: "notepad",     label: "Notepad",      icon: <ListIcon /> },
+    { key: "toolkit",     label: "Toolkit",      icon: <AutoAwesomeIcon /> },
+  ] : [];
+
   const tabs = [
     { label: "Schedule", icon: <AccessTimeIcon /> },
     { label: "Bookings", icon: <StoreIcon /> },
@@ -483,11 +514,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     // Domain tab: owner only AND not inside a tenant dashboard
     ...(userRole.isOwner && !initialTenant ? [{ label: "Domain", icon: <LanguageIcon /> }] : []),
     { label: "Pay",      icon: <NfcIcon /> },
-    // Toolkit: trainer accounts only — appended last so panel indices stay stable
-    ...(isTrainer ? [{ label: "Toolkit", icon: <AutoAwesomeIcon /> }] : []),
+    ...trainerTabs,
   ];
-  // Toolkit panel is the last tab when present
-  const IDX_TOOLKIT = isTrainer ? tabs.length - 1 : -1;
+  // Trainer tabs are addressed by key (robust to the conditional tabs above).
+  const tabIdx = (key) => tabs.findIndex((t) => t.key === key);
 
   // Derive tab indices dynamically based on role so panels always align
   const IDX_REVIEWS = 4;
@@ -650,11 +680,43 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── Toolkit (trainer accounts only) ── */}
+        {/* ── Trainer-only tabs ── */}
         {isTrainer && (
-          <TabPanel value={tab} index={IDX_TOOLKIT}>
-            <ToolkitTab brandColor={brandColor} />
-          </TabPanel>
+          <>
+            <TabPanel value={tab} index={tabIdx("clients")}>
+              <ClientProfileTab barber={barber} profile={profile} brandColor={brandColor} bookings={bookings} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("workouts")}>
+              <WorkoutPlansTab barber={barber} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("nutrition")}>
+              <NutritionPlanTab barber={barber} profile={profile} brandColor={brandColor} bookings={bookings} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("progress")}>
+              <ProgressTrackerTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("sessionprep")}>
+              <SessionPrepTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("exercises")}>
+              <ExerciseGeneratorTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("forms")}>
+              <ClientFormsTab barber={barber} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("foodgen")}>
+              <FoodGeneratorTab barber={barber} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("automation")}>
+              <AutomationTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("notepad")}>
+              <NotepadTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("toolkit")}>
+              <ToolkitTab brandColor={brandColor} />
+            </TabPanel>
+          </>
         )}
       </Box>
     </Box>

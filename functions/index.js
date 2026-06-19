@@ -229,24 +229,37 @@ exports.addCustomDomain = onCall(
             {headers: cfAuthHeaders({"Content-Type": "application/json"})},
         );
 
-        const result = response.data.result;
+        let result = response.data.result;
 
-        // The TXT validation record is generated asynchronously — poll for it.
+        // Two records are generated asynchronously — poll until both are present:
+        //  • SSL TXT  (_acme-challenge…)      → issues the HTTPS certificate
+        //  • Ownership TXT (_cf-custom-hostname…) → activates the hostname. This is
+        //    required for apex/root domains, which cannot CNAME to the fallback.
         let txtRecord = null;
+        let ownershipRecord = null;
         for (let i = 0; i < 8; i++) {
           const vr = (result.ssl?.validation_records || [])[0];
-          if (vr?.txt_name && vr?.txt_value) {
+          if (vr?.txt_name && vr?.txt_value && !txtRecord) {
             txtRecord = {
               type: "TXT",
               name: vr.txt_name,
               value: vr.txt_value,
               description: "SSL validation — add this to activate HTTPS (can be removed once active)",
             };
-            break;
           }
+          const ov = result.ownership_verification;
+          if (ov?.name && ov?.value && !ownershipRecord) {
+            ownershipRecord = {
+              type: "TXT",
+              name: ov.name,
+              value: ov.value,
+              description: "Ownership verification — required to activate the domain",
+            };
+          }
+          if (txtRecord && ownershipRecord) break;
           await new Promise((r) => setTimeout(r, 1500));
           const detail = await axios.get(`${base}/${result.id}`, {headers: cfAuthHeaders()});
-          result.ssl = detail.data.result?.ssl || result.ssl;
+          result = detail.data.result || result;
         }
 
         // Save the bare domain — getBarberByDomain strips www before querying
@@ -256,8 +269,13 @@ exports.addCustomDomain = onCall(
           customHostnameId: result.id,
         });
 
-        // Show the TXT validation record first, then the A/CNAME records that route traffic.
-        const records = txtRecord ? [txtRecord, ...DNS_RECORDS] : DNS_RECORDS;
+        // Show the two TXT validation records first (SSL + ownership), then the
+        // A/CNAME records that route traffic.
+        const records = [
+          ...(txtRecord ? [txtRecord] : []),
+          ...(ownershipRecord ? [ownershipRecord] : []),
+          ...DNS_RECORDS,
+        ];
         return {cfHostnameId: result.id, domain: clean, dnsRecords: records};
       } catch (error) {
         const detail = error.response?.data || error.message;

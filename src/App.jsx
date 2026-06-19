@@ -229,7 +229,10 @@ function AppShell() {
     location.pathname.includes("/pt-booking/") ||
     location.pathname.includes("/decorator/") ||
     location.pathname.includes("/hairdresser/") ||
-    (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber" && !isPlatformDomain)
+    // Non-barber tenant templates (PT/decorator/hairdresser) render their own
+    // nav + footer, so hide the global shell whenever one is shown — including
+    // the platform-domain /shop/:id view (where tenantBarber is the tenant).
+    (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber")
   );
 
   // A lapsed subscription takes the public site offline (not the dashboard)

@@ -13,6 +13,7 @@ import {
   Palette as PaletteIcon,
   Nfc as NfcIcon,
   Language as LanguageIcon,
+  AutoAwesome as AutoAwesomeIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -44,6 +45,7 @@ import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
 import DesignTab    from "../components/dashboard/tabs/DesignTab";
 import PayTab       from "../components/dashboard/tabs/PayTab";
 import DomainTab    from "../components/dashboard/tabs/DomainTab";
+import ToolkitTab   from "../components/dashboard/tabs/ToolkitTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -468,6 +470,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   // ── Tab config ────────────────────────────────────────────────────────────
   // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
   const brandColor = profile.brandColor || "#C9A84C";
+  const isTrainer  = profile.businessType === "trainer";
 
   const tabs = [
     { label: "Schedule", icon: <AccessTimeIcon /> },
@@ -480,7 +483,11 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     // Domain tab: owner only AND not inside a tenant dashboard
     ...(userRole.isOwner && !initialTenant ? [{ label: "Domain", icon: <LanguageIcon /> }] : []),
     { label: "Pay",      icon: <NfcIcon /> },
+    // Toolkit: trainer accounts only — appended last so panel indices stay stable
+    ...(isTrainer ? [{ label: "Toolkit", icon: <AutoAwesomeIcon /> }] : []),
   ];
+  // Toolkit panel is the last tab when present
+  const IDX_TOOLKIT = isTrainer ? tabs.length - 1 : -1;
 
   // Derive tab indices dynamically based on role so panels always align
   const IDX_REVIEWS = 4;
@@ -642,6 +649,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             handleCopyPayLink={handleCopyPayLink}
           />
         </TabPanel>
+
+        {/* ── Toolkit (trainer accounts only) ── */}
+        {isTrainer && (
+          <TabPanel value={tab} index={IDX_TOOLKIT}>
+            <ToolkitTab brandColor={brandColor} />
+          </TabPanel>
+        )}
       </Box>
     </Box>
   );

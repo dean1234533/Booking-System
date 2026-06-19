@@ -179,49 +179,51 @@ exports.addCustomDomain = onCall(
       const {domain} = request.data;
       if (!domain) throw new HttpsError("invalid-argument", "domain is required");
 
-      // Strip www. prefix — we always store the bare domain
+      // Strip www. prefix — we always store the bare domain.
       const clean = cleanDomain(domain).replace(/^www\./, "");
       if (!isValidDomain(clean)) {
         throw new HttpsError("invalid-argument", "Invalid domain format");
       }
+      // The actual custom hostname is the WWW subdomain. Root/apex domains cannot
+      // be CNAME'd to the SaaS fallback, so Cloudflare for SaaS can't activate them
+      // via A records — but www CAN CNAME, so it validates automatically. The root
+      // is handled with a registrar forward to https://www.<domain>.
+      const wwwHost = `www.${clean}`;
+      const FALLBACK = "fallback.bookehtrim.co.uk";
 
-      // DNS records to return — works for GoDaddy and all standard registrars:
-      // A records on @ (root) are universally supported; CNAME on www is also fine.
-      // Cloudflare IPs resolved from fallback.bookehtrim.co.uk (Cloudflare anycast).
+      // DNS records the user adds at their registrar.
       const DNS_RECORDS = [
-        {type: "A", name: "@", value: "104.21.47.154", ttl: "Auto", description: "Root domain — Cloudflare IP (add both A records)"},
-        {type: "A", name: "@", value: "172.67.148.220", ttl: "Auto", description: "Root domain — Cloudflare IP (add both A records)"},
-        {type: "CNAME", name: "www", value: "fallback.bookehtrim.co.uk", ttl: "Auto", description: "www subdomain"},
+        {type: "CNAME", name: "www", value: FALLBACK, ttl: "Auto", description: "Points your site to us — add this and HTTPS activates automatically"},
+        {type: "FORWARD", name: "@", value: `https://${wwwHost}`, description: "Forward your root domain to www (use your registrar's domain forwarding)"},
       ];
 
       const base = `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames`;
 
       try {
-        // Remove any existing/stale hostname for this domain so we always create a
-        // fresh one with TXT validation. (Old HTTP-validation hostnames get stuck in
-        // "validation_timed_out"/"deleted" and never issue a TXT record.)
-        try {
-          const existing = await axios.get(
-              `${base}?hostname=${encodeURIComponent(clean)}`,
-              {headers: cfAuthHeaders()},
-          );
-          for (const h of (existing.data.result || [])) {
-            await axios.delete(`${base}/${h.id}`, {headers: cfAuthHeaders()}).catch(() => {});
+        // Remove any stale hostnames for this domain (apex or www) so we start clean.
+        for (const host of [clean, wwwHost]) {
+          try {
+            const existing = await axios.get(
+                `${base}?hostname=${encodeURIComponent(host)}`,
+                {headers: cfAuthHeaders()},
+            );
+            for (const h of (existing.data.result || [])) {
+              await axios.delete(`${base}/${h.id}`, {headers: cfAuthHeaders()}).catch(() => {});
+            }
+          } catch (e) {
+            // nothing to clean up
           }
-        } catch (e) {
-          // nothing to clean up
         }
 
-        // Register the bare domain as a Cloudflare custom hostname using TXT (DNS)
-        // validation. TXT validation proves domain control via a DNS record and does
-        // NOT depend on the Worker serving an HTTP /.well-known/acme-challenge path —
-        // so SSL issues reliably regardless of routing.
+        // Register the www subdomain as the custom hostname. HTTP validation works
+        // automatically once the www CNAME points to the fallback — no TXT records
+        // for the user to copy.
         const response = await axios.post(
             base,
             {
-              hostname: clean,
+              hostname: wwwHost,
               ssl: {
-                method: "txt",
+                method: "http",
                 type: "dv",
                 settings: {min_tls_version: "1.2", http2: "on"},
               },
@@ -229,54 +231,17 @@ exports.addCustomDomain = onCall(
             {headers: cfAuthHeaders({"Content-Type": "application/json"})},
         );
 
-        let result = response.data.result;
+        const result = response.data.result;
 
-        // Two records are generated asynchronously — poll until both are present:
-        //  • SSL TXT  (_acme-challenge…)      → issues the HTTPS certificate
-        //  • Ownership TXT (_cf-custom-hostname…) → activates the hostname. This is
-        //    required for apex/root domains, which cannot CNAME to the fallback.
-        let txtRecord = null;
-        let ownershipRecord = null;
-        for (let i = 0; i < 8; i++) {
-          const vr = (result.ssl?.validation_records || [])[0];
-          if (vr?.txt_name && vr?.txt_value && !txtRecord) {
-            txtRecord = {
-              type: "TXT",
-              name: vr.txt_name,
-              value: vr.txt_value,
-              description: "SSL validation — add this to activate HTTPS (can be removed once active)",
-            };
-          }
-          const ov = result.ownership_verification;
-          if (ov?.name && ov?.value && !ownershipRecord) {
-            ownershipRecord = {
-              type: "TXT",
-              name: ov.name,
-              value: ov.value,
-              description: "Ownership verification — required to activate the domain",
-            };
-          }
-          if (txtRecord && ownershipRecord) break;
-          await new Promise((r) => setTimeout(r, 1500));
-          const detail = await axios.get(`${base}/${result.id}`, {headers: cfAuthHeaders()});
-          result = detail.data.result || result;
-        }
-
-        // Save the bare domain — getBarberByDomain strips www before querying
+        // Store the bare domain — getBarberByDomain strips www, so visitors on both
+        // www.<domain> and the forwarded root resolve to this tenant.
         await admin.firestore().collection("barbers").doc(request.auth.uid).update({
           customDomain: clean,
           domainStatus: "pending",
           customHostnameId: result.id,
         });
 
-        // Show the two TXT validation records first (SSL + ownership), then the
-        // A/CNAME records that route traffic.
-        const records = [
-          ...(txtRecord ? [txtRecord] : []),
-          ...(ownershipRecord ? [ownershipRecord] : []),
-          ...DNS_RECORDS,
-        ];
-        return {cfHostnameId: result.id, domain: clean, dnsRecords: records};
+        return {cfHostnameId: result.id, domain: clean, dnsRecords: DNS_RECORDS};
       } catch (error) {
         const detail = error.response?.data || error.message;
         console.error("addCustomDomain error:", JSON.stringify(detail));

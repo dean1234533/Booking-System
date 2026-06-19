@@ -199,8 +199,11 @@ export default function TenantHome({ tenant: initialTenant }) {
     <Box sx={{ bgcolor: "#FFFFFF", minHeight: "100vh", overflowX: 'hidden' }}>
       
       {/* ── 1. HERO ──────────────────────────────────────────────────────── */}
+      {/* pt biases the centered content downward on desktop so it sits in the
+          lower-middle of the banner rather than too near the top. */}
       <Box sx={{
         height: "100vh",
+        pt: { xs: "6vh", md: "14vh" },
         display: "flex", alignItems: "center", justifyContent: "center",
         background: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('${heroImageUrl}')`,
         backgroundSize: "cover", 

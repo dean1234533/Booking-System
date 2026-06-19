@@ -570,8 +570,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         <Tabs
           value={tab} onChange={(_, v) => setTab(v)}
           sx={{ mb: 2, borderBottom: "1px solid #eee" }}
-          variant={isMobile ? "scrollable" : "standard"}
+          variant="scrollable"
           scrollButtons="auto"
+          allowScrollButtonsMobile
         >
           {tabs.map((t, i) => (
             <Tab key={i} icon={t.icon} iconPosition="start" label={isMobile ? "" : t.label} />

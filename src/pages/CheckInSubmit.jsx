@@ -69,6 +69,7 @@ export default function CheckInSubmit() {
       }));
       await addDoc(collection(db, "barbers", trainerId, "checkInSubmissions"), {
         clientName: clientName.trim(),
+        clientId:   new URLSearchParams(window.location.search).get("client") || null,
         date,
         answers:    answerArr,
         submittedAt: serverTimestamp(),

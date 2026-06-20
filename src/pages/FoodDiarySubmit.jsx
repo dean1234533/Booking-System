@@ -88,6 +88,7 @@ export default function FoodDiarySubmit() {
       const entries = allEntries.map(({ id, ...rest }) => rest);
       await addDoc(collection(db, "barbers", trainerId, "foodDiarySubmissions"), {
         clientName: clientName.trim(),
+        clientId:   new URLSearchParams(window.location.search).get("client") || null,
         weekOf,
         entries,
         submittedAt: serverTimestamp(),

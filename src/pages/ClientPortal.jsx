@@ -526,9 +526,9 @@ export default function ClientPortal() {
             <SectionHead icon={AssignmentIcon} title="Your Forms" brandColor={brandColor} />
             <Grid container spacing={2}>
               {[
-                { label: "Weekly Check-In",   desc: "How are you feeling this week?",          path: `/check-in/${trainerId}` },
-                { label: "Food Diary",        desc: "Log today's meals and nutrition.",         path: `/food-diary/${trainerId}` },
-                { label: "PAR-Q Health Form", desc: "Physical Activity Readiness Questionnaire.", path: `/par-q/${trainerId}` },
+                { label: "Weekly Check-In",   desc: "How are you feeling this week?",          path: `/check-in/${trainerId}?client=${clientId}` },
+                { label: "Food Diary",        desc: "Log today's meals and nutrition.",         path: `/food-diary/${trainerId}?client=${clientId}` },
+                { label: "PAR-Q Health Form", desc: "Physical Activity Readiness Questionnaire.", path: `/par-q/${trainerId}?client=${clientId}` },
               ].map(form => (
                 <Grid item xs={12} sm={4} key={form.label}>
                   <Paper

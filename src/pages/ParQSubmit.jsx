@@ -217,6 +217,7 @@ export default function ParQSubmit() {
 
       await addDoc(collection(db, "barbers", trainerId, "parQSubmissions"), {
         clientName: clientName.trim(),
+        clientId:   new URLSearchParams(window.location.search).get("client") || null,
         dob,
         date,
         answers:    answerArr,

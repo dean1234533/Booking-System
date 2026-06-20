@@ -37,6 +37,8 @@ import {
 import ClientMessagesTab from "./ClientMessagesTab";
 import ClientActivityTab from "./ClientActivityTab";
 import ConsultationTab from "./ConsultationTab";
+import ClientSubmittedForms from "./ClientSubmittedForms";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 
 /**
  * Client Profile Tab - Unified view for all client information
@@ -466,6 +468,11 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
                     icon={<RecordVoiceOverIcon />}
                     iconPosition="start"
                   />
+                  <Tab
+                    label="Forms"
+                    icon={<AssignmentIcon />}
+                    iconPosition="start"
+                  />
                 </Tabs>
 
                 <CardContent>
@@ -488,6 +495,12 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
                       trainerId={trainerId}
                       clientId={selectedClientId}
                       clientName={clientProfile.customerName}
+                    />
+                  )}
+                  {tabValue === 3 && (
+                    <ClientSubmittedForms
+                      trainerId={trainerId}
+                      clientId={selectedClientId}
                     />
                   )}
                 </CardContent>

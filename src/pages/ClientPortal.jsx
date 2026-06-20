@@ -523,9 +523,10 @@ export default function ClientPortal() {
         {/* ── Forms ── */}
         {section === "forms" && (
           <Box>
-            <SectionHead icon={AssignmentIcon} title="Your Forms" brandColor={brandColor} />
+            <SectionHead icon={AssignmentIcon} title="Forms & Booking" brandColor={brandColor} />
             <Grid container spacing={2}>
               {[
+                { label: "Book a Session",    desc: "Pick a time and pay — all from here.",     path: `/pt-booking/${trainerId}` },
                 { label: "Weekly Check-In",   desc: "How are you feeling this week?",          path: `/check-in/${trainerId}?client=${clientId}` },
                 { label: "Food Diary",        desc: "Log today's meals and nutrition.",         path: `/food-diary/${trainerId}?client=${clientId}` },
                 { label: "PAR-Q Health Form", desc: "Physical Activity Readiness Questionnaire.", path: `/par-q/${trainerId}?client=${clientId}` },

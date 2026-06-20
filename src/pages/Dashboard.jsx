@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Box, Snackbar, CircularProgress, Typography,
-  useMediaQuery, useTheme
+  useMediaQuery, useTheme, ThemeProvider, createTheme
 } from "@mui/material";
 import {
   AccessTime as AccessTimeIcon,
@@ -532,6 +532,45 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     : isHairdresser ? "Hairdresser"
     : "Barber";
 
+  // ── Scoped, professional light theme for the whole dashboard ────────────────
+  // Refines cards, buttons, inputs and typography for a cohesive, polished look.
+  // Theme defaults only — any tab that sets its own styles via `sx` still wins.
+  const dashTheme = useMemo(() => createTheme({
+    palette: {
+      mode: "light",
+      primary:    { main: brandColor },
+      background: { default: "#F6F7F9", paper: "#ffffff" },
+      text:       { primary: "#16181d", secondary: "#6b7280" },
+      divider:    "#ececf0",
+    },
+    shape: { borderRadius: 12 },
+    typography: {
+      fontFamily: "'DM Sans','Plus Jakarta Sans','Inter',system-ui,sans-serif",
+      button: { textTransform: "none", fontWeight: 700, letterSpacing: "0.01em" },
+      h6: { fontWeight: 700 },
+      subtitle1: { fontWeight: 700 },
+    },
+    components: {
+      MuiPaper: {
+        defaultProps: { elevation: 0 },
+        styleOverrides: { root: { backgroundImage: "none", border: "1px solid #ededf1", boxShadow: "0 1px 2px rgba(16,24,40,0.04)" } },
+      },
+      MuiCard: {
+        defaultProps: { elevation: 0 },
+        styleOverrides: { root: { borderRadius: 14, border: "1px solid #ededf1", boxShadow: "0 1px 3px rgba(16,24,40,0.06)" } },
+      },
+      MuiButton: {
+        styleOverrides: { root: { borderRadius: 10, boxShadow: "none", paddingInline: 18, "&:hover": { boxShadow: "none" } } },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: { root: { borderRadius: 10 } },
+      },
+      MuiChip: {
+        styleOverrides: { root: { fontWeight: 600 } },
+      },
+    },
+  }), [brandColor]);
+
   // Web shows essentials only; installed PWA shows all tabs.
   const isPWA = window.matchMedia("(display-mode: standalone)").matches || !!window.navigator.standalone;
 
@@ -723,7 +762,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ pb: isMobile ? 12 : 6, bgcolor: "#F8F9FA", minHeight: "100vh" }}>
+    <ThemeProvider theme={dashTheme}>
+    <Box sx={{ pb: isMobile ? 12 : 6, bgcolor: "#F6F7F9", minHeight: "100vh" }}>
       <Snackbar
         open={Boolean(toast)} autoHideDuration={4000}
         onClose={() => setToast(null)} message={toast}
@@ -962,5 +1002,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         )}
       </Box>
     </Box>
+    </ThemeProvider>
   );
 }

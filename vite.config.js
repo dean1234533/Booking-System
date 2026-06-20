@@ -1,38 +1,75 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.js",
+      registerType: "autoUpdate",
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      },
+      includeAssets: ["images/**"],
+      manifest: {
+        name: "Bookrty",
+        short_name: "Bookrty",
+        description: "The Multi-Industry Appointment Booking Network",
+        start_url: "/dashboard",
+        scope: "/",
+        display: "standalone",
+        orientation: "portrait",
+        background_color: "#0a0a0a",
+        theme_color: "#C9A84C",
+        icons: [
+          {
+            src: "/images/IMG_9763-removebg-preview.png",
+            sizes: "any",
+            type: "image/png",
+            purpose: "any maskable",
+          },
+        ],
+        shortcuts: [
+          {
+            name: "Dashboard",
+            url: "/dashboard",
+            description: "Open your dashboard",
+          },
+          {
+            name: "Bookings",
+            url: "/dashboard",
+            description: "View upcoming bookings",
+          },
+        ],
+      },
+    }),
+  ],
   server: {
-    port: 5173, // Standard Vite port
+    port: 5173,
     proxy: {
-      // ✅ Redirects frontend /api calls to your backend server
-      // Change 3000 to 5000 if your Node server is running on 5000
       "/api": {
         target: "http://localhost:8787",
         changeOrigin: true,
         secure: false,
-        // Optional: rewriting the path if your backend doesn't expect "/api"
-        // rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: "dist",
     sourcemap: false,
-    // ✅ Keep rollupOptions clean. 
-    // If you have to 'external' fs or path, you have a logic error in your /src files.
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          mui: ['@mui/material', '@emotion/react', '@emotion/styled'],
+          vendor: ["react", "react-dom", "react-router-dom"],
+          mui: ["@mui/material", "@emotion/react", "@emotion/styled"],
         },
       },
     },
   },
-  // ✅ Pre-bundling these helps MUI load faster in development
   optimizeDeps: {
     include: [
       "@mui/material",
@@ -40,7 +77,7 @@ export default defineConfig({
       "@emotion/react",
       "@emotion/styled",
       "@stripe/stripe-js",
-      "@stripe/react-stripe-js"
+      "@stripe/react-stripe-js",
     ],
   },
 });

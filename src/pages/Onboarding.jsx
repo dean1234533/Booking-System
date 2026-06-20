@@ -534,7 +534,7 @@ const STEPS = [
     ],
     ctaLabel: "Go to Dashboard",
     ctaRoute: "/dashboard",
-    ctaTab: null,
+    ctaTab: "domain",
     skipLabel: null,
     cardEyebrow: "Your Website",
     cardIcon: "✨",

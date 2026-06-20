@@ -70,6 +70,160 @@ function calcFinalPriceGbp(tld, usdToGbpRate) {
   return parseFloat((baseCostUsd * rate + PLATFORM_MARKUP).toFixed(2));
 }
 
+// ── Web Push helpers ──────────────────────────────────────────────────────────
+
+function b64url(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+function fromB64url(str) {
+  str = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (str.length % 4) str += "=";
+  return Uint8Array.from(atob(str), c => c.charCodeAt(0));
+}
+
+function concat(...arrays) {
+  const out = new Uint8Array(arrays.reduce((s, a) => s + a.length, 0));
+  let offset = 0;
+  for (const a of arrays) { out.set(a, offset); offset += a.length; }
+  return out;
+}
+
+async function hkdf(salt, ikm, info, length) {
+  const saltKey = await crypto.subtle.importKey("raw", salt, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const prk     = new Uint8Array(await crypto.subtle.sign("HMAC", saltKey, ikm));
+  const prkKey  = await crypto.subtle.importKey("raw", prk, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const blocks  = Math.ceil(length / 32);
+  const okm     = new Uint8Array(length);
+  let t = new Uint8Array(0);
+  for (let i = 1; i <= blocks; i++) {
+    const input = concat(t, info, new Uint8Array([i]));
+    t = new Uint8Array(await crypto.subtle.sign("HMAC", prkKey, input));
+    const needed = Math.min(32, length - (i - 1) * 32);
+    okm.set(t.slice(0, needed), (i - 1) * 32);
+  }
+  return okm;
+}
+
+async function vapidJwt(audience, subject, privateJwk) {
+  const enc    = new TextEncoder();
+  const now    = Math.floor(Date.now() / 1000);
+  const header = b64url(enc.encode(JSON.stringify({ typ: "JWT", alg: "ES256" })));
+  const payload= b64url(enc.encode(JSON.stringify({ aud: audience, exp: now + 43200, sub: subject })));
+  const input  = `${header}.${payload}`;
+  const key    = await crypto.subtle.importKey("jwk", privateJwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const sig    = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, enc.encode(input));
+  return `${input}.${b64url(sig)}`;
+}
+
+async function encryptPush(subscription, payloadObj) {
+  const enc           = new TextEncoder();
+  const plaintext     = enc.encode(JSON.stringify(payloadObj));
+  const uaPubBytes    = fromB64url(subscription.keys.p256dh);
+  const authSecret    = fromB64url(subscription.keys.auth);
+
+  const asKP          = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const asPubBytes    = new Uint8Array(await crypto.subtle.exportKey("raw", asKP.publicKey));
+  const uaPubKey      = await crypto.subtle.importKey("raw", uaPubBytes, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const ecdhSecret    = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: uaPubKey }, asKP.privateKey, 256));
+
+  const info = concat(enc.encode("WebPush: info\x00"), uaPubBytes, asPubBytes);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const ikm  = await hkdf(authSecret, ecdhSecret, info, 32);
+  const cek  = await hkdf(salt, ikm, enc.encode("Content-Encoding: aes128gcm\x00"), 16);
+  const nonce= await hkdf(salt, ikm, enc.encode("Content-Encoding: nonce\x00"), 12);
+
+  const aesKey    = await crypto.subtle.importKey("raw", cek, { name: "AES-GCM" }, false, ["encrypt"]);
+  const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, aesKey, concat(plaintext, new Uint8Array([0x02]))));
+
+  const rs = new Uint8Array(4);
+  new DataView(rs.buffer).setUint32(0, 4096, false);
+  return concat(salt, rs, new Uint8Array([65]), asPubBytes, encrypted);
+}
+
+async function sendWebPush(subscription, payload, env) {
+  const privateJwk = JSON.parse(env.VAPID_PRIVATE_JWK);
+  const pubKey     = env.VAPID_PUBLIC_KEY;
+  const subject    = env.VAPID_SUBJECT || "mailto:noreply@bookehtrim.co.uk";
+
+  const endpointUrl = new URL(subscription.endpoint);
+  const audience    = `${endpointUrl.protocol}//${endpointUrl.host}`;
+  const jwt         = await vapidJwt(audience, subject, privateJwk);
+  const body        = await encryptPush(subscription, payload);
+
+  const res = await fetch(subscription.endpoint, {
+    method:  "POST",
+    headers: {
+      "Authorization":    `vapid t=${jwt},k=${pubKey}`,
+      "Content-Type":     "application/octet-stream",
+      "Content-Encoding": "aes128gcm",
+      "TTL":              "86400",
+    },
+    body,
+  });
+
+  if (!res.ok && res.status !== 201) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`Push service returned ${res.status}: ${txt}`);
+  }
+  return res;
+}
+
+// POST /api/send-push
+// Reads the barber's push subscription from Firestore and sends a notification.
+async function handleSendPush(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON" }, 400); }
+
+  const { barberId, payload } = body ?? {};
+  if (!barberId || !payload) return json({ error: "Missing barberId or payload" }, 400);
+
+  if (!env.VAPID_PRIVATE_JWK) return json({ error: "VAPID not configured" }, 500);
+
+  try {
+    const base    = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+    const fbRes   = await fetch(`${base}/barbers/${barberId}`);
+    if (!fbRes.ok) return json({ error: "Barber not found" }, 404);
+
+    const fbData      = await fbRes.json();
+    const subField    = fbData.fields?.pushSubscription;
+    if (!subField) return json({ error: "No push subscription found for this barber" }, 404);
+
+    // Firestore stores the subscription as a nested map — reconstruct it
+    const subFields = subField.mapValue?.fields ?? {};
+    const keysFields= subFields.keys?.mapValue?.fields ?? {};
+    const subscription = {
+      endpoint: subFields.endpoint?.stringValue,
+      keys: {
+        p256dh: keysFields.p256dh?.stringValue,
+        auth:   keysFields.auth?.stringValue,
+      },
+    };
+
+    if (!subscription.endpoint || !subscription.keys.p256dh) {
+      return json({ error: "Invalid subscription data in Firestore" }, 400);
+    }
+
+    // Merge stored sound/vibrate prefs into payload if not overridden
+    const prefsFields = fbData.fields?.notificationPrefs?.mapValue?.fields ?? {};
+    const mergedPayload = {
+      sound:   prefsFields.sound?.booleanValue   !== false,
+      vibrate: prefsFields.vibrate?.booleanValue !== false,
+      ...payload,
+    };
+
+    await sendWebPush(subscription, mergedPayload, env);
+    return json({ ok: true });
+  } catch (err) {
+    console.error("[send-push]", err);
+    return json({ error: err.message }, 500);
+  }
+}
+
 // ── Route handlers ────────────────────────────────────────────────────────────
 
 // POST /api/connect
@@ -603,6 +757,8 @@ export default {
         return handleCheckStripe(request, env);
       case "/api/stripe-webhook":
         return handleStripeWebhook(request, env);
+      case "/api/send-push":
+        return handleSendPush(request, env);
       case "/api/billing-portal":
         return handleBillingPortal(request, env);
 

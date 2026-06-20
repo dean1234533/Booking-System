@@ -33,6 +33,8 @@ import ParQSubmit           from "./pages/ParQSubmit";
 import ColourApprovalPage   from "./pages/ColourApprovalPage";
 import QueuePage            from "./pages/QueuePage";
 import FoodGenerator       from "./pages/FoodGenerator";
+import ClientPortal        from "./pages/ClientPortal";
+import PTBookingPage        from "./pages/PTBookingPage";
 
 // Split Nav & Footer imports
 import Nav               from "./components/Nav";
@@ -206,7 +208,9 @@ function AppShell() {
                       || location.pathname.startsWith('/par-q')
                       || location.pathname.startsWith('/colour-approval')
                       || location.pathname.startsWith('/queue')
-                      || location.pathname.startsWith('/food-generator');
+                      || location.pathname.startsWith('/food-generator')
+                      || location.pathname.startsWith('/client-portal')
+                      || location.pathname.startsWith('/pt-book');
 
   const computedPageTitle = useMemo(() => {
     if (tenantBarber) {
@@ -291,6 +295,8 @@ function AppShell() {
             <Route path="/colour-approval/:tradieId/:paletteId"   element={<ColourApprovalPage />} />
             <Route path="/queue/:shopId"                          element={<QueuePage />} />
             <Route path="/food-generator/:barberId/:token"        element={<FoodGenerator />} />
+            <Route path="/client-portal/:trainerId/:clientId"    element={<ClientPortal />} />
+            <Route path="/pt-book/:ptId"                         element={<PTBookingPage />} />
             <Route path="/onboarding" element={<BarberRoute><Onboarding /></BarberRoute>} />
             <Route path="/dashboard/*" element={<BarberRoute><Dashboard onProfileUpdate={identifyTenant} /></BarberRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />

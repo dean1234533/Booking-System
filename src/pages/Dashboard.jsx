@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Box, Snackbar, Tabs, Tab, CircularProgress,
+  Box, Snackbar, CircularProgress, Typography,
   useMediaQuery, useTheme
 } from "@mui/material";
 import {
@@ -8,7 +8,6 @@ import {
   Store as StoreIcon,
   Person as PersonIcon,
   ListAlt as ListIcon,
-  Reviews as ReviewsIcon,
   Payments as PaymentsIcon,
   Palette as PaletteIcon,
   Nfc as NfcIcon,
@@ -19,6 +18,14 @@ import {
   RestaurantMenu as RestaurantMenuIcon,
   TrendingUp as TrendingUpIcon,
   Assignment as AssignmentIcon,
+  ColorLens as ColorLensIcon,
+  RequestQuote as RequestQuoteIcon,
+  Today as TodayIcon,
+  ContentCut as ContentCutIcon,
+  NotificationsActive as NotificationsActiveIcon,
+  ReceiptLong as ReceiptLongIcon,
+  Calculate as CalculateIcon,
+  Reviews as ReviewsIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -40,17 +47,19 @@ import { db } from "../firebase/config";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 import DashboardHeader     from "../components/dashboard/DashboardHeader";
+import DashboardTabBar     from "../components/dashboard/DashboardTabBar";
+import PWAInstallBanner    from "../components/dashboard/PWAInstallBanner";
+import OfflineIndicator    from "../components/dashboard/OfflineIndicator";
 import ManualBookingDialog from "../components/dashboard/ManualBookingDialog";
 import ScheduleTab  from "../components/dashboard/tabs/ScheduleTab";
 import BookingsTab  from "../components/dashboard/tabs/BookingsTab";
 import ProfileTab   from "../components/dashboard/tabs/ProfileTab";
 import ServicesTab  from "../components/dashboard/tabs/ServicesTab";
-import ReviewsTab   from "../components/dashboard/tabs/ReviewsTab";
 import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
+import ReviewsTab   from "../components/dashboard/tabs/ReviewsTab";
 import DesignTab    from "../components/dashboard/tabs/DesignTab";
 import PayTab       from "../components/dashboard/tabs/PayTab";
 import DomainTab    from "../components/dashboard/tabs/DomainTab";
-import ToolkitTab   from "../components/dashboard/tabs/ToolkitTab";
 // ── Trainer-only tabs ──
 import ClientProfileTab    from "../components/dashboard/tabs/ClientProfileTab";
 import WorkoutPlansTab     from "../components/dashboard/tabs/WorkoutPlansTab";
@@ -62,6 +71,17 @@ import ClientFormsTab      from "../components/dashboard/tabs/ClientFormsTab";
 import FoodGeneratorTab    from "../components/dashboard/tabs/FoodGeneratorTab";
 import AutomationTab       from "../components/dashboard/tabs/AutomationTab";
 import NotepadTab          from "../components/dashboard/tabs/NotepadTab";
+// ── Decorator + barber-specific tabs ──
+import ColourApprovalTab   from "../components/dashboard/tabs/ColourApprovalTab";
+import QuoteTab            from "../components/dashboard/tabs/QuoteTab";
+import DayPlannerTab       from "../components/dashboard/tabs/DayPlannerTab";
+import QueueManagementTab  from "../components/dashboard/tabs/QueueManagementTab";
+import HaircutTab          from "../components/dashboard/tabs/HaircutTab";
+// ── Hairdresser-specific tabs ──
+import TaxFinanceTab            from "../components/dashboard/tabs/TaxFinanceTab";
+import InvoiceTab               from "../components/dashboard/tabs/InvoiceTab";
+import NotificationSettingsTab  from "../components/dashboard/tabs/NotificationSettingsTab";
+import PTAvailabilityTab        from "../components/dashboard/tabs/PTAvailabilityTab";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -107,9 +127,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     customHostnameId: "",
   });
 
+  const [reviews,     setReviews]     = useState([]);
   const [bookings,    setBookings]    = useState([]);
   const [slots,        setSlots]       = useState([]);
-  const [reviews,      setReviews]     = useState([]);
   const [newSlot,      setNewSlot]     = useState({
     date: new Date().toISOString().split("T")[0], time: "", repeat: "none"
   });
@@ -162,6 +182,23 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       } catch (e) { console.error("Post-Stripe return check failed:", e); }
     })();
   }, [barber]);
+
+  // ── Jump to tab from ?tab= query param (e.g. after onboarding) ───────────
+  useEffect(() => {
+    if (dataLoading) return;
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    if (!tabParam) return;
+    window.history.replaceState({}, "", "/dashboard");
+    const map = {
+      domain:   userRole.isOwner && !initialTenant ? 7 : -1,
+      finance:  4,
+      design:   userRole.isOwner ? 6 : -1,
+      reviews:  userRole.isOwner ? 5 : -1,
+    };
+    const idx = map[tabParam] ?? -1;
+    if (idx >= 0) setTab(idx);
+  }, [dataLoading]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
   async function loadData() {
@@ -485,22 +522,60 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
   // ── Tab config ────────────────────────────────────────────────────────────
   // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
-  const brandColor = profile.brandColor || "#C9A84C";
-  const isTrainer  = profile.businessType === "trainer";
+  const brandColor      = profile.brandColor || "#C9A84C";
+  const isTrainer       = profile.businessType === "trainer";
+  const isDecorator     = profile.businessType === "decorator";
+  const isHairdresser   = profile.businessType === "hairdresser";
+  const isBarber        = !profile.businessType || profile.businessType === "barber";
+  const businessTypeLabel = isTrainer ? "Personal Trainer"
+    : isDecorator ? "Decorator"
+    : isHairdresser ? "Hairdresser"
+    : "Barber";
 
-  // Trainer-only tabs — appended after the standard tabs and addressed by key.
+  // Web shows essentials only; installed PWA shows all tabs.
+  const isPWA = window.matchMedia("(display-mode: standalone)").matches || !!window.navigator.standalone;
+
+  // Trainer-only tabs — client-related tools are PWA-only; web shows nothing client-facing.
   const trainerTabs = isTrainer ? [
-    { key: "clients",     label: "Clients",      icon: <PeopleIcon /> },
-    { key: "workouts",    label: "Workouts",     icon: <FitnessCenterIcon /> },
-    { key: "nutrition",   label: "Nutrition",    icon: <RestaurantMenuIcon /> },
-    { key: "progress",    label: "Progress",     icon: <TrendingUpIcon /> },
-    { key: "sessionprep", label: "Session Prep", icon: <AccessTimeIcon /> },
-    { key: "exercises",   label: "Exercises",    icon: <FitnessCenterIcon /> },
-    { key: "forms",       label: "Forms",        icon: <AssignmentIcon /> },
-    { key: "foodgen",     label: "Food Gen",     icon: <RestaurantMenuIcon /> },
-    { key: "automation",  label: "Automation",   icon: <AutoAwesomeIcon /> },
-    { key: "notepad",     label: "Notepad",      icon: <ListIcon /> },
-    { key: "toolkit",     label: "Toolkit",      icon: <AutoAwesomeIcon /> },
+    { key: "pt-availability", label: "Availability", icon: <AccessTimeIcon /> },
+    ...(isPWA ? [
+      { key: "clients",     label: "Clients",      icon: <PeopleIcon /> },
+      { key: "workouts",    label: "Workouts",     icon: <FitnessCenterIcon /> },
+      { key: "nutrition",   label: "Nutrition",    icon: <RestaurantMenuIcon /> },
+      { key: "progress",    label: "Progress",     icon: <TrendingUpIcon /> },
+      { key: "forms",       label: "Forms",        icon: <AssignmentIcon /> },
+      { key: "automation",  label: "Automation",   icon: <AutoAwesomeIcon /> },
+      { key: "sessionprep", label: "Session Prep", icon: <AccessTimeIcon /> },
+      { key: "exercises",   label: "Exercises",    icon: <FitnessCenterIcon /> },
+      { key: "foodgen",     label: "Food Gen",     icon: <RestaurantMenuIcon /> },
+      { key: "notepad",     label: "Notepad",      icon: <ListIcon /> },
+    ] : []),
+  ] : [];
+
+  const decoratorTabs = isDecorator ? [
+    { key: "colourapproval", label: "Colour",   icon: <ColorLensIcon /> },
+    { key: "quote",          label: "Quotes",   icon: <RequestQuoteIcon /> },
+    { key: "dayplanner",     label: "Day Plan", icon: <TodayIcon /> },
+    ...(isPWA ? [
+      { key: "dec-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
+      { key: "dec-tax",      label: "Tax",      icon: <CalculateIcon /> },
+    ] : []),
+  ] : [];
+
+  const hairdresserTabs = isHairdresser ? [
+    ...(isPWA ? [
+      { key: "hd-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
+      { key: "hd-tax",      label: "Tax",      icon: <CalculateIcon /> },
+    ] : []),
+  ] : [];
+
+  const barberTabs = isBarber ? [
+    { key: "queue",   label: "Queue",   icon: <PeopleIcon /> },
+    { key: "haircut", label: "Haircut", icon: <ContentCutIcon /> },
+    ...(isPWA ? [
+      { key: "bar-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
+      { key: "bar-tax",      label: "Tax",      icon: <CalculateIcon /> },
+    ] : []),
   ] : [];
 
   const tabs = [
@@ -508,23 +583,134 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { label: "Bookings", icon: <StoreIcon /> },
     { label: "Profile",  icon: <PersonIcon /> },
     { label: "Services", icon: <ListIcon /> },
-    ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }]  : []),
     { label: "Finance",  icon: <PaymentsIcon /> },
+    ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }]  : []),
     ...(userRole.isOwner ? [{ label: "Design",  icon: <PaletteIcon /> }]  : []),
     // Domain tab: owner only AND not inside a tenant dashboard
     ...(userRole.isOwner && !initialTenant ? [{ label: "Domain", icon: <LanguageIcon /> }] : []),
     { label: "Pay",      icon: <NfcIcon /> },
+    { key: "notifications", label: "Notifications", icon: <NotificationsActiveIcon /> },
     ...trainerTabs,
+    ...decoratorTabs,
+    ...hairdresserTabs,
+    ...barberTabs,
   ];
   // Trainer tabs are addressed by key (robust to the conditional tabs above).
   const tabIdx = (key) => tabs.findIndex((t) => t.key === key);
 
-  // Derive tab indices dynamically based on role so panels always align
-  const IDX_REVIEWS = 4;
-  const IDX_FINANCE = userRole.isOwner ? 5 : 4;
-  const IDX_DESIGN  = 6;  // owner only
-  const IDX_DOMAIN  = 7;  // owner only
-  const IDX_PAY = userRole.isOwner ? (initialTenant ? 7 : 8) : 5;
+  // Derive tab indices — must match the tabs array order above exactly:
+  // 0:Schedule 1:Bookings 2:Profile 3:Services 4:Finance [5:Reviews] [6:Design] [7:Domain] 8|7|5:Pay
+  const IDX_FINANCE = 4;                                               // always position 4
+  const IDX_REVIEWS = userRole.isOwner ? 5 : -1;                      // owner only
+  const IDX_DESIGN  = userRole.isOwner ? 6 : -1;                      // owner only
+  const IDX_DOMAIN  = userRole.isOwner && !initialTenant ? 7 : -1;   // owner only, no tenant
+  const IDX_PAY     = userRole.isOwner ? (initialTenant ? 7 : 8) : 5;
+
+  // ── Grouped tab nav config (drives DashboardTabBar) ──────────────────────────
+  // Items whose tab key isn't in the current tabs array (e.g. PWA-only tabs on web)
+  // return index -1 from tabIdx — filter those out so no broken menu entries appear.
+  const filterItems = (items) => items.filter(i => i.index !== -1);
+
+  const tabGroups = [
+    {
+      label: "Booking",
+      icon: <AccessTimeIcon />,
+      items: filterItems([
+        { label: "Schedule", icon: <AccessTimeIcon />, index: 0 },
+        { label: "Bookings", icon: <StoreIcon />,      index: 1 },
+        ...(isBarber ? [
+          { label: "Queue", icon: <PeopleIcon />, index: tabIdx("queue") },
+        ] : []),
+      ]),
+    },
+    {
+      label: "Clients",
+      icon: <PeopleIcon />,
+      items: filterItems([
+        ...(userRole.isOwner ? [{ label: "Reviews",      icon: <ReviewsIcon />, index: IDX_REVIEWS }] : []),
+        ...(isTrainer        ? [{ label: "Availability", icon: <AccessTimeIcon />, index: tabIdx("pt-availability") }] : []),
+        ...(isTrainer        ? [{ label: "Clients",      icon: <PeopleIcon />, index: tabIdx("clients") }] : []),
+      ]),
+    },
+    {
+      label: "Website",
+      icon: <LanguageIcon />,
+      items: filterItems([
+        { label: "Profile",  icon: <PersonIcon />,  index: 2 },
+        { label: "Services", icon: <ListIcon />,    index: 3 },
+        ...(userRole.isOwner                   ? [{ label: "Design",  icon: <PaletteIcon />,  index: IDX_DESIGN }] : []),
+        ...(userRole.isOwner && !initialTenant ? [{ label: "Domain",  icon: <LanguageIcon />, index: IDX_DOMAIN }] : []),
+      ]),
+    },
+    {
+      label: "Money",
+      icon: <PaymentsIcon />,
+      items: filterItems([
+        { label: "Finance", icon: <PaymentsIcon />, index: IDX_FINANCE },
+        { label: "Pay",     icon: <NfcIcon />,      index: IDX_PAY },
+        ...(isBarber ? [
+          { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("bar-invoices") },
+          { label: "Tax",      icon: <CalculateIcon />,   index: tabIdx("bar-tax") },
+        ] : isHairdresser ? [
+          { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("hd-invoices") },
+          { label: "Tax",      icon: <CalculateIcon />,   index: tabIdx("hd-tax") },
+        ] : isDecorator ? [
+          { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("dec-invoices") },
+          { label: "Tax",      icon: <CalculateIcon />,   index: tabIdx("dec-tax") },
+        ] : []),
+      ]),
+    },
+    // ── Barber tools ──
+    ...(isBarber ? [{
+      label: "Tools",
+      icon: <AutoAwesomeIcon />,
+      items: filterItems([
+        { label: "Haircut", icon: <ContentCutIcon />, index: tabIdx("haircut") },
+      ]),
+    }] : []),
+    // ── Decorator projects ──
+    ...(isDecorator ? [{
+      label: "Projects",
+      icon: <RequestQuoteIcon />,
+      items: filterItems([
+        { label: "Colour",   icon: <ColorLensIcon />,    index: tabIdx("colourapproval") },
+        { label: "Quotes",   icon: <RequestQuoteIcon />, index: tabIdx("quote") },
+        { label: "Day Plan", icon: <TodayIcon />,        index: tabIdx("dayplanner") },
+      ]),
+    }] : []),
+    // ── Settings (all business types) ──
+    {
+      label: "Settings",
+      icon: <NotificationsActiveIcon />,
+      items: filterItems([
+        { label: "Notifications", icon: <NotificationsActiveIcon />, index: tabIdx("notifications") },
+      ]),
+    },
+    // ── Trainer groups ──
+    ...(isTrainer ? [
+      {
+        label: "Training",
+        icon: <FitnessCenterIcon />,
+        items: filterItems([
+          { label: "Workouts",     icon: <FitnessCenterIcon />,  index: tabIdx("workouts") },
+          { label: "Nutrition",    icon: <RestaurantMenuIcon />, index: tabIdx("nutrition") },
+          { label: "Progress",     icon: <TrendingUpIcon />,     index: tabIdx("progress") },
+          { label: "Session Prep", icon: <AccessTimeIcon />,     index: tabIdx("sessionprep") },
+          { label: "Exercises",    icon: <FitnessCenterIcon />,  index: tabIdx("exercises") },
+          { label: "Food Gen",     icon: <RestaurantMenuIcon />, index: tabIdx("foodgen") },
+        ]),
+      },
+      {
+        label: "Coaching",
+        icon: <AssignmentIcon />,
+        items: filterItems([
+          { label: "Forms",      icon: <AssignmentIcon />,     index: tabIdx("forms") },
+          { label: "Automation", icon: <AutoAwesomeIcon />,    index: tabIdx("automation") },
+          { label: "Notepad",    icon: <ListIcon />,           index: tabIdx("notepad") },
+        ]),
+      },
+    ] : []),
+  ];
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (authLoading || (dataLoading && !barber)) {
@@ -566,18 +752,20 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         handleSaveProfile={handleSaveProfile}
       />
 
+      <OfflineIndicator />
+      <PWAInstallBanner brandColor={brandColor} />
+
       <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 1.5, md: 3 }, mt: 3 }}>
-        <Tabs
-          value={tab} onChange={(_, v) => setTab(v)}
-          sx={{ mb: 2, borderBottom: "1px solid #eee" }}
-          variant="scrollable"
-          scrollButtons="auto"
-          allowScrollButtonsMobile
-        >
-          {tabs.map((t, i) => (
-            <Tab key={i} icon={t.icon} iconPosition="start" label={isMobile ? "" : t.label} />
-          ))}
-        </Tabs>
+        <Typography sx={{ fontWeight: 800, fontSize: { xs: "1rem", md: "1.15rem" }, color: brandColor, mb: 1.5, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          {businessTypeLabel} Dashboard
+        </Typography>
+        <DashboardTabBar
+          groups={tabGroups}
+          activeTab={tab}
+          onTabChange={setTab}
+          brandColor={brandColor}
+          isMobile={isMobile}
+        />
 
         {/* ── 0 Schedule ── */}
         <TabPanel value={tab} index={0}>
@@ -623,13 +811,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 4 Reviews (owner only) ── */}
+        {/* ── Reviews (owner only) ── */}
         {userRole.isOwner && (
           <TabPanel value={tab} index={IDX_REVIEWS}>
-            <ReviewsTab
-              reviews={reviews}
-              onDeleteReview={handleDeleteReview}
-            />
+            <ReviewsTab reviews={reviews} onDeleteReview={handleDeleteReview} shopId={userRole.shopId} brandColor={brandColor} />
           </TabPanel>
         )}
 
@@ -681,9 +866,17 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
+        {/* ── Notifications settings ── */}
+        <TabPanel value={tab} index={tabIdx("notifications")}>
+          <NotificationSettingsTab barber={barber} brandColor={brandColor} />
+        </TabPanel>
+
         {/* ── Trainer-only tabs ── */}
         {isTrainer && (
           <>
+            <TabPanel value={tab} index={tabIdx("pt-availability")}>
+              <PTAvailabilityTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
             <TabPanel value={tab} index={tabIdx("clients")}>
               <ClientProfileTab barber={barber} profile={profile} brandColor={brandColor} bookings={bookings} />
             </TabPanel>
@@ -714,8 +907,56 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             <TabPanel value={tab} index={tabIdx("notepad")}>
               <NotepadTab barber={barber} profile={profile} brandColor={brandColor} />
             </TabPanel>
-            <TabPanel value={tab} index={tabIdx("toolkit")}>
-              <ToolkitTab brandColor={brandColor} />
+          </>
+        )}
+
+        {/* ── Decorator-only tabs ── */}
+        {isDecorator && (
+          <>
+            <TabPanel value={tab} index={tabIdx("colourapproval")}>
+              <ColourApprovalTab barber={barber} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("quote")}>
+              <QuoteTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("dayplanner")}>
+              <DayPlannerTab barber={barber} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("dec-invoices")}>
+              <InvoiceTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("dec-tax")}>
+              <TaxFinanceTab barberId={barber?.uid} profile={profile} />
+            </TabPanel>
+          </>
+        )}
+
+        {/* ── Hairdresser-only tabs ── */}
+        {isHairdresser && (
+          <>
+            <TabPanel value={tab} index={tabIdx("hd-invoices")}>
+              <InvoiceTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("hd-tax")}>
+              <TaxFinanceTab barberId={barber?.uid} profile={profile} />
+            </TabPanel>
+          </>
+        )}
+
+        {/* ── Barber-only tabs ── */}
+        {isBarber && (
+          <>
+            <TabPanel value={tab} index={tabIdx("queue")}>
+              <QueueManagementTab barber={barber} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("haircut")}>
+              <HaircutTab barber={barber} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("bar-invoices")}>
+              <InvoiceTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("bar-tax")}>
+              <TaxFinanceTab barberId={barber?.uid} profile={profile} />
             </TabPanel>
           </>
         )}

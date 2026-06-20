@@ -25,6 +25,8 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import SearchIcon from "@mui/icons-material/Search";
 import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
+import LinkIcon from "@mui/icons-material/Link";
+import CheckIcon from "@mui/icons-material/Check";
 import {
   getOrCreateClient,
   getClientProfile,
@@ -51,6 +53,7 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
   const [tabValue, setTabValue] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     loadClients();
@@ -144,6 +147,17 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
       setError("Failed to update profile: " + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCopyPortalLink = async () => {
+    const url = `${window.location.origin}/client-portal/${trainerId}/${selectedClientId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    } catch {
+      prompt("Copy this link and send to your client:", url);
     }
   };
 
@@ -247,7 +261,16 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
                       : "Recently"
                   }`}
                   action={
-                    <Box sx={{ display: "flex", gap: 1 }}>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                      <Button
+                        size="small"
+                        onClick={handleCopyPortalLink}
+                        startIcon={linkCopied ? <CheckIcon /> : <LinkIcon />}
+                        variant="outlined"
+                        color={linkCopied ? "success" : "primary"}
+                      >
+                        {linkCopied ? "Copied!" : "Client Portal Link"}
+                      </Button>
                       <Button
                         size="small"
                         onClick={handleWhatsApp}

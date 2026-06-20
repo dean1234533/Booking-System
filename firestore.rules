@@ -186,6 +186,14 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == barberId;
       }
 
+      // ── PT availability slots — owner manages, public read + client can book ─
+      match /ptSlots/{slotId} {
+        allow read: if true;
+        allow create, delete: if request.auth != null && request.auth.uid == barberId;
+        allow update: if (request.auth != null && request.auth.uid == barberId)
+                      || resource.data.status == "available";
+      }
+
       // ── Automation schedules + sent history — owner only ───────────────────
       match /automationSchedules/{scheduleId} {
         allow read, write: if request.auth != null && request.auth.uid == barberId;

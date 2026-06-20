@@ -199,15 +199,15 @@ export default function TenantHome({ tenant: initialTenant }) {
     <Box sx={{ bgcolor: "#FFFFFF", minHeight: "100vh", overflowX: 'hidden' }}>
       
       {/* ── 1. HERO ──────────────────────────────────────────────────────── */}
-      {/* pt biases the centered content downward on desktop so it sits in the
-          lower-middle of the banner rather than too near the top. */}
+      {/* 100dvh = the real visible viewport on every device (handles mobile
+          browser chrome), so the hero always fully covers the screen. */}
       <Box sx={{
         height: "100vh",
-        pt: { xs: "6vh", md: "14vh" },
+        minHeight: "100dvh",
         display: "flex", alignItems: "center", justifyContent: "center",
         background: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('${heroImageUrl}')`,
-        backgroundSize: "cover", 
-        backgroundPosition: "bottom center",
+        backgroundSize: "cover",
+        backgroundPosition: "center center",
         color: "white", textAlign: "center"
       }}>
         <Container maxWidth="lg">
@@ -548,22 +548,6 @@ export default function TenantHome({ tenant: initialTenant }) {
             </Box>
           )}
 
-          {/* Write a review CTA */}
-          <Box sx={{ textAlign: "center", mt: 7 }}>
-            <Button
-              startIcon={<RateReviewIcon sx={{ fontSize: 16 }} />}
-              onClick={() => navigate(`/review/${freshTenant?.id || freshTenant?.uid}`)}
-              sx={{
-                bgcolor: brandColor, color: "#0d0d0d",
-                px: 5, py: 1.8, borderRadius: 0,
-                fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", fontSize: "0.78rem",
-                boxShadow: "none",
-                "&:hover": { bgcolor: brandColor, filter: "brightness(1.1)", boxShadow: "none" },
-              }}
-            >
-              Write a Review
-            </Button>
-          </Box>
         </Container>
       </Box>
 

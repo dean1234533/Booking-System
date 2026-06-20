@@ -529,6 +529,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   const [consultationSlot, setConsultationSlot] = useState(null);
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isSmall  = useMediaQuery('(max-width: 480px)');
+  const isTablet = useMediaQuery('(max-width: 1024px)');
 
   const fontKey     = barber?.siteFont || profile?.siteFont || "bebas";
   const displayFont = getFontFamily(fontKey, "bebas");
@@ -784,7 +785,8 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Investment</p>
             <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 16 }}>Simple, Transparent Pricing</h2>
             <p style={{ color: 'var(--ink-soft)', textAlign: 'center', fontWeight: 300, maxWidth: 460, margin: '0 auto 52px' }}>No contracts. No hidden fees. Just results.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24 }}>
+            {/* On tablet (iPad) the cards stack in a single, wider column; desktop keeps the multi-column grid. */}
+            <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24, maxWidth: isTablet ? 560 : '100%', margin: isTablet ? '0 auto' : undefined }}>
               {pricingPlans.map((plan, i) => (
                 <PricingCard key={i} plan={plan} brandColor={brandColor} displayFont={displayFont}/>
               ))}
@@ -801,14 +803,6 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Testimonials</p>
             <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', color: '#fff', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 48 }}>Client Experiences</h2>
             <ReviewCarousel reviews={reviews} brandColor={brandColor} displayFont={displayFont} cardBg="#ffffff" cardBorder="2px solid #0f0f0f" />
-            <div style={{ marginTop: 48, textAlign: 'center' }}>
-              <button
-                onClick={() => window.location.href = `/review/${barber?.uid}`}
-                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.25)', color: '#fff', padding: '12px 30px', borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = 'var(--ink)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#fff'; }}
-              >✏️ Leave a Review</button>
-            </div>
           </div>
         </section>
       </FadeIn>

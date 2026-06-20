@@ -3,7 +3,6 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { Star, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
-import RateReviewIcon  from '@mui/icons-material/RateReview';
 import TenantNav       from '../components/TenantNav';
 
 /* ─── Global style injection ─────────────────────────────── */
@@ -599,15 +598,6 @@ const DecoratorTemplate = ({ tenantData }) => {
               <p style={{ textAlign: 'center', color: 'var(--ink-soft)' }}>No reviews yet.</p>
             )}
 
-            <div className="dt-review-cta">
-              <button
-                onClick={() => window.location.href = `/review/${tenantData?.id || 'default'}`}
-                className="dt-form-btn"
-                style={{ background: 'transparent', border: '2px solid var(--ink)', color: 'var(--ink)' }}
-              >
-                <RateReviewIcon style={{ fontSize: 16, marginRight: 8 }} /> Leave a Review
-              </button>
-            </div>
           </div>
         </section>
 

@@ -10,7 +10,6 @@ import { Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography,
 } from '@mui/material';
-import RateReviewIcon from '@mui/icons-material/RateReview';
 
 /* ─── Injected styles ──────────────────────────────────────────────────────── */
 const HairdresserStyles = () => (
@@ -668,22 +667,6 @@ export default function HairdresserTemplate({ tenantData }) {
               </p>
             )}
 
-            <div style={{ marginTop: '2.5rem' }}>
-              <button
-                onClick={() => navigate(`/review/${shopId}`)}
-                style={{
-                  background: 'transparent', border: '1px solid rgba(255,255,255,0.2)',
-                  color: 'rgba(255,255,255,0.6)', padding: '0.75rem 1.75rem', borderRadius: 4,
-                  fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: '0.72rem',
-                  letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer',
-                  transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', gap: 8,
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)'; e.currentTarget.style.color = '#fff'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}
-              >
-                <RateReviewIcon style={{ fontSize: 15 }} /> Leave a Review
-              </button>
-            </div>
           </div>
         </section>
 

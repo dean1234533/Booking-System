@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  Box, Paper, Typography, Grid, Alert, Chip, Divider, Stack, Button, TextField
+  Box, Paper, Typography, Grid, Alert, Chip, Divider, Stack, Button, TextField,
 } from "@mui/material";
 import {
   CalendarMonth as CalendarIcon,
@@ -9,9 +9,8 @@ import {
 } from "@mui/icons-material";
 
 export default function BookingsTab({
-  bookings = [], isMobile, brandColor, handleCompleteBooking, handleCancelBooking
+  bookings = [], isMobile, brandColor, handleCompleteBooking, handleCancelBooking,
 }) {
-  // Default to today's date
   const todayStr = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
 

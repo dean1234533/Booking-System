@@ -32,12 +32,12 @@ function fmtDate(ts) {
 
 function darkField(brand) {
   return {
-    "& .MuiInputLabel-root":             { color: "rgba(255,255,255,0.3)", fontSize: "0.82rem" },
+    "& .MuiInputLabel-root":             { color: "rgba(0,0,0,0.5)", fontSize: "0.82rem" },
     "& .MuiInputLabel-root.Mui-focused": { color: brand },
     "& .MuiOutlinedInput-root": {
-      color: "#fff", borderRadius: 0,
-      "& fieldset":             { borderColor: "rgba(255,255,255,0.1)" },
-      "&:hover fieldset":       { borderColor: "rgba(255,255,255,0.22)" },
+      color: "#1a1a1a", borderRadius: 0,
+      "& fieldset":             { borderColor: "rgba(0,0,0,0.15)" },
+      "&:hover fieldset":       { borderColor: "rgba(0,0,0,0.3)" },
       "&.Mui-focused fieldset": { borderColor: brand },
     },
   };
@@ -126,18 +126,18 @@ export default function HaircutTab({ barber, brandColor }) {
           {view !== "search" && (
             <IconButton
               onClick={() => view === "add" ? setView("history") : reset()}
-              sx={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 0, color: "rgba(255,255,255,0.45)", "&:hover": { color: "#fff" } }}
+              sx={{ border: "1px solid rgba(0,0,0,0.15)", borderRadius: 0, color: "rgba(0,0,0,0.5)", "&:hover": { color: "#1a1a1a" } }}
             >
               <ArrowBackIcon fontSize="small" />
             </IconButton>
           )}
           <Box>
-            <Typography sx={{ color: "#fff", fontFamily: SERIF, fontSize: "1.5rem", fontWeight: 400 }}>
+            <Typography sx={{ color: "#1a1a1a", fontFamily: SERIF, fontSize: "1.5rem", fontWeight: 400 }}>
               {view === "search"  && "Haircut Records"}
               {view === "history" && `${key} · ${cuts.length} cut${cuts.length !== 1 ? "s" : ""}`}
               {view === "add"     && "Log New Haircut"}
             </Typography>
-            <Typography sx={{ color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", mt: 0.4 }}>
+            <Typography sx={{ color: "rgba(0,0,0,0.55)", fontSize: "0.8rem", mt: 0.4 }}>
               {view === "search"  && "Look up any client by their phone number to view or add their full cut history."}
               {view === "history" && "Full cut history — guard sizes, barber notes, and reference photos."}
               {view === "add"     && `Recording cut for ${key}.`}
@@ -167,7 +167,7 @@ export default function HaircutTab({ barber, brandColor }) {
               onKeyDown={e => e.key === "Enter" && search()}
               inputProps={{ inputMode: "tel" }}
               helperText="Records are stored per phone number — enter it to pull up their history."
-              FormHelperTextProps={{ sx: { color: "rgba(255,255,255,0.25)", fontSize: "0.75rem" } }}
+              FormHelperTextProps={{ sx: { color: "rgba(0,0,0,0.45)", fontSize: "0.75rem" } }}
               sx={fs}
             />
             {error && <Typography sx={{ color: "#ff6b6b", fontSize: "0.78rem" }}>{error}</Typography>}
@@ -187,15 +187,15 @@ export default function HaircutTab({ barber, brandColor }) {
       {view === "history" && (
         <Box sx={{ maxWidth: 680 }}>
           {cuts.length === 0 ? (
-            <Box sx={{ textAlign: "center", py: 10, border: "1px dashed rgba(255,255,255,0.08)" }}>
-              <ContentCutIcon sx={{ fontSize: 44, color: "rgba(255,255,255,0.1)", mb: 2 }} />
-              <Typography sx={{ color: "rgba(255,255,255,0.3)", fontSize: "0.88rem", mb: 1 }}>No cuts on record for this number.</Typography>
-              <Typography sx={{ color: "rgba(255,255,255,0.18)", fontSize: "0.78rem" }}>Use "Log New Cut" to record their first visit.</Typography>
+            <Box sx={{ textAlign: "center", py: 10, border: "1px dashed rgba(0,0,0,0.12)" }}>
+              <ContentCutIcon sx={{ fontSize: 44, color: "rgba(0,0,0,0.15)", mb: 2 }} />
+              <Typography sx={{ color: "rgba(0,0,0,0.5)", fontSize: "0.88rem", mb: 1 }}>No cuts on record for this number.</Typography>
+              <Typography sx={{ color: "rgba(0,0,0,0.35)", fontSize: "0.78rem" }}>Use "Log New Cut" to record their first visit.</Typography>
             </Box>
           ) : (
             <Stack spacing={1.5}>
               {cuts.map(cut => (
-                <Box key={cut.id} sx={{ bgcolor: "#1a1a1a", border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
+                <Box key={cut.id} sx={{ bgcolor: "#ffffff", border: "1px solid rgba(0,0,0,0.1)", overflow: "hidden" }}>
                   {cut.photoUrl && (
                     <Box component="img" src={cut.photoUrl} alt="haircut"
                       sx={{ width: "100%", height: 200, objectFit: "cover", objectPosition: "top center", display: "block" }} />
@@ -203,15 +203,15 @@ export default function HaircutTab({ barber, brandColor }) {
                   <Box sx={{ p: 2.5 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
                       <Box>
-                        <Typography sx={{ fontWeight: 700, fontSize: "0.92rem", color: "#fff" }}>
+                        <Typography sx={{ fontWeight: 700, fontSize: "0.92rem", color: "#1a1a1a" }}>
                           {cut.clientName || "Client"}
                         </Typography>
-                        <Typography sx={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.3)", mt: 0.2 }}>
+                        <Typography sx={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.5)", mt: 0.2 }}>
                           Cut by {cut.barberName} · {fmtDate(cut.createdAt)}
                         </Typography>
                       </Box>
                       <IconButton size="small" onClick={() => removeCut(cut.id)}
-                        sx={{ color: "rgba(255,255,255,0.2)", "&:hover": { color: "#ff6b6b" } }}>
+                        sx={{ color: "rgba(0,0,0,0.4)", "&:hover": { color: "#ff6b6b" } }}>
                         <DeleteIcon sx={{ fontSize: 16 }} />
                       </IconButton>
                     </Box>
@@ -227,7 +227,7 @@ export default function HaircutTab({ barber, brandColor }) {
                       </Box>
                     )}
                     {cut.notes && (
-                      <Typography sx={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.4)", fontStyle: "italic", lineHeight: 1.65 }}>
+                      <Typography sx={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.55)", fontStyle: "italic", lineHeight: 1.65 }}>
                         "{cut.notes}"
                       </Typography>
                     )}
@@ -246,8 +246,8 @@ export default function HaircutTab({ barber, brandColor }) {
           <Box
             onClick={() => fileRef.current?.click()}
             sx={{
-              width: "100%", height: 200, bgcolor: "#1a1a1a", mb: 3,
-              border: photoPreview ? "none" : "2px dashed rgba(255,255,255,0.1)",
+              width: "100%", height: 200, bgcolor: "#ffffff", mb: 3,
+              border: photoPreview ? "none" : "2px dashed rgba(0,0,0,0.15)",
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: "pointer", overflow: "hidden",
               "&:hover": { borderColor: `${brandColor}55` },
@@ -257,8 +257,8 @@ export default function HaircutTab({ barber, brandColor }) {
               <Box component="img" src={photoPreview} sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
             ) : (
               <Box sx={{ textAlign: "center" }}>
-                <AddPhotoAlternateIcon sx={{ fontSize: 36, color: "rgba(255,255,255,0.18)", mb: 0.75 }} />
-                <Typography sx={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.28)" }}>Click to add reference photo</Typography>
+                <AddPhotoAlternateIcon sx={{ fontSize: 36, color: "rgba(0,0,0,0.35)", mb: 0.75 }} />
+                <Typography sx={{ fontSize: "0.76rem", color: "rgba(0,0,0,0.5)" }}>Click to add reference photo</Typography>
               </Box>
             )}
           </Box>
@@ -282,7 +282,7 @@ export default function HaircutTab({ barber, brandColor }) {
             />
 
             <Box>
-              <Typography sx={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", mb: 1.5 }}>
+              <Typography sx={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(0,0,0,0.5)", mb: 1.5 }}>
                 Guard Numbers
               </Typography>
               <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>

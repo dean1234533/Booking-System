@@ -1,0 +1,22 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Haircut memory photos — barber uploads, public read
+    match /haircutMemory/{barberId}/{phone}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == barberId;
+    }
+
+    // General barber uploads (logos, hero images, etc.)
+    match /barbers/{barberId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == barberId;
+    }
+
+    // Deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

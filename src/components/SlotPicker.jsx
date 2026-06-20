@@ -1,99 +1,141 @@
-// src/components/SlotPicker.jsx
-// Shows available time slots for a barber grouped by date.
-// Client clicks a slot to proceed to /book/:slotId
-
-import { useNavigate } from "react-router-dom";
-import {
-  Box,
-  Typography,
-  Button,
-  Divider,
-  Skeleton,
-  Alert,
+import React, { useState, useMemo } from "react";
+import { 
+  Grid, Button, Typography, CircularProgress, Box, 
+  Paper, Divider, Stack 
 } from "@mui/material";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import { formatDate, formatTime } from "../utils/formatters";
+import { CalendarMonth as CalendarIcon } from "@mui/icons-material";
 
-// Group slots by date string for display
-function groupByDate(slots) {
-  return slots.reduce((acc, slot) => {
-    const dateKey = formatDate(slot.date);
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(slot);
-    return acc;
-  }, {});
-}
+export default function SlotPicker({
+  slots,
+  loading,
+  error,
+  brandColor,
+  onSelect,
+  displayMode = "all-times",
+  busyBlocks = []
+}) {
+  const activeColor = brandColor || "#C9A84C";
 
-export default function SlotPicker({ slots, loading, error }) {
-  const navigate = useNavigate();
+  const [selectedDate, setSelectedDate] = useState(null);
 
-  if (loading) {
+  const availableSlots = useMemo(() => {
+    let filtered = (slots || []).filter(slot => !slot.status || slot.status.toLowerCase() === "open");
+
+    // Filter based on calendar sync display mode
+    if (displayMode === "free-slots") {
+      // Hide slots that overlap with calendar events
+      filtered = filtered.filter(slot =>
+        !busyBlocks.some(busy => busy.date === slot.date && busy.time === slot.time)
+      );
+    } else if (displayMode === "availability-blocks") {
+      // Show only slots that are explicitly marked as available
+      // This would require a separate availability blocks array
+      // For now, we'll keep all (this feature needs admin-side availability marking)
+      // TODO: Implement availability blocks for business owners
+    }
+
+    return filtered;
+  }, [slots, displayMode, busyBlocks]);
+
+  const groupedSlots = useMemo(() => {
+    return availableSlots.reduce((acc, slot) => {
+      if (!acc[slot.date]) acc[slot.date] = [];
+      acc[slot.date].push(slot);
+      return acc;
+    }, {});
+  }, [availableSlots]);
+
+  const uniqueDates = useMemo(() => {
+    return Object.keys(groupedSlots).sort((a, b) => new Date(a) - new Date(b));
+  }, [groupedSlots]);
+
+  // Always show the first available date when the user hasn't picked one,
+  // or when their previously selected date no longer has slots.
+  const effectiveDate = (selectedDate && groupedSlots[selectedDate])
+    ? selectedDate
+    : (uniqueDates[0] || null);
+
+  if (loading) return <Box display="flex" justifyContent="center" py={4}><CircularProgress sx={{ color: activeColor }} /></Box>;
+  if (error) return <Typography color="error" textAlign="center">{error}</Typography>;
+
+  if (availableSlots.length === 0) {
     return (
-      <Box>
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} variant="rounded" height={40} sx={{ mb: 1 }} />
-        ))}
-      </Box>
+      <Paper variant="outlined" sx={{ p: 4, textAlign: "center", bgcolor: "grey.50", borderRadius: 3 }}>
+        <Typography color="text.secondary" fontWeight={600}>No available slots found.</Typography>
+      </Paper>
     );
   }
 
-  if (error) {
-    return <Alert severity="error">Failed to load availability: {error}</Alert>;
-  }
+  const slotsForSelectedDate = effectiveDate ? (groupedSlots[effectiveDate] || []) : [];
 
-  if (!slots.length) {
-    return (
-      <Alert severity="info" icon={<CalendarTodayIcon />}>
-        No available slots right now. Check back soon.
-      </Alert>
-    );
-  }
-
-  const grouped = groupByDate(slots);
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return {
+      dayName: d.toLocaleDateString('en-GB', { weekday: 'short' }),
+      dayNum: d.getDate(),
+      month: d.toLocaleDateString('en-GB', { month: 'short' })
+    };
+  };
 
   return (
     <Box>
-      {Object.entries(grouped).map(([date, dateSlots]) => (
-        <Box key={date} mb={3}>
-          <Typography
-            variant="subtitle2"
-            fontWeight={700}
-            color="text.secondary"
-            textTransform="uppercase"
-            letterSpacing="0.08em"
-            mb={1.5}
-          >
-            {date}
-          </Typography>
-
-          <Box display="flex" flexWrap="wrap" gap={1}>
-            {dateSlots.map((slot) => (
-              <Button
-                key={slot.id}
-                variant="outlined"
-                size="small"
-                onClick={() => navigate(`/book/${slot.id}`)}
-                sx={{
-                  borderColor: "divider",
-                  color: "text.primary",
-                  fontWeight: 600,
-                  fontSize: "0.85rem",
-                  px: 2,
-                  "&:hover": {
-                    borderColor: "secondary.main",
-                    backgroundColor: "rgba(201,168,76,0.08)",
-                    color: "secondary.main",
-                  },
-                }}
-              >
-                {formatTime(slot.time)}
+      <Box sx={{ mb: 4 }}>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+          <CalendarIcon sx={{ color: activeColor }} />
+          <Typography variant="h6" fontWeight={800}>Select a Date</Typography>
+        </Stack>
+        
+        <Box sx={{ display: 'flex', overflowX: 'auto', pb: 2, gap: 1.5, scrollSnapType: 'x mandatory' }}>
+          {uniqueDates.map((dateStr) => {
+            const isSelected = effectiveDate === dateStr;
+            const meta = formatDate(dateStr);
+            return (
+              <Button key={dateStr} onClick={() => setSelectedDate(dateStr)} sx={{
+                minWidth: 70, height: 90, display: 'flex', flexDirection: 'column',
+                borderRadius: 3, border: '2px solid', borderColor: isSelected ? activeColor : '#eee',
+                bgcolor: isSelected ? activeColor : 'white', color: isSelected ? 'white' : 'text.primary',
+                '&:hover': { borderColor: activeColor, bgcolor: isSelected ? activeColor : `${activeColor}10` }
+              }}>
+                <Typography variant="caption" sx={{ opacity: isSelected ? 0.9 : 0.6, fontWeight: 700 }}>{meta.dayName}</Typography>
+                <Typography variant="h6" sx={{ fontWeight: 800, my: -0.5 }}>{meta.dayNum}</Typography>
+                <Typography variant="caption" sx={{ fontWeight: 700 }}>{meta.month}</Typography>
               </Button>
-            ))}
-          </Box>
-
-          <Divider sx={{ mt: 2 }} />
+            );
+          })}
         </Box>
-      ))}
+      </Box>
+
+      <Divider sx={{ mb: 4 }} />
+
+      <Box>
+        <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>
+          Available Times for {effectiveDate ? new Date(effectiveDate + 'T12:00:00').toLocaleDateString('en-GB', { dateStyle: 'full' }) : ''}
+        </Typography>
+
+        {slotsForSelectedDate.length > 0 ? (
+          <Grid container spacing={2}>
+            {slotsForSelectedDate.map((slot) => (
+              <Grid item key={slot.id} xs={6} sm={4}>
+                <Button
+                  variant="outlined" fullWidth
+                  onClick={() => onSelect(slot)} // Uses the passed function
+                  sx={{ 
+                    py: 2, fontWeight: 700, borderRadius: 2, borderWidth: 2, textTransform: "none", fontSize: "1rem",
+                    borderColor: "divider", color: "text.primary", transition: "all 0.2s ease",
+                    "&:hover": { bgcolor: activeColor, color: "white", borderColor: activeColor }
+                  }}
+                >
+                  {slot.time}
+                </Button>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 3, bgcolor: '#fafafa' }}>
+            <Typography color="text.secondary">Please select a date from the list above.</Typography>
+          </Paper>
+        )}
+      </Box>
     </Box>
   );
 }

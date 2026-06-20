@@ -1,73 +1,44 @@
-// src/stripe/stripeClient.js
-// Stripe helpers for deposit payment and refunds.
-// Uses Stripe.js on the client side.
-// Refund logic should run server-side via a Firebase Cloud Function in production.
+import { loadStripe } from '@stripe/stripe-js';
 
-import { loadStripe } from "@stripe/stripe-js";
+/**
+ * ✅ FRONTEND STRIPE CLIENT
+ * This file initializes Stripe for your browser.
+ * It MUST be exported as 'stripePromise' to match your BookingForm.jsx import.
+ */
 
-// Load Stripe once and reuse the promise — never call loadStripe() inside a component
-export const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const publicKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
-// ─── Create Payment Intent ────────────────────────────────────────────────────
-// In production this should be a Firebase Cloud Function (HTTP callable)
-// so the secret key never touches the browser.
-// For now this shows the shape of the call — swap the URL for your function endpoint.
-//
-// The Cloud Function should:
-//   1. Receive { amount, currency, bookingMeta }
-//   2. Create a PaymentIntent with Stripe server SDK
-//   3. Return { clientSecret }
-//
-export async function createPaymentIntent({ amount, bookingMeta }) {
-  // Replace this URL with your Firebase Cloud Function endpoint
-  const response = await fetch(
-    "https://YOUR_REGION-YOUR_PROJECT.cloudfunctions.net/createPaymentIntent",
-    {
+if (!publicKey) {
+  console.error("VITE_STRIPE_PUBLISHABLE_KEY is missing from your .env file!");
+}
+
+export const stripePromise = loadStripe(publicKey);
+
+/**
+ * ✅ ADDED: requestRefund function
+ * This sends the refund request to your server-side API.
+ */
+export async function requestRefund({ paymentIntentId, stripeAccountId, date, time }) {
+  try {
+    const response = await fetch("/api/cancel-refund", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: Math.round(amount * 100), // Stripe uses pence/cents
-        currency: "gbp",
-        metadata: bookingMeta,           // slotId, barberId etc for reference
+      body: JSON.stringify({ 
+        paymentIntentId, 
+        stripeAccountId, 
+        date, 
+        time 
       }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Refund failed");
     }
-  );
 
-  if (!response.ok) {
-    throw new Error("Failed to create payment intent");
+    return await response.json();
+  } catch (err) {
+    console.error("Stripe Client Refund Error:", err);
+    throw err;
   }
-
-  const { clientSecret } = await response.json();
-  return clientSecret;
 }
-
-// ─── Issue Refund ─────────────────────────────────────────────────────────────
-// Should also be a Cloud Function — Stripe refunds require the secret key.
-// Called from Dashboard when barber cancels a booking within the refund window.
-//
-// The Cloud Function should:
-//   1. Receive { paymentIntentId }
-//   2. Check the slot date vs now (>24hrs = refund, <=24hrs = no refund)
-//   3. Issue refund via Stripe if applicable
-//   4. Return { refunded: true/false }
-//
-export async function requestRefund({ paymentIntentId, slotDate }) {
-  const response = await fetch(
-    "https://YOUR_REGION-YOUR_PROJECT.cloudfunctions.net/requestRefund",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paymentIntentId, slotDate }),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("Failed to process refund");
-  }
-
-  return await response.json(); // { refunded: true | false }
-}
-
-// ─── .env additions needed ────────────────────────────────────────────────────
-// VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
-// (Never put your secret key in .env — it must stay on the server)

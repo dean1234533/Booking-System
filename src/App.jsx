@@ -1,266 +1,322 @@
-import { useState, useEffect, createContext, useContext } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-} from "react-router-dom";
-import {
-  Box,
-  CircularProgress,
-  ThemeProvider,
-  createTheme,
-  CssBaseline,
-} from "@mui/material";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "./firebase/config";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import "./styles/index.css";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, matchPath } from "react-router-dom";
+import { Box, CircularProgress, ThemeProvider, createTheme, CssBaseline } from "@mui/material";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { Helmet, HelmetProvider } from 'react-helmet-async';
 
-// ─── Pages ────────────────────────────────────────────────────────────────────
-import Home from "./pages/Home";
-import BarberProfile from "./pages/BarberProfile";
-import BookingForm from "./pages/BookingForm";
-import Confirmation from "./pages/Confirmation";
-import Dashboard from "./pages/Dashboard";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
+// Firebase imports
+import { getBarberByDomain, getBarberById } from "./firebase/firestore";
 
-// ─── Components ───────────────────────────────────────────────────────────────
-import Nav from "./components/Nav";
+// Page/Component imports
+import Home              from "./pages/Home";           
+import TenantHome        from "./pages/TenantHome";      
+import BarberProfile     from "./pages/BarberProfile";
+import BookingForm       from "./pages/BookingForm";
+import Confirmation      from "./pages/Confirmation";
+import Dashboard         from "./pages/Dashboard";
+import Login             from "./pages/Login"; 
+import Signup            from "./pages/Signup"; 
+import TenantLogin       from "./pages/TenantLogin";
+import TenantSignup      from "./pages/TenantSignup";
+import CancelBooking     from "./pages/CancelBooking";
+import ReviewPage        from "./pages/ReviewPage"; 
+import PTBookingSite       from "./pages/PTBookingSite";
+import DecoratorTemplate   from "./pages/DecoratorTemplate";
+import HairdresserTemplate from "./pages/HairdresserTemplate";
+import OfflinePage         from "./pages/OfflinePage";
+import Onboarding        from "./pages/Onboarding";
+import WorkoutPlanView      from "./pages/WorkoutPlanView";
+import FoodDiarySubmit      from "./pages/FoodDiarySubmit";
+import CheckInSubmit        from "./pages/CheckInSubmit";
+import ParQSubmit           from "./pages/ParQSubmit";
+import ColourApprovalPage   from "./pages/ColourApprovalPage";
+import QueuePage            from "./pages/QueuePage";
+import FoodGenerator       from "./pages/FoodGenerator";
 
-// ─── Auth Context ─────────────────────────────────────────────────────────────
-// Only barbers have accounts. Provides { barber, loading } to the whole app.
-// barber is the Firebase user object, or null if not signed in.
-export const AuthContext = createContext(null);
-export const useAuth = () => useContext(AuthContext);
+// Split Nav & Footer imports
+import Nav               from "./components/Nav";
+import TenantNav         from "./components/TenantNav"; 
+import Footer            from "./components/Footer";
+import TenantFooter      from "./components/TenantFooter"; 
 
-// ─── MUI Theme ────────────────────────────────────────────────────────────────
-const theme = createTheme({
-  palette: {
-    mode: "light",
-    primary: {
-      main: "#1A1A1A",
-      contrastText: "#FFFFFF",
-    },
-    secondary: {
-      main: "#C9A84C",       // gold — premium barber shop feel
-      contrastText: "#1A1A1A",
-    },
-    background: {
-      default: "#F7F5F2",    // warm off-white
-      paper: "#FFFFFF",
-    },
-    text: {
-      primary: "#1A1A1A",
-      secondary: "#6B6B6B",
-    },
-    error:   { main: "#D32F2F" },
-    success: { main: "#2E7D32" },
-    warning: { main: "#C9A84C" },
-  },
-  typography: {
-    fontFamily: '"DM Sans", "Helvetica Neue", sans-serif',
-    h1: { fontWeight: 700, letterSpacing: "-0.03em" },
-    h2: { fontWeight: 700, letterSpacing: "-0.02em" },
-    h3: { fontWeight: 600, letterSpacing: "-0.01em" },
-    h4: { fontWeight: 600 },
-    h5: { fontWeight: 600 },
-    h6: { fontWeight: 600 },
-    button: { textTransform: "none", fontWeight: 600 },
-  },
-  shape: { borderRadius: 10 },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          padding: "10px 24px",
-          fontSize: "0.95rem",
-          boxShadow: "none",
-          "&:hover": { boxShadow: "none" },
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06)",
-          borderRadius: 14,
-        },
-      },
-    },
-    MuiTextField: {
-      defaultProps: { variant: "outlined" },
-      styleOverrides: {
-        root: {
-          "& .MuiOutlinedInput-root": { borderRadius: 8 },
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: { borderRadius: 6 },
-      },
-    },
-  },
-});
-
-// ─── Barber Protected Route ───────────────────────────────────────────────────
-// Wraps any route that requires a signed-in barber.
-// Unauthenticated users are sent to /login.
 function BarberRoute({ children }) {
   const { barber, loading } = useAuth();
   const location = useLocation();
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress color="primary" />
-      </Box>
-    );
-  }
-
-  if (!barber) {
-    // Preserve the route they were trying to reach so we can redirect after login
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
+  if (loading) return <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}><CircularProgress /></Box>;
+  if (!barber) return <Navigate to="/login" state={{ from: location }} replace />;
   return children;
 }
 
-// ─── Barber Already Signed In Route ──────────────────────────────────────────
-// Prevents signed-in barbers from seeing /login or /signup.
-// Redirects them straight to their dashboard.
-function BarberPublicRoute({ children }) {
-  const { barber, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress color="primary" />
-      </Box>
-    );
-  }
-
-  if (barber) return <Navigate to="/dashboard" replace />;
-  return children;
-}
-
-// ─── App Shell ────────────────────────────────────────────────────────────────
 function AppShell() {
-  return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        backgroundColor: "background.default",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Nav />
+  const [tenantBarber, setTenantBarber] = useState(null);
+  const [isFetchingTenant, setIsFetchingTenant] = useState(true);
+  const hostname = window.location.hostname.toLowerCase();
+  const location = useLocation();
+  
+  const lastIdentifiedId = useRef(null);
 
-      <Box component="main" sx={{ flex: 1 }}>
-        <Routes>
+  const platformDomains = [
+    'bookehtrim.co.uk',
+    'www.bookehtrim.co.uk',
+    'bookehtrim.pages.dev',
+    'bookehtrim.vercel.app',
+    'localhost',
+    '127.0.0.1',
+  ];
 
-          {/* ── Fully public — no account needed ──────────────────── */}
+  const isPlatformDomain = platformDomains.some(
+    d => hostname === d || hostname.endsWith(`.${d}`)
+  );
 
-          {/* Shop homepage — grid of all barber cards */}
-          <Route path="/" element={<Home />} />
+  const identifyTenant = useCallback(async () => {
+    const path = location.pathname;
 
-          {/* Individual barber profile — bio, availability, slot picker */}
-          <Route path="/barber/:id" element={<BarberProfile />} />
+    // ── FIX: Dashboard is always the logged-in barber's own view.
+    // Never resolve a tenant for dashboard routes — doing so causes
+    // isAlternativeBookingLayout to fire and strips the nav/shell.
+    if (path.startsWith("/dashboard") || path.startsWith("/onboarding")) {
+      setIsFetchingTenant(false);
+      return;
+    }
 
-          {/* Booking form — client details + Stripe deposit (no account needed) */}
-          <Route path="/book/:slotId" element={<BookingForm />} />
+    // ── FIX: Review page handles its own shopId via useParams.
+    // Never resolve a tenant here — if the shop is a decorator/trainer,
+    // isAlternativeBookingLayout would fire and break the review page layout.
+    if (path.startsWith("/review") || path.startsWith("/food-generator")) {
+      setIsFetchingTenant(false);
+      return;
+    }
 
-          {/* Confirmation screen after successful deposit payment */}
-          <Route path="/confirmation/:bookingId" element={<Confirmation />} />
+    const shopMatch          = matchPath("/shop/:tenantId", path);
+    const ptMatch            = matchPath("/pt-booking/:tenantId", path);
+    const hairdresserMatch   = matchPath("/hairdresser/:tenantId", path);
+    const barberMatch        = matchPath("/barber/:id", path);
+    const bookingMatch = matchPath("/book/:barberId/*", path);
+    
+    const isAuthPath = matchPath("/login", path) || matchPath("/signup", path);
 
-          {/* ── Barber auth pages — redirect to dashboard if already signed in ── */}
+    const targetId =
+      shopMatch?.params.tenantId ||
+      ptMatch?.params.tenantId ||
+      hairdresserMatch?.params.tenantId ||
+      barberMatch?.params.id ||
+      bookingMatch?.params.barberId;
 
-          <Route
-            path="/login"
-            element={
-              <BarberPublicRoute>
-                <Login />
-              </BarberPublicRoute>
+    try {
+      if (isAuthPath && tenantBarber) {
+        setIsFetchingTenant(false);
+        return;
+      }
+
+      if (isPlatformDomain && path === "/" && !targetId) {
+        setTenantBarber(null);
+        lastIdentifiedId.current = null;
+        setIsFetchingTenant(false);
+        return;
+      }
+
+      if (targetId && targetId === lastIdentifiedId.current && tenantBarber) {
+        setIsFetchingTenant(false);
+        return;
+      }
+
+      let data = null;
+      if (targetId) {
+        data = await getBarberById(targetId);
+      } else if (!isPlatformDomain) {
+        data = await getBarberByDomain(hostname);
+      }
+
+      if (data) {
+        const isStaff      = data.role === 'staff' || data.isStaff;
+        const parentShopId = data.shopId;
+
+        if (isStaff && parentShopId) {
+          const shopData = await getBarberById(parentShopId);
+          if (shopData) {
+            setTenantBarber({
+              ...data, 
+              id: parentShopId, 
+              businessType:  shopData.businessType  || data.businessType  || "barber",
+              businessName:  shopData.businessName  || shopData.displayName || "Premium Space",
+              businessLogo:  shopData.businessLogo  || shopData.logoUrl    || shopData.logo,
+              brandColor:    shopData.brandColor     || data.brandColor     || "#C9A84C",
+              address:       shopData.address        || "",
+              phone:         shopData.phone          || shopData.businessPhone || "",
+              businessEmail: shopData.businessEmail  || shopData.email     || "",
+              instagramUrl:  shopData.instagramUrl   || null,
+              facebookUrl:   shopData.facebookUrl    || null,
+              privacyPolicy: shopData.privacyPolicy  || "",
+              termsConditions: shopData.termsConditions || ""
+            });
+          }
+        } else {
+          setTenantBarber({
+            ...data,
+            businessType: data.businessType || "barber",
+            businessName: data.businessName || data.displayName || "Premium Space",
+            businessLogo: data.businessLogo || data.logoUrl     || data.logo,
+            brandColor:   data.brandColor   || "#C9A84C"
+          });
+        }
+        lastIdentifiedId.current = targetId || hostname;
+      } else if (!isAuthPath) {
+        setTenantBarber(null);
+        lastIdentifiedId.current = null;
+      }
+    } catch (err) {
+      console.error("Tenant Lookup Error:", err);
+    } finally {
+      setIsFetchingTenant(false);
+    }
+  }, [hostname, location.pathname, isPlatformDomain, tenantBarber]);
+
+  useEffect(() => {
+    identifyTenant();
+  }, [identifyTenant]);
+
+  const dynamicTheme = useMemo(() => {
+    const selectedColor = tenantBarber?.brandColor || "#C9A84C";
+    return createTheme({
+      palette: {
+        primary:   { main: "#1A1A1A" },
+        secondary: { main: selectedColor },
+      },
+      shape: { borderRadius: 12 },
+      components: {
+        MuiCssBaseline: {
+          styleOverrides: {
+            body: {
+              selection: { background: selectedColor, color: "#FFFFFF" }
             }
-          />
+          }
+        }
+      }
+    });
+  }, [tenantBarber]);
 
-          <Route
-            path="/signup"
-            element={
-              <BarberPublicRoute>
-                <Signup />
-              </BarberPublicRoute>
-            }
-          />
+  const isDashboard    = location.pathname.startsWith('/dashboard');
+  const isHomePage     = location.pathname === '/';
+  const isReviewPath   = location.pathname.startsWith('/review');
+  const isOnboarding   = location.pathname.startsWith('/onboarding');
+  const isWorkoutView  = location.pathname.startsWith('/workout')
+                      || location.pathname.startsWith('/food-diary')
+                      || location.pathname.startsWith('/check-in')
+                      || location.pathname.startsWith('/par-q')
+                      || location.pathname.startsWith('/colour-approval')
+                      || location.pathname.startsWith('/queue')
+                      || location.pathname.startsWith('/food-generator');
 
-          {/* ── Barber only — must be signed in ───────────────────── */}
+  const computedPageTitle = useMemo(() => {
+    if (tenantBarber) {
+      return `${tenantBarber.businessName.toUpperCase()} | Booking Portal`;
+    }
+    return "Bookrty | The Multi-Industry Appointment Booking Network";
+  }, [tenantBarber]);
 
-          {/* Dashboard — manage availability, view bookings, edit profile,
-              set deposit amount, reopen cancelled slots */}
-          <Route
-            path="/dashboard"
-            element={
-              <BarberRoute>
-                <Dashboard />
-              </BarberRoute>
-            }
-          />
-
-          {/* ── Fallback ──────────────────────────────────────────── */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-
-        </Routes>
+  if (isFetchingTenant) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", bgcolor: "#000" }}>
+        <CircularProgress sx={{ color: tenantBarber?.brandColor || "#C9A84C" }} />
       </Box>
-    </Box>
+    );
+  }
+
+  // Only apply alternative layout for genuine tenant routes —
+  // never for /dashboard or /review (review has its own standalone layout)
+  const isAlternativeBookingLayout = !isDashboard && !isReviewPath && (
+    location.pathname.includes("/pt-booking/") ||
+    location.pathname.includes("/decorator/") ||
+    location.pathname.includes("/hairdresser/") ||
+    (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber" && !isPlatformDomain)
+  );
+
+  // A lapsed subscription takes the public site offline (not the dashboard)
+  const isTenantOffline = Boolean(
+    tenantBarber?.subscriptionStatus === "past_due" ||
+    tenantBarber?.subscriptionStatus === "canceled"
+  );
+
+  // Choose the right landing component based on business type
+  const renderTenantHome = (tenant) => {
+    if (tenant.businessType === "trainer")     return <PTBookingSite barber={tenant} profile={tenant} />;
+    if (tenant.businessType === "decorator")   return <DecoratorTemplate tenantData={tenant} />;
+    if (tenant.businessType === "hairdresser") return <HairdresserTemplate tenantData={tenant} />;
+    return <TenantHome tenant={tenant} />;
+  };
+
+  return (
+    <ThemeProvider theme={dynamicTheme}>
+      <CssBaseline />
+      <Helmet>
+        <title>{computedPageTitle}</title>
+      </Helmet>
+
+      <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        
+        {!isDashboard && !isOnboarding && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
+          tenantBarber ? (
+            <TenantNav 
+              key={`nav-${location.pathname}`} 
+              tenant={tenantBarber} 
+              businessType={tenantBarber.businessType} 
+            /> 
+          ) : (
+            <Nav isMainSite={true} platformName="Bookrty" />
+          )
+        )}
+
+        <Box component="main" sx={{ flex: 1 }}>
+          <Routes>
+            <Route path="/" element={(!isPlatformDomain && tenantBarber) ? (isTenantOffline ? <OfflinePage /> : renderTenantHome(tenantBarber)) : <Home />} />
+            <Route path="/shop/:tenantId" element={isTenantOffline ? <OfflinePage /> : (tenantBarber ? renderTenantHome(tenantBarber) : <TenantHome tenant={tenantBarber} />)} />
+            <Route path="/pt-booking/:tenantId" element={isTenantOffline ? <OfflinePage /> : <PTBookingSite barber={tenantBarber} profile={tenantBarber} />} />
+            <Route path="/decorator/:tenantId" element={isTenantOffline ? <OfflinePage /> : <DecoratorTemplate tenantData={tenantBarber} />} />
+            <Route path="/hairdresser/:tenantId" element={isTenantOffline ? <OfflinePage /> : <HairdresserTemplate tenantData={tenantBarber} />} />
+            <Route path="/barber/:id" element={<BarberProfile tenant={tenantBarber} />} />
+            <Route path="/book/:barberId/:slotId" element={<BookingForm tenant={tenantBarber} />} />
+            <Route path="/confirmation/:bookingId?" element={<Confirmation />} />
+            <Route path="/review/:shopId" element={<ReviewPage />} />
+            <Route path="/login" element={tenantBarber ? <TenantLogin tenant={tenantBarber} /> : <Login />} />
+            <Route path="/signup" element={tenantBarber ? <TenantSignup tenant={tenantBarber} /> : <Signup />} />
+            <Route path="/cancel-booking/:bookingId" element={<CancelBooking />} />
+            <Route path="/workout/:trainerId/:planId"                element={<WorkoutPlanView />} />
+            <Route path="/food-diary/:trainerId"                  element={<FoodDiarySubmit />} />
+            <Route path="/check-in/:trainerId"                    element={<CheckInSubmit />} />
+            <Route path="/par-q/:trainerId"                       element={<ParQSubmit />} />
+            <Route path="/colour-approval/:tradieId/:paletteId"   element={<ColourApprovalPage />} />
+            <Route path="/queue/:shopId"                          element={<QueuePage />} />
+            <Route path="/food-generator/:barberId/:token"        element={<FoodGenerator />} />
+            <Route path="/onboarding" element={<BarberRoute><Onboarding /></BarberRoute>} />
+            <Route path="/dashboard/*" element={<BarberRoute><Dashboard onProfileUpdate={identifyTenant} /></BarberRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Box>
+
+        {!isDashboard && !isOnboarding && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
+          tenantBarber ? (
+            <TenantFooter 
+              key={`footer-${location.pathname}`} 
+              tenant={tenantBarber} 
+              businessType={tenantBarber.businessType} 
+            />
+          ) : (
+            // Home page renders its own footer inline, so skip the global one there
+            !isHomePage && <Footer isMainSite={true} />
+          )
+        )}
+      </Box>
+    </ThemeProvider>
   );
 }
 
-// ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [barber, setBarber] = useState(null);   // Firebase user object or null
-  const [loading, setLoading] = useState(true); // true until auth state is known
-
-  useEffect(() => {
-    // Firebase Auth listener — fires immediately with current state,
-    // then again whenever a barber signs in or out.
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Verify this user exists in the barbers collection.
-        // Prevents any non-barber Firebase user from accessing the dashboard.
-        try {
-          const barberDoc = await getDoc(doc(db, "barbers", firebaseUser.uid));
-          if (barberDoc.exists()) {
-            setBarber(firebaseUser);
-          } else {
-            // Firebase user exists but no barber profile — treat as signed out
-            setBarber(null);
-          }
-        } catch (err) {
-          console.error("Failed to verify barber profile:", err);
-          setBarber(null);
-        }
-      } else {
-        setBarber(null);
-      }
-
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
   return (
-    <AuthContext.Provider value={{ barber, loading }}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Router>
-          <AppShell />
-        </Router>
-      </ThemeProvider>
-    </AuthContext.Provider>
+    <HelmetProvider>
+      <AuthProvider>
+        <Router><AppShell /></Router>
+      </AuthProvider>
+    </HelmetProvider>
   );
 }

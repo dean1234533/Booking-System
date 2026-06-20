@@ -1,248 +1,260 @@
-// src/pages/BookingForm.jsx
-// Public page — client fills in their details and pays the deposit.
-// Reached via /book/:slotId
-
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
-  Box, Container, Typography, TextField, MenuItem,
-  Button, Paper, Divider, Alert, CircularProgress, Grid,
+  Container, Typography, Box, Paper, TextField, Button,
+  CircularProgress, Alert, Divider, Grid, MenuItem
 } from "@mui/material";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { stripePromise, createPaymentIntent } from "../stripe/stripeClient";
-import { getSlot, getBarber, createBooking, bookSlot } from "../firebase/firestore";
-import { sendConfirmationEmail } from "../utils/emailService";
-import { formatDate, formatTime, formatCurrency } from "../utils/formatters";
+import { Elements } from "@stripe/react-stripe-js";
+import CheckoutForm from "../components/CheckoutForm";
+import { formatDate, formatTime } from "../stripe/formatters";
+import { stripePromise } from "../stripe/stripeClient";
 
-const GENDER_OPTIONS = ["Prefer not to say", "Male", "Female", "Non-binary", "Other"];
+// Direct Firebase imports
+import { db } from "../firebase/config";
+import { doc, getDoc, collectionGroup, query, where, getDocs } from "firebase/firestore";
 
-// ─── Inner form (needs Stripe Elements context) ───────────────────────────────
-function CheckoutForm({ slot, barber, formData, onSuccess }) {
-  const stripe   = useStripe();
-  const elements = useElements();
-  const navigate = useNavigate();
+const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Prefer not to say"];
 
-  const [paying, setPaying] = useState(false);
-  const [error,  setError]  = useState(null);
+export default function BookingForm({ tenant }) {
+  // ✅ Extract slotId from params since it's in the URL path
+  const { barberId, slotId } = useParams();
+  const location = useLocation();
+  
+  const queryParams = new URLSearchParams(location.search);
+  
+  // ✅ State for slot details
+  const [slotData, setSlotData] = useState({
+    date: queryParams.get("date") || "",
+    time: queryParams.get("time") || ""
+  });
 
-  async function handlePay(e) {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setPaying(true);
-    setError(null);
-
-    try {
-      const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        redirect: "if_required",
-      });
-
-      if (stripeError) {
-        setError(stripeError.message);
-        setPaying(false);
-        return;
-      }
-
-      if (paymentIntent.status === "succeeded") {
-        // Create booking in Firestore
-        const bookingId = await createBooking({
-          slotId:               slot.id,
-          barberId:             barber.id,
-          clientName:           formData.name,
-          clientEmail:          formData.email,
-          clientPhone:          formData.phone,
-          haircutStyle:         formData.haircutStyle,
-          gender:               formData.gender,
-          depositAmount:        barber.depositAmount ?? 10,
-          stripePaymentIntentId: paymentIntent.id,
-          slotDate:             slot.date,
-        });
-
-        // Mark slot as booked
-        await bookSlot(slot.id, bookingId);
-
-        // Send confirmation email
-        await sendConfirmationEmail({
-          clientName:    formData.name,
-          clientEmail:   formData.email,
-          barberName:    barber.name,
-          date:          formatDate(slot.date),
-          time:          formatTime(slot.time),
-          haircutStyle:  formData.haircutStyle,
-          depositAmount: barber.depositAmount ?? 10,
-          bookingId,
-        });
-
-        navigate(`/confirmation/${bookingId}`);
-      }
-    } catch (err) {
-      setError("Payment failed. Please try again.");
-      console.error(err);
-      setPaying(false);
-    }
-  }
-
-  return (
-    <Box component="form" onSubmit={handlePay}>
-      <PaymentElement />
-      {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-      <Button
-        type="submit"
-        variant="contained"
-        color="primary"
-        fullWidth
-        size="large"
-        disabled={!stripe || paying}
-        sx={{ mt: 3 }}
-        startIcon={paying ? <CircularProgress size={18} color="inherit" /> : null}
-      >
-        {paying ? "Processing…" : `Pay ${formatCurrency(barber?.depositAmount ?? 10)} Deposit`}
-      </Button>
-    </Box>
-  );
-}
-
-// ─── Outer page ───────────────────────────────────────────────────────────────
-export default function BookingForm() {
-  const { slotId } = useParams();
-
-  const [slot,          setSlot]          = useState(null);
-  const [barber,        setBarber]        = useState(null);
-  const [clientSecret,  setClientSecret]  = useState(null);
-  const [loadingPage,   setLoadingPage]   = useState(true);
-  const [pageError,     setPageError]     = useState(null);
+  const [barber, setBarber] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [clientSecret, setClientSecret] = useState("");
+  const [formReady, setFormReady] = useState(false);
+  const [isStripeActive, setIsStripeActive] = useState(false);
 
   const [formData, setFormData] = useState({
-    name:         "",
-    email:        "",
-    phone:        "",
-    gender:       "Prefer not to say",
+    name: "",
+    email: "",
+    phone: "",
+    gender: "",
     haircutStyle: "",
   });
-  const [formReady, setFormReady] = useState(false);
 
-  // Load slot + barber data
   useEffect(() => {
-    async function load() {
+    if (!barberId) return;
+    async function loadData() {
       try {
-        const slotData = await getSlot(slotId);
-        if (!slotData) { setPageError("This slot no longer exists."); return; }
-        if (slotData.status === "booked") { setPageError("This slot has already been booked."); return; }
+        setLoading(true);
 
-        const barberData = await getBarber(slotData.barberId);
-        if (!barberData) { setPageError("Barber not found."); return; }
+        // 1. Fetch from root 'slots' collection
+        if (slotId && (!slotData.date || !slotData.time)) {
+            const slotRef = doc(db, "slots", slotId); 
+            const slotSnap = await getDoc(slotRef);
+            
+            if (slotSnap.exists()) {
+                const data = slotSnap.data();
+                setSlotData({
+                    date: data.date || "", 
+                    time: data.time || ""
+                });
+            }
+        }
 
-        setSlot(slotData);
-        setBarber(barberData);
+        // 2. Check Stripe Status
+        const stripeRes = await fetch(`/api/check-stripe?userId=${barberId}`);
+        const stripeData = await stripeRes.json();
+        
+        // 3. Load Barber Details
+        const ownerSnap = await getDoc(doc(db, "barbers", barberId));
+        let foundBarber = ownerSnap.exists() ? { id: ownerSnap.id, ...ownerSnap.data() } : null;
+
+        if (!foundBarber) {
+          const q = query(collectionGroup(db, "staff"), where("uid", "==", barberId));
+          const snap = await getDocs(q);
+          if (!snap.empty) foundBarber = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        }
+
+        if (foundBarber) {
+          // ✅ Warn if email is missing from Firestore — booking confirmation won't reach barber
+          if (!foundBarber.email) {
+            console.warn("⚠️ Barber email not found in Firestore. Go to Dashboard and click Save to fix this — barber will not receive booking emails until resolved.");
+          }
+          setBarber(foundBarber);
+          setIsStripeActive(stripeData.connected || foundBarber.stripeConnected || !!foundBarber.stripeAccountId);
+        } else {
+          setError("Barber profile not found.");
+        }
       } catch (err) {
-        setPageError("Failed to load booking details.");
+        setError("Failed to sync connection status.");
       } finally {
-        setLoadingPage(false);
+        setLoading(false);
       }
     }
-    load();
-  }, [slotId]);
+    loadData();
+  }, [barberId, slotId]);
 
-  function handleChange(e) {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  }
+  const ui = useMemo(() => {
+    const rawAmount = barber?.depositAmount ?? tenant?.depositAmount;
+    const numericAmount = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount;
+    const businessType = tenant?.businessType || barber?.businessType || "barber";
 
-  // When the client submits their details, create a PaymentIntent
-  async function handleDetailsSubmit(e) {
+    const professionalLabel = {
+      hairdresser: "Hair Stylist",
+      decorator:   "Decorator",
+      trainer:     "Personal Trainer",
+    }[businessType] || "Barber";
+
+    return {
+      brandColor:        tenant?.brandColor    || barber?.brandColor    || "#C9A84C",
+      depositAmount:     Math.max(10, isNaN(numericAmount) || numericAmount === null ? 10 : numericAmount),
+      barberName:        barber?.name          || "Professional",
+      businessName:      tenant?.businessName  || barber?.businessName  || "the salon",
+      businessType,
+      professionalLabel,
+    };
+  }, [barber, tenant]);
+
+  const handleDetailsSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    
     try {
-      const secret = await createPaymentIntent({
-        amount: barber.depositAmount ?? 10,
-        bookingMeta: { slotId, barberId: barber.id, clientEmail: formData.email },
+      const finalNumericValue = Number(ui.depositAmount);
+      const amountInPence = Math.round(finalNumericValue * 100);
+
+      if (amountInPence < 1000) {
+        throw new Error(`Deposit amount (£${finalNumericValue.toFixed(2)}) is below the £10.00 minimum. Please ask the business owner to update their deposit setting.`);
+      }
+
+      const response = await fetch('/api/create-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amountInPence, 
+          email: formData.email,
+          barberStripeId: barber?.stripeAccountId,
+          metadata: { 
+            customerName: formData.name,
+            customerPhone: formData.phone,
+            haircutStyle: formData.haircutStyle,
+            barberName: ui.barberName, 
+            bookingDate: formatDate(slotData.date), 
+            bookingTime: formatTime(slotData.time),
+            barberId: barberId 
+          }
+        }),
       });
-      setClientSecret(secret);
-      setFormReady(true);
+
+      const data = await response.json();
+      if (response.ok && data.clientSecret) {
+        setClientSecret(data.clientSecret);
+        setFormReady(true);
+      } else {
+        throw new Error(data.error || "Payment failed to initialize.");
+      }
     } catch (err) {
-      setPageError("Could not initiate payment. Please try again.");
+      console.error("Submission Error:", err.message);
+      setError(err.message);
     }
-  }
+  };
 
-  if (loadingPage) {
-    return (
-      <Container maxWidth="sm" sx={{ py: 8, textAlign: "center" }}>
-        <CircularProgress />
-      </Container>
-    );
-  }
-
-  if (pageError) {
-    return (
-      <Container maxWidth="sm" sx={{ py: 8 }}>
-        <Alert severity="error">{pageError}</Alert>
-      </Container>
-    );
-  }
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress sx={{ color: ui.brandColor }} /></Box>;
 
   return (
-    <Container maxWidth="sm" sx={{ py: { xs: 5, md: 8 } }}>
-      <Typography variant="h4" fontWeight={700} mb={0.5}>Complete Your Booking</Typography>
-      <Typography variant="body2" color="text.secondary" mb={4}>
-        Fill in your details and pay the deposit to confirm your slot.
-      </Typography>
+    <Container maxWidth="sm" sx={{ py: 5 }}>
+      <Paper 
+        variant="outlined" 
+        sx={{ 
+          p: 3, 
+          mb: 4, 
+          borderRadius: 3, 
+          borderTop: `8px solid ${ui.brandColor}`,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+        }}
+      >
+        <Typography variant="subtitle2" color="text.secondary" fontWeight={800} gutterBottom sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Appointment Summary
+        </Typography>
+        
+        <Box sx={{ my: 2 }}>
+            <Box display="flex" justifyContent="space-between" mb={1}>
+              <Typography variant="body1" fontWeight={700}>{ui.professionalLabel}</Typography>
+              <Typography variant="body1">{ui.barberName}</Typography>
+            </Box>
+            
+            <Box display="flex" justifyContent="space-between" mb={1}>
+              <Typography variant="body1" fontWeight={700}>Date</Typography>
+              <Typography variant="body1">
+                {slotData.date ? formatDate(slotData.date) : "Select a date"}
+              </Typography>
+            </Box>
 
-      {/* Booking summary */}
-      <Paper variant="outlined" sx={{ p: 3, mb: 4, borderRadius: 3 }}>
-        <Typography variant="subtitle2" color="text.secondary" gutterBottom>Booking Summary</Typography>
-        <Typography fontWeight={700}>{barber.name}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {formatDate(slot.date)} at {formatTime(slot.time)}
-        </Typography>
-        <Divider sx={{ my: 1.5 }} />
-        <Typography variant="body2">
-          Deposit due now:{" "}
-          <strong>{formatCurrency(barber.depositAmount ?? 10)}</strong>
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          Remainder paid after your appointment. Free cancellation if cancelled 24+ hrs in advance.
-        </Typography>
+            <Box display="flex" justifyContent="space-between">
+              <Typography variant="body1" fontWeight={700}>Time</Typography>
+              <Typography variant="body1">
+                {slotData.time ? formatTime(slotData.time) : "Select a time"}
+              </Typography>
+            </Box>
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Typography fontWeight={700}>Booking Deposit</Typography>
+          <Typography variant="h5" fontWeight={900} color={ui.brandColor}>
+            £{ui.depositAmount.toFixed(2)}
+          </Typography>
+        </Box>
       </Paper>
 
-      {!formReady ? (
-        // Step 1 — client details
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      {formReady && clientSecret ? (
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
+          {/* ✅ UPDATED: Added slotId prop here */}
+          <CheckoutForm 
+            appointmentDate={slotData.date} appointmentTime={slotData.time} 
+            barber={barber} formData={formData} barberId={barberId} 
+            brandColor={ui.brandColor} tenant={tenant} slotId={slotId}
+          />
+        </Elements>
+      ) : (
         <Box component="form" onSubmit={handleDetailsSubmit}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Your Information</Typography>
           <Grid container spacing={2}>
+            <Grid item xs={12}><TextField label="Full Name" fullWidth required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} /></Grid>
+            <Grid item xs={12}><TextField label="Email" fullWidth required type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} /></Grid>
+            <Grid item xs={12}><TextField label="Phone Number" fullWidth required value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} /></Grid>
             <Grid item xs={12}>
-              <TextField label="Full Name" name="name" value={formData.name}
-                onChange={handleChange} fullWidth required />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField label="Email Address" name="email" type="email" value={formData.email}
-                onChange={handleChange} fullWidth required />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField label="Phone Number" name="phone" type="tel" value={formData.phone}
-                onChange={handleChange} fullWidth required />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField label="Gender" name="gender" select value={formData.gender}
-                onChange={handleChange} fullWidth>
-                {GENDER_OPTIONS.map((g) => (
-                  <MenuItem key={g} value={g}>{g}</MenuItem>
-                ))}
+              <TextField select label="Gender" fullWidth required value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})}>
+                {GENDER_OPTIONS.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={12}>
-              <TextField label="Haircut / Style" name="haircutStyle" value={formData.haircutStyle}
-                onChange={handleChange} fullWidth required multiline rows={2}
-                placeholder="e.g. Skin fade with a line up, or mid-length trim" />
+              <TextField
+                label={ui.businessType === "hairdresser" ? "Hair Style / Requirements" : ui.businessType === "decorator" ? "Project Details" : ui.businessType === "trainer" ? "Goals / Requirements" : "Style / Requirements"}
+                placeholder={ui.businessType === "hairdresser" ? "e.g. balayage, trim, colour treatment…" : ui.businessType === "decorator" ? "e.g. living room repaint, colour scheme…" : ui.businessType === "trainer" ? "e.g. weight loss, build muscle…" : ""}
+                fullWidth multiline rows={3}
+                value={formData.haircutStyle}
+                onChange={(e) => setFormData({...formData, haircutStyle: e.target.value})}
+              />
             </Grid>
           </Grid>
 
-          <Button type="submit" variant="contained" fullWidth size="large" sx={{ mt: 3 }}>
-            Continue to Payment
+          <Button 
+            type="submit" variant="contained" fullWidth size="large" disabled={!isStripeActive}
+            sx={{ 
+                mt: 4, py: 2, fontWeight: 900, borderRadius: 2, bgcolor: ui.brandColor, 
+                "&:hover": { bgcolor: ui.brandColor, filter: "brightness(0.9)" },
+                "&.Mui-disabled": { bgcolor: "#e0e0e0" }
+            }}
+          >
+            {isStripeActive ? `Confirm & Pay £${ui.depositAmount.toFixed(2)}` : `${ui.professionalLabel} Not Accepting Payments`}
           </Button>
         </Box>
-      ) : (
-        // Step 2 — Stripe payment
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
-          <CheckoutForm slot={slot} barber={barber} formData={formData} />
-        </Elements>
       )}
     </Container>
   );

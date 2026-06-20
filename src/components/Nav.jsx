@@ -1,138 +1,143 @@
-// src/components/Nav.jsx
-// Top navigation bar — visible on every page.
-// Shows barber dashboard link and sign out when a barber is logged in.
-// Clients just see the shop name and a home link.
-
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
 import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Box,
-  IconButton,
-  Menu,
-  MenuItem,
-  Avatar,
-  Divider,
+  AppBar, Toolbar, Typography, Button, Container, Box, IconButton,
+  useScrollTrigger, Slide, Stack, Drawer, List, ListItem,
+  ListItemButton, ListItemText,
 } from "@mui/material";
-import ContentCutIcon from "@mui/icons-material/ContentCut";
-import { useAuth } from "../context/AuthContext";
-import { signOutBarber } from "../firebase/auth";
+import { useNavigate, useLocation } from "react-router-dom";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
+import PricingModal from "./PricingModal";
 
-export default function Nav() {
-  const { barber } = useAuth();
-  const navigate   = useNavigate();
-  const [anchor, setAnchor] = useState(null);
+function HideOnScroll(props) {
+  const { children } = props;
+  const trigger = useScrollTrigger();
+  return <Slide appear={false} direction="down" in={!trigger}>{children}</Slide>;
+}
 
-  async function handleSignOut() {
-    await signOutBarber();
-    setAnchor(null);
-    navigate("/");
-  }
+export default function HomeNav() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
+
+  const logoPath = "/images/IMG_9763-removebg-preview.png";
+  const platformName = "Bookrty";
+  const brandColor = "#C9A84C";
+
+  const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+  const isAbsoluteHome = location.pathname === "/";
+
+  const scrollToMarketplace = () => {
+    const element = document.getElementById('browse-section');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      navigate("/");
+    }
+    setMobileOpen(false);
+  };
 
   return (
-    <AppBar
-      position="sticky"
-      elevation={0}
-      sx={{
-        backgroundColor: "background.paper",
-        borderBottom: "1px solid",
-        borderColor: "divider",
-        color: "text.primary",
-      }}
-    >
-      <Toolbar sx={{ justifyContent: "space-between", px: { xs: 2, sm: 4 } }}>
-
-        {/* Logo */}
-        <Box
-          component={Link}
-          to="/"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            textDecoration: "none",
-            color: "text.primary",
+    <>
+      <HideOnScroll>
+        <AppBar 
+          position="fixed" 
+          elevation={0}
+          sx={{ 
+            bgcolor: "rgba(0, 0, 0, 0.8)", 
+            backdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+            zIndex: 1200 
           }}
         >
-          <ContentCutIcon sx={{ color: "secondary.main", fontSize: 22 }} />
-          <Typography variant="h6" fontWeight={700} letterSpacing="-0.02em">
-            The Barber Book
-          </Typography>
-        </Box>
-
-        {/* Right side */}
-        <Box display="flex" alignItems="center" gap={1}>
-          {barber ? (
-            // Barber is signed in — show avatar menu
-            <>
-              <Button
-                component={Link}
-                to="/dashboard"
-                variant="outlined"
-                size="small"
-                sx={{ borderColor: "divider", color: "text.primary", mr: 1 }}
+          <Container maxWidth="lg">
+            <Toolbar sx={{ justifyContent: "space-between", py: 1 }}>
+              
+              {/* LOGO AREA */}
+              <Box 
+                onClick={() => isAbsoluteHome ? window.scrollTo({ top: 0, behavior: 'smooth' }) : navigate("/")}
+                sx={{ cursor: "pointer", display: 'flex', alignItems: 'center', gap: 1.5 }}
               >
-                Dashboard
-              </Button>
+                <Box component="img" src={logoPath} alt="Logo" sx={{ height: { xs: 40, md: 50 }, width: 'auto' }} />
+                <Typography sx={{ 
+                  fontWeight: 800, letterSpacing: 1.5, color: "#FFF", 
+                  fontSize: { xs: '0.9rem', md: '1.2rem' }, textTransform: 'uppercase' 
+                }}>
+                  {platformName}
+                </Typography>
+              </Box>
 
-              <IconButton onClick={(e) => setAnchor(e.currentTarget)} size="small">
-                <Avatar
+              {/* DESKTOP NAV */}
+              <Stack direction="row" spacing={3} alignItems="center" sx={{ display: { xs: 'none', md: 'flex' } }}>
+                <Button
+                  onClick={() => setPricingOpen(true)}
+                  sx={{ color: "rgba(255,255,255,0.7)", fontWeight: 600, fontSize: '0.85rem', '&:hover': { color: brandColor } }}
+                >
+                  PRICING
+                </Button>
+                <Button onClick={() => navigate("/login")} sx={{ color: "#FFF", fontWeight: 600, fontSize: '0.85rem', '&:hover': { color: brandColor } }}>
+                  LOGIN
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={scrollToMarketplace}
                   sx={{
-                    width: 34,
-                    height: 34,
-                    bgcolor: "primary.main",
-                    fontSize: 14,
-                    fontWeight: 700,
+                    borderColor: brandColor, color: brandColor, fontWeight: 700,
+                    borderRadius: '50px', px: 3, py: 0.8, fontSize: '0.8rem',
+                    '&:hover': { bgcolor: brandColor, color: '#000', borderColor: brandColor }
                   }}
                 >
-                  {barber.displayName?.[0]?.toUpperCase() ?? "B"}
-                </Avatar>
+                  BROWSE SERVICES
+                </Button>
+              </Stack>
+
+              <IconButton onClick={handleDrawerToggle} sx={{ color: "#FFF", display: { md: 'none' } }}>
+                <MenuIcon />
               </IconButton>
+            </Toolbar>
+          </Container>
+        </AppBar>
+      </HideOnScroll>
 
-              <Menu
-                anchorEl={anchor}
-                open={Boolean(anchor)}
-                onClose={() => setAnchor(null)}
-                transformOrigin={{ horizontal: "right", vertical: "top" }}
-                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-                PaperProps={{ sx: { mt: 1, minWidth: 180, borderRadius: 2 } }}
-              >
-                <Box px={2} py={1}>
-                  <Typography variant="body2" fontWeight={600}>
-                    {barber.displayName}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {barber.email}
-                  </Typography>
-                </Box>
-                <Divider />
-                <MenuItem component={Link} to="/dashboard" onClick={() => setAnchor(null)}>
-                  My Dashboard
-                </MenuItem>
-                <Divider />
-                <MenuItem onClick={handleSignOut} sx={{ color: "error.main" }}>
-                  Sign Out
-                </MenuItem>
-              </Menu>
-            </>
-          ) : (
-            // No barber signed in — show barber login link only
-            <Button
-              component={Link}
-              to="/login"
-              variant="outlined"
-              size="small"
-              sx={{ borderColor: "divider", color: "text.secondary" }}
-            >
-              Barber Login
-            </Button>
-          )}
+      {/* DRAWER */}
+      <Drawer
+        anchor="right"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        PaperProps={{ sx: { width: '100%', maxWidth: 300, bgcolor: "#050505" } }}
+      >
+        <Box sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <IconButton onClick={handleDrawerToggle} sx={{ color: "#FFF", alignSelf: 'flex-end', mb: 2 }}>
+            <CloseIcon />
+          </IconButton>
+          <List sx={{ mt: 2 }}>
+            {['PRICING', 'LOGIN', 'BROWSE SERVICES'].map((text) => (
+              <ListItem key={text} disablePadding sx={{ mb: 2 }}>
+                <ListItemButton
+                  onClick={() => {
+                    if (text === 'LOGIN') { setMobileOpen(false); navigate('/login'); }
+                    else if (text === 'BROWSE SERVICES') scrollToMarketplace();
+                    else { setMobileOpen(false); setPricingOpen(true); }
+                  }}
+                  sx={{ borderRadius: 2, border: text === 'BROWSE SERVICES' ? `1px solid ${brandColor}` : 'none' }}
+                >
+                  <ListItemText
+                    primary={text}
+                    primaryTypographyProps={{
+                      textAlign: 'center',
+                      color: text === 'BROWSE SERVICES' ? brandColor : text === 'PRICING' ? 'rgba(255,255,255,0.6)' : '#FFF',
+                      fontWeight: 800,
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
         </Box>
+      </Drawer>
 
-      </Toolbar>
-    </AppBar>
+      <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
+    </>
   );
 }

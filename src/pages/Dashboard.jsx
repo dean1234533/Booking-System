@@ -1,656 +1,648 @@
-// src/pages/Dashboard.jsx
-// Barber-only page — manage profile, availability, deposit amount and bookings.
-// Protected by BarberRoute in App.jsx
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  Box, Container, Typography, Grid, Paper, TextField,
-  Button, Avatar, Divider, Tab, Tabs, Alert, CircularProgress,
-  InputAdornment, Snackbar,
+  Box, Snackbar, Tabs, Tab, CircularProgress,
+  useMediaQuery, useTheme
 } from "@mui/material";
-import { DatePicker, TimePicker, LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { format } from "date-fns";
-import ContentCutIcon from "@mui/icons-material/ContentCut";
-import { useAuth }     from "../context/AuthContext";
-import { useBookings } from "../hooks/useBookings";
-import BookingCard     from "../components/BookingCard";
 import {
-  getBarber, updateBarber, addSlot,
-  getAllSlotsForBarber, deleteSlot,
-  addClientRecord, getClientRecords,
+  AccessTime as AccessTimeIcon,
+  Store as StoreIcon,
+  Person as PersonIcon,
+  ListAlt as ListIcon,
+  Reviews as ReviewsIcon,
+  Payments as PaymentsIcon,
+  Palette as PaletteIcon,
+  Nfc as NfcIcon,
+  Language as LanguageIcon,
+} from "@mui/icons-material";
+
+import imageCompression from "browser-image-compression";
+import { useAuth }      from "../hooks/useAuth";
+import { useNavigate }  from "react-router-dom";
+
+import {
+  updateBarber, addSlot, getProfessionalSlots,
+  deleteSlot, uploadBarberImage,
 } from "../firebase/firestore";
-import { storage } from "../firebase/config";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { formatDate, formatTime } from "../utils/formatters";
+import { deleteBarberAccountData } from "../utils/deleteHelper";
+import { getBarberEmail, getStoredFee } from "../utils/bookingHelpers";
+
+import {
+  collection, getDocs, doc, query, where,
+  getDoc, updateDoc, deleteDoc, setDoc
+} from "firebase/firestore";
+import { db } from "../firebase/config";
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+import DashboardHeader     from "../components/dashboard/DashboardHeader";
+import ManualBookingDialog from "../components/dashboard/ManualBookingDialog";
+import ScheduleTab  from "../components/dashboard/tabs/ScheduleTab";
+import BookingsTab  from "../components/dashboard/tabs/BookingsTab";
+import ProfileTab   from "../components/dashboard/tabs/ProfileTab";
+import ServicesTab  from "../components/dashboard/tabs/ServicesTab";
+import ReviewsTab   from "../components/dashboard/tabs/ReviewsTab";
+import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
+import DesignTab    from "../components/dashboard/tabs/DesignTab";
+import PayTab       from "../components/dashboard/tabs/PayTab";
+import DomainTab    from "../components/dashboard/tabs/DomainTab";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function TabPanel({ value, index, children }) {
-  return value === index ? <Box pt={3}>{children}</Box> : null;
+  if (value !== index) return null;
+  return <Box sx={{ py: 3 }}>{children}</Box>;
 }
 
-export default function Dashboard() {
-  const { barber: authUser } = useAuth();
-  const uid = authUser?.uid;
+const addDays = (dateStr, days) => {
+  const result = new Date(dateStr);
+  result.setDate(result.getDate() + days);
+  return result.toISOString().split("T")[0];
+};
 
-  const { bookings, loading: bookingsLoading, refetch } = useBookings(uid);
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 
-  const [tab,        setTab]        = useState(0);
-  const [profile,    setProfile]    = useState(null);
-  const [saving,     setSaving]     = useState(false);
-  const [toast,      setToast]      = useState(null);
+export default function Dashboard({ tenant: initialTenant = null }) {
+  const { barber, logout, loading: authLoading } = useAuth();
+  const navigate  = useNavigate();
+  const theme     = useTheme();
+  const isMobile  = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Availability state
-  const [slots,       setSlots]      = useState([]);
-  const [slotsLoad,   setSlotsLoad]  = useState(true);
-  const [newDate,     setNewDate]    = useState(null);
-  const [newTime,     setNewTime]    = useState(null);
-  const [addingSlot,  setAddingSlot] = useState(false);
+  // ── UI state ──────────────────────────────────────────────────────────────
+  const [tab,          setTab]          = useState(0);
+  const [dataLoading,  setDataLoading]  = useState(true);
+  const [stripeLoading,setStripeLoading]= useState(false);
+  const [uploading,    setUploading]    = useState(false);
+  const [toast,        setToast]        = useState(null);
 
-  // Client Records state
-  const [records,       setRecords]      = useState([]);
-  const [recordsLoad,   setRecordsLoad]  = useState(true);
-  const [savingRecord,  setSavingRecord] = useState(false);
-  const [newRecord, setNewRecord] = useState({
-    clientName: "", haircutStyle: "", notes: "", visitDate: new Date(),
+  // ── Data state ────────────────────────────────────────────────────────────
+  const [userRole, setUserRole] = useState({ isOwner: true, shopId: null });
+  const [profile,  setProfile]  = useState({
+    name: "", businessName: "", brandColor: "#C9A84C",
+    services: [], depositAmount: 10,
+    specialty: "", address: "", bio: "", role: "staff",
+    openingHours: "", vercelUrl: "", customDomain: "", aboutUs: "",
+    profilePic: "", logoUrl: "", heroImage: "", heroImageMobile: "",
+    stripeConnected: false,
+    // ── Social links — editable by ALL barbers (staff + owners) ──
+    instagramUrl: "", tiktokUrl: "", facebookUrl: "",
+    privacyPolicy: "", termsConditions: "",
+    domainStatus: "",
+    customHostnameId: "",
   });
 
-  // Load barber profile
+  const [bookings,    setBookings]    = useState([]);
+  const [slots,        setSlots]       = useState([]);
+  const [reviews,      setReviews]     = useState([]);
+  const [newSlot,      setNewSlot]     = useState({
+    date: new Date().toISOString().split("T")[0], time: "", repeat: "none"
+  });
+  const [newService, setNewService]   = useState({ name: "", price: "" });
+
+  // ── Manual booking dialog ─────────────────────────────────────────────────
+  const [manualDialogOpen,      setManualDialogOpen]      = useState(false);
+  const [selectedSlotForManual, setSelectedSlotForManual] = useState(null);
+
+  // ── Image previews ────────────────────────────────────────────────────────
+  const [profileFile,        setProfileFile]        = useState(null);
+  const [profilePreview,      setProfilePreview]     = useState("");
+  const [logoFile,            setLogoFile]           = useState(null);
+  const [logoPreview,        setLogoPreview]        = useState("");
+  const [heroFileDesktop,    setHeroFileDesktop]    = useState(null);
+  const [heroPreviewDesktop, setHeroPreviewDesktop] = useState("");
+  const [heroFileMobile,      setHeroFileMobile]     = useState(null);
+  const [heroPreviewMobile,  setHeroPreviewMobile]  = useState("");
+
+  // ── Tap-to-Pay state ──────────────────────────────────────────────────────
+  const [terminalAmount,  setTerminalAmount]  = useState("");
+  const [terminalService, setTerminalService] = useState("");
+  const [terminalNote,    setTerminalNote]    = useState("");
+  const [terminalStatus,  setTerminalStatus]  = useState("idle");
+  const [terminalSession, setTerminalSession] = useState(null);
+  const pollingRef = useRef(null);
+
+  // ── Effects ───────────────────────────────────────────────────────────────
+  useEffect(() => () => { if (pollingRef.current) clearInterval(pollingRef.current); }, []);
+  useEffect(() => { if (!authLoading && barber) loadData(); }, [barber, authLoading]);
+
+  // Handle post-Stripe-connect redirect
   useEffect(() => {
-    if (!uid) return;
-    getBarber(uid).then(setProfile);
-  }, [uid]);
+    if (!barber?.uid) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("stripeSuccess") !== "true") return;
+    window.history.replaceState({}, "", "/dashboard");
+    const acct = params.get("acct");
+    (async () => {
+      try {
+        if (acct && acct !== "undefined") {
+          await updateDoc(doc(db, "barbers", barber.uid), { stripeAccountId: acct });
+        }
+        const res  = await fetch(`/api/check-stripe?userId=${barber.uid}`);
+        const data = await res.json();
+        if (data.connected) {
+          setProfile(prev => ({ ...prev, stripeConnected: true }));
+          setToast("🎉 Stripe connected!");
+        }
+      } catch (e) { console.error("Post-Stripe return check failed:", e); }
+    })();
+  }, [barber]);
 
-  // Load all slots (open + booked) for the barber
-  async function loadSlots() {
-    setSlotsLoad(true);
-    const data = await getAllSlotsForBarber(uid);
-    setSlots(data);
-    setSlotsLoad(false);
-  }
-
-  useEffect(() => { if (uid) loadSlots(); }, [uid]); // eslint-disable-line
-
-  // Load client records
-  async function loadRecords() {
-    setRecordsLoad(true);
-    const data = await getClientRecords(uid);
-    setRecords(data);
-    setRecordsLoad(false);
-  }
-  useEffect(() => { if (uid) loadRecords(); }, [uid]); // eslint-disable-line
-
-  // Add a new manual client record
-  async function handleAddRecord() {
-    if (!newRecord.clientName || !newRecord.haircutStyle) return;
-    setSavingRecord(true);
+  // ── Data loading ──────────────────────────────────────────────────────────
+  async function loadData() {
+    if (!barber?.uid) return;
     try {
-      await addClientRecord(uid, newRecord);
-      setToast("Client record saved.");
-      setNewRecord({ clientName: "", haircutStyle: "", notes: "", visitDate: new Date() });
-      await loadRecords();
-    } catch {
-      setToast("Failed to save record.");
-    } finally {
-      setSavingRecord(false);
-    }
+      setDataLoading(true);
+      const userSnap = await getDoc(doc(db, "barbers", barber.uid));
+      let isOwner = true;
+      let activeShopId = barber.uid;
+
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        isOwner      = data?.role === "owner" || !data?.shopId || data?.shopId === "self";
+        activeShopId = isOwner ? barber.uid : (data?.shopId ?? barber.uid);
+        setProfile(prev => ({
+          ...prev, ...data,
+          services:         Array.isArray(data.services) ? data.services : [],
+          stripeConnected:  !!data.stripeConnected,
+          instagramUrl:     data.instagramUrl     || "",
+          tiktokUrl:        data.tiktokUrl        || "",
+          facebookUrl:      data.facebookUrl      || "",
+          domainStatus:     data.domainStatus     || "",
+          customHostnameId: data.customHostnameId || "",
+        }));
+      }
+      setUserRole({ isOwner, shopId: activeShopId });
+
+      const bSnap = await getDocs(
+        query(collection(db, "bookings"), where("barberId", "==", barber.uid))
+      );
+      const allB = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setBookings(allB.filter(b => b.status !== "completed" && b.status !== "cancelled"));
+
+      const mySlots = await getProfessionalSlots(barber.uid);
+      setSlots(mySlots || []);
+
+      if (isOwner) {
+        try {
+          const rSnap = await getDocs(collection(db, "barbers", activeShopId, "reviews"));
+          setReviews(rSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch { setReviews([]); }
+      }
+    } catch { setToast("Error loading dashboard data"); }
+    finally  { setDataLoading(false); }
   }
 
-  // ── Profile save ────────────────────────────────────────────────────────────
-  async function handleProfileSave() {
-    setSaving(true);
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  const handleLogout = async () => {
+    try { await logout(); navigate("/login"); }
+    catch { setToast("Logout failed"); }
+  };
+
+  // ── Profile ───────────────────────────────────────────────────────────────
+  const handleDeleteProfile = async () => {
+    if (!window.confirm(
+      "Are you sure? This will PERMANENTLY delete your profile, all available slots, and your login account. This cannot be undone."
+    )) return;
     try {
-      await updateBarber(uid, {
-        name:          profile.name,
-        phone:         profile.phone,
-        specialty:     profile.specialty,
-        bio:           profile.bio,
-        depositAmount: Number(profile.depositAmount),
-      });
-      setToast("Profile saved.");
-    } catch {
-      setToast("Failed to save. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  }
+      setDataLoading(true);
+      await deleteBarberAccountData(barber.uid);
+      setToast("Account and all associated data successfully wiped.");
+      navigate("/");
+    } catch (err) {
+      setToast(
+        err.code === "auth/requires-recent-login"
+          ? "Security: Please log out and back in before deleting your account."
+          : "Failed to delete profile: " + err.message
+      );
+    } finally { setDataLoading(false); }
+  };
 
-  // ── Photo upload ─────────────────────────────────────────────────────────────
-  async function handlePhotoUpload(e) {
+  const handleImageChange = (e, setFile, setPreview) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const storageRef = ref(storage, `barbers/${uid}/profile`);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    await updateBarber(uid, { photoURL: url });
-    setProfile((p) => ({ ...p, photoURL: url }));
-    setToast("Photo updated.");
+    setFile(file);
+    setPreview(URL.createObjectURL(file));
+  };
+
+  async function handleSaveProfile() {
+    if (!barber?.uid) return;
+    setUploading(true);
+    try {
+      let updatedData = {
+        ...profile,
+        email:        barber.email         || "",
+        vercelUrl:    profile.vercelUrl     || "",
+        customDomain: profile.customDomain  || "",
+        openingHours: profile.openingHours  || "",
+        aboutUs:      profile.aboutUs       || "",
+        // ── Social links — persisted for both staff and owners ──
+        instagramUrl: profile.instagramUrl  || "",
+        tiktokUrl:    profile.tiktokUrl     || "",
+        facebookUrl:  profile.facebookUrl   || "",
+      };
+      const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true };
+      if (profileFile)    { const c = await imageCompression(profileFile, options);     updatedData.profilePic      = await uploadBarberImage(c, barber.uid, "profile_pic"); }
+      if (logoFile)       { const c = await imageCompression(logoFile, options);        updatedData.logoUrl         = await uploadBarberImage(c, barber.uid, "business_logo"); }
+      if (heroFileDesktop){ const c = await imageCompression(heroFileDesktop, options); updatedData.heroImage       = await uploadBarberImage(c, barber.uid, "hero_banner_desktop"); }
+      if (heroFileMobile) { const c = await imageCompression(heroFileMobile, options);  updatedData.heroImageMobile = await uploadBarberImage(c, barber.uid, "hero_banner_mobile"); }
+
+      // Always write to the barber's own top-level doc
+      await updateBarber(barber.uid, updatedData);
+
+      // For staff: also write to the staff subcollection so BarberProfile can read it
+      if (!userRole.isOwner && userRole.shopId) {
+        await updateDoc(
+          doc(db, "barbers", userRole.shopId, "staff", barber.uid),
+          updatedData
+        );
+      }
+
+      setProfile(updatedData);
+      setProfileFile(null); setLogoFile(null); setHeroFileDesktop(null); setHeroFileMobile(null);
+      setProfilePreview(""); setLogoPreview(""); setHeroPreviewDesktop(""); setHeroPreviewMobile("");
+      setToast("Profile saved successfully!");
+    } catch (err) { setToast("Save failed — " + err.message); }
+    finally { setUploading(false); }
   }
 
-  // ── Add slot ─────────────────────────────────────────────────────────────────
+  // ── Slots ─────────────────────────────────────────────────────────────────
   async function handleAddSlot() {
-    if (!newDate || !newTime) return;
-    setAddingSlot(true);
+    if (!newSlot.date || !newSlot.time || !barber?.uid) return;
     try {
-      await addSlot({
-        barberId: uid,
-        date:     newDate,
-        time:     format(newTime, "HH:mm"),
-      });
-      setToast("Slot added.");
-      setNewDate(null);
-      setNewTime(null);
-      await loadSlots();
-    } catch {
-      setToast("Failed to add slot.");
-    } finally {
-      setAddingSlot(false);
+      let iterations = 1;
+      if (newSlot.repeat === "week")  iterations = 7;
+      if (newSlot.repeat === "month") iterations = 30;
+      await Promise.all(
+        Array.from({ length: iterations }, (_, i) =>
+          addSlot({
+            date:     addDays(newSlot.date, i),
+            time:     newSlot.time,
+            barberId: barber.uid,
+            shopId:   userRole.shopId,
+            isBooked: false,
+            status:   "open",
+          })
+        )
+      );
+      setNewSlot(prev => ({ ...prev, time: "", repeat: "none" }));
+      setToast(iterations > 1 ? `Added ${iterations} slots!` : "Slot added!");
+      setSlots(await getProfessionalSlots(barber.uid) || []);
+    } catch { setToast("Failed to add slot"); }
+  }
+
+  async function handleDeleteSlot(slotId) {
+    if (!barber?.uid) return;
+    try {
+      await deleteSlot(barber.uid, slotId);
+      setToast("Slot removed");
+      setSlots(await getProfessionalSlots(barber.uid) || []);
+    } catch { setToast("Failed to remove slot"); }
+  }
+
+  async function handleRestoreSlot(slotId) {
+    try {
+      await updateDoc(doc(db, "slots", slotId), { isBooked: false, status: "open" });
+      setToast("Slot restored!");
+      setSlots(await getProfessionalSlots(barber.uid) || []);
+    } catch { setToast("Failed to restore slot"); }
+  }
+
+  // ── Bookings ──────────────────────────────────────────────────────────────
+  async function handleCompleteBooking(booking) {
+    try {
+      await updateDoc(doc(db, "bookings", booking.id), { status: "completed" });
+      if (booking.slotId) {
+        await updateDoc(doc(db, "slots", booking.slotId), {
+          isBooked:        false,
+          status:          "open",
+          manualBookingId: null,
+        });
+      }
+      setToast("✅ Booking completed — slot is available again.");
+      await loadData();
+    } catch { setToast("Error completing booking."); }
+  }
+
+  async function handleCancelBooking(booking) {
+    if (!window.confirm(
+      `Are you sure you want to cancel ${booking.customerName || "this"} booking?` +
+      " This will trigger an automatic refund if applicable."
+    )) return;
+    try {
+      setDataLoading(true);
+      if (booking.paymentIntentId) {
+        try {
+          const r = await fetch("/api/cancel-refund", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              paymentIntentId: booking.paymentIntentId,
+              stripeAccountId: userRole.shopId || booking.stripeAccountId || barber.uid,
+              date: booking.date,
+              time: booking.time,
+            }),
+          });
+          const result = await r.json();
+          if (!r.ok) setToast(`Stripe Refund Warning: ${result.error || "Failed to process automatic refund."}`);
+        } catch (e) { console.error("[handleCancelBooking] Stripe error:", e); }
+      }
+      await updateDoc(doc(db, "bookings", booking.id), { status: "cancelled" });
+      if (booking.slotId) {
+        try { await deleteDoc(doc(db, "slots", booking.slotId)); } catch {}
+      }
+      setToast("Booking successfully cancelled.");
+      await loadData();
+    } catch (err) {
+      console.error("Cancel booking failure:", err);
+      setToast("Failed to process full cancellation routing.");
+    } finally { setDataLoading(false); }
+  }
+
+  // ── Reviews ───────────────────────────────────────────────────────────────
+  async function handleDeleteReview(reviewId) {
+    if (!window.confirm("Delete this review? This cannot be undone.")) return;
+    try {
+      await deleteDoc(doc(db, "barbers", userRole.shopId, "reviews", reviewId));
+      setReviews(prev => prev.filter(r => r.id !== reviewId));
+      setToast("Review deleted.");
+    } catch (err) {
+      console.error("[handleDeleteReview]", err);
+      setToast("Failed to delete review.");
     }
   }
 
-  // ── Delete slot ───────────────────────────────────────────────────────────────
-  async function handleDeleteSlot(slotId) {
-    await deleteSlot(slotId);
-    setToast("Slot removed.");
-    await loadSlots();
+  // ── Services ──────────────────────────────────────────────────────────────
+  function handleAddService() {
+    if (!newService.name || !newService.price) return;
+    setProfile(prev => ({
+      ...prev,
+      services: [...(prev.services || []), { name: newService.name, price: Number(newService.price) }],
+    }));
+    setNewService({ name: "", price: "" });
+  }
+  function handleRemoveService(i) {
+    setProfile(prev => ({ ...prev, services: prev.services.filter((_, idx) => idx !== i) }));
   }
 
-  if (!profile) {
+  // ── Manual booking ────────────────────────────────────────────────────────
+  function openManualBooking(slot) { setSelectedSlotForManual(slot); setManualDialogOpen(true); }
+
+  // ── Stripe connect ────────────────────────────────────────────────────────
+  const handleConnectStripe = async () => {
+    setStripeLoading(true);
+    try {
+      const domainField   = profile.customDomain || profile.vercelUrl || "";
+      const currentOrigin = domainField
+        ? (domainField.startsWith("http") ? domainField : `https://${domainField}`)
+        : window.location.origin;
+      const res  = await fetch("/api/connect", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ userId: barber.uid, email: barber.email, origin: currentOrigin }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else throw new Error(data.error);
+    } catch (err) { setToast("Stripe failed: " + err.message); }
+    finally { setStripeLoading(false); }
+  };
+
+  // ── Tap-to-Pay ────────────────────────────────────────────────────────────
+  const startPolling = (sessionId) => {
+    if (!sessionId || sessionId === "undefined") return;
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    pollingRef.current = setInterval(async () => {
+      try {
+        const res  = await fetch(`/api/check-payment?sessionId=${sessionId}&barberId=${barber.uid}`);
+        const data = await res.json();
+        if (data.paid) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+          setTerminalStatus("paid");
+          setToast("✅ Payment received!");
+        }
+      } catch (err) { console.warn("Polling error:", err); }
+    }, 2500);
+  };
+
+  const handleCreateTerminalCharge = async () => {
+    if (!terminalAmount || !barber?.uid) return;
+    if (!profile.stripeConnected) { setToast("Connect Stripe first in the Finance tab."); return; }
+    setTerminalStatus("loading");
+    try {
+      const res  = await fetch("/api/quick-charge", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount:      Math.round(Number(terminalAmount) * 100),
+          currency:    "gbp",
+          description: terminalService || terminalNote || "Haircut",
+          barberId:    barber.uid,
+          barberName:  profile.name || profile.businessName || "Barber",
+          note:        terminalNote,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create charge");
+      setTerminalSession({ url: data.url, sessionId: data.sessionId });
+      setTerminalStatus("awaiting");
+      startPolling(data.sessionId);
+    } catch (err) { setTerminalStatus("error"); setToast("Payment error: " + err.message); }
+  };
+
+  const handleCancelTerminal = () => {
+    if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+    setTerminalStatus("idle"); setTerminalSession(null);
+  };
+
+  const handleResetTerminal = () => {
+    if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+    setTerminalStatus("idle"); setTerminalSession(null);
+    setTerminalAmount(""); setTerminalService(""); setTerminalNote("");
+  };
+
+  const handleCopyPayLink = async () => {
+    if (!terminalSession?.url) return;
+    try { await navigator.clipboard.writeText(terminalSession.url); setToast("Payment link copied!"); }
+    catch { setToast("Copy failed — try manually."); }
+  };
+
+  // ── Tab config ────────────────────────────────────────────────────────────
+  // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
+  const brandColor = profile.brandColor || "#C9A84C";
+
+  const tabs = [
+    { label: "Schedule", icon: <AccessTimeIcon /> },
+    { label: "Bookings", icon: <StoreIcon /> },
+    { label: "Profile",  icon: <PersonIcon /> },
+    { label: "Services", icon: <ListIcon /> },
+    ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }]  : []),
+    { label: "Finance",  icon: <PaymentsIcon /> },
+    ...(userRole.isOwner ? [{ label: "Design",  icon: <PaletteIcon /> }]  : []),
+    // Domain tab: owner only AND not inside a tenant dashboard
+    ...(userRole.isOwner && !initialTenant ? [{ label: "Domain", icon: <LanguageIcon /> }] : []),
+    { label: "Pay",      icon: <NfcIcon /> },
+  ];
+
+  // Derive tab indices dynamically based on role so panels always align
+  const IDX_REVIEWS = 4;
+  const IDX_FINANCE = userRole.isOwner ? 5 : 4;
+  const IDX_DESIGN  = 6;  // owner only
+  const IDX_DOMAIN  = 7;  // owner only
+  const IDX_PAY = userRole.isOwner ? (initialTenant ? 7 : 8) : 5;
+
+  // ── Loading guard ─────────────────────────────────────────────────────────
+  if (authLoading || (dataLoading && !barber)) {
     return (
-      <Container maxWidth="md" sx={{ py: 10, textAlign: "center" }}>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
-      </Container>
+      </Box>
     );
   }
 
-  const upcomingBookings = bookings.filter((b) => !b.cancelled);
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
-        {/* ── Identity Banner ─────────────────────────────────────────────── */}
-        <Box
-          sx={{
-            background: "linear-gradient(135deg, #1A1A1A 0%, #2C2C2C 50%, #1A1A1A 100%)",
-            borderRadius: 3,
-            px: { xs: 3, md: 5 },
-            py: { xs: 3, md: 4 },
-            mb: 4,
-            position: "relative",
-            overflow: "hidden",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
-          }}
-        >
-          {/* Subtle gold decorative stripe */}
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0, left: 0,
-              width: "100%", height: "3px",
-              background: "linear-gradient(90deg, #C9A84C, #E8C96A, #C9A84C)",
-            }}
-          />
-
-          {/* Business-type label */}
-          <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-            <Box
-              component="span"
-              sx={{
-                fontSize: "1.4rem",
-                lineHeight: 1,
-                filter: "drop-shadow(0 0 6px rgba(201,168,76,0.5))",
-              }}
-            >
-              ✂️
-            </Box>
-            <Typography
-              variant="overline"
-              sx={{
-                color: "#C9A84C",
-                letterSpacing: "0.25em",
-                fontSize: "0.7rem",
-                fontWeight: 700,
-                lineHeight: 1,
-              }}
-            >
-              Barber Dashboard
-            </Typography>
-          </Box>
-
-          {/* Barber name */}
-          <Typography
-            variant="h3"
-            sx={{
-              color: "#FFFFFF",
-              fontWeight: 700,
-              letterSpacing: "-0.02em",
-              mb: 1,
-              lineHeight: 1.1,
-              fontSize: { xs: "1.8rem", md: "2.4rem" },
-            }}
-          >
-            {profile.name}
-          </Typography>
-
-          {/* Specialty pill + date row */}
-          <Box display="flex" alignItems="center" flexWrap="wrap" gap={1.5}>
-            {profile.specialty && (
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  bgcolor: "rgba(201,168,76,0.15)",
-                  border: "1px solid rgba(201,168,76,0.35)",
-                  borderRadius: "20px",
-                  px: 1.5,
-                  py: 0.4,
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: "#C9A84C",
-                    fontWeight: 600,
-                    letterSpacing: "0.06em",
-                    fontSize: "0.72rem",
-                  }}
-                >
-                  {profile.specialty}
-                </Typography>
-              </Box>
-            )}
-            <Typography
-              variant="caption"
-              sx={{
-                color: "rgba(255,255,255,0.38)",
-                letterSpacing: "0.08em",
-                fontSize: "0.72rem",
-              }}
-            >
-              {new Date().toLocaleDateString("en-GB", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </Typography>
-          </Box>
-
-          {/* Avatar — top right corner */}
-          <Avatar
-            src={profile.photoURL}
-            sx={{
-              position: "absolute",
-              right: { xs: 20, md: 40 },
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: { xs: 52, md: 72 },
-              height: { xs: 52, md: 72 },
-              bgcolor: "#C9A84C",
-              color: "#1A1A1A",
-              fontSize: { xs: 20, md: 28 },
-              fontWeight: 800,
-              border: "3px solid rgba(201,168,76,0.4)",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-            }}
-          >
-            {profile.name?.[0]}
-          </Avatar>
-        </Box>
-
-        <Tabs
-          value={tab}
-          onChange={(_, v) => setTab(v)}
-          sx={{ borderBottom: 1, borderColor: "divider", mb: 1 }}
-        >
-          <Tab label="Bookings" />
-          <Tab label="Availability" />
-          <Tab label="Client Records" />
-          <Tab label="Profile & Settings" />
-        </Tabs>
-
-        {/* ── Tab 0: Bookings ──────────────────────────────────────────────── */}
-        <TabPanel value={tab} index={0}>
-          <Typography variant="h6" fontWeight={700} mb={3}>
-            Upcoming Bookings ({upcomingBookings.length})
-          </Typography>
-
-          {bookingsLoading ? (
-            <CircularProgress />
-          ) : upcomingBookings.length === 0 ? (
-            <Alert severity="info">No upcoming bookings yet.</Alert>
-          ) : (
-            <Grid container spacing={2}>
-              {upcomingBookings.map((b) => (
-                <Grid item xs={12} sm={6} md={4} key={b.id}>
-                  <BookingCard booking={b} onCancelled={refetch} />
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </TabPanel>
-
-        {/* ── Tab 1: Availability ──────────────────────────────────────────── */}
-        <TabPanel value={tab} index={1}>
-          <Typography variant="h6" fontWeight={700} mb={3}>Manage Your Slots</Typography>
-
-          {/* Add new slot */}
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 4 }}>
-            <Typography variant="subtitle1" fontWeight={600} mb={2}>Add a New Slot</Typography>
-            <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
-              <DatePicker
-                label="Date"
-                value={newDate}
-                onChange={setNewDate}
-                disablePast
-                slotProps={{ textField: { size: "small" } }}
-              />
-              <TimePicker
-                label="Time"
-                value={newTime}
-                onChange={setNewTime}
-                minutesStep={15}
-                slotProps={{ textField: { size: "small" } }}
-              />
-              <Button
-                variant="contained"
-                onClick={handleAddSlot}
-                disabled={!newDate || !newTime || addingSlot}
-                startIcon={addingSlot ? <CircularProgress size={16} color="inherit" /> : null}
-              >
-                {addingSlot ? "Adding…" : "Add Slot"}
-              </Button>
-            </Box>
-          </Paper>
-
-          {/* Existing slots */}
-          <Typography variant="subtitle1" fontWeight={600} mb={2}>Your Slots</Typography>
-          {slotsLoad ? (
-            <CircularProgress />
-          ) : slots.length === 0 ? (
-            <Alert severity="info">You have no slots set up yet.</Alert>
-          ) : (
-            <Grid container spacing={1.5}>
-              {slots.map((slot) => (
-                <Grid item xs={12} sm={6} md={4} key={slot.id}>
-                  <Paper
-                    variant="outlined"
-                    sx={{
-                      p: 2, borderRadius: 2,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      borderColor: slot.status === "booked" ? "success.main" : "divider",
-                      bgcolor: slot.status === "booked" ? "rgba(46,125,50,0.04)" : "transparent",
-                    }}
-                  >
-                    <Box>
-                      <Typography variant="body2" fontWeight={600}>
-                        {formatDate(slot.date)}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {formatTime(slot.time)} · {slot.status === "booked" ? "Booked" : "Open"}
-                      </Typography>
-                    </Box>
-                    {slot.status === "open" && (
-                      <Button
-                        size="small"
-                        color="error"
-                        onClick={() => handleDeleteSlot(slot.id)}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </TabPanel>
-
-        {/* ── Tab 2: Client Records ────────────────────────────────────────── */}
-        <TabPanel value={tab} index={2}>
-
-          {/* Add new record form */}
-          <Paper
-            variant="outlined"
-            sx={{ p: 3, borderRadius: 3, mb: 4, borderColor: "rgba(201,168,76,0.4)", background: "rgba(201,168,76,0.03)" }}
-          >
-            <Typography variant="subtitle1" fontWeight={700} mb={0.5}
-              sx={{ display: "flex", alignItems: "center", gap: 1 }}
-            >
-              ✂️ &nbsp;Add a Client Record
-            </Typography>
-            <Typography variant="body2" color="text.secondary" mb={3}>
-              Log a walk-in or manual appointment — name, style, visit date and any notes.
-            </Typography>
-
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Client Name"
-                  value={newRecord.clientName}
-                  onChange={(e) => setNewRecord((r) => ({ ...r, clientName: e.target.value }))}
-                  fullWidth
-                  required
-                  placeholder="e.g. James Carter"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Haircut / Style"
-                  value={newRecord.haircutStyle}
-                  onChange={(e) => setNewRecord((r) => ({ ...r, haircutStyle: e.target.value }))}
-                  fullWidth
-                  required
-                  placeholder="e.g. Skin fade with taper"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <DatePicker
-                  label="Visit Date"
-                  value={newRecord.visitDate}
-                  onChange={(d) => setNewRecord((r) => ({ ...r, visitDate: d }))}
-                  slotProps={{ textField: { fullWidth: true } }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Notes (optional)"
-                  value={newRecord.notes}
-                  onChange={(e) => setNewRecord((r) => ({ ...r, notes: e.target.value }))}
-                  fullWidth
-                  multiline
-                  rows={1}
-                  placeholder="e.g. prefers no clippers on top"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Button
-                  variant="contained"
-                  onClick={handleAddRecord}
-                  disabled={!newRecord.clientName || !newRecord.haircutStyle || savingRecord}
-                  startIcon={savingRecord ? <CircularProgress size={16} color="inherit" /> : null}
-                  sx={{ mt: 1 }}
-                >
-                  {savingRecord ? "Saving…" : "Save Record"}
-                </Button>
-              </Grid>
-            </Grid>
-          </Paper>
-
-          {/* Records list */}
-          <Typography variant="subtitle1" fontWeight={700} mb={2}>
-            All Client Records ({records.length})
-          </Typography>
-
-          {recordsLoad ? (
-            <CircularProgress />
-          ) : records.length === 0 ? (
-            <Alert severity="info" sx={{ borderRadius: 2 }}>
-              No client records yet. Add your first one above.
-            </Alert>
-          ) : (
-            <Grid container spacing={2}>
-              {records.map((rec) => {
-                const dateObj = rec.visitDate?.toDate ? rec.visitDate.toDate() : new Date(rec.visitDate);
-                const dateStr = dateObj.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-                return (
-                  <Grid item xs={12} sm={6} md={4} key={rec.id}>
-                    <Paper
-                      variant="outlined"
-                      sx={{
-                        p: 2.5,
-                        borderRadius: 3,
-                        borderColor: "divider",
-                        height: "100%",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 0.5,
-                      }}
-                    >
-                      {/* Date badge */}
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "#8B6914",
-                          bgcolor: "rgba(201,168,76,0.12)",
-                          borderRadius: "12px",
-                          px: 1.2, py: 0.3,
-                          fontWeight: 700,
-                          fontSize: "0.68rem",
-                          letterSpacing: "0.06em",
-                          display: "inline-block",
-                          mb: 0.5,
-                        }}
-                      >
-                        {dateStr}
-                      </Typography>
-
-                      {/* Name */}
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: "0.95rem" }}>
-                        {rec.clientName}
-                      </Typography>
-
-                      {/* Style */}
-                      <Box display="flex" alignItems="center" gap={0.8}>
-                        <ContentCutIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem" }}>
-                          {rec.haircutStyle}
-                        </Typography>
-                      </Box>
-
-                      {/* Notes */}
-                      {rec.notes && (
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            mt: 0.5,
-                            fontSize: "0.8rem",
-                            color: "text.secondary",
-                            fontStyle: "italic",
-                            borderTop: "1px solid",
-                            borderColor: "divider",
-                            pt: 1,
-                          }}
-                        >
-                          {rec.notes}
-                        </Typography>
-                      )}
-                    </Paper>
-                  </Grid>
-                );
-              })}
-            </Grid>
-          )}
-        </TabPanel>
-
-        {/* ── Tab 3: Profile & Settings ────────────────────────────────────── */}
-        <TabPanel value={tab} index={3}>
-          <Grid container spacing={4}>
-
-            {/* Photo upload */}
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" fontWeight={600} mb={2}>Profile Photo</Typography>
-              <Box display="flex" alignItems="center" gap={3}>
-                <Avatar
-                  src={profile.photoURL}
-                  sx={{ width: 80, height: 80, bgcolor: "primary.main", fontSize: 28 }}
-                >
-                  {profile.name?.[0]}
-                </Avatar>
-                <Button variant="outlined" component="label">
-                  Upload Photo
-                  <input type="file" accept="image/*" hidden onChange={handlePhotoUpload} />
-                </Button>
-              </Box>
-            </Grid>
-
-            <Grid item xs={12}><Divider /></Grid>
-
-            {/* Profile fields */}
-            <Grid item xs={12} sm={6}>
-              <TextField label="Full Name" value={profile.name ?? ""}
-                onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
-                fullWidth />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField label="Phone Number" value={profile.phone ?? ""}
-                onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))}
-                fullWidth />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField label="Specialty" value={profile.specialty ?? ""}
-                onChange={(e) => setProfile((p) => ({ ...p, specialty: e.target.value }))}
-                fullWidth />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField label="Bio" value={profile.bio ?? ""}
-                onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
-                fullWidth multiline rows={4} />
-            </Grid>
-
-            <Grid item xs={12}><Divider /></Grid>
-
-            {/* Deposit amount */}
-            <Grid item xs={12} sm={4}>
-              <TextField
-                label="Deposit Amount"
-                type="number"
-                value={profile.depositAmount ?? 10}
-                onChange={(e) => setProfile((p) => ({ ...p, depositAmount: e.target.value }))}
-                fullWidth
-                inputProps={{ min: 1, step: 1 }}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">£</InputAdornment>,
-                }}
-                helperText="Clients pay this to confirm their slot"
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={handleProfileSave}
-                disabled={saving}
-                startIcon={saving ? <CircularProgress size={18} color="inherit" /> : null}
-              >
-                {saving ? "Saving…" : "Save Changes"}
-              </Button>
-            </Grid>
-          </Grid>
-        </TabPanel>
-
-      </Container>
-
-      {/* Toast notifications */}
+    <Box sx={{ pb: isMobile ? 12 : 6, bgcolor: "#F8F9FA", minHeight: "100vh" }}>
       <Snackbar
-        open={Boolean(toast)}
-        autoHideDuration={3500}
-        onClose={() => setToast(null)}
-        message={toast}
+        open={Boolean(toast)} autoHideDuration={4000}
+        onClose={() => setToast(null)} message={toast}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       />
-    </LocalizationProvider>
+
+      <ManualBookingDialog
+        open={manualDialogOpen}
+        onClose={() => setManualDialogOpen(false)}
+        slot={selectedSlotForManual}
+        barber={barber}
+        profile={profile}
+        onBooked={async () => {
+          setToast("✅ Manual booking confirmed! Slot removed from online availability.");
+          setSlots(await getProfessionalSlots(barber.uid) || []);
+          await loadData();
+        }}
+      />
+
+      <DashboardHeader
+        profile={profile}
+        profilePreview={profilePreview}
+        brandColor={brandColor}
+        uploading={uploading}
+        handleLogout={handleLogout}
+        handleSaveProfile={handleSaveProfile}
+      />
+
+      <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 1.5, md: 3 }, mt: 3 }}>
+        <Tabs
+          value={tab} onChange={(_, v) => setTab(v)}
+          sx={{ mb: 2, borderBottom: "1px solid #eee" }}
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons="auto"
+        >
+          {tabs.map((t, i) => (
+            <Tab key={i} icon={t.icon} iconPosition="start" label={isMobile ? "" : t.label} />
+          ))}
+        </Tabs>
+
+        {/* ── 0 Schedule ── */}
+        <TabPanel value={tab} index={0}>
+          <ScheduleTab
+            slots={slots} newSlot={newSlot} setNewSlot={setNewSlot}
+            handleAddSlot={handleAddSlot} handleDeleteSlot={handleDeleteSlot}
+            handleRestoreSlot={handleRestoreSlot} openManualBooking={openManualBooking}
+            brandColor={brandColor}
+          />
+        </TabPanel>
+
+        {/* ── 1 Bookings ── */}
+        <TabPanel value={tab} index={1}>
+          <BookingsTab
+            bookings={bookings} isMobile={isMobile} brandColor={brandColor}
+            handleCompleteBooking={handleCompleteBooking}
+            handleCancelBooking={handleCancelBooking}
+          />
+        </TabPanel>
+
+        {/* ── 2 Profile (staff + owners) ──
+              ProfileTab contains Instagram & TikTok fields for ALL barbers.
+              Facebook is owner-only (gated inside ProfileTab via userRole.isOwner).
+              Domain tab is NOT shown to staff — see tab array above.            */}
+        <TabPanel value={tab} index={2}>
+          <ProfileTab
+            profile={profile} setProfile={setProfile}
+            brandColor={brandColor} userRole={userRole}
+            profilePreview={profilePreview}
+            setProfileFile={setProfileFile} setProfilePreview={setProfilePreview}
+            handleDeleteProfile={handleDeleteProfile}
+            handleImageChange={handleImageChange}
+          />
+        </TabPanel>
+
+        {/* ── 3 Services ── */}
+        <TabPanel value={tab} index={3}>
+          <ServicesTab
+            profile={profile}
+            newService={newService} setNewService={setNewService}
+            handleAddService={handleAddService} handleRemoveService={handleRemoveService}
+            brandColor={brandColor}
+          />
+        </TabPanel>
+
+        {/* ── 4 Reviews (owner only) ── */}
+        {userRole.isOwner && (
+          <TabPanel value={tab} index={IDX_REVIEWS}>
+            <ReviewsTab
+              reviews={reviews}
+              onDeleteReview={handleDeleteReview}
+            />
+          </TabPanel>
+        )}
+
+        {/* ── Finance ── */}
+        <TabPanel value={tab} index={IDX_FINANCE}>
+          <FinanceTab
+            profile={profile} setProfile={setProfile} userRole={userRole}
+            stripeLoading={stripeLoading} handleConnectStripe={handleConnectStripe}
+          />
+        </TabPanel>
+
+        {/* ── Design (owner only) ── */}
+        {userRole.isOwner && (
+          <TabPanel value={tab} index={IDX_DESIGN}>
+            <DesignTab
+              profile={profile} setProfile={setProfile}
+              logoPreview={logoPreview}               setLogoFile={setLogoFile}               setLogoPreview={setLogoPreview}
+              heroPreviewDesktop={heroPreviewDesktop} setHeroFileDesktop={setHeroFileDesktop} setHeroPreviewDesktop={setHeroPreviewDesktop}
+              heroPreviewMobile={heroPreviewMobile}   setHeroFileMobile={setHeroFileMobile}   setHeroPreviewMobile={setHeroPreviewMobile}
+              handleImageChange={handleImageChange}
+            />
+          </TabPanel>
+        )}
+
+        {/* ── Domain (owner only on main dashboard — hidden in tenant context) ── */}
+        {userRole.isOwner && !initialTenant && (
+          <TabPanel value={tab} index={IDX_DOMAIN}>
+            <DomainTab
+              profile={profile}
+              barber={barber}
+              brandColor={brandColor}
+            />
+          </TabPanel>
+        )}
+
+        {/* ── Pay ── */}
+        <TabPanel value={tab} index={IDX_PAY}>
+          <PayTab
+            profile={profile} barber={barber}
+            setTab={setTab} financeTabIndex={IDX_FINANCE} brandColor={brandColor}
+            terminalAmount={terminalAmount}   setTerminalAmount={setTerminalAmount}
+            terminalService={terminalService} setTerminalService={setTerminalService}
+            terminalNote={terminalNote}       setTerminalNote={setTerminalNote}
+            terminalStatus={terminalStatus}   terminalSession={terminalSession}
+            handleCreateTerminalCharge={handleCreateTerminalCharge}
+            handleCancelTerminal={handleCancelTerminal}
+            handleResetTerminal={handleResetTerminal}
+            handleCopyPayLink={handleCopyPayLink}
+          />
+        </TabPanel>
+      </Box>
+    </Box>
   );
 }

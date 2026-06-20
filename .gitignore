@@ -18,15 +18,22 @@ dist-ssr
 .idea
 .DS_Store
 *.suo
-*.ntvsca
-*.ntvsce
+*.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Environment variables
+# Environment variables — never commit these
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.production
+.env.*.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Functions
+functions/node_modules
+.vercel
+.env*.local

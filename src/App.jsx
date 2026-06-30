@@ -9,8 +9,9 @@ import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { getBarberByDomain, getBarberById } from "./firebase/firestore";
 
 // Page/Component imports
-import Home              from "./pages/Home";           
-import TenantHome        from "./pages/TenantHome";      
+import Home              from "./pages/Home";
+import LegalPage         from "./pages/LegalPage";
+import TenantHome        from "./pages/TenantHome";
 import BarberProfile     from "./pages/BarberProfile";
 import BookingForm       from "./pages/BookingForm";
 import Confirmation      from "./pages/Confirmation";
@@ -31,10 +32,12 @@ import FoodDiarySubmit      from "./pages/FoodDiarySubmit";
 import CheckInSubmit        from "./pages/CheckInSubmit";
 import ParQSubmit           from "./pages/ParQSubmit";
 import ColourApprovalPage   from "./pages/ColourApprovalPage";
+import QuoteViewPage        from "./pages/QuoteViewPage";
 import QueuePage            from "./pages/QueuePage";
 import FoodGenerator       from "./pages/FoodGenerator";
 import ClientPortal        from "./pages/ClientPortal";
 import PTBookingPage        from "./pages/PTBookingPage";
+import SeoLandingPage      from "./pages/SeoLandingPage";
 
 // Split Nav & Footer imports
 import Nav               from "./components/Nav";
@@ -90,18 +93,20 @@ function AppShell() {
       return;
     }
 
-    const shopMatch          = matchPath("/shop/:tenantId", path);
-    const ptMatch            = matchPath("/pt-booking/:tenantId", path);
-    const hairdresserMatch   = matchPath("/hairdresser/:tenantId", path);
-    const barberMatch        = matchPath("/barber/:id", path);
-    const bookingMatch = matchPath("/book/:barberId/*", path);
-    
+    const shopMatch        = matchPath("/shop/:tenantId", path);
+    const ptMatch          = matchPath("/pt-booking/:tenantId", path);
+    const hairdresserMatch = matchPath("/hairdresser/:tenantId", path);
+    const decoratorMatch   = matchPath("/decorator/:tenantId", path);
+    const barberMatch      = matchPath("/barber/:id", path);
+    const bookingMatch     = matchPath("/book/:barberId/*", path);
+
     const isAuthPath = matchPath("/login", path) || matchPath("/signup", path);
 
     const targetId =
       shopMatch?.params.tenantId ||
       ptMatch?.params.tenantId ||
       hairdresserMatch?.params.tenantId ||
+      decoratorMatch?.params.tenantId ||
       barberMatch?.params.id ||
       bookingMatch?.params.barberId;
 
@@ -138,28 +143,39 @@ function AppShell() {
           const shopData = await getBarberById(parentShopId);
           if (shopData) {
             setTenantBarber({
-              ...data, 
-              id: parentShopId, 
-              businessType:  shopData.businessType  || data.businessType  || "barber",
-              businessName:  shopData.businessName  || shopData.displayName || "Premium Space",
-              businessLogo:  shopData.businessLogo  || shopData.logoUrl    || shopData.logo,
-              brandColor:    shopData.brandColor     || data.brandColor     || "#C9A84C",
-              address:       shopData.address        || "",
-              phone:         shopData.phone          || shopData.businessPhone || "",
-              businessEmail: shopData.businessEmail  || shopData.email     || "",
-              instagramUrl:  shopData.instagramUrl   || null,
-              facebookUrl:   shopData.facebookUrl    || null,
-              privacyPolicy: shopData.privacyPolicy  || "",
-              termsConditions: shopData.termsConditions || ""
+              ...data,
+              id: parentShopId,
+              businessType:    shopData.businessType    || data.businessType  || "barber",
+              businessName:    shopData.businessName    || shopData.displayName || "Premium Space",
+              businessLogo:    shopData.businessLogo    || shopData.logoUrl    || shopData.logo,
+              logoUrl:         shopData.logoUrl         || shopData.businessLogo || shopData.logo,
+              brandColor:      shopData.brandColor      || data.brandColor     || "#C9A84C",
+              address:         shopData.address         || "",
+              phone:           shopData.phone           || shopData.businessPhone || "",
+              businessEmail:   shopData.businessEmail   || shopData.email     || "",
+              email:           shopData.businessEmail   || shopData.email     || "",
+              instagramUrl:    shopData.instagramUrl    || null,
+              facebookUrl:     shopData.facebookUrl     || null,
+              tiktokUrl:       shopData.tiktokUrl       || null,
+              privacyPolicy:   shopData.privacyPolicy   || "",
+              termsConditions: shopData.termsConditions || "",
             });
           }
         } else {
           setTenantBarber({
             ...data,
-            businessType: data.businessType || "barber",
-            businessName: data.businessName || data.displayName || "Premium Space",
-            businessLogo: data.businessLogo || data.logoUrl     || data.logo,
-            brandColor:   data.brandColor   || "#C9A84C"
+            businessType:  data.businessType  || "barber",
+            businessName:  data.businessName  || data.displayName || "Premium Space",
+            businessLogo:  data.businessLogo  || data.logoUrl     || data.logo,
+            logoUrl:       data.logoUrl       || data.businessLogo || data.logo,
+            brandColor:    data.brandColor    || "#C9A84C",
+            address:       data.address       || "",
+            phone:         data.phone         || data.businessPhone || "",
+            businessEmail: data.businessEmail || data.email || "",
+            email:         data.businessEmail || data.email || "",
+            instagramUrl:  data.instagramUrl  || null,
+            facebookUrl:   data.facebookUrl   || null,
+            tiktokUrl:     data.tiktokUrl     || null,
           });
         }
         lastIdentifiedId.current = targetId || hostname;
@@ -210,13 +226,14 @@ function AppShell() {
                       || location.pathname.startsWith('/queue')
                       || location.pathname.startsWith('/food-generator')
                       || location.pathname.startsWith('/client-portal')
-                      || location.pathname.startsWith('/pt-book');
+                      || location.pathname.startsWith('/pt-book')
+                      || location.pathname.startsWith('/quote-view');
 
   const computedPageTitle = useMemo(() => {
     if (tenantBarber) {
       return `${tenantBarber.businessName.toUpperCase()} | Booking Portal`;
     }
-    return "Bookrty | The Multi-Industry Appointment Booking Network";
+    return "Bookrightly | The Multi-Industry Appointment Booking Network";
   }, [tenantBarber]);
 
   if (isFetchingTenant) {
@@ -270,7 +287,7 @@ function AppShell() {
               businessType={tenantBarber.businessType} 
             /> 
           ) : (
-            <Nav isMainSite={true} platformName="Bookrty" />
+            <Nav isMainSite={true} platformName="Bookrightly" />
           )
         )}
 
@@ -288,11 +305,15 @@ function AppShell() {
             <Route path="/login" element={tenantBarber ? <TenantLogin tenant={tenantBarber} /> : <Login />} />
             <Route path="/signup" element={tenantBarber ? <TenantSignup tenant={tenantBarber} /> : <Signup />} />
             <Route path="/cancel-booking/:bookingId" element={<CancelBooking />} />
+            <Route path="/website-design/:industry/:city" element={<SeoLandingPage />} />
+            <Route path="/terms"   element={<LegalPage kind="terms" />} />
+            <Route path="/privacy" element={<LegalPage kind="privacy" />} />
             <Route path="/workout/:trainerId/:planId"                element={<WorkoutPlanView />} />
             <Route path="/food-diary/:trainerId"                  element={<FoodDiarySubmit />} />
             <Route path="/check-in/:trainerId"                    element={<CheckInSubmit />} />
             <Route path="/par-q/:trainerId"                       element={<ParQSubmit />} />
             <Route path="/colour-approval/:tradieId/:paletteId"   element={<ColourApprovalPage />} />
+            <Route path="/quote-view/:tradeId/:quoteId"           element={<QuoteViewPage />} />
             <Route path="/queue/:shopId"                          element={<QueuePage />} />
             <Route path="/food-generator/:barberId/:token"        element={<FoodGenerator />} />
             <Route path="/client-portal/:trainerId/:clientId"    element={<ClientPortal />} />

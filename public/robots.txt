@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /onboarding
+Disallow: /cancel-booking/
+Disallow: /confirmation/
+Disallow: /book/
+Disallow: /client-portal/
+Disallow: /colour-approval/
+Disallow: /quote-view/
+Disallow: /food-generator/
+Disallow: /workout/
+
+Sitemap: https://bookrightly.co.uk/sitemap.xml

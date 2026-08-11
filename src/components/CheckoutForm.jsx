@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, CircularProgress, Alert, Divider, Typography } from "@mui/material";
-import { createBooking } from "../firebase/firestore"; 
+import { createBooking, createNotification } from "../firebase/firestore";
 import { formatDate, formatTime } from "../stripe/formatters";
 // ✅ IMPORT: db and doc/updateDoc to change slot status
 import { db } from "../firebase/config";
@@ -95,26 +95,21 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
           time:            appointmentTime,
         });
 
-        // ✅ Email Trigger
-        fetch("/api/send-email", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clientEmail:   formData.email,
+        // ✅ Notification
+        createNotification(barberId, {
+          type:  "booking",
+          title: "New Booking!",
+          body:  `${formData.name} booked ${formData.haircutStyle || "an appointment"} on ${formatDate(appointmentDate)} at ${formatTime(appointmentTime)}`,
+          data: {
+            bookingId,
             clientName:    formData.name,
-            barberEmail:   barberEmail,                // ✅ resolved via helper — checks all known field names
-            barberName:    barber.name,
-            businessName:  tenant?.businessName || barber?.businessName,
-            brandColor:    brandColor,
+            clientEmail:   formData.email,
+            service:       formData.haircutStyle,
             slotDate:      formatDate(appointmentDate),
             slotTime:      formatTime(appointmentTime),
-            bookingId,
-            barberId,
-            haircutStyle:  formData.haircutStyle,
-            depositAmount: fee.depositPounds,          // ✅ always a clean "25.00" string
-            bookingFee:    bookingFeePounds,            // ✅ always a clean "2.18" string
-          }),
-        }).catch(err => console.error("Email fail:", err));
+            depositAmount: fee.depositPounds,
+          },
+        });
 
         // ✅ Calendar Sync (if owner has Google Calendar connected)
         fetch("/api/google-calendar/create-event", {
@@ -131,6 +126,23 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
             barberName:   barber.name,
           }),
         }).catch(err => console.error("Calendar sync fail (non-critical):", err));
+
+        // ✅ Outlook Calendar Sync — fire and forget, non-blocking
+        fetch("/api/outlook/sync-booking", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            barberId,
+            bookingId,
+            name:    formData.name,
+            email:   formData.email,
+            phone:   formData.phone,
+            service: formData.haircutStyle || "Appointment",
+            date:    appointmentDate,
+            time:    appointmentTime,
+            notes:   formData.notes || "",
+          }),
+        }).catch(err => console.error("Outlook sync fail (non-critical):", err));
 
         navigate(`/confirmation/${bookingId}`, { state: { tenant } });
       }

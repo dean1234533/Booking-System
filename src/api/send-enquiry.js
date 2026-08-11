@@ -114,7 +114,7 @@ export async function onRequestPost(context) {
 
             <!-- Footer -->
             <div style="margin-top:40px;padding-top:24px;border-top:1px solid #e8e0d5;text-align:center;font-size:11px;color:#c8c3bb;letter-spacing:0.05em;line-height:1.8;text-transform:uppercase;">
-              Powered by <strong>Bookrty</strong><br/>
+              Powered by <strong>Bookrightly</strong><br/>
               © ${new Date().getFullYear()} ${businessName}
             </div>
           </div>

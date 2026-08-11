@@ -1,81 +1,84 @@
-import React, { useState } from "react";
-import { 
-  Box, Typography, Container, Stack, Link, Divider, 
-  Dialog, DialogTitle, DialogContent, DialogActions, Button 
-} from "@mui/material";
+import React from "react";
+import { Box, Typography, Container, Stack, Link } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 export default function Footer() {
   const navigate = useNavigate();
-  const [modalContent, setModalContent] = useState(null);
 
-  // Using the same branding tokens from your theme
-  const businessName = "Bookrty";
-  const G = { gold: "#C9A84C", dark: "#0d0d0d", dark2: "#1a1a1a" };
+  const businessName = "Bookrightly";
+  const G = { gold: "#C9A84C", dark: "#0d0d0d" };
 
-  const handleOpenModal = (type) => setModalContent(type);
-  const handleCloseModal = () => setModalContent(null);
+  const navLinks = [
+    { label: "Login",           action: () => navigate("/login") },
+    { label: "Join the network", action: () => navigate("/signup") },
+  ];
+  const legalLinks = [
+    { label: "Terms & Conditions", action: () => navigate("/terms") },
+    { label: "Privacy Policy",     action: () => navigate("/privacy") },
+  ];
+
+  const linkSx = {
+    color: "rgba(255,255,255,0.55)", cursor: "pointer", fontSize: "0.8rem",
+    fontWeight: 600, textDecoration: "none", letterSpacing: "0.02em",
+    "&:hover": { color: G.gold },
+  };
 
   return (
-    <Box component="footer" sx={{ py: 8, bgcolor: G.dark, borderTop: "1px solid #1A1A1A", color: "#FFF" }}>
-      <Container maxWidth="lg">
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems="center" spacing={4}>
-          
-          {/* BRANDING */}
-          <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
-            <Typography variant="h6" sx={{ fontWeight: 900, letterSpacing: 3, textTransform: "uppercase", color: "#FFF" }}>
+    <Box component="footer" sx={{ bgcolor: G.dark, color: "#fff", borderTop: "1px solid rgba(255,255,255,0.08)", py: { xs: 5, md: 7 }, px: { xs: 3, md: 5 } }}>
+      <Container maxWidth="lg" disableGutters>
+        {/* Top: brand + nav */}
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "center", md: "flex-start" }}
+          spacing={{ xs: 3, md: 4 }}
+          sx={{ textAlign: { xs: "center", md: "left" } }}
+        >
+          <Box>
+            <Typography sx={{ fontWeight: 900, letterSpacing: "0.18em", textTransform: "uppercase", fontSize: "1.1rem", color: "#fff" }}>
               {businessName}
             </Typography>
-            <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.4)", display: "block", mt: 0.5 }}>
+            <Typography sx={{ color: "rgba(255,255,255,0.4)", fontSize: "0.78rem", mt: 0.75 }}>
               The UK's premium service marketplace.
             </Typography>
           </Box>
-          
-          {/* NAVIGATION */}
-          <Stack direction="row" spacing={4}>
-            <Link onClick={() => navigate("/login")} sx={{ color: "#FFF", cursor: "pointer", fontSize: "0.75rem", fontWeight: 700, textDecoration: "none", "&:hover": { color: G.gold } }}>
-              LOGIN
-            </Link>
-            <Link onClick={() => navigate("/signup")} sx={{ color: "#FFF", cursor: "pointer", fontSize: "0.75rem", fontWeight: 700, textDecoration: "none", "&:hover": { color: G.gold } }}>
-              JOIN THE NETWORK
-            </Link>
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 1.5, sm: 3.5 }} alignItems="center">
+            {navLinks.map((l) => (
+              <Link key={l.label} onClick={l.action} sx={linkSx}>{l.label}</Link>
+            ))}
           </Stack>
         </Stack>
 
-        <Divider sx={{ my: 4, borderColor: "#1A1A1A" }} />
+        {/* Divider */}
+        <Box sx={{ height: "1px", bgcolor: "rgba(255,255,255,0.08)", my: { xs: 3, md: 4 } }} />
 
-        <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 2 }}>
-          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.3)" }}>
-            © 2026 {businessName}.
+        {/* Bottom: copyright + legal */}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems="center"
+          spacing={2}
+          sx={{ textAlign: "center" }}
+        >
+          <Typography sx={{ color: "rgba(255,255,255,0.3)", fontSize: "0.74rem" }}>
+            © {new Date().getFullYear()} {businessName}. All rights reserved.
           </Typography>
-          <Stack direction="row" spacing={3}>
-            {['Privacy', 'Terms'].map((item) => (
-              <Typography 
-                key={item} variant="caption" onClick={() => handleOpenModal(item.toLowerCase())}
-                sx={{ color: "rgba(255,255,255,0.3)", cursor: "pointer", "&:hover": { color: "#FFF" } }}
-              >
-                {item.toUpperCase()}
-              </Typography>
+          <Typography sx={{ color: "rgba(255,255,255,0.22)", fontSize: "0.72rem" }}>
+            Built by{" "}
+            <Link href="https://dean-da-dev.co.uk" target="_blank" rel="noopener noreferrer" sx={{ color: "rgba(255,255,255,0.4)", textDecoration: "none", "&:hover": { color: G.gold } }}>
+              Dean Da Dev
+            </Link>
+          </Typography>
+          <Stack direction="row" spacing={3} sx={{ flexWrap: "wrap", justifyContent: "center", rowGap: 1 }}>
+            {legalLinks.map((l) => (
+              <Link key={l.label} onClick={l.action} sx={{ ...linkSx, fontWeight: 500, fontSize: "0.74rem", color: "rgba(255,255,255,0.4)" }}>
+                {l.label}
+              </Link>
             ))}
           </Stack>
-        </Box>
+        </Stack>
       </Container>
-
-      {/* MODAL */}
-      <Dialog open={Boolean(modalContent)} onClose={handleCloseModal} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: G.dark2, color: '#FFF' } }}>
-        <DialogTitle sx={{ fontWeight: 900, color: G.gold }}>{modalContent?.toUpperCase()}</DialogTitle>
-        <DialogContent dividers sx={{ borderColor: '#333' }}>
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', whiteSpace: 'pre-line' }}>
-            {modalContent === 'privacy' 
-              ? "At Bookrty, we prioritize your data security. We collect minimal information strictly for service matching and booking facilitation. We do not sell user data to third parties."
-              : "1. Liability: Bookrty is a technology provider, not a party to service contracts.\n\n2. Refunds: Deposits are refundable per the individual professional's policy; booking fees are non-refundable.\n\n3. Domains: All custom domain purchases are final."
-            }
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseModal} sx={{ color: G.gold }}>CLOSE</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

@@ -7,29 +7,48 @@
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#C9A84C" />
+    <meta name="theme-color" content="#0a0a0a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Bookrty" />
+    <meta name="apple-mobile-web-app-title" content="Bookrightly" />
     <link rel="apple-touch-icon" href="/images/IMG_9763-removebg-preview.png" />
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,400;1,300&display=swap" rel="stylesheet" />
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fraunces:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+    <!-- Only the families actually used by the public site (Home and its
+         shared brand tokens: SERIF=Playfair Display, SANS=DM Sans,
+         ITALIC=Cormorant Garamond). "Plus Jakarta Sans" and "Fraunces" were
+         being loaded globally on every page for no real use — Fraunces
+         appears nowhere in the codebase at all, and Plus Jakarta Sans is
+         only ever a fallback AFTER DM Sans in one Dashboard.jsx style (so it
+         was realistically never rendered anyway). Page-specific templates
+         (DecoratorTemplate, HairdresserTemplate, PTBookingSite, etc.)
+         already load their own extra fonts on demand — same pattern, not
+         changed here. -->
+    <link href="https://fonts.bunny.net/css?family=playfair-display:400,400i,500|dm-sans:300,400,500|cormorant-garamond:400,400i,300i&display=swap" rel="stylesheet" />
 
 
-    <title>Bookrty</title>
-    <meta name="title" content="Bookrty" />
-    <meta name="description" content="Professional grooming services at your fingertips." />
+    <title>Bookrightly | Online Booking for Barbers & Salons</title>
+    <meta name="google-site-verification" content="7RW3PtKpZORoK9Wcz3F8GQgWgv93ty0dzdJLFmV7IxM" />
+    <meta name="title" content="Bookrightly | Online Booking for Barbers & Salons" />
+    <meta name="description" content="Bookrightly gives barbers, hairdressers, decorators and personal trainers their own website, online booking, payments and business dashboard — all in one place." />
+    <!-- Static fallback for the homepage only — react-helmet-async overrides
+         this per-route once the app mounts (see each page's <Helmet> block),
+         but this keeps the raw pre-JS HTML honest for the homepage itself,
+         rather than only being correct after JavaScript runs. -->
+    <link rel="canonical" href="https://bookrightly.co.uk/" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://bookehtrim.co.uk/" />
-    <meta property="og:title" content="Bookrty" />
-    <meta property="og:description" content="Book your next haircut with ease." />
-    <meta property="og:image" content="https://bookehtrim.co.uk/images/Logo.png" />
+    <meta property="og:url" content="https://bookrightly.co.uk/" />
+    <meta property="og:title" content="Bookrightly | Appointment Booking Network" />
+    <meta property="og:description" content="Book appointments with personal trainers, barbers, hairdressers, decorators, and more — all in one place." />
+    <meta property="og:image" content="https://bookrightly.co.uk/images/IMG_9763-removebg-preview.png" />
 
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="Bookrty" />
-    <meta property="twitter:image" content="https://bookehtrim.co.uk/images/Logo.png" />
+    <!-- Twitter Card tags MUST use name=, not property= — Twitter's crawler
+         only recognises name="twitter:..."; the old property= versions were
+         silently ignored entirely. -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Bookrightly | Appointment Booking Network" />
+    <meta name="twitter:description" content="Book appointments with personal trainers, barbers, hairdressers, decorators, and more — all in one place." />
+    <meta name="twitter:image" content="https://bookrightly.co.uk/images/IMG_9763-removebg-preview.png" />
   </head>
   <body>
     <div id="root"></div>

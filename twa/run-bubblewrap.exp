@@ -1,0 +1,76 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+cd /Users/deantyroneburtburt/Downloads/Booking-System/twa
+
+spawn npx @bubblewrap/cli init --manifest https://bookrightly.co.uk/manifest.json --directory android
+
+# Create directory?
+expect "Do you want to create it now?"
+send "y\r"
+
+# May ask about JDK - only if not in config
+expect {
+    "Do you want Bubblewrap to install the JDK" {
+        send "n\r"
+        expect "Path to your existing JDK"
+        send "/Applications/Android Studio.app/Contents/jbr/Contents/Home\r"
+        exp_continue
+    }
+    "Do you want Bubblewrap to install the Android SDK" {
+        send "n\r"
+        expect "Path to your existing Android SDK"
+        send "/Users/deantyroneburtburt/Library/Android/sdk\r"
+        exp_continue
+    }
+    "Domain:" {
+        # Fall through to domain handling below
+    }
+}
+
+# Domain
+send "\r"
+
+# URL path
+expect "URL path:"
+send "\r"
+
+# Application name
+expect -re "(Application name|name.*Bookrightly)"
+send "\r"
+
+# Short name
+expect -re "short name"
+send "\r"
+
+# Application ID / package
+expect -re "(Application ID|package)"
+send "com.bookrightly.app\r"
+
+# Host (might not appear if parsed from manifest)
+# Handle any remaining prompts by just pressing enter
+set i 0
+while {$i < 20} {
+    expect {
+        -re "\\?" {
+            send "\r"
+            incr i
+        }
+        "Generated Android project" {
+            puts "\n\nSUCCESS!"
+            break
+        }
+        "twa-manifest.json" {
+            puts "\n\nSUCCESS: manifest created!"
+            break
+        }
+        eof {
+            puts "\n\nCompleted (eof)."
+            break
+        }
+        timeout {
+            puts "\n\nTIMEOUT"
+            break
+        }
+    }
+}

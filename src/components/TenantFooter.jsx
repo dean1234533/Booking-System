@@ -54,7 +54,7 @@ export default function TenantFooter({ tenant, businessType }) {
       setModal({
         open: true,
         title: "Privacy Policy",
-        content: tenant?.privacyPolicy || "Our privacy policy details how we handle your data..."
+        content: tenant?.privacyPolicy || `${businessName} is committed to protecting your privacy. We collect your name, contact details, and appointment information to provide our booking services. Your data is stored securely via Bookrightly and is never sold to third parties. You have the right to access, correct, or delete your data by contacting us directly. For platform-level privacy information, see bookrightly.co.uk/privacy.`
       });
     } else {
       setModal({
@@ -65,147 +65,100 @@ export default function TenantFooter({ tenant, businessType }) {
     }
   };
 
-  return (
-    <Box component="footer" sx={{ bgcolor: footerBg, color: footerText, pt: 8, pb: 4, mt: 'auto' }}>
-      <Container maxWidth="lg">
-        <Grid container spacing={4}>
-          
-          {/* Left Column: Logo & Contact Info */}
-          <Grid item xs={12} md={6}>
-            
-            {/* LOGO SECTION (Synced with TenantNav logic) */}
-            <Box sx={{ mb: 3 }}>
-              {logo ? (
-                <Avatar 
-                  src={logo} 
-                  variant="square"
-                  sx={{ 
-                    width: 60, 
-                    height: 60, 
-                    borderRadius: '4px',
-                    border: `1.5px solid ${brandColor}`,
-                    objectFit: 'contain',
-                    bgcolor: 'transparent'
-                  }} 
-                />
-              ) : (
-                <Box 
-                  sx={{ 
-                    width: 60, 
-                    height: 60, 
-                    borderRadius: '4px', 
-                    bgcolor: "#1A1A1A", 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    color: brandColor,
-                    border: `1px solid ${brandColor}44`
-                  }}
-                >
-                  <ContentCutIcon sx={{ fontSize: 30 }} />
-                </Box>
-              )}
-            </Box>
+  const socialSx = {
+    color: footerText,
+    border: `1px solid ${dividerColor}`,
+    '&:hover': { bgcolor: brandColor, borderColor: brandColor, color: contrastColor(brandColor) },
+  };
 
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 1000,
-                mb: 1,
-                letterSpacing: 1,
-                fontFamily: "'Playfair Display', serif",
-                color: footerText,
-              }}
-            >
+  return (
+    <Box component="footer" sx={{ bgcolor: footerBg, color: footerText, pt: { xs: 6, md: 8 }, pb: 4, mt: 'auto', px: { xs: 3, md: 5 } }}>
+      <Container maxWidth="lg" disableGutters>
+        {/* Top: brand/contact (left) + social (right) — centred on mobile */}
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'center', md: 'flex-start' }}
+          spacing={{ xs: 4, md: 4 }}
+          sx={{ textAlign: { xs: 'center', md: 'left' } }}
+        >
+          {/* Brand + contact */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-start' } }}>
+            {logo ? (
+              <Avatar src={logo} variant="square"
+                sx={{ width: 56, height: 56, borderRadius: '6px', border: `1.5px solid ${brandColor}`, objectFit: 'contain', bgcolor: 'transparent', mb: 2 }} />
+            ) : (
+              <Box sx={{ width: 56, height: 56, borderRadius: '6px', bgcolor: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: brandColor, border: `1px solid ${brandColor}44`, mb: 2 }}>
+                <ContentCutIcon sx={{ fontSize: 28 }} />
+              </Box>
+            )}
+
+            <Typography variant="h6" sx={{ fontWeight: 900, mb: address ? 1 : 2, letterSpacing: 1, fontFamily: "'Playfair Display', serif", color: footerText }}>
               {businessName}
             </Typography>
 
             {address && (
-              <Typography variant="body2" sx={{ color: mutedText, mb: 3, maxWidth: 300 }}>
+              <Typography variant="body2" sx={{ color: mutedText, mb: 2, maxWidth: 320 }}>
                 {address}
               </Typography>
             )}
 
-            <Stack spacing={1.5}>
+            <Stack spacing={1.25} alignItems={{ xs: 'center', md: 'flex-start' }}>
               {phone && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
                   <PhoneIcon sx={{ fontSize: 18, color: brandColor }} />
-                  <Link href={`tel:${phone}`} sx={{ color: footerText, textDecoration: 'none', fontSize: '0.9rem', opacity: 0.8 }}>
-                    {phone}
-                  </Link>
+                  <Link href={`tel:${phone}`} sx={{ color: footerText, textDecoration: 'none', fontSize: '0.9rem', opacity: 0.85 }}>{phone}</Link>
                 </Box>
               )}
               {email && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
                   <EmailIcon sx={{ fontSize: 18, color: brandColor }} />
-                  <Link href={`mailto:${email}`} sx={{ color: footerText, textDecoration: 'none', fontSize: '0.9rem', opacity: 0.8 }}>
-                    {email}
-                  </Link>
+                  <Link href={`mailto:${email}`} sx={{ color: footerText, textDecoration: 'none', fontSize: '0.9rem', opacity: 0.85, wordBreak: 'break-all' }}>{email}</Link>
                 </Box>
               )}
             </Stack>
-          </Grid>
+          </Box>
 
-          {/* Right Column: Social Media */}
-          <Grid item xs={12} md={6} sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'flex-start', md: 'flex-end' } }}>
-            <Typography variant="overline" sx={{ color: brandColor, fontWeight: 900, letterSpacing: 2, mb: 2 }}>
-              STAY CONNECTED
+          {/* Social */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-end' } }}>
+            <Typography variant="overline" sx={{ color: brandColor, fontWeight: 900, letterSpacing: 2, mb: 1.5 }}>
+              Stay Connected
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <IconButton
-                component="a"
-                href={instagram || "#"}
-                target={instagram ? "_blank" : "_self"}
-                sx={{
-                  color: footerText,
-                  border: `1px solid ${dividerColor}`,
-                  '&:hover': { bgcolor: brandColor, borderColor: brandColor, color: contrastColor(brandColor) }
-                }}
-              >
-                <InstagramIcon />
-              </IconButton>
-
-              <IconButton
-                component="a"
-                href={facebook || "#"}
-                target={facebook ? "_blank" : "_self"}
-                sx={{
-                  color: footerText,
-                  border: `1px solid ${dividerColor}`,
-                  '&:hover': { bgcolor: brandColor, borderColor: brandColor, color: contrastColor(brandColor) }
-                }}
-              >
-                <FacebookIcon />
-              </IconButton>
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <IconButton component="a" href={instagram || '#'} target={instagram ? '_blank' : '_self'} sx={socialSx}><InstagramIcon /></IconButton>
+              <IconButton component="a" href={facebook || '#'} target={facebook ? '_blank' : '_self'} sx={socialSx}><FacebookIcon /></IconButton>
             </Box>
-          </Grid>
+          </Box>
+        </Stack>
 
-          {/* Bottom Bar */}
-          <Grid item xs={12}>
-            <Divider sx={{ bgcolor: dividerColor, my: 4 }} />
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+        <Divider sx={{ bgcolor: dividerColor, my: { xs: 3, md: 4 } }} />
 
-              <Stack direction="row" spacing={3} alignItems="center">
-                <Typography variant="caption" sx={{ color: mutedText }}>
-                  © {new Date().getFullYear()} {businessName}
-                </Typography>
-                <Link component={RouterLink} to="/login" sx={{ fontSize: '0.7rem', color: brandColor, textDecoration: 'none', fontWeight: 900, letterSpacing: 1 }}>
-                  {LOGIN_LABEL[businessType] || 'BARBER LOGIN'}
-                </Link>
-              </Stack>
+        {/* Bottom bar */}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems="center"
+          spacing={2}
+          sx={{ textAlign: 'center' }}
+        >
+          <Stack direction="row" spacing={3} alignItems="center" sx={{ flexWrap: 'wrap', justifyContent: 'center', rowGap: 1 }}>
+            <Typography variant="caption" sx={{ color: mutedText }}>
+              © {new Date().getFullYear()} {businessName}
+            </Typography>
+            <Link component={RouterLink} to="/login" sx={{ fontSize: '0.7rem', color: brandColor, textDecoration: 'none', fontWeight: 900, letterSpacing: 1 }}>
+              {LOGIN_LABEL[businessType] || 'BARBER LOGIN'}
+            </Link>
+          </Stack>
 
-              <Stack direction="row" spacing={3}>
-                <Link onClick={() => handleOpenLegal('privacy')} sx={{ cursor: 'pointer', fontSize: '0.75rem', color: mutedText, textDecoration: 'none', '&:hover': { color: brandColor } }}>
-                  Privacy Policy
-                </Link>
-                <Link onClick={() => handleOpenLegal('terms')} sx={{ cursor: 'pointer', fontSize: '0.75rem', color: mutedText, textDecoration: 'none', '&:hover': { color: brandColor } }}>
-                  Terms of Service
-                </Link>
-              </Stack>
-
-            </Box>
-          </Grid>
-        </Grid>
+          <Stack direction="row" spacing={3} sx={{ flexWrap: 'wrap', justifyContent: 'center', rowGap: 1 }}>
+            <Link onClick={() => handleOpenLegal('privacy')} sx={{ cursor: 'pointer', fontSize: '0.75rem', color: mutedText, textDecoration: 'none', '&:hover': { color: brandColor } }}>
+              Privacy Policy
+            </Link>
+            <Link onClick={() => handleOpenLegal('terms')} sx={{ cursor: 'pointer', fontSize: '0.75rem', color: mutedText, textDecoration: 'none', '&:hover': { color: brandColor } }}>
+              Terms of Service
+            </Link>
+          </Stack>
+        </Stack>
       </Container>
 
       {/* Legal Dialog */}

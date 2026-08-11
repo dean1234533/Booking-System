@@ -34,22 +34,23 @@ const JOB_TYPES = [
 ];
 
 const STATUS = {
-  pending:       { label: "Pending",     bg: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)", bar: "rgba(255,255,255,0.18)" },
-  "in-progress": { label: "In Progress", bg: "rgba(234,179,8,0.14)",   color: "#eab308",                bar: "#eab308" },
-  done:          { label: "Done",        bg: "rgba(74,222,128,0.12)",  color: "#4ade80",                bar: "#4ade80" },
+  pending:       { label: "Pending",     bg: "rgba(0,0,0,0.06)",          color: "rgba(0,0,0,0.5)",  bar: "rgba(0,0,0,0.18)" },
+  "in-progress": { label: "In Progress", bg: "rgba(234,179,8,0.14)",       color: "#b45309",          bar: "#eab308" },
+  done:          { label: "Done",        bg: "rgba(22,163,74,0.1)",        color: "#16a34a",          bar: "#16a34a" },
 };
 
 function fieldSx(brand) {
   return {
-    "& .MuiInputLabel-root": { color: "rgba(255,255,255,0.35)", fontSize: "0.85rem" },
+    "& .MuiInputLabel-root": { color: "rgba(0,0,0,0.55)", fontSize: "0.85rem" },
     "& .MuiInputLabel-root.Mui-focused": { color: brand },
     "& .MuiOutlinedInput-root": {
-      color: "#fff", borderRadius: 0,
-      "& fieldset":             { borderColor: "rgba(255,255,255,0.12)" },
-      "&:hover fieldset":       { borderColor: "rgba(255,255,255,0.28)" },
+      color: "#111", borderRadius: "8px",
+      bgcolor: "#fff",
+      "& fieldset":             { borderColor: "rgba(0,0,0,0.15)" },
+      "&:hover fieldset":       { borderColor: "rgba(0,0,0,0.35)" },
       "&.Mui-focused fieldset": { borderColor: brand },
     },
-    "& .MuiSelect-icon": { color: "rgba(255,255,255,0.35)" },
+    "& .MuiSelect-icon": { color: "rgba(0,0,0,0.45)" },
   };
 }
 
@@ -137,13 +138,13 @@ export default function DayPlannerTab({ barber, brandColor }) {
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, gap: 1 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <IconButton size="small" onClick={() => setDate(d => addDays(d, -1))}
-            sx={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 0,
-              "&:hover": { color: "#fff", borderColor: "rgba(255,255,255,0.3)" } }}>
+            sx={{ color: "rgba(0,0,0,0.45)", border: "1px solid rgba(0,0,0,0.12)", borderRadius: "6px",
+              "&:hover": { color: "#111", borderColor: "rgba(0,0,0,0.3)" } }}>
             <ArrowBackIcon sx={{ fontSize: 16 }} />
           </IconButton>
 
           <Box sx={{ textAlign: "center", px: 1 }}>
-            <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1rem", sm: "1.35rem" }, color: "#fff", fontWeight: 400, lineHeight: 1.2 }}>
+            <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1rem", sm: "1.35rem" }, color: "#111", fontWeight: 400, lineHeight: 1.2 }}>
               {formatDate(date)}
             </Typography>
             {isToday && (
@@ -154,15 +155,15 @@ export default function DayPlannerTab({ barber, brandColor }) {
           </Box>
 
           <IconButton size="small" onClick={() => setDate(d => addDays(d, 1))}
-            sx={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 0,
-              "&:hover": { color: "#fff", borderColor: "rgba(255,255,255,0.3)" } }}>
+            sx={{ color: "rgba(0,0,0,0.45)", border: "1px solid rgba(0,0,0,0.12)", borderRadius: "6px",
+              "&:hover": { color: "#111", borderColor: "rgba(0,0,0,0.3)" } }}>
             <ArrowForwardIcon sx={{ fontSize: 16 }} />
           </IconButton>
 
           {!isToday && (
             <Tooltip title="Jump to today">
               <IconButton size="small" onClick={() => setDate(new Date())}
-                sx={{ color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 0, ml: 0.5,
+                sx={{ color: "rgba(0,0,0,0.35)", border: "1px solid rgba(0,0,0,0.1)", borderRadius: "6px", ml: 0.5,
                   "&:hover": { color: brandColor, borderColor: `${brandColor}50` } }}>
                 <TodayIcon sx={{ fontSize: 16 }} />
               </IconButton>
@@ -172,7 +173,7 @@ export default function DayPlannerTab({ barber, brandColor }) {
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexShrink: 0 }}>
           {total > 0 && (
-            <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(255,255,255,0.32)" }}>
+            <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(0,0,0,0.45)" }}>
               {done}/{total} done
             </Typography>
           )}
@@ -181,11 +182,11 @@ export default function DayPlannerTab({ barber, brandColor }) {
             onClick={() => setAdding(a => !a)}
             sx={{
               bgcolor: adding ? "transparent" : brandColor,
-              color:   adding ? "rgba(255,255,255,0.5)" : "#0d0d0d",
+              color:   adding ? "rgba(0,0,0,0.5)" : "#0d0d0d",
               fontWeight: 700, fontSize: "0.74rem", borderRadius: 0, px: 2, py: 0.9,
-              border: adding ? "1px solid rgba(255,255,255,0.12)" : "none",
+              border: adding ? "1px solid rgba(0,0,0,0.15)" : "none",
               "&:hover": adding
-                ? { color: "#fff", borderColor: "rgba(255,255,255,0.28)" }
+                ? { color: "#111", borderColor: "rgba(0,0,0,0.3)" }
                 : { bgcolor: brandColor, filter: "brightness(1.1)" },
             }}
           >
@@ -196,7 +197,7 @@ export default function DayPlannerTab({ barber, brandColor }) {
 
       {/* ── Add form ── */}
       {adding && (
-        <Box sx={{ bgcolor: "#111", border: `1px solid ${brandColor}28`, p: 2.5, mb: 3 }}>
+        <Box sx={{ bgcolor: "#f8f9fa", border: `1px solid ${brandColor}28`, p: 2.5, mb: 3, borderRadius: "8px" }}>
           <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: brandColor, mb: 2 }}>
             New Job
           </Typography>
@@ -211,7 +212,7 @@ export default function DayPlannerTab({ barber, brandColor }) {
               <FormControl fullWidth size="small" sx={fx}>
                 <InputLabel>Job Type</InputLabel>
                 <Select value={form.jobType} label="Job Type" onChange={e => setF("jobType", e.target.value)}
-                  MenuProps={{ PaperProps: { sx: { bgcolor: "#1a1a1a", color: "#fff", borderRadius: 0, maxHeight: 280 } } }}>
+                  MenuProps={{ PaperProps: { sx: { bgcolor: "#fff", color: "#111", borderRadius: "8px", border: "1px solid #e5e7eb", maxHeight: 280 } } }}>
                   {JOB_TYPES.map(t => (
                     <MenuItem key={t} value={t} sx={{ fontSize: "0.82rem", "&:hover": { bgcolor: `${brandColor}20` } }}>{t}</MenuItem>
                   ))}
@@ -244,7 +245,7 @@ export default function DayPlannerTab({ barber, brandColor }) {
           <CircularProgress sx={{ color: brandColor }} size={34} thickness={2} />
         </Box>
       ) : jobs.length === 0 ? (
-        <Box sx={{ textAlign: "center", py: 9, color: "rgba(255,255,255,0.18)" }}>
+        <Box sx={{ textAlign: "center", py: 9, color: "rgba(0,0,0,0.3)" }}>
           <Typography sx={{ fontFamily: SERIF, fontSize: "1.25rem" }}>No jobs planned</Typography>
           <Typography sx={{ fontFamily: SANS, fontSize: "0.78rem", mt: 0.75 }}>
             Add jobs above to build your day schedule
@@ -256,10 +257,11 @@ export default function DayPlannerTab({ barber, brandColor }) {
             const sc = STATUS[job.status] || STATUS.pending;
             return (
               <Box key={job.id} sx={{
-                display: "flex", bgcolor: "#111",
-                border: "1px solid rgba(255,255,255,0.07)",
+                display: "flex", bgcolor: "#fff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
                 overflow: "hidden",
-                opacity: job.status === "done" ? 0.6 : 1,
+                opacity: job.status === "done" ? 0.65 : 1,
                 transition: "opacity .2s",
               }}>
                 {/* Status bar */}
@@ -267,29 +269,29 @@ export default function DayPlannerTab({ barber, brandColor }) {
 
                 {/* Time block */}
                 <Box sx={{
-                  px: 2, py: 2.5, borderRight: "1px solid rgba(255,255,255,0.06)",
+                  px: 2, py: 2.5, borderRight: "1px solid #f3f4f6",
                   minWidth: 80, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 }}>
-                  <Typography sx={{ fontFamily: SANS, fontWeight: 800, fontSize: "0.9rem", color: "#fff" }}>{job.time}</Typography>
+                  <Typography sx={{ fontFamily: SANS, fontWeight: 800, fontSize: "0.9rem", color: "#111" }}>{job.time}</Typography>
                   {job.endTime && (
-                    <Typography sx={{ fontFamily: SANS, fontSize: "0.62rem", color: "rgba(255,255,255,0.28)", mt: 0.25 }}>→ {job.endTime}</Typography>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.62rem", color: "rgba(0,0,0,0.35)", mt: 0.25 }}>→ {job.endTime}</Typography>
                   )}
                 </Box>
 
                 {/* Job info */}
                 <Box sx={{ flex: 1, px: 2, py: 2, minWidth: 0 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.5 }}>
-                    <Typography sx={{ fontFamily: SANS, fontWeight: 700, color: "#fff", fontSize: "0.88rem" }}>{job.client}</Typography>
+                    <Typography sx={{ fontFamily: SANS, fontWeight: 700, color: "#111", fontSize: "0.88rem" }}>{job.client}</Typography>
                     <Chip label={job.jobType} size="small" sx={{ bgcolor: `${brandColor}15`, color: brandColor, fontSize: "0.6rem", height: 18, borderRadius: 0 }} />
                   </Box>
                   {job.address && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
-                      <LocationIcon sx={{ fontSize: 12, color: "rgba(255,255,255,0.28)" }} />
-                      <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(255,255,255,0.38)" }}>{job.address}</Typography>
+                      <LocationIcon sx={{ fontSize: 12, color: "rgba(0,0,0,0.35)" }} />
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(0,0,0,0.5)" }}>{job.address}</Typography>
                     </Box>
                   )}
                   {job.notes && (
-                    <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(255,255,255,0.32)", fontStyle: "italic" }}>{job.notes}</Typography>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(0,0,0,0.45)", fontStyle: "italic" }}>{job.notes}</Typography>
                   )}
                 </Box>
 
@@ -302,11 +304,11 @@ export default function DayPlannerTab({ barber, brandColor }) {
                     sx={{
                       bgcolor: sc.bg, color: sc.color, fontSize: "0.62rem", height: 22, borderRadius: 0,
                       cursor: "pointer", letterSpacing: "0.04em",
-                      "&:hover": { filter: "brightness(1.2)" },
+                      "&:hover": { filter: "brightness(0.95)" },
                     }}
                   />
                   <IconButton size="small" onClick={() => deleteJob(job.id)}
-                    sx={{ color: "rgba(255,255,255,0.2)", "&:hover": { color: "#ff6b6b" } }}>
+                    sx={{ color: "rgba(0,0,0,0.3)", "&:hover": { color: "#ff6b6b" } }}>
                     <DeleteIcon sx={{ fontSize: 15 }} />
                   </IconButton>
                 </Box>
@@ -318,15 +320,15 @@ export default function DayPlannerTab({ barber, brandColor }) {
 
       {/* ── Day summary ── */}
       {total > 0 && (
-        <Box sx={{ mt: 3, p: 2.5, bgcolor: "#111", border: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: 4 }}>
+        <Box sx={{ mt: 3, p: 2.5, bgcolor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", display: "flex", gap: 4 }}>
           {[
             { label: "Total Jobs",  val: total },
             { label: "Completed",   val: done },
             { label: "Remaining",   val: total - done },
           ].map(s => (
             <Box key={s.label}>
-              <Typography sx={{ fontFamily: SERIF, fontSize: "1.6rem", color: "#fff", lineHeight: 1 }}>{s.val}</Typography>
-              <Typography sx={{ fontFamily: SANS, fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", mt: 0.3 }}>
+              <Typography sx={{ fontFamily: SERIF, fontSize: "1.6rem", color: "#111", lineHeight: 1 }}>{s.val}</Typography>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase", color: "rgba(0,0,0,0.4)", mt: 0.3 }}>
                 {s.label}
               </Typography>
             </Box>

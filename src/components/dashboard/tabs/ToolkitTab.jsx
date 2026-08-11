@@ -55,7 +55,7 @@ const TOOLKIT = [
       { name: "Nutrition planning",     tip: "Build meal plans with 1000+ foods",        icon: RestaurantMenuIcon },
       { name: "Automated reminders",    tip: "Send monthly check-ins & reminders",       icon: NotificationsActiveIcon },
       { name: "Client forms",           tip: "PAR-Q forms, check-ins, assessments",      icon: AssignmentIcon },
-      { name: "Food generator",         tip: "AI meal plan suggestions",                 icon: AutoAwesomeIcon },
+      { name: "Food generator",         tip: "Build personalised meal plans for clients", icon: AutoAwesomeIcon },
     ],
   },
   {

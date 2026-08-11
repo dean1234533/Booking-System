@@ -9,6 +9,7 @@ import {
   ArrowBack as ArrowBackIcon,
   Print as PrintIcon,
   Save as SaveIcon,
+  ContentCopy as ContentCopyIcon,
 } from "@mui/icons-material";
 import {
   collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp,
@@ -21,15 +22,16 @@ const UNITS = ["m²", "m", "hrs", "days", "item", "room", "coat", "door", "windo
 
 function fieldSx(brand) {
   return {
-    "& .MuiInputLabel-root": { color: "rgba(255,255,255,0.35)", fontSize: "0.85rem" },
+    "& .MuiInputLabel-root": { color: "rgba(0,0,0,0.55)", fontSize: "0.85rem" },
     "& .MuiInputLabel-root.Mui-focused": { color: brand },
     "& .MuiOutlinedInput-root": {
-      color: "#fff", borderRadius: 0,
-      "& fieldset":             { borderColor: "rgba(255,255,255,0.12)" },
-      "&:hover fieldset":       { borderColor: "rgba(255,255,255,0.28)" },
+      color: "#111", borderRadius: "8px",
+      bgcolor: "#fff",
+      "& fieldset":             { borderColor: "rgba(0,0,0,0.15)" },
+      "&:hover fieldset":       { borderColor: "rgba(0,0,0,0.35)" },
       "&.Mui-focused fieldset": { borderColor: brand },
     },
-    "& .MuiSelect-icon": { color: "rgba(255,255,255,0.35)" },
+    "& .MuiSelect-icon": { color: "rgba(0,0,0,0.45)" },
   };
 }
 
@@ -47,7 +49,7 @@ function printQuote(q, businessName, brandColor, logoUrl) {
   const { subtotal, vat, total } = calcTotals(q.items, q.vatRate);
   const w = window.open("", "_blank");
   w.document.write(`<!DOCTYPE html><html><head>
-  <title>Quote — ${q.clientName}</title>
+  <title>Quote — ${esc(q.clientName)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -76,29 +78,29 @@ function printQuote(q, businessName, brandColor, logoUrl) {
   <div class="header">
     <div>
       ${logoUrl ? `<img src="${logoUrl}" style="height:44px;object-fit:contain;display:block;margin-bottom:8px" alt="logo"/>` : ""}
-      <div class="biz-name">${businessName}</div>
+      <div class="biz-name">${esc(businessName)}</div>
     </div>
     <div style="text-align:right">
       <div class="label">Quote Reference</div>
       <div class="meta-val">#${q.reference || (Date.now() % 100000)}</div>
       <div class="label" style="margin-top:12px">Date Issued</div>
-      <div class="meta-val">${q.quoteDate || new Date().toLocaleDateString("en-GB")}</div>
+      <div class="meta-val">${esc(q.quoteDate || new Date().toLocaleDateString("en-GB"))}</div>
     </div>
   </div>
-  <div class="quote-title">Quotation for ${q.jobTitle || "Decorating Works"}</div>
+  <div class="quote-title">Quotation for ${esc(q.jobTitle || "Decorating Works")}</div>
   <div class="meta-row">
-    <div><div class="label">Prepared For</div><div class="meta-val">${q.clientName}</div>${q.clientEmail ? `<div style="font-size:0.78rem;color:#a8a29e;margin-top:2px">${q.clientEmail}</div>` : ""}</div>
-    <div><div class="label">Property Address</div><div class="meta-val">${q.address || "—"}</div></div>
-    <div><div class="label">Valid For</div><div class="meta-val">${q.validDays || 30} days</div></div>
+    <div><div class="label">Prepared For</div><div class="meta-val">${esc(q.clientName)}</div>${q.clientEmail ? `<div style="font-size:0.78rem;color:#a8a29e;margin-top:2px">${esc(q.clientEmail)}</div>` : ""}</div>
+    <div><div class="label">Property Address</div><div class="meta-val">${esc(q.address || "—")}</div></div>
+    <div><div class="label">Valid For</div><div class="meta-val">${esc(q.validDays || 30)} days</div></div>
   </div>
   <table>
     <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th class="right">Unit Price</th><th class="right">Line Total</th></tr></thead>
     <tbody>
       ${(q.items || []).map(item => `
         <tr>
-          <td>${item.desc}</td>
-          <td>${item.qty}</td>
-          <td>${item.unit}</td>
+          <td>${esc(item.desc)}</td>
+          <td>${esc(item.qty)}</td>
+          <td>${esc(item.unit)}</td>
           <td class="right">${fmt(Number(item.price || 0))}</td>
           <td class="right">${fmt(Number(item.qty || 0) * Number(item.price || 0))}</td>
         </tr>`).join("")}
@@ -106,21 +108,24 @@ function printQuote(q, businessName, brandColor, logoUrl) {
   </table>
   <div class="totals">
     <div class="t-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
-    ${Number(q.vatRate) > 0 ? `<div class="t-row"><span>VAT (${q.vatRate}%)</span><span>${fmt(vat)}</span></div>` : ""}
+    ${Number(q.vatRate) > 0 ? `<div class="t-row"><span>VAT (${esc(q.vatRate)}%)</span><span>${fmt(vat)}</span></div>` : ""}
     <div class="t-final"><span class="t-final-label">Total</span><span class="t-final-val">${fmt(total)}</span></div>
   </div>
-  ${q.notes ? `<div class="notes"><strong>Notes &amp; Terms:</strong><br>${q.notes}</div>` : ""}
-  <div class="footer">${businessName} &nbsp;·&nbsp; Generated ${new Date().toLocaleDateString("en-GB")}</div>
+  ${q.notes ? `<div class="notes"><strong>Notes &amp; Terms:</strong><br>${esc(q.notes)}</div>` : ""}
+  <div class="footer">${esc(businessName)} &nbsp;·&nbsp; Generated ${new Date().toLocaleDateString("en-GB")}</div>
   </body></html>`);
   w.document.close();
   setTimeout(() => w.print(), 420);
 }
+
+const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
 export default function QuoteTab({ barber, profile, brandColor }) {
   const [quotes,  setQuotes]  = useState([]);
   const [loading, setLoading] = useState(true);
   const [view,    setView]    = useState("list");
   const [saving,  setSaving]  = useState(false);
+  const [toast,   setToast]   = useState("");
   const [form,    setForm]    = useState({
     clientName: "", clientEmail: "", address: "",
     quoteDate:  new Date().toISOString().split("T")[0],
@@ -178,6 +183,19 @@ export default function QuoteTab({ barber, profile, brandColor }) {
     } catch (e) { console.error(e); }
   }
 
+  function copyLink(q) {
+    const url = `${window.location.origin}/quote-view/${tid}/${q.id}`;
+    navigator.clipboard.writeText(url).catch(() => {});
+    setToast("Quote link copied to clipboard!");
+    setTimeout(() => setToast(""), 2800);
+  }
+
+  const Flash = () => toast ? (
+    <Box sx={{ mb: 2.5, px: 2, py: 1.25, bgcolor: `${brandColor}15`, border: `1px solid ${brandColor}35`, fontFamily: SANS, fontSize: "0.78rem", color: brandColor, borderRadius: "6px" }}>
+      {toast}
+    </Box>
+  ) : null;
+
   const totals = calcTotals(form.items, form.vatRate);
 
   // ── LIST ──────────────────────────────────────────────────────────────────
@@ -185,10 +203,10 @@ export default function QuoteTab({ barber, profile, brandColor }) {
     <Box>
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 3 }}>
         <Box>
-          <Typography sx={{ fontFamily: SERIF, fontSize: "1.5rem", color: "#fff", fontWeight: 400, lineHeight: 1.2 }}>
+          <Typography sx={{ fontFamily: SERIF, fontSize: "1.5rem", color: "#111", fontWeight: 400, lineHeight: 1.2 }}>
             Quote Generator
           </Typography>
-          <Typography sx={{ fontFamily: SANS, fontSize: "0.78rem", color: "rgba(255,255,255,0.38)", mt: 0.4 }}>
+          <Typography sx={{ fontFamily: SANS, fontSize: "0.78rem", color: "rgba(0,0,0,0.45)", mt: 0.4 }}>
             Instant professional quotes with live PDF preview
           </Typography>
         </Box>
@@ -203,12 +221,14 @@ export default function QuoteTab({ barber, profile, brandColor }) {
         </Button>
       </Box>
 
+      <Flash />
+
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 7 }}>
           <CircularProgress sx={{ color: brandColor }} size={34} thickness={2} />
         </Box>
       ) : quotes.length === 0 ? (
-        <Box sx={{ textAlign: "center", py: 9, color: "rgba(255,255,255,0.18)" }}>
+        <Box sx={{ textAlign: "center", py: 9, color: "rgba(0,0,0,0.3)" }}>
           <Typography sx={{ fontFamily: SERIF, fontSize: "1.25rem" }}>No quotes yet</Typography>
           <Typography sx={{ fontFamily: SANS, fontSize: "0.78rem", mt: 0.75 }}>Generate your first professional quote above</Typography>
         </Box>
@@ -217,11 +237,11 @@ export default function QuoteTab({ barber, profile, brandColor }) {
           {quotes.map(q => {
             const t = calcTotals(q.items, q.vatRate);
             return (
-              <Box key={q.id} sx={{ bgcolor: "#111", border: "1px solid rgba(255,255,255,0.07)", p: 2.5, display: "flex", alignItems: "center", gap: 2 }}>
-                <Box sx={{ width: 4, alignSelf: "stretch", bgcolor: brandColor, flexShrink: 0 }} />
+              <Box key={q.id} sx={{ bgcolor: "#fff", border: "1px solid #e5e7eb", p: 2.5, display: "flex", alignItems: "center", gap: 2, borderRadius: "8px" }}>
+                <Box sx={{ width: 4, alignSelf: "stretch", bgcolor: brandColor, flexShrink: 0, borderRadius: "4px" }} />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography sx={{ fontFamily: SANS, fontWeight: 700, color: "#fff", fontSize: "0.88rem" }}>{q.clientName}</Typography>
-                  <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(255,255,255,0.35)" }}>
+                  <Typography sx={{ fontFamily: SANS, fontWeight: 700, color: "#111", fontSize: "0.88rem" }}>{q.clientName}</Typography>
+                  <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(0,0,0,0.45)" }}>
                     {q.jobTitle || "Decorating Works"} · {q.quoteDate}
                   </Typography>
                 </Box>
@@ -229,15 +249,21 @@ export default function QuoteTab({ barber, profile, brandColor }) {
                   {fmt(t.total)}
                 </Typography>
                 <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                  <Tooltip title="Copy client link">
+                    <IconButton size="small" onClick={() => copyLink(q)}
+                      sx={{ color: "rgba(0,0,0,0.4)", "&:hover": { color: brandColor } }}>
+                      <ContentCopyIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="Print / Save PDF">
                     <IconButton size="small" onClick={() => printQuote(q, businessName, brandColor, logoUrl)}
-                      sx={{ color: "rgba(255,255,255,0.38)", "&:hover": { color: brandColor } }}>
+                      sx={{ color: "rgba(0,0,0,0.4)", "&:hover": { color: brandColor } }}>
                       <PrintIcon sx={{ fontSize: 17 }} />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete">
                     <IconButton size="small" onClick={() => deleteQuote(q.id)}
-                      sx={{ color: "rgba(255,255,255,0.22)", "&:hover": { color: "#ff6b6b" } }}>
+                      sx={{ color: "rgba(0,0,0,0.3)", "&:hover": { color: "#ff6b6b" } }}>
                       <DeleteIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                   </Tooltip>
@@ -255,10 +281,10 @@ export default function QuoteTab({ barber, profile, brandColor }) {
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
         <IconButton size="small" onClick={() => setView("list")}
-          sx={{ color: "rgba(255,255,255,0.38)", "&:hover": { color: "#fff" } }}>
+          sx={{ color: "rgba(0,0,0,0.45)", "&:hover": { color: "#111" } }}>
           <ArrowBackIcon sx={{ fontSize: 19 }} />
         </IconButton>
-        <Typography sx={{ fontFamily: SERIF, fontSize: "1.4rem", color: "#fff", fontWeight: 400 }}>
+        <Typography sx={{ fontFamily: SERIF, fontSize: "1.4rem", color: "#111", fontWeight: 400 }}>
           New Quote
         </Typography>
       </Box>
@@ -269,8 +295,8 @@ export default function QuoteTab({ barber, profile, brandColor }) {
           <Stack spacing={2.5}>
 
             {/* Client */}
-            <Box sx={{ bgcolor: "#111", border: "1px solid rgba(255,255,255,0.07)", p: 2.5 }}>
-              <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", mb: 2 }}>
+            <Box sx={{ bgcolor: "#fff", border: "1px solid #e5e7eb", p: 2.5, borderRadius: "8px" }}>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(0,0,0,0.4)", mb: 2 }}>
                 Client Details
               </Typography>
               <Stack spacing={2}>
@@ -288,8 +314,8 @@ export default function QuoteTab({ barber, profile, brandColor }) {
             </Box>
 
             {/* Settings */}
-            <Box sx={{ bgcolor: "#111", border: "1px solid rgba(255,255,255,0.07)", p: 2.5 }}>
-              <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", mb: 2 }}>
+            <Box sx={{ bgcolor: "#fff", border: "1px solid #e5e7eb", p: 2.5, borderRadius: "8px" }}>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(0,0,0,0.4)", mb: 2 }}>
                 Quote Settings
               </Typography>
               <Grid container spacing={2}>
@@ -306,8 +332,8 @@ export default function QuoteTab({ barber, profile, brandColor }) {
             </Box>
 
             {/* Line items */}
-            <Box sx={{ bgcolor: "#111", border: "1px solid rgba(255,255,255,0.07)", p: 2.5 }}>
-              <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", mb: 2 }}>
+            <Box sx={{ bgcolor: "#fff", border: "1px solid #e5e7eb", p: 2.5, borderRadius: "8px" }}>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(0,0,0,0.4)", mb: 2 }}>
                 Line Items
               </Typography>
               <Stack spacing={1.5}>
@@ -321,7 +347,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
                     <FormControl size="small" sx={{ ...fx, width: 84, flexShrink: 0 }}>
                       <InputLabel>Unit</InputLabel>
                       <Select value={item.unit} label="Unit" onChange={e => updateItem(item.id, "unit", e.target.value)}
-                        MenuProps={{ PaperProps: { sx: { bgcolor: "#1a1a1a", color: "#fff", borderRadius: 0 } } }}>
+                        MenuProps={{ PaperProps: { sx: { bgcolor: "#fff", color: "#111", borderRadius: "8px", border: "1px solid #e5e7eb" } } }}>
                         {UNITS.map(u => (
                           <MenuItem key={u} value={u} sx={{ fontSize: "0.8rem", "&:hover": { bgcolor: `${brandColor}20` } }}>{u}</MenuItem>
                         ))}
@@ -329,7 +355,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
                     </FormControl>
                     <TextField size="small" label="£ Price" type="number" value={item.price} onChange={e => updateItem(item.id, "price", e.target.value)} sx={{ ...fx, width: 88, flexShrink: 0 }} />
                     <IconButton size="small" onClick={() => setForm(p => ({ ...p, items: p.items.filter(i => i.id !== item.id) }))}
-                      sx={{ color: "rgba(255,255,255,0.2)", mt: 0.5, flexShrink: 0, "&:hover": { color: "#ff6b6b" } }}>
+                      sx={{ color: "rgba(0,0,0,0.3)", mt: 0.5, flexShrink: 0, "&:hover": { color: "#ff6b6b" } }}>
                       <DeleteIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                   </Box>
@@ -343,8 +369,8 @@ export default function QuoteTab({ barber, profile, brandColor }) {
             </Box>
 
             {/* Notes */}
-            <Box sx={{ bgcolor: "#111", border: "1px solid rgba(255,255,255,0.07)", p: 2.5 }}>
-              <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", mb: 2 }}>
+            <Box sx={{ bgcolor: "#fff", border: "1px solid #e5e7eb", p: 2.5, borderRadius: "8px" }}>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(0,0,0,0.4)", mb: 2 }}>
                 Notes & Terms
               </Typography>
               <TextField fullWidth multiline rows={3} label="Additional notes or terms of service" value={form.notes} onChange={e => set("notes", e.target.value)} sx={fx} />
@@ -353,7 +379,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
             {/* Actions */}
             <Stack direction="row" spacing={1.5} sx={{ pb: 2 }}>
               <Button onClick={() => setView("list")}
-                sx={{ color: "rgba(255,255,255,0.38)", fontWeight: 600 }}>
+                sx={{ color: "rgba(0,0,0,0.5)", fontWeight: 600 }}>
                 Cancel
               </Button>
               <Button
@@ -381,7 +407,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
         {/* ── Live Preview ── */}
         <Grid item xs={12} lg={5}>
           <Box sx={{
-            bgcolor: "#111", border: "1px solid rgba(255,255,255,0.07)",
+            bgcolor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px",
             position: { lg: "sticky" }, top: { lg: 90 },
           }}>
             <Box sx={{ borderBottom: `3px solid ${brandColor}`, px: 3, py: 1.75 }}>
@@ -390,26 +416,26 @@ export default function QuoteTab({ barber, profile, brandColor }) {
               </Typography>
             </Box>
             <Box sx={{ p: 3 }}>
-              <Typography sx={{ fontFamily: SERIF, fontSize: "1.3rem", color: "#fff", mb: 0.5, lineHeight: 1.2 }}>
+              <Typography sx={{ fontFamily: SERIF, fontSize: "1.3rem", color: "#111", mb: 0.5, lineHeight: 1.2 }}>
                 {form.jobTitle || "Decorating Works"}
               </Typography>
-              <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(255,255,255,0.4)", mb: 2.5 }}>
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(0,0,0,0.45)", mb: 2.5 }}>
                 {form.clientName || "Client name"} · {form.quoteDate}
               </Typography>
 
               {/* Items */}
-              <Box sx={{ borderTop: "1px solid rgba(255,255,255,0.07)", mb: 2 }}>
+              <Box sx={{ borderTop: "1px solid #e5e7eb", mb: 2 }}>
                 {form.items.filter(i => i.desc).length === 0 ? (
-                  <Typography sx={{ fontFamily: SANS, fontSize: "0.75rem", color: "rgba(255,255,255,0.2)", py: 2, textAlign: "center" }}>
+                  <Typography sx={{ fontFamily: SANS, fontSize: "0.75rem", color: "rgba(0,0,0,0.3)", py: 2, textAlign: "center" }}>
                     Add line items to see totals
                   </Typography>
                 ) : form.items.filter(i => i.desc).map(item => (
-                  <Box key={item.id} sx={{ display: "flex", justifyContent: "space-between", py: 1.25, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <Box key={item.id} sx={{ display: "flex", justifyContent: "space-between", py: 1.25, borderBottom: "1px solid #f3f4f6" }}>
                     <Box sx={{ minWidth: 0, pr: 1 }}>
-                      <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "rgba(255,255,255,0.8)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.desc}</Typography>
-                      <Typography sx={{ fontFamily: SANS, fontSize: "0.66rem", color: "rgba(255,255,255,0.3)" }}>{item.qty} {item.unit}</Typography>
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "#333", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.desc}</Typography>
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.66rem", color: "rgba(0,0,0,0.4)" }}>{item.qty} {item.unit}</Typography>
                     </Box>
-                    <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "#fff", fontWeight: 600, flexShrink: 0 }}>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "#111", fontWeight: 600, flexShrink: 0 }}>
                       {fmt(Number(item.qty || 0) * Number(item.price || 0))}
                     </Typography>
                   </Box>
@@ -419,24 +445,24 @@ export default function QuoteTab({ barber, profile, brandColor }) {
               {/* Totals */}
               <Stack spacing={0.75}>
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(255,255,255,0.4)" }}>Subtotal</Typography>
-                  <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(255,255,255,0.65)" }}>{fmt(totals.subtotal)}</Typography>
+                  <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(0,0,0,0.45)" }}>Subtotal</Typography>
+                  <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(0,0,0,0.65)" }}>{fmt(totals.subtotal)}</Typography>
                 </Box>
                 {Number(form.vatRate) > 0 && (
                   <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(255,255,255,0.4)" }}>VAT ({form.vatRate}%)</Typography>
-                    <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(255,255,255,0.65)" }}>{fmt(totals.vat)}</Typography>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(0,0,0,0.45)" }}>VAT ({form.vatRate}%)</Typography>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(0,0,0,0.65)" }}>{fmt(totals.vat)}</Typography>
                   </Box>
                 )}
                 <Box sx={{ display: "flex", justifyContent: "space-between", pt: 1.5, borderTop: `2px solid ${brandColor}`, mt: 0.5 }}>
-                  <Typography sx={{ fontFamily: SERIF, fontSize: "1.05rem", color: "#fff" }}>Total</Typography>
+                  <Typography sx={{ fontFamily: SERIF, fontSize: "1.05rem", color: "#111" }}>Total</Typography>
                   <Typography sx={{ fontFamily: SERIF, fontSize: "1.05rem", color: brandColor, fontWeight: 700 }}>{fmt(totals.total)}</Typography>
                 </Box>
               </Stack>
 
               {form.notes && (
-                <Box sx={{ mt: 2.5, pt: 2, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                  <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(255,255,255,0.32)", lineHeight: 1.65 }}>
+                <Box sx={{ mt: 2.5, pt: 2, borderTop: "1px solid #e5e7eb" }}>
+                  <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(0,0,0,0.45)", lineHeight: 1.65 }}>
                     {form.notes}
                   </Typography>
                 </Box>

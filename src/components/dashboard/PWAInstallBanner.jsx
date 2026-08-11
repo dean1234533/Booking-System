@@ -45,11 +45,16 @@ export default function PWAInstallBanner({ brandColor = "#C9A84C" }) {
   };
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") setVisible(false);
-    setDeferredPrompt(null);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") setVisible(false);
+      setDeferredPrompt(null);
+      return;
+    }
+    // No native prompt available (already-installed, event missed, or Safari/iOS):
+    // show the manual steps so the button always does something useful.
+    window.alert(instructionText);
   };
 
   if (!visible) return null;
@@ -63,15 +68,15 @@ export default function PWAInstallBanner({ brandColor = "#C9A84C" }) {
     "mac-safari": 'Click the Share icon in Safari, then "Add to Dock".',
     chrome:       promptReady
                     ? 'Click "Install app" to get the full experience.'
-                    : 'Click the install icon (⊕) in your address bar, or use ⋮ → "Install Bookrty".',
+                    : 'Click the install icon (⊕) in your address bar, or use ⋮ → "Install Bookrightly".',
     firefox:      'Open this page in Chrome or Safari to install the app.',
     other:        'Use your browser menu to install or add to home screen.',
   }[platform];
 
-  // Show the install button whenever the browser has actually offered an install
-  // prompt — regardless of how the platform was detected (more reliable).
-  const showInstallButton = promptReady;
-  const showIosHint       = !promptReady && (platform === "ios" || platform === "mac-safari");
+  // Always show the install button. When the browser has offered a native
+  // install prompt we trigger it directly; otherwise the button shows the
+  // manual steps for the user's platform (so it's never a dead/missing button).
+  const showInstallButton = true;
 
   return (
     <>
@@ -97,7 +102,7 @@ export default function PWAInstallBanner({ brandColor = "#C9A84C" }) {
           <Box
             component="img"
             src="/images/IMG_9763-removebg-preview.png"
-            alt="Bookrty"
+            alt="Bookrightly"
             sx={{ width: 34, height: 34, objectFit: "contain" }}
           />
         </Box>

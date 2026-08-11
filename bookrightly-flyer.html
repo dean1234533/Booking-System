@@ -1,0 +1,461 @@
+<title>Bookrightly — Flyer &amp; Pitch</title>
+<style>
+  :root{
+    --ink:#16233b;
+    --ink-soft:#3b4a63;
+    --paper:#ece6d8;
+    --paper-raise:#f4efe4;
+    --brass:#b8873a;
+    --brass-deep:#8f6423;
+    --forest:#3a5945;
+    --rule:rgba(22,35,59,0.20);
+    --rule-soft:rgba(22,35,59,0.10);
+    --shadow:0 18px 40px -20px rgba(22,35,59,0.45);
+  }
+  :root[data-theme="dark"]{
+    --ink:#eee7d6;
+    --ink-soft:#c9c0aa;
+    --paper:#161c28;
+    --paper-raise:#1c2331;
+    --brass:#d3a251;
+    --brass-deep:#e6b968;
+    --forest:#6fae87;
+    --rule:rgba(238,231,214,0.22);
+    --rule-soft:rgba(238,231,214,0.10);
+    --shadow:0 18px 40px -20px rgba(0,0,0,0.65);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#eee7d6;
+      --ink-soft:#c9c0aa;
+      --paper:#161c28;
+      --paper-raise:#1c2331;
+      --brass:#d3a251;
+      --brass-deep:#e6b968;
+      --forest:#6fae87;
+      --rule:rgba(238,231,214,0.22);
+      --rule-soft:rgba(238,231,214,0.10);
+      --shadow:0 18px 40px -20px rgba(0,0,0,0.65);
+    }
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper-raise);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    padding:48px 20px 80px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:56px;
+  }
+  h1,h2,h3{text-wrap:balance; margin:0;}
+  .mono{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums;
+  }
+  .eyebrow{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    font-size:11px;
+    color:var(--brass-deep);
+  }
+
+  /* ================= FLYER ================= */
+  .flyer-wrap{
+    width:100%;
+    max-width:560px;
+  }
+  .flyer{
+    background:var(--paper);
+    border:1.5px solid var(--rule);
+    box-shadow:var(--shadow);
+    display:grid;
+    grid-template-columns:88px 1fr;
+    overflow:hidden;
+  }
+  .stub{
+    position:relative;
+    border-right:2px dashed var(--rule);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px 0;
+  }
+  .stub::before, .stub::after{
+    content:"";
+    position:absolute;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:var(--paper-raise);
+    right:-11px;
+  }
+  .stub::before{ top:-10px; }
+  .stub::after{ bottom:-10px; }
+  .stub-label{
+    writing-mode:vertical-rl;
+    transform:rotate(180deg);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    letter-spacing:0.22em;
+    font-size:12px;
+    color:var(--brass-deep);
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+
+  .flyer-body{
+    padding:34px 32px 30px;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+
+  .brand-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    border-bottom:1px solid var(--rule);
+    padding-bottom:16px;
+  }
+  .brand-name{
+    font-family:Georgia,"Iowan Old Style","Times New Roman",serif;
+    font-weight:700;
+    font-size:26px;
+    letter-spacing:-0.01em;
+  }
+  .brand-tag{
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+
+  .headline{
+    font-family:Georgia,"Iowan Old Style","Times New Roman",serif;
+    font-size:30px;
+    line-height:1.18;
+    font-weight:700;
+    max-width:26ch;
+  }
+  .headline em{
+    font-style:normal;
+    color:var(--brass-deep);
+  }
+  .subhead{
+    font-size:14.5px;
+    line-height:1.55;
+    color:var(--ink-soft);
+    max-width:38ch;
+  }
+
+  .ticket-lines{
+    display:flex;
+    flex-direction:column;
+    border-top:1px solid var(--rule);
+  }
+  .ticket-line{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:14px;
+    align-items:baseline;
+    padding:11px 0;
+    border-bottom:1px dotted var(--rule-soft);
+  }
+  .ticket-line .item{
+    font-size:14px;
+    line-height:1.4;
+  }
+  .ticket-line .item b{ font-weight:600; }
+  .ticket-line .val{
+    font-size:12.5px;
+    color:var(--forest);
+    white-space:nowrap;
+  }
+
+  .cta-block{
+    margin-top:4px;
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:18px;
+    align-items:center;
+    background:var(--paper-raise);
+    border:1px solid var(--rule);
+    padding:16px 18px;
+  }
+  .cta-copy .eyebrow{ margin-bottom:4px; }
+  .cta-url{
+    font-family:Georgia,"Iowan Old Style","Times New Roman",serif;
+    font-weight:700;
+    font-size:17px;
+  }
+  .cta-note{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-top:3px;
+  }
+  .qr{
+    width:78px;
+    height:78px;
+    border:1.5px solid var(--ink);
+    background:#fff;
+    padding:6px;
+    object-fit:contain;
+    flex-shrink:0;
+  }
+
+  .fill-row{
+    display:flex;
+    gap:8px;
+    align-items:baseline;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .fill-line{
+    flex:1;
+    border-bottom:1px solid var(--rule);
+    height:1px;
+  }
+
+  .stamp{
+    align-self:flex-start;
+    border:1.5px solid var(--brass-deep);
+    color:var(--brass-deep);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    font-size:10.5px;
+    padding:4px 9px;
+    transform:rotate(-3deg);
+  }
+
+  /* ================= PITCH ================= */
+  .pitch-wrap{
+    width:100%;
+    max-width:640px;
+  }
+  .pitch{
+    background:var(--paper-raise);
+    border:1px solid var(--rule);
+  }
+  .pitch-head{
+    padding:26px 32px 20px;
+    border-bottom:1px solid var(--rule);
+  }
+  .pitch-head h2{
+    font-family:Georgia,"Iowan Old Style","Times New Roman",serif;
+    font-size:22px;
+  }
+  .pitch-head p{
+    margin:8px 0 0;
+    font-size:13px;
+    color:var(--ink-soft);
+    max-width:56ch;
+    line-height:1.5;
+  }
+  .pitch-body{
+    padding:8px 32px 30px;
+    display:flex;
+    flex-direction:column;
+  }
+  .beat{
+    display:grid;
+    grid-template-columns:96px 1fr;
+    gap:20px;
+    padding:20px 0;
+    border-bottom:1px solid var(--rule-soft);
+  }
+  .beat:last-of-type{ border-bottom:none; }
+  .beat-label{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--brass-deep);
+    padding-top:2px;
+  }
+  .beat-line{
+    font-size:15px;
+    line-height:1.6;
+  }
+  .beat-line .said{
+    font-style:italic;
+  }
+  .beat-note{
+    margin-top:6px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+  }
+
+  .objections{
+    margin-top:8px;
+    padding-top:22px;
+    border-top:1px solid var(--rule);
+  }
+  .objections h3{
+    font-family:Georgia,"Iowan Old Style","Times New Roman",serif;
+    font-size:16px;
+    margin-bottom:14px;
+  }
+  .obj-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    padding:12px 0;
+    border-bottom:1px dotted var(--rule-soft);
+    font-size:13.5px;
+    line-height:1.5;
+  }
+  .obj-row:last-child{ border-bottom:none; }
+  .obj-q{ color:var(--ink-soft); }
+  .obj-q::before{ content:"“"; }
+  .obj-q::after{ content:"”"; }
+  .obj-a{ font-weight:500; }
+
+  @media (max-width:560px){
+    .obj-row{ grid-template-columns:1fr; }
+    .beat{ grid-template-columns:1fr; gap:6px; }
+    .flyer{ grid-template-columns:56px 1fr; }
+    .flyer-body{ padding:26px 20px 24px; }
+  }
+
+  @media print{
+    body{ padding:0; background:#fff; gap:0; }
+    .flyer-wrap{ page-break-after:always; padding:24px; }
+    .pitch-wrap{ padding:24px; }
+    .flyer{ box-shadow:none; }
+  }
+</style>
+
+<div class="flyer-wrap">
+  <div class="flyer">
+    <div class="stub">
+      <div class="stub-label">Bookrightly · Est. UK</div>
+    </div>
+    <div class="flyer-body">
+      <div class="brand-row">
+        <div class="brand-name">Bookrightly</div>
+        <div class="brand-tag mono">bookrightly.co.uk</div>
+      </div>
+
+      <div>
+        <div class="headline">Stop taking bookings <em>through your DMs.</em></div>
+        <div class="subhead">A booking page built for barbers, hairdressers, trainers, decorators — and whatever trade you run. Clients book and pay online. You get your evenings back.</div>
+      </div>
+
+      <div class="ticket-lines">
+        <div class="ticket-line">
+          <div class="item"><b>Your own booking page</b> — live in minutes, open 24/7</div>
+          <div class="val mono">INCLUDED</div>
+        </div>
+        <div class="ticket-line">
+          <div class="item"><b>Deposits taken automatically</b> — fewer no-shows</div>
+          <div class="val mono">INCLUDED</div>
+        </div>
+        <div class="ticket-line">
+          <div class="item"><b>90-day free trial</b> — no card, no catch</div>
+          <div class="val mono">£0</div>
+        </div>
+        <div class="ticket-line">
+          <div class="item">After trial — <b>£10–£20/mo</b> by business type</div>
+          <div class="val mono">FROM £10</div>
+        </div>
+      </div>
+
+      <div class="cta-block">
+        <div class="cta-copy">
+          <div class="eyebrow">Message me on WhatsApp</div>
+          <div class="cta-url">07752 300937</div>
+          <div class="cta-note">Scan to chat, or visit bookrightly.co.uk</div>
+        </div>
+        <img class="qr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAAEsAQMAAABDsxw2AAAABlBMVEX///8AAABVwtN+AAAACXBIWXMAAA7EAAAOxAGVKw4bAAABF0lEQVRoge3XUQ6EMAgE0N6g979lb8CqhQFqst9OMsRsannuD6XaYYg1rrh+93WPS0qMiT0zDcw7s2dqSoyIncWN25oSI2W1wb3iYuTsamRUX4yaeeqZ3Puz/d/JxT7OEFgJdUkgJcbDWuyPqPmaH2JM7FgDvktPa5cYFcuK7xLHpm14C4txsjF6drbF4N0txsJm+irdjPNZMQrm2ahydrTFAhCjYmeJR9mxX29nMQ6GFLp4JajrQYyJxW3L4ll8X4nxsNyQo7UxzqwYD6uB+T3YMycS+zxrVe6H2fqIGBOLbrUV59lywsVYjIuhuLj8m6qsBzFeljHt/AcxRhblPrEYG9sB5lnLs48YGUOs9sLNXTpSYiTsB1O9S9mEtTe2AAAAAElFTkSuQmCC" alt="WhatsApp QR code" />
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:20px;">
+        <div class="fill-row" style="flex:1;">
+          <span>Set up for you by</span>
+          <span style="font-weight:600;">Dean</span>
+        </div>
+        <div class="stamp">No card needed</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pitch-wrap">
+  <div class="pitch">
+    <div class="pitch-head">
+      <h2>In-person pitch — 45 seconds</h2>
+      <p>For handing the flyer to a business owner face to face. Say it like you mean it, not like you're reading it — the beats matter more than the exact words.</p>
+    </div>
+    <div class="pitch-body">
+
+      <div class="beat">
+        <div class="beat-label">Open</div>
+        <div class="beat-line">
+          <span class="said">"Hey — sorry to interrupt, quick one. Do you take bookings by phone or WhatsApp at the moment?"</span>
+          <div class="beat-note">Let them answer. Almost every trade says yes — that's the opening.</div>
+        </div>
+      </div>
+
+      <div class="beat">
+        <div class="beat-label">Problem</div>
+        <div class="beat-line">
+          <span class="said">"That's exactly who I built this for — texting back and forth, chasing no-shows, losing bookings when you're mid-appointment and can't answer the phone."</span>
+        </div>
+      </div>
+
+      <div class="beat">
+        <div class="beat-label">Solution</div>
+        <div class="beat-line">
+          <span class="said">"It's called Bookrightly — you get your own booking page, clients book and pay a deposit online, and it lands straight in your calendar. No more chasing."</span>
+        </div>
+      </div>
+
+      <div class="beat">
+        <div class="beat-label">Risk reversal</div>
+        <div class="beat-line">
+          <span class="said">"It's free for 90 days, no card needed to start. If it's not for you, you've lost nothing. After that it's £10 to £20 a month depending on your trade."</span>
+        </div>
+      </div>
+
+      <div class="beat">
+        <div class="beat-label">Flexibility</div>
+        <div class="beat-line">
+          <span class="said">"It already covers barbers, hairdressers, PTs, decorators — and if your trade's not on there, tell me and I'll get it added."</span>
+          <div class="beat-note">Only bring this up if their trade genuinely isn't listed — don't lead with it.</div>
+        </div>
+      </div>
+
+      <div class="beat">
+        <div class="beat-label">Close</div>
+        <div class="beat-line">
+          <span class="said">"Here's a flyer with the link — or if you've got two minutes now, I can set your page up on my phone before I leave."</span>
+          <div class="beat-note">Offering to set it up on the spot converts far better than "check it out later." Always offer.</div>
+        </div>
+      </div>
+
+      <div class="objections">
+        <h3>If they push back</h3>
+        <div class="obj-row">
+          <div class="obj-q">I already use [Fresha / Booksy / a paper diary]</div>
+          <div class="obj-a">"No pressure to switch today — take the flyer, and if the fees or faff ever bother you, I'm local and easy to reach."</div>
+        </div>
+        <div class="obj-row">
+          <div class="obj-q">I don't have time right now</div>
+          <div class="obj-a">"Totally get it — the flyer's got the link, takes five minutes whenever suits you. No card needed to try it."</div>
+        </div>
+        <div class="obj-row">
+          <div class="obj-q">What's it cost me really?</div>
+          <div class="obj-a">"Free for 90 days. After that £10-20 a month depending on your trade, plus a small fee only on bookings you actually take — so it only costs you when it's working."</div>
+        </div>
+        <div class="obj-row">
+          <div class="obj-q">My trade isn't listed</div>
+          <div class="obj-a">"Tell me what you do — I build these myself, I can usually turn a new trade around fast."</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

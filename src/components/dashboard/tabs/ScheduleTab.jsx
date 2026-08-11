@@ -10,6 +10,7 @@ import {
   PersonAdd as PersonAddIcon,
   CalendarMonth as CalendarIcon,
 } from "@mui/icons-material";
+import AvailabilityCalendar from "./AvailabilityCalendar";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -54,18 +55,24 @@ export default function ScheduleTab({
       {/* ── Add Slot Form ── */}
       <Paper sx={{ p: 3, borderRadius: 3, mb: 3 }}>
         <Typography variant="h6" fontWeight={800} mb={2}>Manage Availability</Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={3}>
-            <TextField fullWidth type="date" label="Select Date" value={newSlot.date}
-              onChange={e => setNewSlot(prev => ({ ...prev, date: e.target.value }))}
-              InputLabelProps={{ shrink: true }} />
-          </Grid>
-          <Grid item xs={12} sm={3}>
+
+        {/* Calendar picker with slot dots */}
+        <Box sx={{ mb: 3 }}>
+          <AvailabilityCalendar
+            slots={slots}
+            selectedDate={newSlot.date}
+            onSelect={(ds) => setNewSlot(prev => ({ ...prev, date: ds }))}
+            brandColor={brandColor}
+          />
+        </Box>
+
+        <Grid container spacing={2} alignItems="flex-end">
+          <Grid item xs={12} sm={4}>
             <TextField fullWidth type="time" label="Time" value={newSlot.time}
               onChange={e => setNewSlot(prev => ({ ...prev, time: e.target.value }))}
               InputLabelProps={{ shrink: true }} />
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid item xs={12} sm={4}>
             <FormControl fullWidth>
               <InputLabel>Repeat</InputLabel>
               <Select value={newSlot.repeat} label="Repeat"
@@ -76,10 +83,14 @@ export default function ScheduleTab({
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid item xs={12} sm={4}>
             <Button fullWidth variant="contained" onClick={handleAddSlot}
               disabled={!newSlot.date || !newSlot.time}
-              sx={{ bgcolor: "#1A1A1A", height: "56px" }}>
+              sx={{
+                bgcolor: brandColor, color: "#111", fontWeight: 800, height: "56px",
+                boxShadow: "none",
+                "&:hover": { bgcolor: brandColor, filter: "brightness(0.92)", boxShadow: "none" },
+              }}>
               Add Slot
             </Button>
           </Grid>

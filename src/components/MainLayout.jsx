@@ -2,7 +2,7 @@
 function MainLayout() {
   return (
     <>
-      <Nav platformName="Bookrty" />
+      <Nav platformName="Bookrightly" />
       <Box component="main" sx={{ flex: 1 }}>
         <Outlet /> 
       </Box>

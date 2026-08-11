@@ -23,7 +23,7 @@ export default function Login() {
 
   // Default Platform Branding
   const brandColor = "#C9A84C";
-  const businessName = "Bookrty";
+  const businessName = "Bookrightly";
   const logoPath = "/images/IMG_9763-removebg-preview.png";
 
   // Effect to ensure the page starts at the top when mounted
@@ -53,7 +53,7 @@ export default function Login() {
         <Box 
           component="img"
           src={logoPath}
-          alt="Logo"
+          alt="Bookrightly logo"
           sx={{ 
             height: 100, 
             width: 'auto', 

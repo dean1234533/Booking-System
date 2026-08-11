@@ -1,7 +1,7 @@
 import React from "react";
 import {
   Box, Avatar, Button, Grid, TextField, Typography, Divider,
-  InputAdornment, Accordion, AccordionSummary, AccordionDetails, IconButton,
+  InputAdornment, Accordion, AccordionSummary, AccordionDetails, IconButton, MenuItem,
 } from "@mui/material";
 import {
   AccessTime as AccessTimeIcon,
@@ -413,6 +413,103 @@ function HairdresserPageSections({ profile, set, brandColor }) {
   );
 }
 
+/* ── Barber page sections ────────────────────────────────────────────────── */
+function BarberPageSections({ profile, set, brandColor }) {
+  const services = profile.services?.length > 0 ? profile.services : [{ name: "", price: "" }];
+  const updateService = (i, field, val) => {
+    set("services", services.map((s, idx) => idx === i ? { ...s, [field]: val } : s));
+  };
+
+  return (
+    <>
+      <Section title="🦸 Hero Section" defaultExpanded>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField fullWidth size="small" label="Eyebrow Text"
+              placeholder="Professional Barber"
+              helperText="Small label above your name"
+              value={profile.heroTagline || ""}
+              onChange={e => set("heroTagline", e.target.value)} />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField fullWidth size="small" label="CTA Button Text"
+              placeholder="BOOK APPOINTMENT"
+              value={profile.heroCtaText || ""}
+              onChange={e => set("heroCtaText", e.target.value)} />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField fullWidth size="small" label="Specialty / Bio Tagline"
+              placeholder="Master barber specialising in fades and classic cuts"
+              helperText="Short text shown below your name"
+              value={profile.specialty || ""}
+              onChange={e => set("specialty", e.target.value)} />
+          </Grid>
+        </Grid>
+      </Section>
+
+      <Section title="📖 About Section">
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <TextField fullWidth multiline rows={5} label="About Text"
+              placeholder="Tell your story — experience, style, what makes you different…"
+              helperText="An about section appears on your page when this is filled in"
+              value={profile.aboutBody || profile.aboutUs || ""}
+              onChange={e => set("aboutBody", e.target.value)} />
+          </Grid>
+        </Grid>
+      </Section>
+
+      <Section title="📊 Stats Bar">
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          Three stats shown in a brand-colour strip (only visible when filled in).
+        </Typography>
+        <Grid container spacing={2}>
+          {[
+            ["statBar1Num", "statBar1Label", "500+", "Cuts completed"],
+            ["statBar2Num", "statBar2Label", "5.0★", "Average rating"],
+            ["statBar3Num", "statBar3Label", "8+",   "Years experience"],
+          ].map(([nKey, lKey, nDef, lDef], i) => (
+            <React.Fragment key={i}>
+              <Grid item xs={6} sm={3}>
+                <TextField fullWidth size="small" label={`Stat ${i + 1} — Number`} placeholder={nDef}
+                  value={profile[nKey] || ""} onChange={e => set(nKey, e.target.value)} />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <TextField fullWidth size="small" label={`Stat ${i + 1} — Label`} placeholder={lDef}
+                  value={profile[lKey] || ""} onChange={e => set(lKey, e.target.value)} />
+              </Grid>
+            </React.Fragment>
+          ))}
+        </Grid>
+      </Section>
+
+      <Section title="✂️ Services">
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          Name and price for each service shown on your page.
+        </Typography>
+        {services.map((svc, i) => (
+          <Box key={i} display="flex" gap={1} mb={1} alignItems="center">
+            <TextField fullWidth size="small" label={`Service ${i + 1}`}
+              value={svc.name || (typeof svc === "string" ? svc : "")}
+              onChange={e => updateService(i, "name", e.target.value)} />
+            <TextField size="small" label="Price (£)" sx={{ width: 120, flexShrink: 0 }}
+              value={svc.price || ""}
+              onChange={e => updateService(i, "price", e.target.value)} />
+            <IconButton size="small" color="error"
+              onClick={() => set("services", services.filter((_, idx) => idx !== i))}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        ))}
+        <Button startIcon={<AddCircleIcon />} sx={{ color: brandColor, mt: 1 }}
+          onClick={() => set("services", [...services, { name: "", price: "" }])}>
+          Add Service
+        </Button>
+      </Section>
+    </>
+  );
+}
+
 /* ── Trainer page sections ───────────────────────────────────────────────── */
 function TrainerPageSections({ profile, set, brandColor }) {
   const specializations = (profile.specializations?.length > 0 ? profile.specializations : null) || [
@@ -608,6 +705,7 @@ export default function EditPageTab({
   const type = businessType || profile?.businessType;
 
   const typeLabel = {
+    barber:      "Barber",
     hairdresser: "Salon",
     decorator:   "Decorator",
     trainer:     "PT / Trainer",
@@ -639,26 +737,93 @@ export default function EditPageTab({
         </Box>
 
         <Grid container spacing={2.5}>
-          {/* Full Name — hairdresser only */}
-          {type === "hairdresser" && (
+          {/* Business Type — owner only */}
+          {userRole.isOwner && (
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Full Name"
-                value={profile.name || ""}
-                fullWidth
-                onChange={e => set("name", e.target.value)}
+                select label="Business Type"
+                value={profile.businessType || "barber"}
+                fullWidth size="small"
+                onChange={e => set("businessType", e.target.value)}
+              >
+                <MenuItem value="barber">Barber</MenuItem>
+                <MenuItem value="hairdresser">Hairdresser</MenuItem>
+                <MenuItem value="decorator">Decorator</MenuItem>
+                <MenuItem value="trainer">Personal Trainer</MenuItem>
+              </TextField>
+            </Grid>
+          )}
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Full Name"
+              value={profile.name || ""}
+              fullWidth size="small"
+              onChange={e => set("name", e.target.value)}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Specialty"
+              placeholder="e.g. Fades, colour, weight loss…"
+              value={profile.specialty || ""}
+              fullWidth size="small"
+              onChange={e => set("specialty", e.target.value)}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Phone"
+              value={profile.phone || ""}
+              fullWidth size="small"
+              onChange={e => set("phone", e.target.value)}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Business Email"
+              type="email"
+              placeholder="hello@yourbusiness.com"
+              value={profile.businessEmail || profile.contactEmail || ""}
+              fullWidth size="small"
+              onChange={e => set("businessEmail", e.target.value)}
+            />
+          </Grid>
+
+          {userRole.isOwner && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Location / Address"
+                value={profile.address || ""}
+                fullWidth size="small"
+                onChange={e => set("address", e.target.value)}
               />
             </Grid>
           )}
 
-          {/* Opening Times — hairdresser only */}
-          {type === "hairdresser" && userRole.isOwner && (
+          {userRole.isOwner && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Area / Neighbourhood"
+                placeholder="e.g. Stratford, Shoreditch, Brixton"
+                helperText="Helps clients find you by location on the homepage"
+                value={profile.area || ""}
+                fullWidth size="small"
+                onChange={e => set("area", e.target.value)}
+              />
+            </Grid>
+          )}
+
+          {userRole.isOwner && (
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Opening Times"
                 value={safeOpeningHours(profile.openingHours)}
-                fullWidth multiline rows={3}
-                placeholder={"e.g. Mon-Fri 9am-6pm\nSat: 10am-4pm\nSun: Closed"}
+                fullWidth multiline rows={3} size="small"
+                placeholder={"Mon–Fri: 9am–6pm\nSat: 10am–4pm\nSun: Closed"}
                 onChange={e => set("openingHours", e.target.value)}
                 InputProps={{
                   startAdornment: (
@@ -671,57 +836,24 @@ export default function EditPageTab({
             </Grid>
           )}
 
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12}>
             <TextField
-              label="Phone"
-              value={profile.phone || ""}
-              fullWidth
-              onChange={e => set("phone", e.target.value)}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Business Email"
-              type="email"
-              placeholder="hello@yourbusiness.com"
-              value={profile.businessEmail || profile.contactEmail || ""}
-              fullWidth
-              onChange={e => set("businessEmail", e.target.value)}
+              label="Personal Bio"
+              placeholder="A short intro about you and your approach…"
+              value={profile.bio || ""}
+              fullWidth multiline rows={2} size="small"
+              onChange={e => set("bio", e.target.value)}
             />
           </Grid>
 
           {userRole.isOwner && (
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Location / Address"
-                value={profile.address || ""}
-                fullWidth
-                onChange={e => set("address", e.target.value)}
-              />
-            </Grid>
-          )}
-
-          {/* Specialty — hairdresser only */}
-          {type === "hairdresser" && (
             <Grid item xs={12}>
               <TextField
-                label="Specialty"
-                value={profile.specialty || ""}
-                fullWidth
-                onChange={e => set("specialty", e.target.value)}
-              />
-            </Grid>
-          )}
-
-          {/* Personal Bio — hairdresser only */}
-          {type === "hairdresser" && (
-            <Grid item xs={12}>
-              <TextField
-                label="Personal Bio"
-                value={profile.bio || ""}
-                fullWidth multiline rows={2}
-                onChange={e => set("bio", e.target.value)}
+                label="About Us"
+                placeholder="Tell customers about your business, experience, and what makes you different…"
+                value={profile.aboutUs || ""}
+                fullWidth multiline rows={3} size="small"
+                onChange={e => set("aboutUs", e.target.value)}
               />
             </Grid>
           )}
@@ -789,10 +921,49 @@ export default function EditPageTab({
         </Grid>
       </Section>
 
+      {/* ── Barber: Personal Staff Social Links ── */}
+      {(!type || type === "barber") && (
+        <Section title="🔗 Your Personal Social Links">
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            These appear on your individual barber profile — separate from the shop's links.
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Personal Instagram" fullWidth size="small"
+                placeholder="https://instagram.com/yourhandle"
+                value={profile.staffInstagram || ""}
+                onChange={e => set("staffInstagram", e.target.value)}
+                InputProps={{ startAdornment: <InputAdornment position="start"><InstagramIcon fontSize="small" sx={{ color: "#E1306C" }} /></InputAdornment> }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Personal TikTok" fullWidth size="small"
+                placeholder="https://tiktok.com/@yourhandle"
+                value={profile.staffTiktok || ""}
+                onChange={e => set("staffTiktok", e.target.value)}
+                InputProps={{ startAdornment: <InputAdornment position="start"><Box sx={{ display: "flex", alignItems: "center" }}><TikTokIcon size={16} /></Box></InputAdornment> }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Personal Facebook" fullWidth size="small"
+                placeholder="https://facebook.com/yourprofile"
+                value={profile.staffFacebook || ""}
+                onChange={e => set("staffFacebook", e.target.value)}
+                InputProps={{ startAdornment: <InputAdornment position="start"><FacebookIcon fontSize="small" sx={{ color: "#1877F2" }} /></InputAdornment> }}
+              />
+            </Grid>
+          </Grid>
+        </Section>
+      )}
+
       {/* ── Business-type specific page content ── */}
-      {type === "decorator"   && <DecoratorPageSections  profile={profile} set={set} brandColor={brandColor} />}
+      {type === "barber"      && <BarberPageSections      profile={profile} set={set} brandColor={brandColor} />}
+      {type === "decorator"   && <DecoratorPageSections   profile={profile} set={set} brandColor={brandColor} />}
       {type === "hairdresser" && <HairdresserPageSections profile={profile} set={set} brandColor={brandColor} />}
-      {type === "trainer"     && <TrainerPageSections     profile={profile} set={set} brandColor={brandColor} />}
+      {type === "trainer"     && <TrainerPageSections      profile={profile} set={set} brandColor={brandColor} />}
 
       {/* ── Danger Zone ── */}
       <Divider sx={{ my: 4 }} />

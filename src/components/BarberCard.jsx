@@ -97,7 +97,7 @@ export default function BarberCard({ barber, isMarketplace }) {
               component="img"
               image={cardImage}
               alt={displayName}
-              sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
+              sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: barber?.businessType === "decorator" ? "top" : "center" }}
             />
           ) : (
             <Box sx={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -127,10 +127,29 @@ export default function BarberCard({ barber, isMarketplace }) {
             </Typography>
           </Box>
 
+          {/* Demo badge — top-right */}
+          {barber.isDemo && (
+            <Box sx={{
+              position: "absolute", top: 14, right: 14, zIndex: 2,
+              bgcolor: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+              px: 1.2, py: 0.35, borderRadius: "2px",
+              border: "1px solid rgba(255,255,255,0.18)",
+            }}>
+              <Typography sx={{
+                fontFamily: SANS, fontSize: "0.55rem", fontWeight: 700,
+                color: "rgba(255,255,255,0.75)", letterSpacing: "0.18em",
+                textTransform: "uppercase", lineHeight: 1.4,
+              }}>
+                Demo
+              </Typography>
+            </Box>
+          )}
+
           {/* Shop logo avatar */}
           {shopLogo && isMarketplace && (
             <Avatar
               src={shopLogo}
+              alt={`${displayName} logo`}
               sx={{
                 position: "absolute", bottom: -20, left: 18,
                 width: 52, height: 52, zIndex: 2,
@@ -159,6 +178,12 @@ export default function BarberCard({ barber, isMarketplace }) {
             {displayName}
           </Typography>
 
+          {isMarketplace && barber.specialty && (
+            <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", fontWeight: 500, color: brandColor, letterSpacing: "0.04em", mb: 0.75 }}>
+              {barber.specialty}
+            </Typography>
+          )}
+
           {isMarketplace && barber.address && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1.5 }}>
               <LocationOnIcon sx={{ fontSize: 13, color: brandColor, flexShrink: 0 }} />
@@ -179,8 +204,8 @@ export default function BarberCard({ barber, isMarketplace }) {
             mb: 2.5,
           }}>
             {isMarketplace
-              ? (barber.aboutUs || barber.about || barber.businessAbout || `Professional ${businessType} services available.`)
-              : (barber.bio || "Providing professional tailored services.")
+              ? (barber.aboutUs || barber.about || barber.businessAbout || barber.aboutBody || barber.aboutUs || barber.specialty || `Professional ${businessType} services available.`)
+              : (barber.bio || barber.aboutBody || "Providing professional tailored services.")
             }
           </Typography>
 

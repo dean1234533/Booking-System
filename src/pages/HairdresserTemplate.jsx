@@ -159,9 +159,12 @@ const HairdresserStyles = () => (
     .hs-section-sub { font-size: 0.88rem; color: #8b8179; font-weight: 300; line-height: 1.8; margin-bottom: 2.5rem; max-width: 480px; }
     .hs-service-row {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 1.1rem 0; border-bottom: 1px solid #ede8e0; gap: 1rem;
+      padding: 1.1rem 0.5rem; border-bottom: 1px solid #ede8e0; gap: 1rem;
+      border-radius: 4px; transition: background 0.15s;
+      margin: 0 -0.5rem;
     }
     .hs-service-row:first-of-type { border-top: 1px solid #ede8e0; }
+    .hs-service-row:hover { background: rgba(26,23,20,0.025); }
     .hs-service-name { font-weight: 500; font-size: 0.94rem; color: #1a1714; }
     .hs-service-meta { display: flex; align-items: center; gap: 1.25rem; flex-shrink: 0; }
     .hs-service-duration {
@@ -180,40 +183,47 @@ const HairdresserStyles = () => (
     /* ── ABOUT ── */
     .hs-about {
       padding: clamp(4rem, 8vw, 8rem) clamp(1.5rem, 6vw, 5rem);
-      background: #f5f0e8;
+      background: #1a1714;
       display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2.5rem, 5vw, 6rem); align-items: center;
     }
-    .hs-about-img { border-radius: 4px; overflow: hidden; position: relative; }
+    .hs-about-img { border-radius: 12px; overflow: hidden; position: relative; box-shadow: 0 32px 80px rgba(0,0,0,0.4); }
     .hs-about-img img { width: 100%; height: clamp(380px, 50vw, 560px); object-fit: cover; display: block; }
     .hs-about-quote {
       font-family: 'Cormorant Garamond', serif; font-style: italic;
       font-size: clamp(1.3rem, 2.5vw, 1.75rem); font-weight: 300;
-      color: #1a1714; line-height: 1.5; margin-bottom: 1.75rem;
+      color: #fff; line-height: 1.5; margin-bottom: 1.75rem;
       padding-left: 1.5rem; border-left: 3px solid; letter-spacing: -0.01em;
     }
     .hs-about-body {
-      font-size: 0.9rem; color: #5c5449; font-weight: 300; line-height: 1.9; margin-bottom: 2rem;
+      font-size: 0.9rem; color: rgba(255,255,255,0.55); font-weight: 300; line-height: 1.9; margin-bottom: 2rem;
     }
+    .hs-about .hs-section-label { color: rgba(255,255,255,0.4); }
+    .hs-about .hs-section-title { color: #fff; }
 
     /* ── TEAM ── */
-    .hs-team { padding: clamp(4rem, 8vw, 8rem) clamp(1.5rem, 6vw, 5rem); background: #fdfcfa; }
+    .hs-team { padding: clamp(4rem, 8vw, 8rem) clamp(1.5rem, 6vw, 5rem); background: #f5f0e8; }
     .hs-team-header { text-align: center; max-width: 480px; margin: 0 auto 3.5rem; }
     .hs-team-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 2rem; max-width: 1100px; margin: 0 auto;
     }
-    .hs-team-card { text-align: center; }
-    .hs-team-photo {
-      width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 4px;
-      display: block; margin-bottom: 1rem; transition: transform 0.4s ease;
+    .hs-team-card {
+      text-align: center; transition: transform 0.25s ease;
     }
+    .hs-team-card:hover { transform: translateY(-4px); }
+    .hs-team-photo {
+      width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 8px;
+      display: block; margin-bottom: 1rem; transition: box-shadow 0.3s ease;
+      box-shadow: 0 4px 20px rgba(26,23,20,0.08);
+    }
+    .hs-team-card:hover .hs-team-photo { box-shadow: 0 12px 40px rgba(26,23,20,0.16); }
     .hs-team-avatar {
-      width: 100%; aspect-ratio: 3/4; border-radius: 4px;
+      width: 100%; aspect-ratio: 3/4; border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
       font-family: 'Playfair Display', serif; font-size: 3rem;
       font-weight: 700; color: #fff; margin-bottom: 1rem;
+      box-shadow: 0 4px 20px rgba(26,23,20,0.15);
     }
-    .hs-team-card:hover .hs-team-photo { transform: scale(1.02); }
     .hs-team-name {
       font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 700;
       color: #1a1714; margin-bottom: 0.25rem;
@@ -275,6 +285,10 @@ const HairdresserStyles = () => (
     .hs-booking { padding: clamp(4rem, 8vw, 8rem) clamp(1.5rem, 6vw, 5rem); background: #fdfcfa; }
     .hs-booking-inner { max-width: 820px; margin: 0 auto; }
     .hs-booking-header { text-align: center; margin-bottom: 3.5rem; }
+    .hs-booking-header .hs-section-title::after {
+      content: ''; display: block; width: 44px; height: 3px; border-radius: 2px;
+      margin: 1.25rem auto 0;
+    }
 
     /* ── FOOTER ── */
     .hs-footer {
@@ -463,10 +477,9 @@ export default function HairdresserTemplate({ tenantData }) {
 
         {/* ─── NAV ─── */}
         <nav className="hs-nav">
-          <a href="#" className="hs-nav-brand" style={{ color: brandColor }}>
-            {logo
-              ? <img src={logo} alt="Logo" style={{ height: 36, display: 'block' }} />
-              : businessName}
+          <a href="#" className="hs-nav-brand" style={{ color: brandColor, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            {logo && <img src={logo} alt="Logo" style={{ height: 32, display: 'block', borderRadius: '50%', objectFit: 'cover' }} />}
+            <span>{businessName}</span>
           </a>
           <div className="hs-nav-links">
             {[['about','About'],['services','Services'],['team','Our Team'],['reviews','Reviews']].map(([id, label]) => (
@@ -528,7 +541,7 @@ export default function HairdresserTemplate({ tenantData }) {
         </section>
 
         {/* ─── STATS BAR ─── */}
-        <div className="hs-stats" style={{ background: brandColor }}>
+        <div className="hs-stats" style={{ background: '#111' }}>
           {stats.map((s, i) => (
             <div key={i} className="hs-stat">
               <span className="hs-stat-num">{s.num}</span>
@@ -604,8 +617,6 @@ export default function HairdresserTemplate({ tenantData }) {
               <div
                 key={member.id || i}
                 className="hs-team-card"
-                onClick={() => setTeamMember(member)}
-                style={{ cursor: 'pointer' }}
               >
                 {member.profilePic ? (
                   <img src={member.profilePic} alt={member.name} className="hs-team-photo" />
@@ -616,9 +627,11 @@ export default function HairdresserTemplate({ tenantData }) {
                 )}
                 <div className="hs-team-name">{member.name}</div>
                 <div className="hs-team-role">{member.role || member.specialty || 'Stylist'}</div>
-                <div style={{ fontSize: '0.65rem', color: brandColor, marginTop: '0.4rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                  View Profile →
-                </div>
+                {member.bio && (
+                  <div style={{ fontSize: '0.85rem', color: '#5c5449', lineHeight: 1.7, marginTop: '0.5rem', fontWeight: 300 }}>
+                    {member.bio}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -679,6 +692,12 @@ export default function HairdresserTemplate({ tenantData }) {
               <p style={{ color: '#8b8179', fontSize: '0.9rem', fontWeight: 300, marginTop: '0.5rem' }}>
                 Choose a date and time that works for you. Confirmation sent by email.
               </p>
+              {tenantData?.openingHours && (
+                <div style={{ marginTop: '1.25rem', padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.04)', borderLeft: `3px solid ${brandColor}`, borderRadius: 2, display: 'inline-block', textAlign: 'left' }}>
+                  <p style={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: brandColor, marginBottom: '0.4rem' }}>Opening Hours</p>
+                  <p style={{ fontSize: '0.85rem', color: '#5c5449', lineHeight: 1.8, whiteSpace: 'pre-line', margin: 0 }}>{tenantData.openingHours}</p>
+                </div>
+              )}
             </div>
             <SlotPicker
               slots={slots}

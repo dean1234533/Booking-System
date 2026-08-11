@@ -88,8 +88,8 @@ export default function TenantHome({ tenant: initialTenant }) {
   const brandColor      = freshTenant?.brandColor      || "#C9A84C";
   const businessName    = freshTenant?.businessName     || "TRIMZ"; 
   const address         = freshTenant?.address          || "Location TBD";
-  const aboutBgColor    = freshTenant?.aboutSectionColor || "#111111";
-  const trustBarBgColor = freshTenant?.trustBarColor    || "#000000";
+  const aboutBgColor    = freshTenant?.aboutSectionColor || "#f8f7f4";
+  const trustBarBgColor = freshTenant?.trustBarColor    || brandColor;
  
   // ── Owner social links ────────────────────────────────────────────────────
   const ownerInstagram = freshTenant?.instagramUrl || "";
@@ -249,30 +249,9 @@ export default function TenantHome({ tenant: initialTenant }) {
         </Container>
       </Box>
  
-      {/* ── 1.5 TRUST SIGNAL BAR ─────────────────────────────────────────── */}
-      <Box sx={{ bgcolor: trustBarBgColor, py: 4, borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
-        <Container>
-          <Grid container spacing={2} justifyContent="center">
-            {[
-              { icon: <VerifiedIcon />,          text: "LICENSED BARBERS" },
-              { icon: <SanitizerIcon />,         text: "HYGIENE GUARANTEED" },
-              { icon: <WorkspacePremiumIcon />,  text: "PREMIUM PRODUCTS" }
-            ].map((signal, idx) => (
-              <Grid item xs={12} md={4} key={idx}>
-                <Stack direction="row" spacing={2} alignItems="center" justifyContent="center" sx={{ color: trustBarTextColor }}>
-                  {React.cloneElement(signal.icon, { sx: { color: brandColor, fontSize: 22, opacity: 0.8 } })}
-                  <Typography variant="subtitle2" fontWeight={400} sx={{ letterSpacing: 3, fontSize: '0.75rem' }}>
-                    {signal.text}
-                  </Typography>
-                </Stack>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
  
       {/* ── 2. FIND US & HOURS ───────────────────────────────────────────── */}
-      <Container sx={{ mt: 10, mb: 15 }}>
+      <Container id="find-us" sx={{ mt: 10, mb: 15 }}>
         <Grid container spacing={4}>
           <Grid item xs={12} md={6}>
             <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
@@ -323,7 +302,7 @@ export default function TenantHome({ tenant: initialTenant }) {
       </Container>
  
       {/* ── 3. ABOUT ─────────────────────────────────────────────────────── */}
-      <Box sx={{ py: { xs: 12, md: 20 }, textAlign: 'center', backgroundColor: aboutBgColor, color: aboutTextColor }}>
+      <Box id="about" sx={{ py: { xs: 12, md: 20 }, textAlign: 'center', backgroundColor: aboutBgColor, color: aboutTextColor }}>
         <Container maxWidth="md">
           <ContentCutIcon sx={{ color: brandColor, fontSize: 40, mb: 3, opacity: 0.6 }} />
           <Typography variant="h3" sx={{ fontFamily: displayFont, mb: 4, letterSpacing: 2 }}>
@@ -358,17 +337,16 @@ export default function TenantHome({ tenant: initialTenant }) {
                 <Box
                   onClick={handleBooking}
                   sx={{
-                    cursor: "pointer", bgcolor: "#111", overflow: "hidden",
-                    transition: "box-shadow 0.3s ease",
-                    "&:hover": { boxShadow: "0 20px 56px rgba(0,0,0,0.45)" },
+                    cursor: "pointer", bgcolor: "#fff", overflow: "hidden",
+                    border: "1px solid #eee", borderRadius: "8px",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+                    transition: "box-shadow 0.3s ease, transform 0.2s ease",
+                    "&:hover": { boxShadow: "0 16px 40px rgba(0,0,0,0.12)", transform: "translateY(-4px)" },
                     "&:hover .staff-zoom": { transform: "scale(1.05)" },
                   }}
                 >
-                  {/* Brand accent bar */}
-                  <Box sx={{ height: 3, bgcolor: cardColor }} />
-
                   {/* Portrait image */}
-                  <Box sx={{ position: "relative", paddingTop: "115%", bgcolor: "#1a1a1a", overflow: "hidden" }}>
+                  <Box sx={{ position: "relative", paddingTop: "110%", bgcolor: "#f5f4f0", overflow: "hidden", borderRadius: "8px 8px 0 0" }}>
                     {cardImage ? (
                       <Box
                         className="staff-zoom"
@@ -384,17 +362,18 @@ export default function TenantHome({ tenant: initialTenant }) {
                       />
                     ) : (
                       <Box sx={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Typography sx={{ fontFamily: displayFont, fontSize: "5rem", fontWeight: 400, color: cardColor, opacity: 0.4 }}>
+                        <Typography sx={{ fontFamily: displayFont, fontSize: "5rem", fontWeight: 400, color: cardColor, opacity: 0.3 }}>
                           {displayName[0]}
                         </Typography>
                       </Box>
                     )}
-                    <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "35%", background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)" }} />
+                    {/* Brand colour bar at bottom of image */}
+                    <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 4, bgcolor: cardColor }} />
                   </Box>
 
                   {/* Content */}
                   <Box sx={{ p: 3 }}>
-                    <Typography sx={{ fontFamily: displayFont, fontSize: "1.25rem", fontWeight: 400, color: "#fff", lineHeight: 1.2, mb: 0.5 }}>
+                    <Typography sx={{ fontFamily: displayFont, fontSize: "1.25rem", fontWeight: 400, color: "#111", lineHeight: 1.2, mb: 0.5 }}>
                       {displayName}
                     </Typography>
                     <Typography sx={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: cardColor, mb: barber.bio ? 2 : 0 }}>
@@ -402,17 +381,17 @@ export default function TenantHome({ tenant: initialTenant }) {
                     </Typography>
                     {barber.bio && (
                       <Typography sx={{
-                        fontSize: "0.82rem", color: "rgba(255,255,255,0.4)", fontWeight: 300, lineHeight: 1.7,
+                        fontSize: "0.82rem", color: "#888", fontWeight: 300, lineHeight: 1.7,
                         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
                         mt: 1.5,
                       }}>
                         {barber.bio}
                       </Typography>
                     )}
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2.5, pt: 2.5, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2.5, pt: 2.5, borderTop: "1px solid #f0ece4" }}>
                       <Box>
-                        <Typography sx={{ fontSize: "0.55rem", fontWeight: 700, color: "rgba(255,255,255,0.25)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Deposit</Typography>
-                        <Typography sx={{ fontSize: "0.92rem", fontWeight: 800, color: "#fff" }}>£{depositValue}</Typography>
+                        <Typography sx={{ fontSize: "0.55rem", fontWeight: 700, color: "#bbb", letterSpacing: "0.12em", textTransform: "uppercase" }}>Deposit</Typography>
+                        <Typography sx={{ fontSize: "0.92rem", fontWeight: 800, color: "#111" }}>£{depositValue}</Typography>
                       </Box>
                       <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: cardColor, letterSpacing: "0.12em", textTransform: "uppercase" }}>
                         BOOK NOW →
@@ -427,8 +406,8 @@ export default function TenantHome({ tenant: initialTenant }) {
       </Container>
  
       {/* ── 5. REVIEWS ───────────────────────────────────────────────────────── */}
-      <Box sx={{
-        py: { xs: 10, md: 15 }, bgcolor: "#0d0d0d",
+      <Box id="reviews" sx={{
+        py: { xs: 10, md: 15 }, bgcolor: "#f8f7f4",
         borderTop: `3px solid ${brandColor}`,
         position: "relative", overflow: "hidden",
       }}>
@@ -443,7 +422,7 @@ export default function TenantHome({ tenant: initialTenant }) {
             <Typography sx={{ color: brandColor, fontWeight: 700, letterSpacing: "0.3em", fontSize: "0.62rem", textTransform: "uppercase", mb: 1.5 }}>
               Testimonials
             </Typography>
-            <Typography sx={{ fontFamily: displayFont, fontSize: { xs: "2rem", md: "2.6rem" }, fontWeight: 400, color: "#fff", lineHeight: 1.15 }}>
+            <Typography sx={{ fontFamily: displayFont, fontSize: { xs: "2rem", md: "2.6rem" }, fontWeight: 400, color: "#111", lineHeight: 1.15 }}>
               What Our Clients Say
             </Typography>
             <Box sx={{ width: 36, height: 2, bgcolor: brandColor, mx: "auto", mt: 2.5 }} />
@@ -512,7 +491,7 @@ export default function TenantHome({ tenant: initialTenant }) {
                       setSlideDir("left");
                       setActiveReviewIndex(i => (i === 0 ? freshTenant.reviews.length - 1 : i - 1));
                     }}
-                    sx={{ border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.45)", "&:hover": { borderColor: brandColor, color: brandColor } }}
+                    sx={{ border: "1px solid rgba(0,0,0,0.12)", color: "rgba(0,0,0,0.35)", "&:hover": { borderColor: brandColor, color: brandColor } }}
                   >
                     <ArrowBackIcon fontSize="small" />
                   </IconButton>
@@ -521,7 +500,7 @@ export default function TenantHome({ tenant: initialTenant }) {
                       <Box
                         key={i}
                         onClick={() => { setSlideDir(i > activeReviewIndex ? "right" : "left"); setActiveReviewIndex(i); }}
-                        sx={{ width: i === activeReviewIndex ? 24 : 7, height: 7, borderRadius: "99px", bgcolor: i === activeReviewIndex ? brandColor : "rgba(255,255,255,0.18)", cursor: "pointer", transition: "all .3s ease" }}
+                        sx={{ width: i === activeReviewIndex ? 24 : 7, height: 7, borderRadius: "99px", bgcolor: i === activeReviewIndex ? brandColor : "rgba(0,0,0,0.15)", cursor: "pointer", transition: "all .3s ease" }}
                       />
                     ))}
                   </Stack>
@@ -530,7 +509,7 @@ export default function TenantHome({ tenant: initialTenant }) {
                       setSlideDir("right");
                       setActiveReviewIndex(i => (i === freshTenant.reviews.length - 1 ? 0 : i + 1));
                     }}
-                    sx={{ border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.45)", "&:hover": { borderColor: brandColor, color: brandColor } }}
+                    sx={{ border: "1px solid rgba(0,0,0,0.12)", color: "rgba(0,0,0,0.35)", "&:hover": { borderColor: brandColor, color: brandColor } }}
                   >
                     <ArrowForwardIcon fontSize="small" />
                   </IconButton>
@@ -539,10 +518,10 @@ export default function TenantHome({ tenant: initialTenant }) {
             </>
           ) : (
             <Box sx={{ textAlign: "center", py: 4 }}>
-              <Typography sx={{ color: "rgba(255,255,255,0.3)", fontFamily: displayFont, fontSize: "1.1rem", mb: 1 }}>
+              <Typography sx={{ color: "rgba(0,0,0,0.3)", fontFamily: displayFont, fontSize: "1.1rem", mb: 1 }}>
                 No reviews yet
               </Typography>
-              <Typography sx={{ color: "rgba(255,255,255,0.2)", fontSize: "0.82rem", fontWeight: 300 }}>
+              <Typography sx={{ color: "rgba(0,0,0,0.2)", fontSize: "0.82rem", fontWeight: 300 }}>
                 Be the first to share your experience.
               </Typography>
             </Box>

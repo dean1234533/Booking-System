@@ -77,9 +77,9 @@ service cloud.firestore {
         allow write: if request.auth != null && request.auth.uid == barberId;
       }
 
-      // ── Haircut memory — anyone can read/add cuts via the FAB ────────────
+      // ── Haircut memory — owner reads, anyone adds (via FAB) ─────────────
       match /haircutMemories/{phoneKey}/cuts/{cutId} {
-        allow read: if true;
+        allow read: if request.auth != null && request.auth.uid == barberId;
         allow create: if true;
         allow update, delete: if request.auth != null && request.auth.uid == barberId;
       }
@@ -169,6 +169,12 @@ service cloud.firestore {
           allow read: if true;
           allow create, update, delete: if request.auth != null && request.auth.uid == barberId;
         }
+
+        // ── Progress entries — clients write anonymously via client portal ─────
+        match /progressEntries/{entryId} {
+          allow create: if true;
+          allow read, update, delete: if request.auth != null && request.auth.uid == barberId;
+        }
       }
 
       // ── Favorite exercises (Exercise Generator) — owner only ───────────────
@@ -191,7 +197,26 @@ service cloud.firestore {
         allow read: if true;
         allow create, delete: if request.auth != null && request.auth.uid == barberId;
         allow update: if (request.auth != null && request.auth.uid == barberId)
-                      || resource.data.status == "available";
+                      || (resource.data.status == "available"
+                          && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['status', 'clientName', 'purpose', 'bookedAt']));
+      }
+
+      // ── Enquiries (Decorator / public contact form) — anyone creates, owner reads ─
+      match /enquiries/{enquiryId} {
+        allow create: if true;
+        allow read, update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Notifications inbox — anyone creates (bookings from unauthed visitors), owner manages ─
+      match /notifications/{notifId} {
+        allow create: if true;
+        allow read, update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
+      // ── Integrations (Outlook tokens etc) — owner only, never public ────────
+      match /integrations/{integrationId} {
+        allow read, write: if request.auth != null && request.auth.uid == barberId;
       }
 
       // ── Automation schedules + sent history — owner only ───────────────────
@@ -201,6 +226,12 @@ service cloud.firestore {
           allow read, write: if request.auth != null && request.auth.uid == barberId;
         }
       }
+    }
+
+    // ── Platform feedback — anyone submits, no public read ───────────────────
+    match /platformFeedback/{feedbackId} {
+      allow create: if true;
+      allow read, update, delete: if false;
     }
 
     // ── Deny everything else ──────────────────────────────────────────────────

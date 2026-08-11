@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
   Box, Typography, Button, IconButton, Stack, TextField,
-  CircularProgress, Tooltip, Paper,
+  CircularProgress, Tooltip, Paper, MenuItem, Select, FormControl, InputLabel, Chip,
 } from "@mui/material";
-import ShareIcon        from "@mui/icons-material/Share";
 import ContentCopyIcon  from "@mui/icons-material/ContentCopy";
 import DeleteIcon       from "@mui/icons-material/Delete";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -12,19 +11,23 @@ import AddIcon          from "@mui/icons-material/Add";
 import SaveIcon         from "@mui/icons-material/Save";
 import AssignmentIcon   from "@mui/icons-material/Assignment";
 import ListAltIcon      from "@mui/icons-material/ListAlt";
+import SendIcon         from "@mui/icons-material/Send";
+import WhatsAppIcon     from "@mui/icons-material/WhatsApp";
+import CheckCircleIcon  from "@mui/icons-material/CheckCircle";
 import { collection, getDocs, deleteDoc, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { getClientsList } from "../../../firebase/firestore";
 
 function printPDF(sub) {
   const submitted = sub.submittedAt?.toDate?.()?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) || "—";
   const qaRows = (sub.answers || []).map((a, i) => `
     <div class="qa">
-      <div class="q"><span class="qnum">${i + 1}.</span> ${a.question || "Question"}</div>
-      <div class="a">${a.answer || "—"}</div>
+      <div class="q"><span class="qnum">${i + 1}.</span> ${esc(a.question || "Question")}</div>
+      <div class="a">${esc(a.answer || "—")}</div>
     </div>`).join("");
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-    <title>Check-In – ${sub.clientName}</title>
+    <title>Check-In – ${esc(sub.clientName)}</title>
     <style>
       *{box-sizing:border-box}body{font-family:Georgia,serif;max-width:700px;margin:0 auto;padding:36px 28px;color:#111}
       .hdr{border-bottom:3px solid #C9A84C;padding-bottom:10px;margin-bottom:6px}
@@ -38,7 +41,7 @@ function printPDF(sub) {
     </style>
   </head><body>
     <div class="hdr"><h1>Weekly Check-In</h1></div>
-    <p class="meta"><strong>${sub.clientName}</strong> &nbsp;·&nbsp; ${sub.date || "—"} &nbsp;·&nbsp; Submitted ${submitted}</p>
+    <p class="meta"><strong>${esc(sub.clientName)}</strong> &nbsp;·&nbsp; ${esc(sub.date || "—")} &nbsp;·&nbsp; Submitted ${submitted}</p>
     ${qaRows}
   </body></html>`;
 
@@ -48,33 +51,23 @@ function printPDF(sub) {
   setTimeout(() => { w.focus(); w.print(); }, 350);
 }
 
-function fieldSx(brand) {
-  return {
-    "& .MuiInputLabel-root":             { color: "rgba(255,255,255,0.3)", fontSize: "0.82rem" },
-    "& .MuiInputLabel-root.Mui-focused":  { color: brand },
-    "& .MuiOutlinedInput-root": {
-      color: "#fff", borderRadius: 0,
-      "& fieldset":             { borderColor: "rgba(255,255,255,0.1)" },
-      "&:hover fieldset":       { borderColor: "rgba(255,255,255,0.22)" },
-      "&.Mui-focused fieldset": { borderColor: brand },
-    },
-    "& textarea, & input": { "&::placeholder": { color: "rgba(255,255,255,0.18)", opacity: 1 } },
-  };
-}
-
 const newQ = () => ({ id: `q-${Date.now()}-${Math.random()}`, text: "" });
 
+const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
 export default function CheckInTab({ barber, brandColor }) {
-  const [subView,    setSubView]    = useState("submissions"); // "questions" | "submissions" | "detail"
+  const [subView,    setSubView]    = useState("questions"); // "questions" | "submissions" | "send" | "detail"
   const [questions,  setQuestions]  = useState([newQ()]);
   const [subs,       setSubs]       = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [savingQ,    setSavingQ]    = useState(false);
+  const [savedQ,     setSavedQ]     = useState(false);
   const [detail,     setDetail]     = useState(null);
-  const [copied,     setCopied]     = useState(false);
+  const [clients,    setClients]    = useState([]);
+  const [selClient,  setSelClient]  = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const tid = barber?.uid || barber?.id;
-  const fs  = fieldSx(brandColor);
 
   useEffect(() => { loadAll(); }, [tid]);
 
@@ -82,9 +75,10 @@ export default function CheckInTab({ barber, brandColor }) {
     if (!tid) return;
     setLoading(true);
     try {
-      const [cfgSnap, subSnap] = await Promise.all([
+      const [cfgSnap, subSnap, clientList] = await Promise.all([
         getDoc(doc(db, "barbers", tid, "config", "checkIn")),
         getDocs(collection(db, "barbers", tid, "checkInSubmissions")),
+        getClientsList(tid),
       ]);
       if (cfgSnap.exists() && cfgSnap.data().questions?.length) {
         setQuestions(cfgSnap.data().questions.map(q => ({ id: q.id || newQ().id, text: q.text || "" })));
@@ -94,6 +88,7 @@ export default function CheckInTab({ barber, brandColor }) {
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0))
       );
+      setClients(clientList);
     } catch (e) { console.error(e); }
     finally     { setLoading(false); }
   }
@@ -106,6 +101,8 @@ export default function CheckInTab({ barber, brandColor }) {
         { questions: questions.map(q => ({ id: q.id, text: q.text })), updatedAt: serverTimestamp() },
         { merge: true }
       );
+      setSavedQ(true);
+      setTimeout(() => setSavedQ(false), 2500);
     } catch (e) { console.error(e); }
     finally     { setSavingQ(false); }
   }
@@ -118,64 +115,52 @@ export default function CheckInTab({ barber, brandColor }) {
     if (detail?.id === id) setDetail(null);
   }
 
-  function share() {
-    navigator.clipboard.writeText(`${window.location.origin}/check-in/${tid}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2200);
-  }
-
   const validQs = questions.filter(q => q.text.trim());
 
-  // ── Sub-view toggle header ─────────────────────────────────────────────────
+  // ── Tab toggle header ──────────────────────────────────────────────────────
   const Header = () => (
-    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 4, flexWrap: "wrap", gap: 2 }}>
-      <Box>
-        <Typography sx={{ color: "#fff", fontFamily: "'Playfair Display', serif", fontSize: "1.5rem", fontWeight: 400 }}>
-          Check-In Forms
-        </Typography>
-        <Typography sx={{ color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", mt: 0.5 }}>
-          Build your check-in questions, share the link, and review client responses.
-        </Typography>
-      </Box>
-      <Stack direction="row" spacing={1} alignItems="center">
-        <Box sx={{ display: "flex", border: "1px solid rgba(255,255,255,0.1)" }}>
-          {[
-            { id: "questions",    label: "Questions",    icon: <AddIcon sx={{ fontSize: 15 }} /> },
-            { id: "submissions",  label: "Submissions",  icon: <ListAltIcon sx={{ fontSize: 15 }} /> },
-          ].map(v => (
-            <Button
-              key={v.id}
-              startIcon={v.icon}
-              onClick={() => { setSubView(v.id); setDetail(null); }}
-              sx={{
-                bgcolor:    subView === v.id ? brandColor : "transparent",
-                color:      subView === v.id ? "#0d0d0d"  : "rgba(255,255,255,0.4)",
-                fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em",
-                px: 2, py: 1, borderRadius: 0, boxShadow: "none",
-                "&:hover": { bgcolor: subView === v.id ? brandColor : "rgba(255,255,255,0.06)" },
-              }}
-            >
-              {v.label}
-            </Button>
-          ))}
-        </Box>
-        <Button
-          startIcon={copied ? <ContentCopyIcon sx={{ fontSize: 15 }} /> : <ShareIcon sx={{ fontSize: 15 }} />}
-          onClick={share}
-          disabled={validQs.length === 0}
-          sx={{
-            bgcolor: copied ? "rgba(122,232,160,0.12)" : "rgba(255,255,255,0.06)",
-            color:   copied ? "#7ae8a0"                : "rgba(255,255,255,0.55)",
-            fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.06em",
-            px: 2, py: 1, borderRadius: 0, boxShadow: "none", whiteSpace: "nowrap",
-            border: "1px solid",
-            borderColor: copied ? "rgba(122,232,160,0.3)" : "rgba(255,255,255,0.1)",
-            "&:hover":    { bgcolor: copied ? undefined : "rgba(255,255,255,0.1)" },
-            "&:disabled": { opacity: 0.35 },
-          }}
-        >
-          {copied ? "Copied!" : "Share Form"}
-        </Button>
+    <Box sx={{ mb: 3 }}>
+      <Typography sx={{ fontWeight: 700, fontSize: "1.05rem", color: "text.primary", mb: 0.5 }}>
+        Check-In Forms
+      </Typography>
+      <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", mb: 2.5 }}>
+        Build your weekly check-in questions, then send the client portal link to each client.
+      </Typography>
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        {[
+          { id: "questions",   label: "Questions",      icon: <AddIcon sx={{ fontSize: 15 }} /> },
+          { id: "submissions", label: "Submissions",    icon: <ListAltIcon sx={{ fontSize: 15 }} />, badge: subs.length },
+          { id: "send",        label: "Send to Client", icon: <SendIcon sx={{ fontSize: 15 }} /> },
+        ].map(v => (
+          <Button
+            key={v.id}
+            size="small"
+            startIcon={v.icon}
+            onClick={() => { setSubView(v.id); setDetail(null); }}
+            variant={subView === v.id ? "contained" : "outlined"}
+            sx={{
+              bgcolor:    subView === v.id ? brandColor : "transparent",
+              color:      subView === v.id ? "#fff"     : "text.secondary",
+              borderColor: subView === v.id ? brandColor : "divider",
+              fontWeight: 600, fontSize: "0.75rem", borderRadius: "8px",
+              boxShadow: "none", px: 2, py: 0.8,
+              "&:hover": {
+                bgcolor:    subView === v.id ? brandColor : "action.hover",
+                borderColor: brandColor,
+                boxShadow: "none",
+              },
+            }}
+          >
+            {v.label}
+            {v.badge > 0 && (
+              <Chip
+                label={v.badge}
+                size="small"
+                sx={{ ml: 1, height: 18, fontSize: "0.65rem", bgcolor: subView === v.id ? "rgba(255,255,255,0.25)" : `${brandColor}22`, color: subView === v.id ? "#fff" : brandColor, fontWeight: 700 }}
+              />
+            )}
+          </Button>
+        ))}
       </Stack>
     </Box>
   );
@@ -185,59 +170,151 @@ export default function CheckInTab({ barber, brandColor }) {
     return (
       <Box>
         <Header />
-        <Box sx={{ maxWidth: 680 }}>
-          <Typography sx={{ color: "rgba(255,255,255,0.4)", fontSize: "0.78rem", mb: 3 }}>
-            Add the questions you want clients to answer in their weekly check-in. Save when done, then share the link.
-          </Typography>
-          <Stack spacing={2} sx={{ mb: 2 }}>
-            {questions.map((q, idx) => (
-              <Box key={q.id} sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-                <Typography sx={{ color: brandColor, fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.14em", mt: 1.7, minWidth: 22, userSelect: "none" }}>
-                  {String(idx + 1).padStart(2, "0")}
-                </Typography>
-                <TextField
-                  fullWidth
-                  placeholder={`Question ${idx + 1}`}
-                  value={q.text}
-                  onChange={e => setQuestions(prev => prev.map(x => x.id === q.id ? { ...x, text: e.target.value } : x))}
-                  size="small"
-                  sx={fs}
-                />
-                <IconButton
-                  size="small"
-                  onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))}
-                  disabled={questions.length === 1}
-                  sx={{ color: "rgba(255,255,255,0.2)", mt: 0.5, "&:hover": { color: "#ff6b6b" }, "&:disabled": { opacity: 0.15 } }}
-                >
-                  <DeleteIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-              </Box>
-            ))}
-          </Stack>
-
-          <Button
-            startIcon={<AddIcon />}
-            onClick={() => setQuestions(prev => [...prev, newQ()])}
-            sx={{ mb: 3, border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 0, color: "rgba(255,255,255,0.3)", fontWeight: 700, fontSize: "0.74rem", letterSpacing: "0.06em", px: 3, py: 1.2, "&:hover": { borderColor: brandColor, color: brandColor, bgcolor: `${brandColor}08` } }}
-          >
-            Add Question
-          </Button>
-
-          <Box>
-            <Button
-              startIcon={savingQ ? <CircularProgress size={13} sx={{ color: "#0d0d0d" }} /> : <SaveIcon sx={{ fontSize: 16 }} />}
-              onClick={saveQuestions}
-              disabled={savingQ || validQs.length === 0}
-              sx={{ bgcolor: brandColor, color: "#0d0d0d", fontWeight: 700, fontSize: "0.76rem", letterSpacing: "0.06em", px: 3, py: 1.3, borderRadius: 0, boxShadow: "none", "&:hover": { bgcolor: brandColor, filter: "brightness(1.1)" }, "&:disabled": { bgcolor: brandColor, opacity: 0.45 } }}
-            >
-              {savingQ ? "Saving…" : "Save Questions"}
-            </Button>
-            {validQs.length === 0 && (
-              <Typography sx={{ color: "rgba(255,255,255,0.2)", fontSize: "0.73rem", mt: 1.5 }}>
-                Add at least one question before saving.
+        <Typography sx={{ fontSize: "0.82rem", color: "text.secondary", mb: 2.5 }}>
+          Add the questions you want clients to answer each week. Save when done, then use <strong>Send to Client</strong> to share their portal link.
+        </Typography>
+        <Stack spacing={1.5} sx={{ mb: 2, maxWidth: 640 }}>
+          {questions.map((q, idx) => (
+            <Box key={q.id} sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+              <Typography sx={{ color: brandColor, fontSize: "0.7rem", fontWeight: 700, minWidth: 22, flexShrink: 0 }}>
+                {String(idx + 1).padStart(2, "0")}
               </Typography>
-            )}
-          </Box>
+              <TextField
+                fullWidth
+                placeholder={`e.g. How did your training feel this week?`}
+                value={q.text}
+                onChange={e => setQuestions(prev => prev.map(x => x.id === q.id ? { ...x, text: e.target.value } : x))}
+                size="small"
+                variant="outlined"
+              />
+              <IconButton
+                size="small"
+                onClick={() => setQuestions(prev => prev.filter(x => x.id !== q.id))}
+                disabled={questions.length === 1}
+                sx={{ color: "text.disabled", "&:hover": { color: "error.main" }, "&:disabled": { opacity: 0.3 } }}
+              >
+                <DeleteIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Box>
+          ))}
+        </Stack>
+
+        <Button
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={() => setQuestions(prev => [...prev, newQ()])}
+          variant="outlined"
+          sx={{ mb: 3, borderStyle: "dashed", borderColor: "divider", color: "text.secondary", borderRadius: "8px", fontWeight: 600, fontSize: "0.78rem", "&:hover": { borderColor: brandColor, color: brandColor, borderStyle: "dashed", bgcolor: `${brandColor}08` } }}
+        >
+          Add Question
+        </Button>
+
+        <Box>
+          <Button
+            startIcon={savedQ ? <CheckCircleIcon sx={{ fontSize: 16 }} /> : savingQ ? <CircularProgress size={13} /> : <SaveIcon sx={{ fontSize: 16 }} />}
+            onClick={saveQuestions}
+            disabled={savingQ || validQs.length === 0}
+            variant="contained"
+            sx={{ bgcolor: savedQ ? "#4caf50" : brandColor, color: "#fff", fontWeight: 700, fontSize: "0.8rem", borderRadius: "8px", boxShadow: "none", px: 3, py: 1.1, "&:hover": { bgcolor: savedQ ? "#4caf50" : brandColor, filter: "brightness(0.92)", boxShadow: "none" }, "&:disabled": { opacity: 0.5 } }}
+          >
+            {savedQ ? "Saved!" : savingQ ? "Saving…" : "Save Questions"}
+          </Button>
+          {validQs.length === 0 && (
+            <Typography sx={{ color: "text.disabled", fontSize: "0.75rem", mt: 1.5 }}>
+              Add at least one question before saving.
+            </Typography>
+          )}
+        </Box>
+      </Box>
+    );
+  }
+
+  // ── Send to Client ─────────────────────────────────────────────────────────
+  if (subView === "send") {
+    const selectedClient = clients.find(c => c.id === selClient);
+    const portalUrl = selClient
+      ? `${window.location.origin}/client-portal/${tid}/${selClient}`
+      : "";
+
+    function copyPortalLink() {
+      if (!portalUrl) return;
+      navigator.clipboard.writeText(portalUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2200);
+    }
+
+    function whatsappPortalLink() {
+      if (!portalUrl) return;
+      const name = selectedClient?.customerName || selectedClient?.name || "there";
+      const msg = encodeURIComponent(
+        `Hi ${name}, here's your check-in link — fill it in whenever you're ready:\n${portalUrl}`
+      );
+      window.open(`https://wa.me/?text=${msg}`, "_blank");
+    }
+
+    return (
+      <Box>
+        <Header />
+        <Typography sx={{ fontSize: "0.82rem", color: "text.secondary", mb: 2.5, maxWidth: 540 }}>
+          Select a client to get their personal portal link. Send it to them and they'll be able to fill in the check-in straight from their portal.
+        </Typography>
+
+        <Box sx={{ maxWidth: 480 }}>
+          <FormControl fullWidth size="small" sx={{ mb: 3 }}>
+            <InputLabel>Select Client</InputLabel>
+            <Select
+              value={selClient}
+              label="Select Client"
+              onChange={e => setSelClient(e.target.value)}
+            >
+              {clients.length === 0 && (
+                <MenuItem disabled value=""><em>No clients found — add clients first</em></MenuItem>
+              )}
+              {clients.map(c => (
+                <MenuItem key={c.id} value={c.id}>
+                  {c.customerName || c.name || c.id}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {portalUrl && (
+            <Paper variant="outlined" sx={{ p: 2, mb: 2.5, borderRadius: "10px", bgcolor: `${brandColor}08`, borderColor: `${brandColor}44` }}>
+              <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: brandColor, mb: 1 }}>
+                Client Portal Link
+              </Typography>
+              <Typography sx={{ fontSize: "0.8rem", color: "text.secondary", wordBreak: "break-all", fontFamily: "monospace", lineHeight: 1.6 }}>
+                {portalUrl}
+              </Typography>
+            </Paper>
+          )}
+
+          {portalUrl && (
+            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+              <Button
+                startIcon={linkCopied ? <CheckCircleIcon sx={{ fontSize: 15 }} /> : <ContentCopyIcon sx={{ fontSize: 15 }} />}
+                onClick={copyPortalLink}
+                variant="contained"
+                sx={{ bgcolor: linkCopied ? "#4caf50" : brandColor, color: "#fff", fontWeight: 700, fontSize: "0.78rem", borderRadius: "8px", boxShadow: "none", px: 2.5, py: 1, "&:hover": { filter: "brightness(0.92)", boxShadow: "none" } }}
+              >
+                {linkCopied ? "Copied!" : "Copy Link"}
+              </Button>
+              <Button
+                startIcon={<WhatsAppIcon sx={{ fontSize: 16 }} />}
+                onClick={whatsappPortalLink}
+                variant="outlined"
+                sx={{ color: "#25d366", borderColor: "#25d36644", fontWeight: 700, fontSize: "0.78rem", borderRadius: "8px", boxShadow: "none", px: 2.5, py: 1, "&:hover": { bgcolor: "rgba(37,211,102,0.08)", borderColor: "#25d366", boxShadow: "none" } }}
+              >
+                Send via WhatsApp
+              </Button>
+            </Stack>
+          )}
+
+          {!portalUrl && clients.length > 0 && (
+            <Typography sx={{ color: "text.disabled", fontSize: "0.82rem" }}>
+              Select a client above to see their link.
+            </Typography>
+          )}
         </Box>
       </Box>
     );
@@ -247,40 +324,42 @@ export default function CheckInTab({ barber, brandColor }) {
   if (detail) {
     return (
       <Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 4 }}>
-          <IconButton onClick={() => setDetail(null)} sx={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 0, color: "rgba(255,255,255,0.45)", "&:hover": { color: "#fff" } }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+          <IconButton onClick={() => setDetail(null)} size="small" sx={{ border: "1px solid", borderColor: "divider", borderRadius: "8px" }}>
             <ArrowBackIcon fontSize="small" />
           </IconButton>
           <Box sx={{ flex: 1 }}>
-            <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: "0.98rem" }}>{detail.clientName}</Typography>
-            <Typography sx={{ color: "rgba(255,255,255,0.3)", fontSize: "0.74rem" }}>{detail.date || "—"}</Typography>
+            <Typography sx={{ fontWeight: 700, fontSize: "0.98rem", color: "text.primary" }}>{detail.clientName}</Typography>
+            <Typography sx={{ color: "text.secondary", fontSize: "0.74rem" }}>{detail.date || "—"}</Typography>
           </Box>
           <Button
             startIcon={<PictureAsPdfIcon sx={{ fontSize: 15 }} />}
             onClick={() => printPDF(detail)}
-            sx={{ bgcolor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.65)", borderRadius: 0, fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.06em", px: 2, py: 1, border: "1px solid rgba(255,255,255,0.1)", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" }, boxShadow: "none" }}
+            variant="outlined"
+            size="small"
+            sx={{ borderRadius: "8px", fontSize: "0.75rem", fontWeight: 600, boxShadow: "none" }}
           >
             Save PDF
           </Button>
         </Box>
 
-        <Stack spacing={2} sx={{ maxWidth: 680 }}>
+        <Stack spacing={1.5} sx={{ maxWidth: 680 }}>
           {(detail.answers || []).map((a, i) => (
-            <Box key={i} sx={{ bgcolor: "#1a1a1a", border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
-              <Box sx={{ px: 2.5, py: 1.5, borderBottom: "1px solid rgba(255,255,255,0.05)", bgcolor: "rgba(0,0,0,0.2)", display: "flex", gap: 1.5, alignItems: "baseline" }}>
+            <Paper key={i} variant="outlined" sx={{ borderRadius: "10px", overflow: "hidden" }}>
+              <Box sx={{ px: 2.5, py: 1.5, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider", display: "flex", gap: 1.5, alignItems: "baseline" }}>
                 <Typography sx={{ color: brandColor, fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", flexShrink: 0 }}>
                   {String(i + 1).padStart(2, "0")}
                 </Typography>
-                <Typography sx={{ color: "rgba(255,255,255,0.65)", fontSize: "0.85rem", fontWeight: 600, lineHeight: 1.4 }}>
+                <Typography sx={{ color: "text.primary", fontSize: "0.85rem", fontWeight: 600, lineHeight: 1.4 }}>
                   {a.question || "Question"}
                 </Typography>
               </Box>
               <Box sx={{ px: 2.5, py: 2 }}>
-                <Typography sx={{ color: "rgba(255,255,255,0.55)", fontSize: "0.88rem", fontWeight: 300, lineHeight: 1.75, whiteSpace: "pre-wrap" }}>
-                  {a.answer || <em style={{ opacity: 0.4 }}>No answer provided.</em>}
+                <Typography sx={{ color: "text.secondary", fontSize: "0.88rem", lineHeight: 1.75, whiteSpace: "pre-wrap" }}>
+                  {a.answer || <em style={{ opacity: 0.5 }}>No answer provided.</em>}
                 </Typography>
               </Box>
-            </Box>
+            </Paper>
           ))}
         </Stack>
       </Box>
@@ -292,58 +371,61 @@ export default function CheckInTab({ barber, brandColor }) {
     <Box>
       <Header />
       {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
-          <CircularProgress sx={{ color: brandColor }} thickness={2} />
+        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+          <CircularProgress sx={{ color: brandColor }} thickness={2} size={32} />
         </Box>
       ) : subs.length === 0 ? (
-        <Box sx={{ textAlign: "center", py: 10, border: "1px dashed rgba(255,255,255,0.08)" }}>
-          <AssignmentIcon sx={{ fontSize: 44, color: "rgba(255,255,255,0.1)", mb: 2 }} />
-          <Typography sx={{ color: "rgba(255,255,255,0.3)", fontSize: "0.88rem", mb: 1 }}>
+        <Paper variant="outlined" sx={{ textAlign: "center", py: 8, borderRadius: "12px", borderStyle: "dashed" }}>
+          <AssignmentIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1.5 }} />
+          <Typography sx={{ color: "text.secondary", fontSize: "0.88rem", mb: 0.5 }}>
             No check-in submissions yet.
           </Typography>
-          <Typography sx={{ color: "rgba(255,255,255,0.18)", fontSize: "0.78rem" }}>
+          <Typography sx={{ color: "text.disabled", fontSize: "0.78rem" }}>
             {validQs.length === 0
-              ? "Add your questions first, then share the form link with clients."
-              : "Share the form link with your clients to get started."}
+              ? "Add your questions first, then send the portal link to your clients."
+              : "Send the portal link to your clients to get started."}
           </Typography>
-        </Box>
+        </Paper>
       ) : (
-        <Stack spacing={1.5}>
+        <Stack spacing={1}>
           {subs.map(sub => {
             const date = sub.submittedAt?.toDate?.()?.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) || "";
             const ac   = sub.answers?.length || 0;
             return (
-              <Box
+              <Paper
                 key={sub.id}
+                variant="outlined"
                 onClick={() => setDetail(sub)}
-                sx={{ bgcolor: "#1a1a1a", border: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", display: "flex", alignItems: "center", overflow: "hidden", transition: "border-color .2s", "&:hover": { borderColor: `${brandColor}50` } }}
+                sx={{ cursor: "pointer", display: "flex", alignItems: "center", overflow: "hidden", borderRadius: "10px", transition: "border-color .2s, box-shadow .2s", "&:hover": { borderColor: brandColor, boxShadow: `0 0 0 1px ${brandColor}44` } }}
               >
                 <Box sx={{ width: 3, bgcolor: brandColor, alignSelf: "stretch", flexShrink: 0 }} />
-                <Box sx={{ flex: 1, px: 2.5, py: 2 }}>
-                  <Typography sx={{ color: "#fff", fontWeight: 600, fontSize: "0.92rem" }}>{sub.clientName}</Typography>
-                  <Stack direction="row" spacing={1.5} sx={{ mt: 0.5 }} flexWrap="wrap" useFlexGap>
-                    <Typography sx={{ color: "rgba(255,255,255,0.28)", fontSize: "0.72rem" }}>{sub.date || "—"}</Typography>
-                    <Typography sx={{ color: "rgba(255,255,255,0.15)", fontSize: "0.72rem" }}>·</Typography>
-                    <Typography sx={{ color: "rgba(255,255,255,0.28)", fontSize: "0.72rem" }}>{ac} answer{ac !== 1 ? "s" : ""}</Typography>
-                    {date && <>
-                      <Typography sx={{ color: "rgba(255,255,255,0.15)", fontSize: "0.72rem" }}>·</Typography>
-                      <Typography sx={{ color: "rgba(255,255,255,0.28)", fontSize: "0.72rem" }}>Submitted {date}</Typography>
-                    </>}
+                <Box sx={{ flex: 1, px: 2.5, py: 1.75 }}>
+                  <Typography sx={{ fontWeight: 600, fontSize: "0.9rem", color: "text.primary" }}>{sub.clientName}</Typography>
+                  <Stack direction="row" spacing={1} sx={{ mt: 0.4 }} flexWrap="wrap" useFlexGap>
+                    <Typography sx={{ color: "text.disabled", fontSize: "0.72rem" }}>{sub.date || "—"}</Typography>
+                    <Typography sx={{ color: "text.disabled", fontSize: "0.72rem" }}>·</Typography>
+                    <Typography sx={{ color: "text.disabled", fontSize: "0.72rem" }}>{ac} answer{ac !== 1 ? "s" : ""}</Typography>
+                    {date && (
+                      <>
+                        <Typography sx={{ color: "text.disabled", fontSize: "0.72rem" }}>·</Typography>
+                        <Typography sx={{ color: "text.disabled", fontSize: "0.72rem" }}>Submitted {date}</Typography>
+                      </>
+                    )}
                   </Stack>
                 </Box>
                 <Box sx={{ display: "flex", gap: 0.5, px: 1.5, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                   <Tooltip title="Save PDF" placement="top">
-                    <IconButton size="small" onClick={() => printPDF(sub)} sx={{ color: "rgba(255,255,255,0.28)", "&:hover": { color: brandColor } }}>
+                    <IconButton size="small" onClick={() => printPDF(sub)} sx={{ color: "text.disabled", "&:hover": { color: brandColor } }}>
                       <PictureAsPdfIcon sx={{ fontSize: 17 }} />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete" placement="top">
-                    <IconButton size="small" onClick={e => del(sub.id, e)} sx={{ color: "rgba(255,255,255,0.28)", "&:hover": { color: "#ff6b6b" } }}>
+                    <IconButton size="small" onClick={e => del(sub.id, e)} sx={{ color: "text.disabled", "&:hover": { color: "error.main" } }}>
                       <DeleteIcon sx={{ fontSize: 17 }} />
                     </IconButton>
                   </Tooltip>
                 </Box>
-              </Box>
+              </Paper>
             );
           })}
         </Stack>

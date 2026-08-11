@@ -519,7 +519,7 @@ const STEPS = [
     cardEyebrow: "Payments Setup",
     cardIcon: "💳",
     cardTitle: "Stripe — trusted by millions",
-    cardBody: "Your money goes straight to your bank. Bookrty never holds your funds.",
+    cardBody: "Your money goes straight to your bank. Bookrightly never holds your funds.",
     card: "stripe",
   },
   {
@@ -652,7 +652,7 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
 
         {/* Top bar */}
         <div className="ob-topbar">
-          <div className="ob-logo">Bookrty</div>
+          <div className="ob-logo">Bookrightly</div>
           <button className="ob-skip" onClick={() => navigate("/dashboard")}>
             Skip setup →
           </button>

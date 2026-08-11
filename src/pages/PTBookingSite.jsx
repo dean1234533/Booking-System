@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { useNavigate } from 'react-router-dom';
+import { collection, getDocs, query, where, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import SlotPicker from "../components/SlotPicker";
@@ -266,7 +267,7 @@ const GOAL_OPTIONS = [
 function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, businessName, onClose }) {
   const isSmall = useMediaQuery('(max-width: 480px)');
   const [form, setForm] = useState({
-    name: '', phone: '', email: '', age: '', address: '',
+    name: '', phone: '', email: '', age: '', trainingLocation: '',
     goalText: '', goalTypes: [],
     diet: '', availability: '', holdingBack: '', startDate: '',
   });
@@ -296,18 +297,17 @@ function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, business
     setStatus('sending');
     setErrMsg('');
     try {
-      const res = await fetch('/api/send-consultation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ownerEmail,
-          businessName,
-          brandColor,
+      if (!barber?.uid) throw new Error('Business not found.');
+      await addDoc(collection(db, "barbers", barber.uid, "notifications"), {
+        type:      "consultation",
+        title:     "New Consultation Request!",
+        body:      `${form.name} wants a consultation${slot ? ` on ${slot.date} at ${slot.time}` : ''}`,
+        data: {
           clientName:    form.name,
           clientPhone:   form.phone,
           clientEmail:   form.email,
-          clientAge:     form.age,
-          clientAddress: form.address,
+          clientAge:             form.age,
+          trainingLocation:      form.trainingLocation,
           slotDate:      slot?.date,
           slotTime:      slot?.time,
           goalText:      form.goalText,
@@ -316,13 +316,21 @@ function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, business
           availability:  form.availability,
           holdingBack:   form.holdingBack,
           startDate:     form.startDate,
-        }),
+        },
+        read:      false,
+        createdAt: serverTimestamp(),
       });
-      const json = await res.json();
-      if (!res.ok || json.error) throw new Error(json.error?.message || json.error || 'Failed to send');
+      fetch("/api/send-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          barberId: barber.uid,
+          payload: { title: "New Consultation Request!", body: `${form.name} wants a consultation`, tag: "consultation" },
+        }),
+      }).catch(() => {});
       setStatus('success');
     } catch (err) {
-      setErrMsg(err.message || 'Something went wrong. Please try again.');
+      setErrMsg('Something went wrong. Please try again.');
       setStatus('error');
     }
   }
@@ -389,8 +397,8 @@ function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, business
             </div>
 
             <div style={fieldWrap}>
-              <label style={labelStyle}>Address</label>
-              <input style={inputStyle} placeholder="123 Example Street, London" value={form.address} onChange={e => set('address', e.target.value)}
+              <label style={labelStyle}>Preferred Training Location <span style={{ opacity: 0.45, fontWeight: 400 }}>(optional)</span></label>
+              <input style={inputStyle} placeholder="e.g. Home, gym name, or outdoor space" value={form.trainingLocation} onChange={e => set('trainingLocation', e.target.value)}
                 onFocus={e => e.target.style.borderColor = brandColor} onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.15)'} />
             </div>
 
@@ -522,6 +530,7 @@ function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, business
 
 /* ─── Main Component ────────────────────────────────────────── */
 export default function PTBookingSite({ profile, barber, reviews: propReviews = [] }) {
+  const navigate = useNavigate();
   const [slots,    setSlots]    = useState([]);
   const [reviews,  setReviews]  = useState(propReviews);
   const [modal,    setModal]    = useState(null);
@@ -558,7 +567,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   }, [barber?.uid]);
 
   /* ── Resolved values ── */
-  const businessName = barber?.shopName    || 'DB FITNESS';
+  const businessName = barber?.businessName || barber?.shopName || barber?.name || 'DB FITNESS';
   const brandColor   = profile?.brandColor || '#dc2626';
   const logo         = profile?.logoUrl    || null;
   const heroTitle    = profile?.heroTitle  || 'Stronger.\nLeaner.\nUnstoppable.';
@@ -609,9 +618,8 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
       <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--mid)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 68 }}>
           <a href="#" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-            {logo
-              ? <img src={logo} alt="logo" style={{ height: 36 }} />
-              : (
+            {logo && <img src={logo} alt="logo" style={{ height: 36, borderRadius: '50%', objectFit: 'cover' }} />}
+            {(
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
                   <span style={{ fontFamily: displayFont, fontSize: 26, letterSpacing: '0.12em', color: 'var(--ink)' }}>{businessName.split(' ')[0]}</span>
                   {businessName.split(' ').length > 1 && (
@@ -688,7 +696,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
 
       {/* ══════════ STATS BAR ══════════ */}
       <FadeIn>
-        <section style={{ background: brandColor, padding: 'clamp(20px,4vw,36px) clamp(16px,4vw,24px)' }}>
+        <section style={{ background: '#111', padding: 'clamp(20px,4vw,36px) clamp(16px,4vw,24px)' }}>
           <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: isSmall ? '1fr' : 'repeat(3, 1fr)', gap: isSmall ? 0 : 16, textAlign: 'center' }}>
             {statBar.map((s, i) => (
               <div key={i} style={{
@@ -738,23 +746,30 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
       </FadeIn>
 
       {/* ══════════ VIDEO ══════════ */}
-      {youtubeUrl && (
-        <FadeIn>
-          <section id="video" style={{ background: 'var(--charcoal-2)', padding: 'clamp(60px,8vw,100px) clamp(24px,5vw,80px)' }}>
-            <div style={{ maxWidth: 860, margin: '0 auto' }}>
-              <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>See It In Action</p>
-              <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', color: '#fff', textAlign: 'center', marginBottom: 32, letterSpacing: '0.04em' }}>Watch My Training</h2>
+      <FadeIn>
+        <section id="video" style={{ background: 'var(--charcoal-2)', padding: 'clamp(60px,8vw,100px) clamp(24px,5vw,80px)' }}>
+          <div style={{ maxWidth: 860, margin: '0 auto' }}>
+            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>See It In Action</p>
+            <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(28px,5vw,48px)', color: '#fff', textAlign: 'center', marginBottom: 32, letterSpacing: '0.04em' }}>Watch My Training</h2>
+            {youtubeUrl ? (
               <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
                 <iframe src={youtubeUrl} title="Training video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }} />
               </div>
-              <div style={{ textAlign: 'center', marginTop: 28 }}>
-                <a href="#booking-section" style={{ display: 'inline-block', padding: '12px 32px', background: brandColor, color: '#fff', borderRadius: 8, fontWeight: 800, fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none' }}>Book Your Session</a>
+            ) : (
+              <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.12)' }}>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="rgba(255,255,255,0.15)"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                  <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, fontWeight: 400, margin: 0 }}>Add a YouTube link in your dashboard to show a video here</p>
+                </div>
               </div>
+            )}
+            <div style={{ textAlign: 'center', marginTop: 28 }}>
+              <a href="#booking-section" style={{ display: 'inline-block', padding: '12px 32px', background: brandColor, color: '#fff', borderRadius: 8, fontWeight: 800, fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', textDecoration: 'none' }}>Book Your Session</a>
             </div>
-          </section>
-        </FadeIn>
-      )}
+          </div>
+        </section>
+      </FadeIn>
 
       {/* ══════════ SERVICES ══════════ */}
       <FadeIn>
@@ -843,6 +858,12 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
                   <span style={{ fontSize: 14 }}>✉</span> {contactEmail}
                 </a>
               )}
+              {profile?.openingHours && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: brandColor, marginBottom: 6 }}>Hours</p>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.8, whiteSpace: 'pre-line', margin: 0 }}>{profile.openingHours}</p>
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>Navigate</div>
@@ -903,19 +924,19 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
           <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: 11, letterSpacing: '0.08em' }}>© {new Date().getFullYear()} {businessName}. All rights reserved.</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              <a
-                href="/login"
+              <span
+                onClick={() => navigate('/login')}
                 style={{
                   fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
                   color: 'rgba(255,255,255,0.45)', textDecoration: 'none',
                   border: '1px solid rgba(255,255,255,0.15)', borderRadius: 2,
-                  padding: '6px 14px', transition: 'color 0.2s, border-color 0.2s',
+                  padding: '6px 14px', transition: 'color 0.2s, border-color 0.2s', cursor: 'pointer',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.color = brandColor; e.currentTarget.style.borderColor = brandColor; }}
                 onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
               >
                 Professional Login
-              </a>
+              </span>
               <a href="#" style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.color = brandColor}
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.18)'}

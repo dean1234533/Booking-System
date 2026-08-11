@@ -15,7 +15,6 @@ import FitnessCenterIcon  from "@mui/icons-material/FitnessCenter";
 import { collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase/config";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function extractYouTubeId(url) {
   if (!url) return null;
   const patterns = [
@@ -36,35 +35,18 @@ const newExercise = () => ({
   name: "", youtubeUrl: "", sets: "", reps: "", time: "", notes: "",
 });
 
-// ── Shared dark field style (generated per brandColor) ───────────────────────
-function fieldSx(brand) {
-  return {
-    "& .MuiInputLabel-root":            { color: "rgba(255,255,255,0.3)", fontSize: "0.82rem" },
-    "& .MuiInputLabel-root.Mui-focused": { color: brand },
-    "& .MuiOutlinedInput-root": {
-      color: "#fff", borderRadius: 0,
-      "& fieldset":               { borderColor: "rgba(255,255,255,0.1)" },
-      "&:hover fieldset":         { borderColor: "rgba(255,255,255,0.25)" },
-      "&.Mui-focused fieldset":   { borderColor: brand },
-    },
-    "& textarea, & input": { "&::placeholder": { color: "rgba(255,255,255,0.18)", opacity: 1 } },
-  };
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
 export default function WorkoutPlansTab({ barber, brandColor }) {
-  const [plans,         setPlans]         = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [view,          setView]          = useState("list"); // "list" | "builder"
-  const [editingPlan,   setEditingPlan]   = useState(null);
-  const [planName,      setPlanName]      = useState("");
-  const [exercises,     setExercises]     = useState([newExercise()]);
-  const [saving,        setSaving]        = useState(false);
-  const [videoUrl,      setVideoUrl]      = useState(null);
-  const [copiedId,      setCopiedId]      = useState(null);
+  const [plans,       setPlans]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [view,        setView]        = useState("list");
+  const [editingPlan, setEditingPlan] = useState(null);
+  const [planName,    setPlanName]    = useState("");
+  const [exercises,   setExercises]   = useState([newExercise()]);
+  const [saving,      setSaving]      = useState(false);
+  const [videoUrl,    setVideoUrl]    = useState(null);
+  const [copiedId,    setCopiedId]    = useState(null);
 
   const trainerId = barber?.uid || barber?.id;
-  const fs = fieldSx(brandColor);
 
   useEffect(() => { loadPlans(); }, [trainerId]);
 
@@ -133,23 +115,24 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
     });
   }
 
-  // ── Plan list ─────────────────────────────────────────────────────────────
+  // ── Plan list ────────────────────────────────────────────────────────────────
   if (view === "list") {
     return (
       <Box>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 4 }}>
           <Box>
-            <Typography sx={{ color: "#fff", fontFamily: "'Playfair Display', serif", fontSize: "1.5rem", fontWeight: 400, lineHeight: 1.2 }}>
+            <Typography variant="h5" fontWeight={700} color="text.primary">
               Workout Plans
             </Typography>
-            <Typography sx={{ color: "rgba(255,255,255,0.35)", fontSize: "0.8rem", mt: 0.5 }}>
+            <Typography variant="body2" color="text.secondary" mt={0.5}>
               Build programmes, add YouTube exercises, and share directly with clients.
             </Typography>
           </Box>
           <Button
             startIcon={<AddIcon />}
             onClick={() => openBuilder()}
-            sx={{ bgcolor: brandColor, color: "#0d0d0d", fontWeight: 700, fontSize: "0.76rem", letterSpacing: "0.08em", px: 2.5, py: 1.2, borderRadius: 0, whiteSpace: "nowrap", flexShrink: 0, "&:hover": { bgcolor: brandColor, filter: "brightness(1.1)" }, boxShadow: "none" }}
+            variant="contained"
+            sx={{ bgcolor: brandColor, color: "#fff", fontWeight: 700, fontSize: "0.82rem", px: 2.5, py: 1.1, borderRadius: 2, whiteSpace: "nowrap", flexShrink: 0, "&:hover": { bgcolor: brandColor, filter: "brightness(0.92)" }, boxShadow: "none" }}
           >
             New Plan
           </Button>
@@ -160,12 +143,12 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
             <CircularProgress sx={{ color: brandColor }} thickness={2} />
           </Box>
         ) : plans.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 10, border: "1px dashed rgba(255,255,255,0.08)" }}>
-            <FitnessCenterIcon sx={{ fontSize: 44, color: "rgba(255,255,255,0.1)", mb: 2 }} />
-            <Typography sx={{ color: "rgba(255,255,255,0.3)", fontSize: "0.88rem" }}>
+          <Paper variant="outlined" sx={{ p: 6, textAlign: "center", borderRadius: 3 }}>
+            <FitnessCenterIcon sx={{ fontSize: 44, color: "text.disabled", mb: 2 }} />
+            <Typography color="text.secondary" fontSize="0.9rem">
               No plans yet. Create your first workout programme.
             </Typography>
-          </Box>
+          </Paper>
         ) : (
           <Grid container spacing={2}>
             {plans.map(plan => {
@@ -175,29 +158,26 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
               }) || "";
               return (
                 <Grid item xs={12} sm={6} md={4} key={plan.id}>
-                  <Paper sx={{
-                    bgcolor: "#1a1a1a", borderRadius: 0,
-                    border: "1px solid rgba(255,255,255,0.07)",
+                  <Paper variant="outlined" sx={{
+                    borderRadius: 2.5,
                     overflow: "hidden", height: "100%",
                     display: "flex", flexDirection: "column",
-                    transition: "border-color .2s",
-                    "&:hover": { borderColor: `${brandColor}40` },
+                    transition: "box-shadow .2s, border-color .2s",
+                    "&:hover": { boxShadow: 3, borderColor: brandColor },
                   }}>
-                    <Box sx={{ height: 3, bgcolor: brandColor, flexShrink: 0 }} />
+                    <Box sx={{ height: 4, bgcolor: brandColor, flexShrink: 0 }} />
                     <Box sx={{ p: 2.5, flex: 1 }}>
-                      <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: "0.98rem", lineHeight: 1.35, mb: 1 }}>
+                      <Typography fontWeight={700} fontSize="0.98rem" lineHeight={1.35} mb={1} color="text.primary">
                         {plan.name}
                       </Typography>
                       <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" gap={0.5}>
                         <Chip
                           label={`${exCount} exercise${exCount !== 1 ? "s" : ""}`}
                           size="small"
-                          sx={{ bgcolor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.45)", fontSize: "0.67rem", height: 20, borderRadius: 0 }}
+                          sx={{ bgcolor: `${brandColor}18`, color: brandColor, fontWeight: 600, fontSize: "0.7rem" }}
                         />
                         {date && (
-                          <Typography sx={{ fontSize: "0.67rem", color: "rgba(255,255,255,0.22)" }}>
-                            {date}
-                          </Typography>
+                          <Typography fontSize="0.7rem" color="text.disabled">{date}</Typography>
                         )}
                       </Stack>
                     </Box>
@@ -206,7 +186,7 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
                         size="small"
                         startIcon={<EditIcon sx={{ fontSize: "14px !important" }} />}
                         onClick={() => openBuilder(plan)}
-                        sx={{ flex: 1, color: brandColor, border: `1px solid ${brandColor}30`, borderRadius: 0, fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.06em", py: 0.9, "&:hover": { bgcolor: `${brandColor}12`, borderColor: brandColor } }}
+                        sx={{ flex: 1, color: brandColor, border: `1px solid ${brandColor}40`, borderRadius: 1.5, fontSize: "0.75rem", fontWeight: 700, py: 0.8, "&:hover": { bgcolor: `${brandColor}10`, borderColor: brandColor } }}
                       >
                         Open
                       </Button>
@@ -214,7 +194,7 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
                         <IconButton
                           size="small"
                           onClick={() => copyShareLink(plan.id)}
-                          sx={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 0, color: copiedId === plan.id ? brandColor : "rgba(255,255,255,0.35)", width: 34, "&:hover": { borderColor: brandColor, color: brandColor } }}
+                          sx={{ border: "1px solid #e0e0e0", borderRadius: 1.5, color: copiedId === plan.id ? brandColor : "text.secondary", width: 34, "&:hover": { borderColor: brandColor, color: brandColor } }}
                         >
                           {copiedId === plan.id
                             ? <ContentCopyIcon sx={{ fontSize: 15 }} />
@@ -225,7 +205,7 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
                         <IconButton
                           size="small"
                           onClick={() => deletePlan(plan.id)}
-                          sx={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 0, color: "rgba(255,255,255,0.35)", width: 34, "&:hover": { borderColor: "#ff6b6b", color: "#ff6b6b" } }}
+                          sx={{ border: "1px solid #e0e0e0", borderRadius: 1.5, color: "text.disabled", width: 34, "&:hover": { borderColor: "#ef5350", color: "#ef5350" } }}
                         >
                           <DeleteIcon sx={{ fontSize: 15 }} />
                         </IconButton>
@@ -241,16 +221,16 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
     );
   }
 
-  // ── Builder ───────────────────────────────────────────────────────────────
+  // ── Builder ──────────────────────────────────────────────────────────────────
   const activeVideoId = videoUrl ? extractYouTubeId(videoUrl) : null;
 
   return (
     <Box>
-      {/* Builder header row */}
+      {/* Builder header */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 4 }}>
         <IconButton
           onClick={() => setView("list")}
-          sx={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 0, color: "rgba(255,255,255,0.45)", "&:hover": { color: "#fff", borderColor: "rgba(255,255,255,0.3)" } }}
+          sx={{ border: "1px solid #e0e0e0", borderRadius: 1.5, color: "text.secondary", "&:hover": { color: "text.primary", borderColor: "#bdbdbd" } }}
         >
           <ArrowBackIcon fontSize="small" />
         </IconButton>
@@ -260,20 +240,18 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
           value={planName}
           onChange={e => setPlanName(e.target.value)}
           variant="standard"
-          InputProps={{ disableUnderline: false }}
           sx={{
-            "& .MuiInput-root input": { color: "#fff", fontSize: "1.25rem", fontWeight: 700, pb: 0.5 },
-            "& .MuiInput-root input::placeholder": { color: "rgba(255,255,255,0.2)", opacity: 1 },
-            "& .MuiInput-underline:before": { borderBottomColor: "rgba(255,255,255,0.1)" },
+            "& .MuiInput-root input": { color: "text.primary", fontSize: "1.2rem", fontWeight: 700, pb: 0.5 },
+            "& .MuiInput-underline:before": { borderBottomColor: "#e0e0e0" },
             "& .MuiInput-underline:after":  { borderBottomColor: brandColor },
-            "& .MuiInput-underline:hover:not(.Mui-disabled):before": { borderBottomColor: "rgba(255,255,255,0.25)" },
           }}
         />
         <Button
-          startIcon={saving ? <CircularProgress size={13} sx={{ color: "#0d0d0d" }} /> : <SaveIcon sx={{ fontSize: 17 }} />}
+          startIcon={saving ? <CircularProgress size={13} color="inherit" /> : <SaveIcon sx={{ fontSize: 17 }} />}
           onClick={savePlan}
           disabled={saving || !planName.trim()}
-          sx={{ bgcolor: brandColor, color: "#0d0d0d", fontWeight: 700, fontSize: "0.76rem", letterSpacing: "0.06em", px: 2.5, py: 1.2, borderRadius: 0, flexShrink: 0, "&:hover": { bgcolor: brandColor, filter: "brightness(1.1)" }, "&:disabled": { bgcolor: brandColor, opacity: 0.5 }, boxShadow: "none" }}
+          variant="contained"
+          sx={{ bgcolor: brandColor, color: "#fff", fontWeight: 700, fontSize: "0.82rem", px: 2.5, py: 1.1, borderRadius: 2, flexShrink: 0, "&:hover": { bgcolor: brandColor, filter: "brightness(0.92)" }, boxShadow: "none" }}
         >
           {saving ? "Saving…" : editingPlan ? "Update" : "Save"}
         </Button>
@@ -284,10 +262,10 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
         {exercises.map((ex, idx) => {
           const ytId = extractYouTubeId(ex.youtubeUrl);
           return (
-            <Paper key={ex.id} sx={{ bgcolor: "#1a1a1a", borderRadius: 0, border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
+            <Paper key={ex.id} variant="outlined" sx={{ borderRadius: 2.5, overflow: "hidden" }}>
               {/* Card header */}
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 2.5, py: 1.5, borderBottom: "1px solid rgba(255,255,255,0.05)", bgcolor: "rgba(0,0,0,0.2)" }}>
-                <Typography sx={{ color: brandColor, fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.14em", minWidth: 26, userSelect: "none" }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 2.5, py: 1.5, borderBottom: "1px solid #f0f0f0", bgcolor: "#fafafa" }}>
+                <Typography sx={{ color: brandColor, fontSize: "0.72rem", fontWeight: 800, letterSpacing: "0.12em", minWidth: 26, userSelect: "none" }}>
                   {String(idx + 1).padStart(2, "0")}
                 </Typography>
                 <TextField
@@ -296,19 +274,17 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
                   value={ex.name}
                   onChange={e => updateEx(ex.id, "name", e.target.value)}
                   variant="standard"
-                  InputProps={{ disableUnderline: false }}
                   sx={{
-                    "& .MuiInput-root input": { color: "#fff", fontWeight: 600, fontSize: "0.92rem" },
-                    "& .MuiInput-root input::placeholder": { color: "rgba(255,255,255,0.2)", opacity: 1 },
+                    "& .MuiInput-root input": { color: "text.primary", fontWeight: 600, fontSize: "0.95rem" },
                     "& .MuiInput-underline:before": { borderBottomColor: "transparent" },
                     "& .MuiInput-underline:after":  { borderBottomColor: brandColor },
-                    "& .MuiInput-underline:hover:not(.Mui-disabled):before": { borderBottomColor: "rgba(255,255,255,0.1)" },
+                    "& .MuiInput-underline:hover:not(.Mui-disabled):before": { borderBottomColor: "#e0e0e0" },
                   }}
                 />
                 <IconButton
                   size="small"
                   onClick={() => setExercises(prev => prev.filter(e => e.id !== ex.id))}
-                  sx={{ color: "rgba(255,255,255,0.2)", flexShrink: 0, "&:hover": { color: "#ff6b6b" } }}
+                  sx={{ color: "#bdbdbd", flexShrink: 0, "&:hover": { color: "#ef5350" } }}
                 >
                   <DeleteIcon sx={{ fontSize: 18 }} />
                 </IconButton>
@@ -325,7 +301,6 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
                     value={ex.youtubeUrl}
                     onChange={e => updateEx(ex.id, "youtubeUrl", e.target.value)}
                     size="small"
-                    sx={fs}
                   />
                   <Tooltip title={ytId ? "Watch video" : "Paste a YouTube URL first"} placement="top">
                     <span>
@@ -333,11 +308,11 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
                         onClick={() => ytId && setVideoUrl(ex.youtubeUrl)}
                         disabled={!ytId}
                         sx={{
-                          bgcolor: ytId ? brandColor : "rgba(255,255,255,0.05)",
-                          color:   ytId ? "#0d0d0d" : "rgba(255,255,255,0.2)",
-                          borderRadius: 0, p: 1, mt: 0.25, flexShrink: 0,
-                          "&:hover":    { filter: ytId ? "brightness(1.1)" : undefined },
-                          "&:disabled": { opacity: 0.4 },
+                          bgcolor: ytId ? brandColor : "#f5f5f5",
+                          color:   ytId ? "#fff" : "#bdbdbd",
+                          borderRadius: 1.5, p: 1, mt: 0.25, flexShrink: 0,
+                          "&:hover":    { filter: ytId ? "brightness(0.92)" : undefined },
+                          "&:disabled": { opacity: 0.5 },
                         }}
                       >
                         <PlayCircleIcon sx={{ fontSize: 22 }} />
@@ -349,13 +324,13 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
                 {/* Sets / Reps / Time */}
                 <Grid container spacing={1.5} sx={{ mb: 2 }}>
                   <Grid item xs={4}>
-                    <TextField fullWidth label="Sets" type="number" value={ex.sets} onChange={e => updateEx(ex.id, "sets", e.target.value)} size="small" sx={fs} inputProps={{ min: 0 }} />
+                    <TextField fullWidth label="Sets" type="number" value={ex.sets} onChange={e => updateEx(ex.id, "sets", e.target.value)} size="small" inputProps={{ min: 0 }} />
                   </Grid>
                   <Grid item xs={4}>
-                    <TextField fullWidth label="Reps" type="number" value={ex.reps} onChange={e => updateEx(ex.id, "reps", e.target.value)} size="small" sx={fs} inputProps={{ min: 0 }} />
+                    <TextField fullWidth label="Reps" type="number" value={ex.reps} onChange={e => updateEx(ex.id, "reps", e.target.value)} size="small" inputProps={{ min: 0 }} />
                   </Grid>
                   <Grid item xs={4}>
-                    <TextField fullWidth label="Time (e.g. 45s)" value={ex.time} onChange={e => updateEx(ex.id, "time", e.target.value)} size="small" sx={fs} />
+                    <TextField fullWidth label="Time (e.g. 45s)" value={ex.time} onChange={e => updateEx(ex.id, "time", e.target.value)} size="small" />
                   </Grid>
                 </Grid>
 
@@ -369,7 +344,6 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
                   multiline
                   minRows={2}
                   size="small"
-                  sx={fs}
                 />
               </Box>
             </Paper>
@@ -382,7 +356,8 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
         fullWidth
         startIcon={<AddIcon />}
         onClick={() => setExercises(prev => [...prev, newExercise()])}
-        sx={{ mt: 2, py: 1.8, border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 0, color: "rgba(255,255,255,0.3)", fontWeight: 700, fontSize: "0.76rem", letterSpacing: "0.08em", "&:hover": { borderColor: brandColor, color: brandColor, bgcolor: `${brandColor}08` } }}
+        variant="outlined"
+        sx={{ mt: 2, py: 1.8, borderStyle: "dashed", borderRadius: 2.5, color: "text.secondary", fontWeight: 600, fontSize: "0.82rem", "&:hover": { borderColor: brandColor, color: brandColor, bgcolor: `${brandColor}08` } }}
       >
         Add Exercise
       </Button>
@@ -393,7 +368,7 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
         onClose={() => setVideoUrl(null)}
         maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { bgcolor: "#0d0d0d", borderRadius: 0, overflow: "hidden", m: { xs: 1, sm: 3 } } }}
+        PaperProps={{ sx: { borderRadius: 2, overflow: "hidden", m: { xs: 1, sm: 3 } } }}
       >
         <DialogContent sx={{ p: 0, lineHeight: 0 }}>
           {activeVideoId && (

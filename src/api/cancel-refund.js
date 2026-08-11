@@ -15,7 +15,7 @@ export async function onRequestPost(context) {
     const body = await request.json();
     const { paymentIntentId, date, time } = body;
 
-    console.log("[cancel-refund] received payload:", { paymentIntentId, date, time });
+    console.log("[cancel-refund] received cancellation request");
 
     // 3. Validate payload fields
     if (!paymentIntentId || !date || !time) {
@@ -40,7 +40,7 @@ export async function onRequestPost(context) {
     const diffInMilliseconds = slot.getTime() - now.getTime();
     const hoursUntilSlot = diffInMilliseconds / (1000 * 60 * 60);
 
-    console.log("[cancel-refund] hours until appointment:", hoursUntilSlot);
+    console.log("[cancel-refund] hours until appointment:", Math.round(hoursUntilSlot));
 
     if (hoursUntilSlot <= 24) {
       return new Response(JSON.stringify({ refunded: false, reason: "Non-refundable (within 24h)." }), {
@@ -50,7 +50,7 @@ export async function onRequestPost(context) {
     }
 
     // 5. Retrieve PaymentIntent
-    console.log("[cancel-refund] Fetching payment intent status from Stripe...");
+    console.log("[cancel-refund] Fetching payment status from Stripe...");
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
     if (paymentIntent.status !== 'succeeded') {
@@ -73,7 +73,7 @@ export async function onRequestPost(context) {
       reverse_transfer: isLiveMode, 
     });
 
-    console.log("[cancel-refund] Refund successful! ID:", refund.id);
+    console.log("[cancel-refund] Refund successful.");
 
     return new Response(JSON.stringify({ refunded: true, refundId: refund.id }), {
       status: 200,

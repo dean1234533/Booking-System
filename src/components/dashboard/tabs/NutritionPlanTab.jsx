@@ -485,14 +485,14 @@ export default function NutritionPlanTab({ barber, profile, brandColor, trainerI
                               alignItems: "center",
                             }}
                           >
-                            <Box sx={{ flex: 1 }}>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
                               <Typography variant="subtitle2">
                                 {food.name}
                               </Typography>
                               <Typography variant="caption" color="textSecondary">
                                 {(food.portion * 100).toFixed(0)}g ({food.servingSize})
                               </Typography>
-                              <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+                              <Box sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
                                 <Chip
                                   label={`${Math.round(food.calories)} cal`}
                                   size="small"

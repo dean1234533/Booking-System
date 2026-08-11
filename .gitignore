@@ -37,3 +37,10 @@ firebase-debug.log
 functions/node_modules
 .vercel
 .env*.local
+
+# Android signing & build output — never commit these
+twa/*.keystore
+twa/*.aab
+twa/*.apk
+twa/android/build/
+twa/android/app/build/

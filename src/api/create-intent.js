@@ -43,32 +43,57 @@ export async function onRequest(context) {
   try {
     // 3. Parse request body
     const body = await request.json().catch(() => ({}));
-    const { amount, metadata, email, barberStripeId } = body;
+    const { metadata, email, barberId } = body;
 
     // Validate Input
-    if (!amount || !barberStripeId) {
-      return new Response(JSON.stringify({ error: "Missing amount or barberStripeId" }), {
+    if (!barberId) {
+      return new Response(JSON.stringify({ error: "Missing barberId" }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // 4. Stripe Minimum Check (£0.30 = 30 pence)
-    const finalAmount = Math.round(Number(amount));
+    // 4. Fetch authoritative barber data from Firestore (never trust client-sent amount)
+    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/booking-system-cdce0/databases/(default)/documents/barbers/${barberId}`;
+    const firestoreRes = await fetch(firestoreUrl);
+    if (!firestoreRes.ok) {
+      return new Response(JSON.stringify({ error: "Barber not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const firestoreDoc = await firestoreRes.json();
+    const fields = firestoreDoc.fields || {};
 
+    // depositAmount is stored in pounds (string or number); convert to pence
+    const rawDeposit = fields.depositAmount?.stringValue ?? fields.depositAmount?.doubleValue ?? fields.depositAmount?.integerValue;
+    const depositPounds = Number(rawDeposit);
+    const FALLBACK_PENCE = 2500; // £25
+    const finalAmount = (depositPounds > 0) ? Math.round(depositPounds * 100) : FALLBACK_PENCE;
+
+    // Fetch stripeAccountId from Firestore so the destination cannot be spoofed
+    const barberStripeId = fields.stripeAccountId?.stringValue;
+    if (!barberStripeId) {
+      return new Response(JSON.stringify({ error: "Barber Stripe account not configured" }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 5. Stripe Minimum Check (£0.30 = 30 pence)
     if (finalAmount < 30) {
       return new Response(JSON.stringify({
-        error: `Amount (${finalAmount}p) is below the Stripe minimum of 30p (£0.30).`
+        error: `Deposit (${finalAmount}p) is below the Stripe minimum of 30p (£0.30).`
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // 5. Calculate fees
+    // 6. Calculate fees
     const { customerPays, platformFee } = calculateTotal(finalAmount);
 
-    // 6. Create the Payment Intent
+    // 7. Create the Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: customerPays,
       currency: 'gbp',
@@ -86,7 +111,7 @@ export async function onRequest(context) {
       on_behalf_of: barberStripeId,
     });
 
-    console.log(`✅ Intent Created: ${paymentIntent.id} for ${customerPays}p (deposit: ${finalAmount}p, platform fee: ${platformFee}p)`);
+    console.log(`Intent created: ...${paymentIntent.id.slice(-6)} for ${customerPays}p (deposit: ${finalAmount}p, platform fee: ${platformFee}p)`);
     
     return new Response(JSON.stringify({ clientSecret: paymentIntent.client_secret }), {
       status: 200,

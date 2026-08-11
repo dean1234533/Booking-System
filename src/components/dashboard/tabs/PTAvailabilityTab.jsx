@@ -11,15 +11,12 @@ import {
   InputLabel,
   Chip,
   IconButton,
-  Collapse,
-  Divider,
   Alert,
   CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import AvailabilityCalendar from "./AvailabilityCalendar";
 import {
   collection,
   query,
@@ -43,6 +40,12 @@ const DURATION_OPTIONS = [
 
 function todayStr() {
   return new Date().toISOString().split("T")[0];
+}
+
+function addDays(dateStr, days) {
+  const result = new Date(dateStr);
+  result.setDate(result.getDate() + days);
+  return result.toISOString().split("T")[0];
 }
 
 function formatDateHeading(dateStr) {
@@ -80,11 +83,11 @@ export default function PTAvailabilityTab({ barber, profile, brandColor = "#C9A8
   const [date, setDate] = useState(todayStr());
   const [time, setTime] = useState("09:00");
   const [duration, setDuration] = useState(60);
+  const [repeat, setRepeat] = useState("none");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState("");
 
   const [copied, setCopied] = useState(false);
-  const [pastOpen, setPastOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const bookingLink = `${window.location.origin}/pt-book/${ptId}`;
@@ -96,10 +99,20 @@ export default function PTAvailabilityTab({ barber, profile, brandColor = "#C9A8
     try {
       const slotsRef = collection(db, "barbers", ptId, "ptSlots");
       const snap = await getDocs(query(slotsRef));
-      const data = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      const today = todayStr();
+      const expired = data.filter((s) => s.date < today);
+      if (expired.length) {
+        await Promise.all(
+          expired.map((s) => deleteDoc(doc(db, "barbers", ptId, "ptSlots", s.id)))
+        );
+      }
+
+      const fresh = data
+        .filter((s) => s.date >= today)
         .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-      setSlots(data);
+      setSlots(fresh);
     } catch (e) {
       setError("Failed to load slots. Please refresh.");
     } finally {
@@ -127,20 +140,28 @@ export default function PTAvailabilityTab({ barber, profile, brandColor = "#C9A8
     setAddError("");
     try {
       const slotsRef = collection(db, "barbers", ptId, "ptSlots");
-      await addDoc(slotsRef, {
-        date,
-        time,
-        duration,
-        status: "available",
-        clientName: "",
-        purpose: "",
-        bookedAt: null,
-        createdAt: serverTimestamp(),
-      });
+      let iterations = 1;
+      if (repeat === "week")  iterations = 7;
+      if (repeat === "month") iterations = 30;
+      await Promise.all(
+        Array.from({ length: iterations }, (_, i) =>
+          addDoc(slotsRef, {
+            date: addDays(date, i),
+            time,
+            duration,
+            status: "available",
+            clientName: "",
+            purpose: "",
+            bookedAt: null,
+            createdAt: serverTimestamp(),
+          })
+        )
+      );
       await fetchSlots();
       setDate(todayStr());
       setTime("09:00");
       setDuration(60);
+      setRepeat("none");
     } catch (e) {
       setAddError("Failed to add slot. Try again.");
     } finally {
@@ -162,12 +183,8 @@ export default function PTAvailabilityTab({ barber, profile, brandColor = "#C9A8
     }
   };
 
-  const today = todayStr();
-  const upcomingSlots = slots.filter((s) => s.date >= today);
-  const pastSlots = slots.filter((s) => s.date < today && s.status === "booked");
-
+  const upcomingSlots = slots;
   const upcomingGrouped = groupByDate(upcomingSlots);
-  const pastGrouped = groupByDate(pastSlots);
 
   return (
     <Box sx={{ maxWidth: 720, mx: "auto", py: 2 }}>
@@ -192,17 +209,17 @@ export default function PTAvailabilityTab({ barber, profile, brandColor = "#C9A8
         <Typography variant="subtitle1" fontWeight={600} mb={2}>
           Add Availability Slot
         </Typography>
-        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <TextField
-            label="Date"
-            type="date"
-            size="small"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ min: todayStr() }}
-            sx={{ minWidth: 160 }}
+
+        <Box sx={{ mb: 3 }}>
+          <AvailabilityCalendar
+            slots={slots}
+            selectedDate={date}
+            onSelect={setDate}
+            brandColor={brandColor}
           />
+        </Box>
+
+        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "flex-end" }}>
           <TextField
             label="Time"
             type="time"
@@ -222,6 +239,18 @@ export default function PTAvailabilityTab({ barber, profile, brandColor = "#C9A8
               {DURATION_OPTIONS.map((o) => (
                 <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
               ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>Repeat</InputLabel>
+            <Select
+              value={repeat}
+              label="Repeat"
+              onChange={(e) => setRepeat(e.target.value)}
+            >
+              <MenuItem value="none">No Repeat</MenuItem>
+              <MenuItem value="week">Daily for 1 Week</MenuItem>
+              <MenuItem value="month">Daily for 1 Month</MenuItem>
             </Select>
           </FormControl>
           <Button
@@ -303,52 +332,6 @@ export default function PTAvailabilityTab({ barber, profile, brandColor = "#C9A8
               </Box>
             </Box>
           ))
-      )}
-
-      {/* Past sessions collapsible */}
-      {pastSlots.length > 0 && (
-        <Box mt={3}>
-          <Divider sx={{ mb: 2 }} />
-          <Button
-            onClick={() => setPastOpen((p) => !p)}
-            endIcon={pastOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            sx={{ color: "text.secondary", textTransform: "none", mb: 1 }}
-          >
-            Past sessions ({pastSlots.length})
-          </Button>
-          <Collapse in={pastOpen}>
-            {Object.keys(pastGrouped)
-              .sort()
-              .reverse()
-              .map((dateKey) => (
-                <Box key={dateKey} mb={2}>
-                  <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ mb: 1, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    {formatDateHeading(dateKey)}
-                  </Typography>
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    {pastGrouped[dateKey].map((slot) => (
-                      <Paper
-                        key={slot.id}
-                        variant="outlined"
-                        sx={{ p: 1.5, borderRadius: 2, opacity: 0.7 }}
-                      >
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                          <Typography fontWeight={600}>{slot.time}</Typography>
-                          <Typography variant="body2" color="text.secondary">{formatDuration(slot.duration)}</Typography>
-                          <Chip label="Completed" size="small" sx={{ bgcolor: "#f5f5f5", color: "#757575", fontWeight: 600 }} />
-                        </Box>
-                        {slot.clientName && (
-                          <Typography variant="body2" mt={0.5}>
-                            <strong>{slot.clientName}</strong>{slot.purpose ? ` — ${slot.purpose}` : ""}
-                          </Typography>
-                        )}
-                      </Paper>
-                    ))}
-                  </Box>
-                </Box>
-              ))}
-          </Collapse>
-        </Box>
       )}
     </Box>
   );

@@ -54,7 +54,7 @@ export default function Signup({ tenant }) {
   // --- DYNAMIC BRANDING ASSIGNMENT ---
   const activeBrandColor = activeTenant?.brandColor || selectedShopData?.brandColor || "#C9A84C";
   const activeLogo = activeTenant?.businessLogo || activeTenant?.logoUrl || selectedShopData?.logoUrl || null;
-  const activeBusinessName = activeTenant?.businessName || selectedShopData?.displayLabel || "Bookrty";
+  const activeBusinessName = activeTenant?.businessName || selectedShopData?.displayLabel || "Bookrightly";
 
   useEffect(() => {
     // Only fetch the list of shops if the user is on the main site and wants to join an existing shop

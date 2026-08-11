@@ -1,12 +1,10 @@
-import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching';
+import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
 import { NetworkFirst, CacheFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { clientsClaim } from 'workbox-core';
 
-// Activate a newly-deployed service worker IMMEDIATELY and take control of open
-// pages, so a new build is served on the next load instead of being stuck behind
-// the old precached app shell ("nothing changes after deploy").
+// Take control immediately. main.jsx handles reload-on-update via controllerchange.
 self.skipWaiting();
 clientsClaim();
 
@@ -23,15 +21,18 @@ registerRoute(
   })
 );
 
-// Cache Firebase reads with network-first fallback
+// Cache Firebase Auth/FCM reads — but NOT Firestore (firestore.googleapis.com).
+// Firestore uses long-polling HTTP requests when experimentalForceLongPolling is on,
+// so caching those responses causes stale data to be served after a hard refresh.
 registerRoute(
-  ({ url }) => url.hostname.endsWith('.googleapis.com'),
+  ({ url }) => url.hostname.endsWith('.googleapis.com') && !url.hostname.startsWith('firestore.'),
   new NetworkFirst({ cacheName: 'firebase-cache', networkTimeoutSeconds: 5 })
 );
 
-// SPA navigation fallback — serve index.html for all non-API routes
+// SPA navigation — always try network first so new deploys are seen immediately.
+// Falls back to cached index.html only when offline.
 registerRoute(
-  new NavigationRoute(createHandlerBoundToURL('/index.html'), {
+  new NavigationRoute(new NetworkFirst({ cacheName: 'pages-cache', networkTimeoutSeconds: 3 }), {
     denylist: [/^\/api\//],
   })
 );
@@ -45,13 +46,13 @@ self.addEventListener('push', (event) => {
   try { data = event.data.json(); } catch { data = { body: event.data.text() }; }
 
   const {
-    title   = 'Bookrty',
+    title   = 'Bookrightly',
     body    = 'You have a new notification',
     icon    = '/images/IMG_9763-removebg-preview.png',
     sound   = true,
     vibrate = true,
     url     = '/dashboard',
-    tag     = 'bookrty',
+    tag     = 'bookrightly',
   } = data;
 
   event.waitUntil(

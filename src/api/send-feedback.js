@@ -27,10 +27,10 @@ export async function onRequestPost(context) {
 
     // Send email to admin
     const { data, error } = await resend.emails.send({
-      from: "Bookrty Feedback <feedback@bookehtrim.co.uk>",
+      from: "Bookrightly Feedback <feedback@bookehtrim.co.uk>",
       to: "deanburt1308@gmail.com",
       replyTo: email,
-      subject: `New Feedback from ${name} — Bookrty`,
+      subject: `New Industry Request / Feedback from ${name} — Bookrightly`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #C9A84C; padding: 24px; text-align: center;">

@@ -89,7 +89,7 @@ export default function PricingModal({ open, onClose }) {
           fontFamily: SANS, fontSize: "0.9rem",
           color: "rgba(255,255,255,0.5)", mt: 1.5, maxWidth: 480, lineHeight: 1.75,
         }}>
-          30-day free trial, then from £10-20/month depending on your business type. Small per-transaction fees only when you earn — no surprises.
+          90-day free trial, then from £10-20/month depending on your business type. Small per-transaction fees only when you earn — no surprises.
         </Typography>
       </Box>
 
@@ -144,14 +144,14 @@ export default function PricingModal({ open, onClose }) {
                       </Typography>
                     </Box>
                     <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "#7a7060", mt: 0.5 }}>
-                      (includes 10 clients, then £1.50 per 3 extra)
+                      Unlimited clients
                     </Typography>
                   </Box>
                 </Stack>
               </Box>
 
               <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "#7a7060", mb: 2.5 }}>
-                After your 30-day free trial — no card required to start
+                After your 90-day free trial — no card required to start
               </Typography>
 
               <Divider sx={{ mb: 2.5 }} />
@@ -185,7 +185,7 @@ export default function PricingModal({ open, onClose }) {
                 fontFamily: SANS, fontSize: "0.72rem", color: "#aaa",
                 textAlign: "center", mt: 1.5,
               }}>
-                No card required for the 30-day trial
+                No card required for the 90-day trial
               </Typography>
             </Paper>
           </Grid>

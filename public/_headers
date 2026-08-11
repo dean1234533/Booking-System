@@ -3,5 +3,13 @@
   Cache-Control: public, max-age=31536000, immutable
 
 # HTML (and SPA routes) must always revalidate so a new deploy is seen immediately.
+# Content-Security-Policy kept identical to worker.js's SECURITY_HEADERS.CSP —
+# see that file's comment for exactly which real integration each origin covers.
 /*
   Cache-Control: no-cache
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.stripe.com 'sha256-/l4ajQ/L5o91xPlHq4mEOMH1ogoGzmHPkFKthjI+yCE='; style-src 'self' 'unsafe-inline' https://fonts.bunny.net; font-src 'self' https://fonts.bunny.net data:; img-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://firebasestorage.googleapis.com https://api.stripe.com https://m.stripe.network https://q.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'

@@ -3,7 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import {
   Box, Container, Typography, TextField, Button,
   Alert, CircularProgress, Paper, Grid, MenuItem,
-  Select, InputLabel, FormControl, Divider
+  Select, InputLabel, FormControl, Divider,
+  Checkbox, FormControlLabel,
 } from "@mui/material";
 import {
   Storefront as StoreIcon,
@@ -35,7 +36,8 @@ export default function Signup() {
     confirm: "",
     shopId: "",
     businessName: "",
-    businessType: "barber"
+    businessType: "barber",
+    marketingOptIn: false,
   });
 
   const [shops, setShops] = useState([]);
@@ -76,9 +78,10 @@ export default function Signup() {
   }, [isOwner]);
 
   function handleChange(e) {
-    const updated = { ...form, [e.target.name]: e.target.value };
+    const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+    const updated = { ...form, [e.target.name]: value };
     // If switching away from barbershop, force back to owner mode — staff joining is barber-only
-    if (e.target.name === "businessType" && e.target.value !== "barber") {
+    if (e.target.name === "businessType" && value !== "barber") {
       setIsOwner(true);
     }
     setForm(updated);
@@ -127,6 +130,11 @@ export default function Signup() {
 
       await waitForBarberDoc(user.uid, role);
 
+      // Ping Google & Bing so the new business page is indexed quickly
+      if (isOwner) {
+        fetch("/api/ping-google", { method: "POST" }).catch(() => {});
+      }
+
       navigate(isOwner ? "/onboarding" : "/dashboard");
     } catch (err) {
       setError(err.message || "Failed to create account.");
@@ -142,7 +150,7 @@ export default function Signup() {
           <Box
             component="img"
             src={logoPath}
-            alt="Bookrty Logo"
+            alt="Bookrightly Logo"
             sx={{ height: 120, width: "auto", mb: 2, mx: "auto", display: "block", filter: "drop-shadow(0px 4px 10px rgba(0,0,0,0.1))" }}
           />
           <Typography variant="h4" fontWeight={900}>
@@ -248,9 +256,27 @@ export default function Signup() {
               <Grid item xs={12}><TextField label="Full Name" name="name" fullWidth required value={form.name} onChange={handleChange} /></Grid>
               <Grid item xs={12}><TextField label="Email" name="email" type="email" fullWidth required value={form.email} onChange={handleChange} /></Grid>
               <Grid item xs={12}><TextField label="Specialty" name="specialty" fullWidth placeholder="e.g. Strength Training or Fades" value={form.specialty} onChange={handleChange} /></Grid>
-              <Grid item xs={6}><TextField label="Password" name="password" type="password" fullWidth required value={form.password} onChange={handleChange} /></Grid>
-              <Grid item xs={6}><TextField label="Confirm" name="confirm" type="password" fullWidth required value={form.confirm} onChange={handleChange} /></Grid>
+              <Grid item xs={6}><TextField label="Password" name="password" type="password" fullWidth required value={form.password} onChange={handleChange} inputProps={{ autoComplete: "new-password" }} /></Grid>
+              <Grid item xs={6}><TextField label="Confirm" name="confirm" type="password" fullWidth required value={form.confirm} onChange={handleChange} inputProps={{ autoComplete: "new-password" }} /></Grid>
             </Grid>
+
+            <FormControlLabel
+              sx={{ mt: 2, alignItems: "flex-start" }}
+              control={
+                <Checkbox
+                  name="marketingOptIn"
+                  checked={form.marketingOptIn}
+                  onChange={handleChange}
+                  size="small"
+                  sx={{ mt: "-2px", color: "#bbb", "&.Mui-checked": { color: activeBrandColor } }}
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ color: "#555", lineHeight: 1.5 }}>
+                  Send me updates about new Bookrightly features and tips (optional)
+                </Typography>
+              }
+            />
 
             <Button type="submit" variant="contained" fullWidth size="large" disabled={loading} sx={{ mt: 4, bgcolor: activeBrandColor }}>
               {loading ? <CircularProgress size={24} color="inherit" /> : isOwner ? "Continue" : "Register"}

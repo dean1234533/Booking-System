@@ -120,7 +120,50 @@ export default function BookingForm({ tenant }) {
   const handleDetailsSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    
+
+    // Demo accounts skip payment entirely — create booking directly
+    if (barber?.isDemo) {
+      try {
+        const { createBooking, createNotification } = await import("../firebase/firestore");
+        const bookingId = await createBooking({
+          ...formData,
+          barberId,
+          slotId,
+          barberName:    ui.barberName,
+          depositAmount: 0,
+          bookingFee:    0,
+          paymentIntentId: "demo",
+          date: slotData.date,
+          time: slotData.time,
+        });
+        createNotification(barberId, {
+          type: "booking",
+          title: "Demo Booking",
+          body: `${formData.name} made a demo booking on ${formatDate(slotData.date)} at ${formatTime(slotData.time)}`,
+          data: { bookingId, clientName: formData.name, clientEmail: formData.email, slotDate: formatDate(slotData.date), slotTime: formatTime(slotData.time) },
+        });
+        fetch("/api/outlook/sync-booking", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            barberId,
+            bookingId,
+            name:    formData.name,
+            email:   formData.email,
+            phone:   formData.phone,
+            service: formData.haircutStyle || "Appointment",
+            date:    slotData.date,
+            time:    slotData.time,
+            notes:   formData.notes || "",
+          }),
+        }).catch(() => {});
+        navigate(`/confirmation/${bookingId}`, { state: { tenant } });
+      } catch (err) {
+        setError("Demo booking failed: " + err.message);
+      }
+      return;
+    }
+
     try {
       const finalNumericValue = Number(ui.depositAmount);
       const amountInPence = Math.round(finalNumericValue * 100);
@@ -133,17 +176,17 @@ export default function BookingForm({ tenant }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: amountInPence, 
+          amount: amountInPence,
           email: formData.email,
           barberStripeId: barber?.stripeAccountId,
-          metadata: { 
+          metadata: {
             customerName: formData.name,
             customerPhone: formData.phone,
             haircutStyle: formData.haircutStyle,
-            barberName: ui.barberName, 
-            bookingDate: formatDate(slotData.date), 
+            barberName: ui.barberName,
+            bookingDate: formatDate(slotData.date),
             bookingTime: formatTime(slotData.time),
-            barberId: barberId 
+            barberId: barberId
           }
         }),
       });
@@ -244,15 +287,24 @@ export default function BookingForm({ tenant }) {
             </Grid>
           </Grid>
 
-          <Button 
-            type="submit" variant="contained" fullWidth size="large" disabled={!isStripeActive}
-            sx={{ 
-                mt: 4, py: 2, fontWeight: 900, borderRadius: 2, bgcolor: ui.brandColor, 
+          {barber?.isDemo && (
+            <Alert severity="info" sx={{ mt: 3, mb: 1 }}>
+              This is a demo — no payment will be taken.
+            </Alert>
+          )}
+          <Button
+            type="submit" variant="contained" fullWidth size="large" disabled={!isStripeActive && !barber?.isDemo}
+            sx={{
+                mt: barber?.isDemo ? 1 : 4, py: 2, fontWeight: 900, borderRadius: 2, bgcolor: ui.brandColor,
                 "&:hover": { bgcolor: ui.brandColor, filter: "brightness(0.9)" },
                 "&.Mui-disabled": { bgcolor: "#e0e0e0" }
             }}
           >
-            {isStripeActive ? `Confirm & Pay £${ui.depositAmount.toFixed(2)}` : `${ui.professionalLabel} Not Accepting Payments`}
+            {barber?.isDemo
+              ? "Confirm Demo Booking"
+              : isStripeActive
+                ? `Confirm & Pay £${ui.depositAmount.toFixed(2)}`
+                : `${ui.professionalLabel} Not Accepting Payments`}
           </Button>
         </Box>
       )}

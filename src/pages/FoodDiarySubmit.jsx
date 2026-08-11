@@ -36,6 +36,7 @@ function inputSx(brand) {
 
 export default function FoodDiarySubmit() {
   const { trainerId } = useParams();
+  const clientId = new URLSearchParams(window.location.search).get("client");
   const [trainer,    setTrainer]    = useState(null);
   const [loading,    setLoading]    = useState(true);
   const [clientName, setClientName] = useState("");
@@ -121,6 +122,15 @@ export default function FoodDiarySubmit() {
           <Typography sx={{ fontFamily: SANS, fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.7 }}>
             Your food diary for the week of <strong style={{ color: "rgba(255,255,255,0.7)" }}>{weekOf}</strong> has been sent to your trainer.
           </Typography>
+          {clientId && (
+            <Button
+              href={`/client-portal/${trainerId}/${clientId}`}
+              variant="outlined"
+              sx={{ mt: 3, borderColor: brand, color: brand, borderRadius: "8px", fontWeight: 600, "&:hover": { borderColor: brand, bgcolor: `${brand}15` } }}
+            >
+              Back to Portal
+            </Button>
+          )}
         </Box>
       </Box>
     );

@@ -47,7 +47,7 @@ export async function onRequestPost(context) {
       });
     }
 
-    const platformName = "Bookrty";
+    const platformName = "Bookrightly";
     const displayBrand = businessName || platformName;
     const ref = bookingId.slice(-8).toUpperCase();
 

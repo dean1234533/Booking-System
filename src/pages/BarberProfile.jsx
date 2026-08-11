@@ -5,7 +5,6 @@ import {
   IconButton, Tooltip, Button, CircularProgress, Alert
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import ArrowBackIcon    from "@mui/icons-material/ArrowBack";
 import InstagramIcon    from "@mui/icons-material/Instagram";
 import FacebookIcon     from "@mui/icons-material/Facebook";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
@@ -45,14 +44,14 @@ function SocialLink({ href, label, icon, hoverColor }) {
       <IconButton
         component="a" href={url} target="_blank" rel="noopener noreferrer" size="small"
         sx={{
-          border: "1.5px solid rgba(255,255,255,0.25)",
+          border: "1.5px solid rgba(0,0,0,0.15)",
           borderRadius: 2, p: 1,
-          color: "rgba(255,255,255,0.6)",
+          color: "rgba(0,0,0,0.5)",
           transition: "all 0.2s",
           "&:hover": {
             borderColor: hoverColor,
             color: hoverColor,
-            bgcolor: alpha(hoverColor, 0.12),
+            bgcolor: alpha(hoverColor, 0.08),
             transform: "translateY(-2px)",
           },
         }}
@@ -150,8 +149,24 @@ export default function BarberProfile({ tenant: initialTenant }) {
   const facebookUrl  = barber?.facebookUrl  || "";
   const hasSocial    = instagramUrl || tiktokUrl || facebookUrl;
 
+  // Personal staff social links (barber-only, separate from business links)
+  const staffInstagram = barber?.staffInstagram || "";
+  const staffTiktok    = barber?.staffTiktok    || "";
+  const staffFacebook  = barber?.staffFacebook  || "";
+  const hasStaffSocial = staffInstagram || staffTiktok || staffFacebook;
+
   const services    = barber?.services || [];
   const visibleSvcs = showAllServices ? services : services.slice(0, 5);
+
+  // Editable page fields
+  const heroTagline  = barber?.heroTagline  || "Professional Barber";
+  const heroCtaText  = barber?.heroCtaText  || "BOOK APPOINTMENT";
+  const aboutBody    = barber?.aboutBody    || barber?.aboutUs || "";
+  const statBar = barber?.statBar1Num ? [
+    { num: barber.statBar1Num, label: barber.statBar1Label || "" },
+    { num: barber.statBar2Num, label: barber.statBar2Label || "" },
+    { num: barber.statBar3Num, label: barber.statBar3Label || "" },
+  ] : null;
 
   const scrollToBooking = () =>
     document.getElementById("booking-section")?.scrollIntoView({ behavior: "smooth" });
@@ -166,13 +181,13 @@ export default function BarberProfile({ tenant: initialTenant }) {
   // ── Loading / error ───────────────────────────────────────────────────────
 
   if (loading) return (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", bgcolor: "#0a0a0a" }}>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", bgcolor: "#fff" }}>
       <CircularProgress sx={{ color: brandColor }} size={56} thickness={2} />
     </Box>
   );
 
   if (error) return (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", bgcolor: "#0a0a0a", p: 4 }}>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", bgcolor: "#fff", p: 4 }}>
       <Alert severity="error" sx={{ maxWidth: 480 }}>{error}</Alert>
     </Box>
   );
@@ -182,179 +197,123 @@ export default function BarberProfile({ tenant: initialTenant }) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#0a0a0a", color: "white" }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "#fff", color: "#111" }}>
       <SEOConfig barber={barber} tenant={effectiveTenant} />
 
       {/* 4px brand strip */}
       <Box sx={{ height: 4, bgcolor: brandColor }} />
 
-      {/* Back button */}
-      <Box sx={{ position: "fixed", top: 16, left: 20, zIndex: 1000 }}>
-        <IconButton
-          onClick={() => navigate(-1)}
-          sx={{
-            bgcolor: "rgba(0,0,0,0.55)",
-            backdropFilter: "blur(10px)",
-            color: "white",
-            border: "1px solid rgba(255,255,255,0.15)",
-            "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
-          }}
-        >
-          <ArrowBackIcon fontSize="small" />
-        </IconButton>
-      </Box>
-
-      {/* ── Hero: centred profile ── */}
+      {/* ── Hero ── */}
       <Box sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        pt: { xs: 8, md: 10 },
+        pb: { xs: 6, md: 8 },
         px: { xs: 2.5, sm: 4, md: 6 },
-        py: { xs: 10, md: 7 },
-        bgcolor: "#0a0a0a",
+        bgcolor: "#fff",
       }}>
-        <Box sx={{
-          width: "100%",
-          maxWidth: 980,
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "360px 1fr" },
-          gap: { xs: 5, md: 7 },
-          alignItems: "center",
-        }}>
-
-          {/* ── Photo ── */}
-          <Box sx={{
-            position: "relative",
-            overflow: "hidden",
-            borderTop: `4px solid ${brandColor}`,
-            aspectRatio: { xs: "4/5", md: "3/4" },
-            mx: { xs: "auto", md: 0 },
-            maxWidth: { xs: 340, md: "100%" },
-            width: "100%",
-            flexShrink: 0,
-          }}>
-            {barber.profilePic ? (
-              <Box
-                component="img"
-                src={barber.profilePic}
-                alt={barber.name}
-                sx={{
-                  position: "absolute", inset: 0,
-                  width: "100%", height: "100%",
-                  objectFit: "cover", objectPosition: "center top",
-                  display: "block",
-                }}
-              />
-            ) : (
-              <Box sx={{
-                position: "absolute", inset: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                bgcolor: "#111",
-              }}>
-                <Avatar sx={{ width: 120, height: 120, bgcolor: brandColor, fontSize: 48, fontWeight: 900 }}>
-                  {barber.name?.[0]?.toUpperCase()}
-                </Avatar>
-              </Box>
-            )}
-            {/* Subtle bottom fade */}
-            <Box sx={{
-              position: "absolute", bottom: 0, left: 0, right: 0, height: "25%",
-              background: "linear-gradient(to top, rgba(10,10,10,0.5) 0%, transparent 100%)",
-            }} />
-          </Box>
+        <Box sx={{ width: "100%", maxWidth: 680, mx: "auto" }}>
 
           {/* ── Info ── */}
           <Box sx={{
-            textAlign: { xs: "center", md: "left" },
+            textAlign: "left",
             display: "flex", flexDirection: "column",
-            alignItems: { xs: "center", md: "flex-start" },
+            alignItems: "flex-start",
           }}>
             {/* Eyebrow */}
-            <Typography sx={{
-              fontSize: "0.62rem", fontWeight: 800,
-              letterSpacing: "0.22em", textTransform: "uppercase",
-              color: brandColor, mb: 2,
-            }}>
-              Professional Barber
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
+              <Box sx={{ width: 28, height: 2, bgcolor: brandColor }} />
+              <Typography sx={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.22em", textTransform: "uppercase", color: brandColor }}>
+                {heroTagline}
+              </Typography>
+            </Box>
 
             {/* Name */}
             <Typography sx={{
               fontFamily: "'Playfair Display', serif",
-              fontWeight: 900,
-              lineHeight: 1,
-              fontSize: { xs: "2.8rem", sm: "3.5rem", md: "3.8rem", lg: "4.2rem" },
-              color: "white",
-              mb: barber.specialty ? 3 : 4,
+              fontWeight: 900, lineHeight: 1,
+              fontSize: { xs: "2.6rem", sm: "3.2rem", md: "3.6rem" },
+              color: "#111", mb: 2.5,
             }}>
               {barber.name}
             </Typography>
 
-            {/* Specialty */}
-            {barber.specialty && (
-              <Typography sx={{
-                color: "rgba(255,255,255,0.5)",
-                lineHeight: 1.85,
-                fontSize: "0.95rem",
-                fontWeight: 300,
-                mb: 4,
-                maxWidth: 420,
-                borderLeft: { xs: "none", md: `2px solid ${brandColor}` },
-                borderTop: { xs: `1px solid ${alpha(brandColor, 0.4)}`, md: "none" },
-                borderBottom: { xs: `1px solid ${alpha(brandColor, 0.4)}`, md: "none" },
-                pl: { xs: 0, md: 2 },
-                py: { xs: 1.5, md: 0 },
-              }}>
-                {barber.specialty}
-              </Typography>
-            )}
+            {/* Bio / specialty */}
+            <Typography sx={{
+              color: (barber.specialty || aboutBody) ? "#666" : "rgba(0,0,0,0.25)",
+              lineHeight: 1.85, fontSize: "0.95rem", fontWeight: 300,
+              mb: 3, maxWidth: 440,
+              borderLeft: `2px solid ${brandColor}`,
+              pl: 2,
+              fontStyle: (barber.specialty || aboutBody) ? "normal" : "italic",
+            }}>
+              {barber.specialty || aboutBody || "No bio added yet."}
+            </Typography>
 
             {/* Services */}
-            {services.length > 0 && (
-              <Box sx={{ mb: 4, width: "100%", maxWidth: { xs: 380, md: "100%" } }}>
-                <Typography sx={{
-                  fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.2em",
-                  textTransform: "uppercase", color: brandColor,
-                  display: "block", mb: 1.5,
-                }}>
-                  Services
+            <Box sx={{ mb: 3.5, width: "100%", maxWidth: { xs: 400, md: "100%" } }}>
+              <Typography sx={{ fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.2em", textTransform: "uppercase", color: brandColor, display: "block", mb: 1.5 }}>
+                Services &amp; Prices
+              </Typography>
+              {services.length > 0 ? (
+                <>
+                  <Box sx={{ display: "flex", flexDirection: "column" }}>
+                    {visibleSvcs.map((svc, i) => (
+                      <Box key={i} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 1, borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+                        <Typography sx={{ color: "#444", fontSize: "0.88rem", fontWeight: 500 }}>{svc.name}</Typography>
+                        <Typography sx={{ color: brandColor, fontSize: "0.88rem", fontWeight: 800, ml: 3, flexShrink: 0 }}>{formatCurrency(svc.price)}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                  {services.length > 5 && (
+                    <Button size="small"
+                      endIcon={<KeyboardArrowDownIcon sx={{ transition: "transform 0.2s", transform: showAllServices ? "rotate(180deg)" : "none" }} />}
+                      onClick={() => setShowAllServices(v => !v)}
+                      sx={{ mt: 1, color: "rgba(0,0,0,0.4)", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", p: 0, "&:hover": { color: brandColor, bgcolor: "transparent" } }}
+                    >
+                      {showAllServices ? "Show less" : `+${services.length - 5} more`}
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Typography sx={{ color: "rgba(0,0,0,0.25)", fontSize: "0.85rem", fontStyle: "italic", py: 1, borderTop: "1px solid rgba(0,0,0,0.07)", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+                  No services added yet.
                 </Typography>
-                <Box sx={{ display: "flex", flexDirection: "column" }}>
-                  {visibleSvcs.map((svc, i) => (
-                    <Box key={i} sx={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      py: 1,
-                      borderBottom: "1px solid rgba(255,255,255,0.07)",
-                    }}>
-                      <Typography sx={{ color: "rgba(255,255,255,0.75)", fontSize: "0.88rem", fontWeight: 500 }}>
-                        {svc.name}
-                      </Typography>
-                      <Typography sx={{ color: brandColor, fontSize: "0.88rem", fontWeight: 800, ml: 3, flexShrink: 0 }}>
-                        {formatCurrency(svc.price)}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-                {services.length > 5 && (
-                  <Button
-                    size="small"
-                    endIcon={<KeyboardArrowDownIcon sx={{ transition: "transform 0.2s", transform: showAllServices ? "rotate(180deg)" : "none" }} />}
-                    onClick={() => setShowAllServices(v => !v)}
-                    sx={{ mt: 1, color: "rgba(255,255,255,0.4)", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", p: 0, "&:hover": { color: brandColor, bgcolor: "transparent" } }}
-                  >
-                    {showAllServices ? "Show less" : `+${services.length - 5} more`}
-                  </Button>
-                )}
+              )}
+            </Box>
+
+            {/* Opening hours */}
+            {barber?.openingHours && (
+              <Box sx={{ mb: 3, p: 2, bgcolor: "rgba(0,0,0,0.03)", borderRadius: 1, borderLeft: `3px solid ${brandColor}` }}>
+                <Typography sx={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: brandColor, mb: 0.75 }}>
+                  Opening Hours
+                </Typography>
+                <Typography sx={{ fontSize: "0.82rem", color: "#555", lineHeight: 1.8, whiteSpace: "pre-line" }}>
+                  {barber.openingHours}
+                </Typography>
               </Box>
             )}
 
             {/* Social links */}
-            {hasSocial && (
-              <Box sx={{ display: "flex", gap: 1, mb: 4 }}>
-                <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
-                <SocialLink href={facebookUrl}  label="Facebook"  icon={<FacebookIcon  sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />
-                <SocialLink href={tiktokUrl}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#ffffff" />
+            {(hasSocial || hasStaffSocial) && (
+              <Box sx={{ mb: 3.5 }}>
+                {hasSocial && (
+                  <Box sx={{ display: "flex", gap: 1, mb: hasStaffSocial ? 1.5 : 0 }}>
+                    <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
+                    <SocialLink href={facebookUrl}  label="Facebook"  icon={<FacebookIcon  sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />
+                    <SocialLink href={tiktokUrl}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#111" />
+                  </Box>
+                )}
+                {hasStaffSocial && (
+                  <Box>
+                    <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(0,0,0,0.3)", mb: 1 }}>
+                      Follow me
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      {staffInstagram && <SocialLink href={staffInstagram} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />}
+                      {staffFacebook  && <SocialLink href={staffFacebook}  label="Facebook"  icon={<FacebookIcon  sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />}
+                      {staffTiktok    && <SocialLink href={staffTiktok}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#111" />}
+                    </Box>
+                  </Box>
+                )}
               </Box>
             )}
 
@@ -364,46 +323,71 @@ export default function BarberProfile({ tenant: initialTenant }) {
               size="large"
               onClick={scrollToBooking}
               sx={{
-                bgcolor: brandColor,
-                color: btnText,
-                px: { xs: 6, md: 5 },
-                py: 1.6,
-                borderRadius: 0,
-                fontSize: "0.78rem",
-                fontWeight: 900,
-                letterSpacing: "0.18em",
-                width: { xs: "100%", sm: "auto" },
-                maxWidth: { xs: 380, sm: "none" },
-                boxShadow: `0 0 32px ${alpha(brandColor, 0.35)}`,
-                "&:hover": { bgcolor: brandColor, filter: "brightness(1.1)", boxShadow: `0 0 48px ${alpha(brandColor, 0.5)}` },
+                bgcolor: brandColor, color: btnText,
+                px: { xs: 6, md: 5 }, py: 1.6,
+                borderRadius: "4px", fontSize: "0.78rem", fontWeight: 900, letterSpacing: "0.18em",
+                width: { xs: "100%", sm: "auto" }, maxWidth: { xs: 380, sm: "none" },
+                boxShadow: `0 8px 24px ${alpha(brandColor, 0.3)}`,
+                "&:hover": { bgcolor: brandColor, filter: "brightness(1.08)", boxShadow: `0 12px 32px ${alpha(brandColor, 0.4)}` },
               }}
             >
-              BOOK APPOINTMENT
+              {heroCtaText}
             </Button>
           </Box>
 
         </Box>
       </Box>
 
+      {/* ── Stats bar ── */}
+      {statBar && (
+        <Box sx={{
+          bgcolor: "#111",
+          borderTop: `3px solid ${brandColor}`,
+          py: { xs: 4, md: 5 }, px: 2,
+        }}>
+          <Box sx={{ maxWidth: 900, mx: "auto", display: "flex", justifyContent: "space-around", flexWrap: "wrap", gap: 3 }}>
+            {statBar.map((s, i) => s.num ? (
+              <Box key={i} sx={{ textAlign: "center" }}>
+                <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: { xs: "2rem", md: "2.6rem" }, fontWeight: 900, color: brandColor, lineHeight: 1 }}>
+                  {s.num}
+                </Typography>
+                <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", mt: 0.75 }}>
+                  {s.label}
+                </Typography>
+              </Box>
+            ) : null)}
+          </Box>
+        </Box>
+      )}
+
+
       {/* ── Booking section ── */}
-      <Box id="booking-section" sx={{ bgcolor: "#f8f9fa", py: { xs: 8, md: 12 } }}>
+      <Box id="booking-section" sx={{
+        bgcolor: "#f8f7f4",
+        borderTop: "1px solid rgba(0,0,0,0.06)",
+        py: { xs: 8, md: 12 },
+      }}>
         <Container maxWidth="lg">
           <Box sx={{ mb: 7, textAlign: "center" }}>
             <Typography sx={{
-              fontSize: "0.65rem", fontWeight: 800,
+              fontSize: "0.62rem", fontWeight: 800,
               letterSpacing: "0.22em", textTransform: "uppercase",
-              color: brandColor, display: "block", mb: 1,
+              color: brandColor, display: "block", mb: 2,
             }}>
               AVAILABILITY
             </Typography>
             <Typography variant="h3" sx={{
               fontFamily: "'Playfair Display', serif",
-              color: "#0a0a0a",
+              color: "#111",
               fontWeight: 700,
               fontSize: { xs: "2rem", md: "2.8rem" },
             }}>
               Book Your Appointment
             </Typography>
+            <Box sx={{
+              width: 40, height: 3, bgcolor: brandColor, borderRadius: 2,
+              mx: "auto", mt: 2.5,
+            }} />
           </Box>
 
           <SlotPicker
@@ -416,50 +400,6 @@ export default function BarberProfile({ tenant: initialTenant }) {
         </Container>
       </Box>
 
-      {/* ── Footer ── */}
-      <Box component="footer" sx={{ bgcolor: "#0a0a0a", borderTop: "1px solid rgba(255,255,255,0.06)", py: { xs: 5, md: 6 }, px: { xs: 2, md: 5 } }}>
-        <Container maxWidth="lg">
-          <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 4, mb: 4 }}>
-
-            {/* Brand */}
-            <Box>
-              <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: "1.1rem", fontWeight: 700, color: brandColor, mb: 0.5 }}>
-                {barber?.businessName || barber?.name || ""}
-              </Typography>
-              <Typography sx={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.3)", lineHeight: 1.7, maxWidth: 220 }}>
-                {barber?.address || ""}
-              </Typography>
-            </Box>
-
-            {/* Social icons */}
-            {hasSocial && (
-              <Box>
-                <Typography sx={{ fontSize: "0.65rem", fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", mb: 1.5 }}>
-                  Follow Us
-                </Typography>
-                <Box sx={{ display: "flex", gap: 1.5 }}>
-                  <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
-                  <SocialLink href={facebookUrl}  label="Facebook"  icon={<FacebookIcon  sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />
-                  <SocialLink href={tiktokUrl}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#ffffff" />
-                </Box>
-              </Box>
-            )}
-
-          </Box>
-
-          <Box sx={{ pt: 3, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
-            <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.2)", letterSpacing: "0.04em" }}>
-              © {new Date().getFullYear()} {barber?.businessName || barber?.name || ""}. All rights reserved.
-            </Typography>
-            <Typography
-              component="a" href="/login"
-              sx={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", textDecoration: "none", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "2px", px: 1.5, py: 0.6, transition: "color 0.2s, border-color 0.2s", "&:hover": { color: brandColor, borderColor: brandColor } }}
-            >
-              Barber Login
-            </Typography>
-          </Box>
-        </Container>
-      </Box>
 
     </Box>
   );

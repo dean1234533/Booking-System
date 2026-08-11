@@ -153,6 +153,7 @@ function YesNo({ value, onChange, brand }) {
 /* ─── Main page ──────────────────────────────────────────────────────────── */
 export default function ParQSubmit() {
   const { trainerId } = useParams();
+  const clientId = new URLSearchParams(window.location.search).get("client");
 
   const [trainer,    setTrainer]    = useState(null);
   const [questions,  setQuestions]  = useState([]);
@@ -162,10 +163,11 @@ export default function ParQSubmit() {
   const [date,       setDate]       = useState(() => new Date().toISOString().split("T")[0]);
   const [answers,    setAnswers]    = useState({});   // { [qId]: { answer: "yes"|"no", details: "" } }
   const [signature,  setSignature]  = useState(null);
-  const [agreed,     setAgreed]     = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted,  setSubmitted]  = useState(false);
-  const [error,      setError]      = useState("");
+  const [agreed,         setAgreed]         = useState(false);
+  const [healthConsent,  setHealthConsent]  = useState(false);
+  const [submitting,     setSubmitting]     = useState(false);
+  const [submitted,      setSubmitted]      = useState(false);
+  const [error,          setError]          = useState("");
 
   const brand = trainer?.brandColor || "#C9A84C";
   const sx    = inputSx(brand);
@@ -196,6 +198,18 @@ export default function ParQSubmit() {
     setError("");
     if (!clientName.trim()) { setError("Please enter your full name."); return; }
     if (!dob)               { setError("Please enter your date of birth."); return; }
+
+    // Age gate — under-18s require parental/guardian consent
+    const dobDate = new Date(dob);
+    const today   = new Date();
+    let age = today.getFullYear() - dobDate.getFullYear();
+    const monthDiff = today.getMonth() - dobDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) age--;
+    if (age < 18) {
+      setError("This form requires parental or guardian consent. Please ask your trainer how to proceed.");
+      return;
+    }
+
     if (!date)              { setError("Please enter today's date."); return; }
 
     const unanswered = questions.filter(q => !answers[q.id]?.answer);
@@ -203,8 +217,9 @@ export default function ParQSubmit() {
       setError("Please answer all questions before submitting.");
       return;
     }
-    if (!signature) { setError("Please sign the form before submitting."); return; }
-    if (!agreed)    { setError("Please read and agree to the declaration."); return; }
+    if (!signature)      { setError("Please sign the form before submitting."); return; }
+    if (!agreed)         { setError("Please read and agree to the declaration."); return; }
+    if (!healthConsent)  { setError("Please consent to your health information being stored before submitting."); return; }
 
     setSubmitting(true);
     try {
@@ -223,6 +238,7 @@ export default function ParQSubmit() {
         answers:    answerArr,
         signature,
         agreedToDeclaration: true,
+        healthDataConsent:   true,
         submittedAt: serverTimestamp(),
       });
       setSubmitted(true);
@@ -272,6 +288,15 @@ export default function ParQSubmit() {
           <Typography sx={{ fontFamily: SANS, fontSize: "0.9rem", color: "rgba(255,255,255,0.4)", lineHeight: 1.7 }}>
             Thank you, <strong style={{ color: "rgba(255,255,255,0.7)" }}>{clientName}</strong>. Your trainer will review your health information before your session.
           </Typography>
+          {clientId && (
+            <Button
+              href={`/client-portal/${trainerId}/${clientId}`}
+              variant="outlined"
+              sx={{ mt: 3, borderColor: brand, color: brand, borderRadius: "8px", fontWeight: 600, "&:hover": { borderColor: brand, bgcolor: `${brand}15` } }}
+            >
+              Back to Portal
+            </Button>
+          )}
         </Box>
       </Box>
     );
@@ -409,6 +434,24 @@ export default function ParQSubmit() {
         </Typography>
         <Box sx={{ mb: 5 }}>
           <SignaturePad brand={brand} onChange={setSignature} />
+        </Box>
+
+        {/* Health data consent (Article 9 GDPR) */}
+        <Box sx={{ bgcolor: "#111", border: "1px solid rgba(255,255,255,0.07)", p: 2.5, mb: 3 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={healthConsent}
+                onChange={e => setHealthConsent(e.target.checked)}
+                sx={{ color: "rgba(255,255,255,0.2)", "&.Mui-checked": { color: brand }, py: 0.5 }}
+              />
+            }
+            label={
+              <Typography sx={{ fontFamily: SANS, fontSize: "0.83rem", color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>
+                I consent to my health information being stored by this trainer for fitness assessment purposes. I understand I can withdraw this consent at any time by contacting my trainer.
+              </Typography>
+            }
+          />
         </Box>
 
         {/* Error */}

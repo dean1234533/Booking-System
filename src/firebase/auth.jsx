@@ -15,10 +15,10 @@ import { doc, setDoc, deleteDoc, serverTimestamp, getDoc, Timestamp } from "fire
  * Updated to support business types and custom domains instead of Vercel URLs
  */
 export async function signUpBarber(data) {
-  const { 
-    email, password, name, phone, specialty, 
+  const {
+    email, password, name, phone, specialty,
     bio, role, shopId, businessName, brandColor,
-    businessType, customDomain 
+    businessType, customDomain, marketingOptIn,
   } = data;
 
   // 1. Create Auth Account
@@ -40,7 +40,8 @@ export async function signUpBarber(data) {
     services: [],
     photoURL: "",
     brandColor: brandColor || "#C9A84C",
-    createdAt: serverTimestamp()
+    marketingOptIn: marketingOptIn === true,
+    createdAt: serverTimestamp(),
   };
 
   if (role === "owner") {

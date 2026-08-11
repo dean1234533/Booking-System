@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, getDocs } from "firebase/firestore";
+import { useNavigate } from 'react-router-dom';
+import { collection, getDocs, addDoc, serverTimestamp, query, where } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { Star, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
-import TenantNav       from '../components/TenantNav';
+import SlotPicker from '../components/SlotPicker';
 
 /* ─── Global style injection ─────────────────────────────── */
 const GlobalStyles = () => (
@@ -11,85 +12,118 @@ const GlobalStyles = () => (
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --cream:   #faf8f5;
-      --sand:    #f0ebe2;
-      --stone:   #e8e0d5;
-      --ink:     #1c1917;
-      --ink-mid: #44403c;
-      --ink-soft:#78716c;
-      --gold:    #b5924c;
-      --gold-lt: #d4af6e;
+      --cream:   #f5f7fa;
+      --sand:    #eaecf0;
+      --stone:   #d0d5dd;
+      --ink:     #0f1923;
+      --ink-mid: #2d3a4a;
+      --ink-soft:#6b7a8d;
+      --gold:    #2563eb;
+      --gold-lt: #3b82f6;
     }
     html { scroll-behavior: smooth; }
     body { background: var(--cream); }
     .dt-page { font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--cream); overflow-x: hidden; }
     .dt-nav {
       position: fixed; top: 0; width: 100%; z-index: 100;
-      background: rgba(250,248,245,0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--stone);
+      background: rgba(10,10,10,0.92);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
       display: flex; justify-content: space-between; align-items: center;
-      padding: 0 2.5rem; height: 72px;
+      padding: 0 clamp(1.5rem, 4vw, 3.5rem); height: 68px;
     }
-    .dt-nav-brand { display: flex; align-items: center; gap: 12px; }
+    .dt-nav-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
     .dt-nav-logo {
-      width: 42px; height: 42px; border-radius: 50%;
-      background: var(--sand); border: 1.5px solid var(--stone);
+      width: 40px; height: 40px; border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.12);
       display: flex; align-items: center; justify-content: center; overflow: hidden;
+      flex-shrink: 0;
     }
-    .dt-nav-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.2rem; color: var(--ink); letter-spacing: 0.01em; }
-    .dt-nav-links { display: flex; gap: 2rem; }
+    .dt-nav-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .dt-nav-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.1rem; color: #fff; letter-spacing: 0.01em; }
+    .dt-nav-links { display: flex; gap: 2.5rem; }
     .dt-nav-links a {
-      font-size: 0.875rem; font-weight: 500; color: var(--ink-mid); text-decoration: none;
-      letter-spacing: 0.04em; text-transform: uppercase;
-      transition: color 0.2s;
+      font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.55); text-decoration: none;
+      letter-spacing: 0.12em; text-transform: uppercase; transition: color 0.2s;
     }
-    .dt-nav-links a:hover { color: var(--ink); }
+    .dt-nav-links a:hover { color: #fff; }
     .dt-nav-cta {
-      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-      padding: 0.65rem 1.6rem; border-radius: 2px; text-decoration: none; color: #fff;
-      transition: opacity 0.2s, transform 0.15s;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.6rem 1.5rem; border-radius: 2px; border: none; cursor: pointer; color: #fff;
+      transition: opacity 0.2s;
     }
-    .dt-nav-cta:hover { opacity: 0.88; transform: translateY(-1px); }
+    .dt-nav-cta:hover { opacity: 0.85; }
+    .dt-nav-hamburger { display: none; background: none; border: none; cursor: pointer; padding: 6px; flex-direction: column; gap: 5px; }
+    .dt-nav-hamburger span { display: block; width: 22px; height: 2px; background: #fff; border-radius: 2px; transition: all 0.25s; }
+    .dt-mobile-menu {
+      display: none; position: fixed; top: 68px; left: 0; right: 0; z-index: 99;
+      background: rgba(10,10,10,0.98); backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.08); padding: 1.5rem 2rem;
+      flex-direction: column; gap: 1rem;
+    }
+    .dt-mobile-menu.open { display: flex; }
+    .dt-mobile-menu a {
+      font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.7); text-decoration: none;
+      letter-spacing: 0.1em; text-transform: uppercase; padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
     .dt-hero {
-      position: relative; height: 100vh; display: flex; align-items: flex-end;
-      justify-content: flex-start; overflow: hidden; padding: 0 0 6rem 6rem;
+      position: relative; height: 100vh; display: flex; align-items: center;
+      justify-content: center; overflow: hidden;
     }
     .dt-hero-bg { position: absolute; inset: 0; }
     .dt-hero-bg img { width: 100%; height: 100%; object-fit: cover; }
     .dt-hero-bg::after {
       content: ''; position: absolute; inset: 0;
-      background: linear-gradient(120deg, rgba(28,25,23,0.75) 0%, rgba(28,25,23,0.3) 60%, transparent 100%);
+      background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.65) 50%, rgba(0,0,0,0.85) 100%);
     }
-    .dt-hero-content { position: relative; z-index: 2; max-width: 680px; }
+    .dt-hero-content { position: relative; z-index: 2; max-width: 760px; text-align: center; padding: 0 2rem; }
     .dt-hero-eyebrow {
-      display: inline-block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.2em;
-      text-transform: uppercase; color: var(--gold-lt); margin-bottom: 1.25rem;
-      padding: 0.35rem 0; border-bottom: 1px solid var(--gold);
+      display: inline-flex; align-items: center; gap: 10px;
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.25em;
+      text-transform: uppercase; color: var(--gold-lt); margin-bottom: 1.5rem;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.65);
     }
+    .dt-hero-eyebrow::before, .dt-hero-eyebrow::after { content: ''; width: 28px; height: 1px; background: var(--gold); }
     .dt-hero h1 {
-      font-family: 'Playfair Display', serif; font-size: clamp(2.8rem, 6vw, 5rem);
-      font-weight: 900; color: #fff; line-height: 1.1; margin-bottom: 1.5rem; letter-spacing: -0.01em;
+      font-family: 'Playfair Display', serif; font-size: clamp(3rem, 7vw, 5.5rem);
+      font-weight: 900; color: #fff; line-height: 1.05; margin-bottom: 1.5rem; letter-spacing: -0.02em;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.45);
     }
-    .dt-hero-accent { color: var(--gold-lt); font-style: italic; }
+    .dt-hero-accent { color: var(--gold-lt); font-style: italic; text-shadow: 0 2px 16px rgba(0,0,0,0.65); }
     .dt-hero-sub {
-      font-size: 1.05rem; color: rgba(255,255,255,0.8); font-weight: 300;
-      line-height: 1.7; margin-bottom: 2.5rem; max-width: 480px;
+      font-size: 1rem; color: rgba(255,255,255,0.7); font-weight: 300;
+      line-height: 1.75; margin-bottom: 2.5rem; max-width: 520px; margin-left: auto; margin-right: auto;
     }
-    .dt-hero-actions { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+    .dt-hero-actions { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: center; }
     .dt-hero-btn {
-      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
       padding: 1rem 2.5rem; border-radius: 2px; border: none; cursor: pointer;
       color: #fff; transition: opacity 0.2s, transform 0.15s;
     }
     .dt-hero-btn:hover { opacity: 0.88; transform: translateY(-2px); }
-    .dt-hero-badge {
-      display: flex; align-items: center; gap: 10px;
-      background: rgba(255,255,255,0.08); backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.18); border-radius: 2px;
-      padding: 0.75rem 1.25rem;
+    .dt-hero-btn-outline {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 1rem 2.5rem; border-radius: 2px; border: 1.5px solid rgba(255,255,255,0.35); cursor: pointer;
+      color: #fff; background: transparent; transition: border-color 0.2s, background 0.2s;
     }
-    .dt-hero-badge span { font-size: 0.8rem; color: rgba(255,255,255,0.9); font-weight: 500; }
+    .dt-hero-btn-outline:hover { border-color: #fff; background: rgba(255,255,255,0.06); }
+    .dt-hero-badge {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.08); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 99px;
+      padding: 0.6rem 1.25rem;
+    }
+    .dt-hero-badge span { font-size: 0.78rem; color: rgba(255,255,255,0.85); font-weight: 500; }
+    .dt-hero-scroll {
+      position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 6px;
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+      color: rgba(255,255,255,0.4); cursor: pointer;
+    }
+    .dt-hero-scroll-line {
+      width: 1px; height: 36px; background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
+    }
     .dt-section-label {
       display: block; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.22em;
       text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.75rem;
@@ -102,62 +136,72 @@ const GlobalStyles = () => (
       width: 48px; height: 3px; border-radius: 2px; margin-top: 1.25rem;
     }
     .dt-about {
-      padding: 7rem 6rem;
+      padding: 6rem clamp(1.5rem, 6vw, 6rem);
       display: grid; grid-template-columns: 1fr 1.2fr; gap: 5rem; align-items: center;
-      background: var(--cream);
+      background: #fff;
     }
-    .dt-about-text { font-size: 1.1rem; color: var(--ink-mid); line-height: 1.85; font-weight: 300; margin-top: 1.5rem; }
-    .dt-about-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .dt-about-text { font-size: 1rem; color: var(--ink-mid); line-height: 1.9; font-weight: 300; margin-top: 1.5rem; }
+    .dt-about-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     .dt-stat {
-      background: var(--sand); border: 1px solid var(--stone); border-radius: 4px;
+      background: var(--ink); border-radius: 12px;
       padding: 1.75rem 1.5rem;
     }
-    .dt-stat-num { font-family: 'Playfair Display', serif; font-size: 2.5rem; font-weight: 900; color: var(--ink); line-height: 1; }
-    .dt-stat-label { font-size: 0.78rem; color: var(--ink-soft); font-weight: 500; margin-top: 0.35rem; letter-spacing: 0.06em; }
+    .dt-stat-num { font-family: 'Playfair Display', serif; font-size: 2.6rem; font-weight: 900; line-height: 1; }
+    .dt-stat-label { font-size: 0.72rem; color: rgba(255,255,255,0.5); font-weight: 500; margin-top: 0.4rem; letter-spacing: 0.06em; }
     .dt-services {
-      padding: 7rem 6rem; background: var(--sand);
+      padding: 6rem clamp(1.5rem, 6vw, 6rem); background: var(--cream);
     }
     .dt-services-inner { display: grid; grid-template-columns: 1.1fr 1fr; gap: 5rem; align-items: center; max-width: 1200px; margin: 0 auto; }
-    .dt-services-header { margin-bottom: 3rem; }
-    .dt-service-card { background: var(--cream); border: 1px solid var(--stone); border-radius: 4px; padding: 2.5rem; }
+    .dt-services-header { margin-bottom: 2.5rem; }
+    .dt-service-card {
+      background: var(--ink); border-radius: 16px; padding: 2.5rem;
+    }
     .dt-service-item {
-      display: flex; align-items: center; gap: 1rem;
-      padding: 0.85rem 0; border-bottom: 1px solid var(--stone);
-      font-size: 1rem; font-weight: 400; color: var(--ink-mid); letter-spacing: 0.01em;
+      display: flex; align-items: center; gap: 0.85rem;
+      padding: 0.9rem 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.95rem; font-weight: 400; color: rgba(255,255,255,0.75); letter-spacing: 0.01em;
+    }
+    .dt-service-item::before {
+      content: ''; display: block; width: 6px; height: 6px; border-radius: 50%;
+      flex-shrink: 0; background: var(--gold);
     }
     .dt-service-item:last-of-type { border-bottom: none; }
     .dt-service-btn {
       display: block; width: 100%; margin-top: 2rem; border: none; cursor: pointer;
       font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-      padding: 1rem; border-radius: 2px; color: #fff; transition: opacity 0.2s;
+      padding: 1rem; border-radius: 8px; color: #fff; transition: opacity 0.2s;
     }
     .dt-service-btn:hover { opacity: 0.88; }
-    .dt-services-img { border-radius: 4px; overflow: hidden; box-shadow: 0 24px 64px rgba(28,25,23,0.15); }
+    .dt-services-img { border-radius: 12px; overflow: hidden; box-shadow: 0 32px 80px rgba(28,25,23,0.2); }
     .dt-services-img img { width: 100%; height: 480px; object-fit: cover; display: block; }
-    .dt-portfolio { padding: 7rem 6rem; background: var(--cream); }
+    .dt-portfolio { padding: 6rem clamp(1.5rem, 6vw, 6rem); background: var(--ink); }
+    .dt-portfolio .dt-section-label { color: var(--gold); }
+    .dt-portfolio .dt-section-title { color: #fff; }
     .dt-portfolio-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3rem; max-width: 1200px; margin-left: auto; margin-right: auto; }
-    .dt-portfolio-sub { font-size: 0.9rem; color: var(--ink-soft); max-width: 360px; text-align: right; line-height: 1.6; }
+    .dt-portfolio-sub { font-size: 0.9rem; color: rgba(255,255,255,0.4); max-width: 360px; text-align: right; line-height: 1.6; }
     .dt-portfolio-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
-    .dt-portfolio-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); text-align: center; margin-top: 0.75rem; }
-    .dt-reviews { padding: 7rem 6rem; background: var(--sand); }
+    .dt-portfolio-item { transition: transform 0.25s ease; }
+    .dt-portfolio-item:hover { transform: translateY(-4px); }
+    .dt-portfolio-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.45); text-align: center; margin-top: 0.75rem; }
+    .dt-reviews { padding: 6rem clamp(1.5rem, 6vw, 6rem); background: var(--cream); }
     .dt-reviews-header { text-align: center; margin-bottom: 4rem; }
     .dt-review-card {
-      background: var(--cream); border: 1px solid var(--stone);
-      border-radius: 4px; padding: 2.5rem;
+      background: var(--ink);
+      border-radius: 16px; padding: 2.5rem;
       display: flex; flex-direction: column; gap: 1.25rem;
     }
-    .dt-review-quote { font-size: 2.5rem; color: var(--stone); line-height: 1; font-family: 'Playfair Display', serif; }
-    .dt-review-text { font-size: 1.1rem; color: var(--ink-mid); line-height: 1.75; font-weight: 300; }
-    .dt-review-divider { height: 1px; background: var(--stone); }
+    .dt-review-quote { font-size: 3rem; line-height: 1; font-family: 'Playfair Display', serif; }
+    .dt-review-text { font-size: 1rem; color: rgba(255,255,255,0.75); line-height: 1.8; font-weight: 300; }
+    .dt-review-divider { height: 1px; background: rgba(255,255,255,0.1); }
     .dt-review-footer { display: flex; align-items: center; gap: 1rem; }
     .dt-review-avatar {
       width: 44px; height: 44px; border-radius: 50%;
-      background: var(--sand); border: 1.5px solid var(--stone);
+      background: rgba(255,255,255,0.1); border: 1.5px solid rgba(255,255,255,0.2);
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 1rem; color: var(--ink); flex-shrink: 0;
+      font-weight: 700; font-size: 1rem; color: #fff; flex-shrink: 0;
     }
-    .dt-review-name { font-weight: 600; font-size: 0.9rem; color: var(--ink); }
-    .dt-review-verified { font-size: 0.72rem; color: var(--ink-soft); margin-top: 2px; letter-spacing: 0.04em; }
+    .dt-review-name { font-weight: 600; font-size: 0.9rem; color: #fff; }
+    .dt-review-verified { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-top: 2px; letter-spacing: 0.04em; }
     .dt-review-cta { text-align: center; margin-top: 4rem; }
     .dt-contact { padding: 7rem 6rem; background: var(--ink); }
     .dt-contact-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 6rem; max-width: 1100px; margin: 0 auto; align-items: start; }
@@ -208,33 +252,10 @@ const GlobalStyles = () => (
     }
     .ba-label-before { left: 14px; }
     .ba-label-after { right: 14px; }
-    .dt-hamburger {
-      display: none; flex-direction: column; gap: 5px;
-      background: none; border: none; cursor: pointer; padding: 8px; flex-shrink: 0;
-    }
-    .dt-hamburger span {
-      display: block; width: 24px; height: 2px; background: var(--ink); border-radius: 2px;
-    }
-    .dt-mobile-menu {
-      position: fixed; top: 72px; left: 0; right: 0; z-index: 99;
-      background: rgba(250,248,245,0.98); backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--stone); padding: 12px 1.5rem 18px;
-    }
-    .dt-mobile-menu a {
-      display: block; padding: 11px 0; font-size: 13px; font-weight: 600;
-      letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none;
-      color: var(--ink); border-bottom: 1px solid var(--stone);
-    }
-    .dt-mobile-menu-cta {
-      display: block; margin-top: 14px; padding: 12px; text-align: center;
-      color: #fff; border-radius: 2px; font-size: 12px; font-weight: 700;
-      letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none;
-    }
     @media (max-width: 900px) {
       .dt-nav { padding: 0 1.5rem; }
       .dt-nav-links, .dt-nav-cta { display: none; }
-      .dt-hamburger { display: flex; }
-      .dt-hero { padding: 0 2rem 4rem; }
+      .dt-nav-hamburger { display: flex; }
       .dt-about, .dt-services-inner, .dt-contact-inner { grid-template-columns: 1fr; gap: 2.5rem; }
       .dt-about, .dt-services, .dt-portfolio, .dt-reviews, .dt-contact, .dt-footer { padding: 4rem 1.5rem; }
       .dt-services-img img { height: 300px; }
@@ -247,12 +268,10 @@ const GlobalStyles = () => (
     @media (max-width: 480px) {
       .dt-nav { height: 60px; padding: 0 1.25rem; }
       .dt-mobile-menu { top: 60px; }
-      .dt-hero { padding: 0 1.25rem 3rem; }
-      .dt-hero h1 { font-size: clamp(2rem, 9vw, 2.8rem); }
+      .dt-hero h1 { font-size: clamp(2.2rem, 9vw, 3rem); }
       .dt-hero-sub { font-size: 0.9rem; }
-      .dt-hero-actions { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
-      .dt-hero-btn { width: 100%; text-align: center; }
-      .dt-hero-badge { width: 100%; justify-content: center; }
+      .dt-hero-actions { flex-direction: column; align-items: center; }
+      .dt-hero-btn, .dt-hero-btn-outline { width: 100%; }
       .dt-about, .dt-services, .dt-portfolio, .dt-reviews, .dt-contact, .dt-footer { padding: 3rem 1.25rem; }
       .dt-about-stats { gap: 0.75rem; }
       .dt-services-img img { height: 200px; }
@@ -304,12 +323,16 @@ const BeforeAfterSlider = ({ before, after }) => {
 };
 
 const DecoratorTemplate = ({ tenantData }) => {
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
   const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
   const [enquiry, setEnquiry] = useState({ name: "", phone: "", message: "" });
   const [enquiryStatus, setEnquiryStatus] = useState("idle");
   const [enquiryError, setEnquiryError] = useState("");
   const [legalModal, setLegalModal] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [slots, setSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(true);
 
   useEffect(() => {
     if (tenantData) localStorage.setItem('active_tenant_branding', JSON.stringify(tenantData));
@@ -330,6 +353,22 @@ const DecoratorTemplate = ({ tenantData }) => {
     fetchReviews();
   }, [tenantData?.id]);
 
+  useEffect(() => {
+    const shopId = tenantData?.id;
+    if (!shopId) return;
+    setSlotsLoading(true);
+    const today = new Date().toISOString().split('T')[0];
+    getDocs(query(collection(db, 'slots'), where('barberId', '==', shopId), where('isBooked', '==', false)))
+      .then(snap => {
+        const available = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(s => s.date >= today);
+        setSlots(available);
+      })
+      .catch(() => {})
+      .finally(() => setSlotsLoading(false));
+  }, [tenantData?.id]);
+
   const nextReview = () => setCurrentReviewIndex((prev) => (prev + 1) % reviews.length);
   const prevReview = () => setCurrentReviewIndex((prev) => (prev - 1 + reviews.length) % reviews.length);
 
@@ -338,12 +377,12 @@ const DecoratorTemplate = ({ tenantData }) => {
   useEffect(() => { if (fontKey) loadGoogleFont(fontKey); }, [fontKey]);
 
   /* ── All content resolved from tenantData with fallbacks ── */
-  const brandColor    = tenantData?.brandColor  || "#b5924c";
+  const brandColor    = tenantData?.brandColor  || "#2563eb";
   const businessName  = tenantData?.businessName || tenantData?.name || "Your Business";
-  const logo          = tenantData?.logoUrl      || tenantData?.logo || null;
+  const logo          = tenantData?.businessLogo || tenantData?.logoUrl || tenantData?.logo || null;
 
   // Hero
-  const heroImage     = tenantData?.heroImage    || "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=2070&auto=format&fit=crop";
+  const heroImage     = tenantData?.heroImage    || "/images/photo-output-13.jpg";
   const heroEyebrow   = tenantData?.heroTagline  || "London's Trusted Decorators";
   const heroLine1     = tenantData?.heroHeadingLine1 || "Home Painting,";
   const heroLine2     = tenantData?.heroHeadingLine2 || "Done Right.";
@@ -382,52 +421,47 @@ const DecoratorTemplate = ({ tenantData }) => {
   const portfolioItems   = (tenantData?.portfolioItems || []).length > 0
     ? tenantData.portfolioItems
     : [
-        { before: "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2069", after: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=2070", label: "Living Room — SW London" },
-        { before: "https://images.unsplash.com/photo-1505873242700-f289a29e1e0f?q=80&w=2076", after: "https://images.unsplash.com/photo-1556912177-f547c184827a?q=80&w=2070", label: "Kitchen Refresh — North London" },
-        { before: "https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=2074", after: "https://images.unsplash.com/photo-1527359353448-615621ad9d20?q=80&w=2069", label: "Full Interior — East London" },
+        { before: "https://images.unsplash.com/photo-1564078516393-cf04bd966897?q=80&w=2070", after: "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?q=80&w=2070", label: "Living Room — SW London" },
+        { before: "https://images.unsplash.com/photo-1600489000022-c2086d79f9d4?q=80&w=2070", after: "https://images.unsplash.com/photo-1560440021-33f9b867899d?q=80&w=2070", label: "Kitchen — North London" },
+        { before: "https://images.unsplash.com/photo-1617806118233-18e1de247200?q=80&w=2070", after: "https://images.unsplash.com/photo-1602872030219-ad2b9a54315c?q=80&w=2070", label: "Dining Room — East London" },
       ];
 
   // Legal
   const privacyText = tenantData?.privacyPolicy   || `At ${businessName}, we value your privacy. We collect only information necessary to provide our services and never sell your data.`;
   const termsText   = tenantData?.termsConditions || `By using ${businessName}, you agree to our terms of service. All bookings are subject to our cancellation policy.`;
 
-  // Social
+  // Social & contact
   const instagramUrl = tenantData?.instagramUrl || "";
   const tiktokUrl    = tenantData?.tiktokUrl    || "";
   const facebookUrl  = tenantData?.facebookUrl  || "";
-  const contactEmail = tenantData?.contactEmail || tenantData?.email || "";
-  const ownerEmail   = tenantData?.businessEmail || tenantData?.email || "";
-  const phone        = tenantData?.phone || "";
+  const ownerEmail   = tenantData?.businessEmail || tenantData?.contactEmail || tenantData?.email || "";
+  const phone        = tenantData?.phone || tenantData?.businessPhone || "";
+  const address      = tenantData?.address || "";
 
   const currentReview = reviews[currentReviewIndex];
 
   async function handleEnquirySubmit(e) {
     e.preventDefault();
-    if (!ownerEmail) {
-      setEnquiryError("No contact email configured for this business.");
+    const tenantId = tenantData?.id;
+    if (!tenantId) {
+      setEnquiryError("Business not found. Please try again.");
       setEnquiryStatus("error");
       return;
     }
     setEnquiryStatus("sending");
     setEnquiryError("");
     try {
-      const res = await fetch("/api/send-enquiry", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ownerEmail,
-          businessName,
-          brandColor,
-          clientName: enquiry.name,
-          clientPhone: enquiry.phone,
-          projectDetails: enquiry.message,
-        }),
+      await addDoc(collection(db, "barbers", tenantId, "enquiries"), {
+        name:           enquiry.name,
+        phone:          enquiry.phone,
+        message:        enquiry.message,
+        submittedAt:    serverTimestamp(),
+        read:           false,
       });
-      const json = await res.json();
-      if (!res.ok || json.error) throw new Error(json.error?.message || json.error || "Failed to send");
       setEnquiryStatus("success");
+      setEnquiry({ name: "", phone: "", message: "" });
     } catch (err) {
-      setEnquiryError(err.message || "Something went wrong. Please try again.");
+      setEnquiryError("Something went wrong. Please try again.");
       setEnquiryStatus("error");
     }
   }
@@ -441,7 +475,34 @@ const DecoratorTemplate = ({ tenantData }) => {
         }
       `}</style>
 
-      <TenantNav tenant={tenantData} />
+      {/* ── CUSTOM NAV ── */}
+      <nav className="dt-nav">
+        <a className="dt-nav-brand" href="#home">
+          <div className="dt-nav-logo">
+            {logo
+              ? <img src={logo} alt={businessName} />
+              : <span style={{ fontFamily: "'Playfair Display', serif", color: brandColor, fontWeight: 700, fontSize: '1rem' }}>{businessName[0]}</span>
+            }
+          </div>
+          <span className="dt-nav-name">{businessName}</span>
+        </a>
+        <div className="dt-nav-links">
+          {[['Services','services'],['Portfolio','portfolio'],['Reviews','reviews'],['Book','booking'],['Contact','contact']].map(([label, id]) => (
+            <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }}>{label}</a>
+          ))}
+        </div>
+        <button className="dt-nav-cta" style={{ backgroundColor: brandColor }} onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}>
+          Get a Quote
+        </button>
+        <button className="dt-nav-hamburger" onClick={() => setMobileMenuOpen(o => !o)} aria-label="Menu">
+          <span /><span /><span />
+        </button>
+      </nav>
+      <div className={`dt-mobile-menu${mobileMenuOpen ? ' open' : ''}`}>
+        {[['Services','services'],['Portfolio','portfolio'],['Reviews','reviews'],['Book','booking'],['Contact','contact']].map(([label, id]) => (
+          <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); setMobileMenuOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }}>{label}</a>
+        ))}
+      </div>
 
       <div className="dt-page">
 
@@ -461,11 +522,20 @@ const DecoratorTemplate = ({ tenantData }) => {
               <button className="dt-hero-btn" style={{ backgroundColor: brandColor }} onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}>
                 {heroCta}
               </button>
+              <button className="dt-hero-btn-outline" onClick={() => document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })}>
+                View Our Work
+              </button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
               <div className="dt-hero-badge">
-                <div style={{ display: 'flex', color: '#f59e0b' }}>{[...Array(5)].map((_, i) => <Star key={i} size={15} fill="currentColor" />)}</div>
+                <div style={{ display: 'flex', color: '#f59e0b' }}>{[...Array(5)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}</div>
                 <span>{heroReview}</span>
               </div>
             </div>
+          </div>
+          <div className="dt-hero-scroll" onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}>
+            <div className="dt-hero-scroll-line" />
+            <span>Scroll</span>
           </div>
         </header>
 
@@ -529,7 +599,7 @@ const DecoratorTemplate = ({ tenantData }) => {
           </div>
           <div className="dt-portfolio-grid">
             {portfolioItems.map((p, i) => (
-              <div key={i}>
+              <div key={i} className="dt-portfolio-item">
                 <BeforeAfterSlider before={p.before} after={p.after} />
                 <p className="dt-portfolio-label">{p.label}</p>
               </div>
@@ -601,6 +671,29 @@ const DecoratorTemplate = ({ tenantData }) => {
           </div>
         </section>
 
+        {/* ── BOOKING SLOTS ── */}
+        <section id="booking" style={{ padding: 'clamp(4rem,8vw,8rem) clamp(1.5rem,6vw,5rem)', background: 'var(--sand)' }}>
+          <div style={{ maxWidth: 860, margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: brandColor }}>
+                AVAILABILITY
+              </span>
+              <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(1.8rem,4vw,2.6rem)', color: 'var(--ink)', marginTop: '0.5rem', fontWeight: 700 }}>
+                Book a Site Visit
+              </h2>
+              <p style={{ color: 'var(--ink-soft)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
+                Choose a convenient slot and we'll come to you — free of charge, no obligation.
+              </p>
+            </div>
+            <SlotPicker
+              slots={slots}
+              loading={slotsLoading}
+              brandColor={brandColor}
+              onSelect={slot => navigate(`/book/${tenantData?.id}/${slot.id}?isStaff=false&shopId=${tenantData?.id}`)}
+            />
+          </div>
+        </section>
+
         {/* ── CONTACT ── */}
         <section id="contact" className="dt-contact">
           <div className="dt-contact-inner">
@@ -616,15 +709,6 @@ const DecoratorTemplate = ({ tenantData }) => {
                   </div>
                 ))}
               </div>
-              {/* Social links — shown if set */}
-              {(instagramUrl || tiktokUrl || facebookUrl || contactEmail) && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '2rem' }}>
-                  {instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', letterSpacing: '0.08em' }}>📸 Instagram</a>}
-                  {tiktokUrl    && <a href={tiktokUrl}    target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', letterSpacing: '0.08em' }}>🎵 TikTok</a>}
-                  {facebookUrl  && <a href={facebookUrl}  target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', letterSpacing: '0.08em' }}>📘 Facebook</a>}
-                  {contactEmail && <a href={`mailto:${contactEmail}`} style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', letterSpacing: '0.08em' }}>✉ Email</a>}
-                </div>
-              )}
             </div>
             {enquiryStatus === "success" ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '3rem 2rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, textAlign: 'center' }}>
@@ -689,9 +773,14 @@ const DecoratorTemplate = ({ tenantData }) => {
             <div style={{ minWidth: 200 }}>
               {logo && <img src={logo} alt="Logo" style={{ height: 48, marginBottom: 16, display: 'block', borderRadius: 4 }} />}
               <div style={{ fontFamily: displayFont, fontSize: 22, letterSpacing: '0.08em', color: brandColor, marginBottom: 8 }}>{businessName}</div>
-              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: 300, maxWidth: 220, lineHeight: 1.6, marginBottom: phone || ownerEmail ? 16 : 0 }}>
+              <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontWeight: 300, maxWidth: 220, lineHeight: 1.6, marginBottom: address || phone || ownerEmail ? 12 : 0 }}>
                 Professional painting &amp; decorating services.
               </p>
+              {address && (
+                <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, fontWeight: 300, maxWidth: 220, lineHeight: 1.6, marginBottom: 12 }}>
+                  📍 {address}
+                </p>
+              )}
               {phone && (
                 <a href={`tel:${phone}`} style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.55)', fontSize: 13, textDecoration: 'none', marginBottom: 8, transition: 'color 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.color = brandColor}
@@ -707,6 +796,12 @@ const DecoratorTemplate = ({ tenantData }) => {
                 >
                   <span style={{ fontSize: 14 }}>✉</span> {ownerEmail}
                 </a>
+              )}
+              {tenantData?.openingHours && (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: brandColor, marginBottom: 6 }}>Hours</p>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.8, whiteSpace: 'pre-line', margin: 0 }}>{tenantData.openingHours}</p>
+                </div>
               )}
             </div>
 
@@ -775,11 +870,12 @@ const DecoratorTemplate = ({ tenantData }) => {
           <div style={{ borderTop: '1px solid #1e1e1e', paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <p style={{ color: 'rgba(255,255,255,0.18)', fontSize: 11, letterSpacing: '0.08em', margin: 0 }}>© {new Date().getFullYear()} {businessName}. All rights reserved.</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              <a href="/login"
-                style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 2, padding: '6px 14px', transition: 'color 0.2s, border-color 0.2s' }}
+              <span
+                onClick={() => navigate('/login')}
+                style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 2, padding: '6px 14px', transition: 'color 0.2s, border-color 0.2s', cursor: 'pointer' }}
                 onMouseEnter={e => { e.currentTarget.style.color = brandColor; e.currentTarget.style.borderColor = brandColor; }}
                 onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
-              >Pro Login</a>
+              >Pro Login</span>
               <a href="#" style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.color = brandColor}
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.18)'}

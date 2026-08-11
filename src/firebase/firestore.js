@@ -662,6 +662,40 @@ export const getClientsList = async (trainerId) => {
   }
 };
 
+// Manually create a client (not tied to a booking) — for adding clients by hand
+export const createClient = async (trainerId, clientData) => {
+  if (!trainerId) throw new Error("Missing trainerId");
+  if (!clientData?.customerName?.trim()) throw new Error("Client name is required");
+  try {
+    const clientsRef = collection(db, "barbers", trainerId, "clients");
+    const newClientData = {
+      customerName: (clientData.customerName || "").trim(),
+      customerEmail: (clientData.customerEmail || "").trim(),
+      customerPhone: (clientData.customerPhone || "").trim(),
+      createdAt: new Date().toISOString(),
+      lastSessionDate: null,
+      totalSessions: 0,
+      source: "manual",
+    };
+    const docRef = await addDoc(clientsRef, newClientData);
+    return { id: docRef.id, ...newClientData };
+  } catch (error) {
+    console.error("Failed to create client:", error);
+    throw error;
+  }
+};
+
+// Delete a client record
+export const deleteClient = async (trainerId, clientId) => {
+  if (!trainerId || !clientId) throw new Error("Missing trainerId or clientId");
+  try {
+    await deleteDoc(doc(db, "barbers", trainerId, "clients", clientId));
+  } catch (error) {
+    console.error("Failed to delete client:", error);
+    throw error;
+  }
+};
+
 // ─── CLIENT MESSAGING ────────────────────────────
 
 // Add message
@@ -836,7 +870,7 @@ export const getConsultationsByCategory = async (trainerId, clientId, category) 
 };
 
 // Get all consultations for client
-export const getClientConsultations = async (trainerId, clientId, limit = 50) => {
+export const getClientConsultations = async (trainerId, clientId, limitCount = 50) => {
   if (!trainerId || !clientId) return [];
   try {
     const consultationsRef = collection(
@@ -848,7 +882,7 @@ export const getClientConsultations = async (trainerId, clientId, limit = 50) =>
       "consultationNotes"
     );
 
-    const q = query(consultationsRef, orderBy("createdAt", "desc"), limit(limit));
+    const q = query(consultationsRef, orderBy("createdAt", "desc"), limit(limitCount));
     const snap = await getDocs(q);
     return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
@@ -1050,3 +1084,18 @@ export const recordAutomationSend = async (trainerId, scheduleId, sendData) => {
     throw error;
   }
 };
+// ── Notifications ─────────────────────────────────────────────────────────────
+// Writes a notification to the owner's inbox and fires a push (best-effort).
+export async function createNotification(barberId, { type, title, body, data = {} }) {
+  if (!barberId) return;
+  await addDoc(collection(db, "barbers", barberId, "notifications"), {
+    type,
+    title,
+    body,
+    data,
+    read: false,
+    createdAt: serverTimestamp(),
+  });
+  // Push is sent by the owner's dashboard session (authenticated) — not here,
+  // since createNotification is called from unauthenticated client flows.
+}

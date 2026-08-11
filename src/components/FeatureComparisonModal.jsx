@@ -11,6 +11,8 @@ import {
   Paper,
   Tabs,
   Tab,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { Check, Close } from "@mui/icons-material";
 
@@ -25,45 +27,36 @@ const BUSINESS_FEATURES = {
         category: "Booking & Calendar",
         items: [
           { name: "Online booking system", included: true, benefit: "Clients book 24/7 without calling" },
-          { name: "Availability management", included: true, benefit: "Set your working hours once" },
-          { name: "Automated reminders", included: true, benefit: "Reduce no-shows with SMS/email reminders" },
-          { name: "Queue management", included: true, benefit: "Track waiting clients in real-time" },
+          { name: "Availability management", included: true, benefit: "Set your working hours once, block off time" },
+          { name: "Automated email reminders", included: true, benefit: "Reduce no-shows with automatic booking reminders" },
+          { name: "Live queue management", included: true, benefit: "Shareable queue link — clients join and wait in real time" },
         ],
       },
       {
         category: "Payments & Money",
         items: [
-          { name: "Online payments (Stripe)", included: true, benefit: "Accept card payments instantly" },
-          { name: "Deposits & partial payments", included: true, benefit: "Collect upfront deposits" },
-          { name: "Financial dashboard", included: true, benefit: "Track income and earnings" },
-          { name: "Invoice generation", included: true, benefit: "Professional invoices for clients" },
+          { name: "Online payments (Stripe)", included: true, benefit: "Accept card payments instantly at checkout" },
+          { name: "Deposits & partial payments", included: true, benefit: "Collect upfront deposits to secure bookings" },
+          { name: "Financial dashboard", included: true, benefit: "Overview of all income and recent transactions" },
+          { name: "Invoice generation", included: true, benefit: "Professional PDF invoices sent to clients" },
         ],
       },
       {
         category: "Website & Branding",
         items: [
-          { name: "Custom branded website", included: true, benefit: "Your own business site with logo & colors" },
-          { name: "Custom domain", included: true, benefit: "Own domain (barber.com) or use yours" },
-          { name: "Service showcase", included: true, benefit: "Display services, prices, and portfolio" },
-          { name: "Portfolio photos", included: true, benefit: "Show your best work" },
+          { name: "Custom branded website", included: true, benefit: "Your own booking site with logo and brand colours" },
+          { name: "Staff profile pages", included: true, benefit: "Individual pages per barber with personal social links" },
+          { name: "Service & price showcase", included: true, benefit: "Display all services with descriptions and prices" },
+          { name: "Reviews page", included: true, benefit: "Collect and display client reviews publicly" },
         ],
       },
       {
         category: "Business Tools",
         items: [
-          { name: "Client database", included: true, benefit: "Store client info and history" },
-          { name: "Team management", included: true, benefit: "Add staff members to dashboard" },
-          { name: "Review management", included: true, benefit: "Display and manage client reviews" },
-          { name: "Social media links", included: true, benefit: "Link Instagram, TikTok, Facebook" },
-        ],
-      },
-      {
-        category: "Tax & Finance",
-        items: [
-          { name: "Income & expense tracking", included: true, benefit: "Log all business income and expenses" },
-          { name: "Auto-calculated taxes", included: true, benefit: "UK self-employment tax calculations" },
-          { name: "Invoice storage", included: true, benefit: "Upload and organize business invoices" },
-          { name: "Quarterly tax planning", included: true, benefit: "See Self-Assessment payment schedules" },
+          { name: "Client database", included: true, benefit: "Full history of every client's bookings" },
+          { name: "Staff accounts & management", included: true, benefit: "Add team members with their own logins" },
+          { name: "WhatsApp support button", included: true, benefit: "One-tap WhatsApp contact from your dashboard" },
+          { name: "Business & staff social links", included: true, benefit: "Link Instagram, TikTok, Facebook per staff member" },
         ],
       },
     ],
@@ -78,45 +71,36 @@ const BUSINESS_FEATURES = {
         category: "Booking & Calendar",
         items: [
           { name: "Online booking system", included: true, benefit: "Clients book 24/7 without calling" },
-          { name: "Availability management", included: true, benefit: "Set your working hours once" },
-          { name: "Automated reminders", included: true, benefit: "Reduce no-shows with SMS/email reminders" },
-          { name: "Google Calendar sync", included: true, benefit: "Sync with your personal calendar" },
+          { name: "Availability management", included: true, benefit: "Set working hours and block off time easily" },
+          { name: "Automated email reminders", included: true, benefit: "Reduce no-shows with automatic booking reminders" },
+          { name: "Cancellation handling", included: true, benefit: "Clients cancel online and you're notified instantly" },
         ],
       },
       {
         category: "Payments & Money",
         items: [
-          { name: "Online payments (Stripe)", included: true, benefit: "Accept card payments instantly" },
-          { name: "Deposits & partial payments", included: true, benefit: "Collect upfront deposits" },
-          { name: "Financial dashboard", included: true, benefit: "Track income and earnings" },
-          { name: "Invoice generation", included: true, benefit: "Professional invoices for clients" },
+          { name: "Online payments (Stripe)", included: true, benefit: "Accept card payments at the point of booking" },
+          { name: "Deposits & partial payments", included: true, benefit: "Protect your time by collecting upfront deposits" },
+          { name: "Financial dashboard", included: true, benefit: "All income tracked in one place" },
+          { name: "Invoice generation", included: true, benefit: "Professional PDF invoices for clients" },
         ],
       },
       {
         category: "Website & Branding",
         items: [
-          { name: "Custom branded website", included: true, benefit: "Your own business site with logo & colors" },
-          { name: "Custom domain", included: true, benefit: "Own domain (salon.com) or use yours" },
-          { name: "Service showcase", included: true, benefit: "Display services, prices, and styles" },
-          { name: "Portfolio photos", included: true, benefit: "Show before/after transformations" },
+          { name: "Custom branded website", included: true, benefit: "Your own salon site with logo and brand colours" },
+          { name: "Service & price showcase", included: true, benefit: "List all services with descriptions and prices" },
+          { name: "Portfolio & gallery", included: true, benefit: "Show your best work and transformations" },
+          { name: "Reviews page", included: true, benefit: "Collect and display verified client reviews" },
         ],
       },
       {
         category: "Business Tools",
         items: [
-          { name: "Client database", included: true, benefit: "Store client info and preferences" },
-          { name: "Team management", included: true, benefit: "Add stylists to dashboard" },
-          { name: "Review management", included: true, benefit: "Display and manage client reviews" },
-          { name: "Social media links", included: true, benefit: "Link Instagram, TikTok, Pinterest" },
-        ],
-      },
-      {
-        category: "Tax & Finance",
-        items: [
-          { name: "Income & expense tracking", included: true, benefit: "Log all business income and expenses" },
-          { name: "Auto-calculated taxes", included: true, benefit: "UK self-employment tax calculations" },
-          { name: "Invoice storage", included: true, benefit: "Upload and organize business invoices" },
-          { name: "Quarterly tax planning", included: true, benefit: "See Self-Assessment payment schedules" },
+          { name: "Client database", included: true, benefit: "Complete record of every client and their visits" },
+          { name: "Staff accounts & management", included: true, benefit: "Add stylists with their own dashboard logins" },
+          { name: "WhatsApp support button", included: true, benefit: "One-tap WhatsApp contact from your dashboard" },
+          { name: "Social media links", included: true, benefit: "Link Instagram, TikTok, Facebook on your site" },
         ],
       },
     ],
@@ -128,48 +112,39 @@ const BUSINESS_FEATURES = {
     bgColor: "#f5e8e3",
     features: [
       {
-        category: "Booking & Quotes",
+        category: "Booking & Projects",
         items: [
-          { name: "Online booking", included: true, benefit: "Clients book consultations 24/7" },
-          { name: "Quote management", included: true, benefit: "Create and manage project quotes" },
-          { name: "Project tracking", included: true, benefit: "Track projects from quote to completion" },
-          { name: "Day planner", included: true, benefit: "Plan your site visits and projects" },
+          { name: "Online booking", included: true, benefit: "Clients book consultations and site visits 24/7" },
+          { name: "Quote generator with shareable link", included: true, benefit: "Build and send professional quotes — clients view online" },
+          { name: "Colour approval tool", included: true, benefit: "Send colour palettes for client sign-off via link" },
+          { name: "Day planner", included: true, benefit: "Schedule site visits and jobs with a daily timeline" },
         ],
       },
       {
         category: "Payments & Money",
         items: [
-          { name: "Online payments (Stripe)", included: true, benefit: "Accept deposits online" },
-          { name: "Deposits & staged payments", included: true, benefit: "Collect upfront and milestone payments" },
-          { name: "Financial dashboard", included: true, benefit: "Track income and project costs" },
-          { name: "Invoice generation", included: true, benefit: "Professional invoices for clients" },
+          { name: "Online payments (Stripe)", included: true, benefit: "Accept deposits and milestone payments online" },
+          { name: "Deposits & staged payments", included: true, benefit: "Collect upfront and phase payments per project" },
+          { name: "Financial dashboard", included: true, benefit: "All project income tracked in one place" },
+          { name: "Invoice generation", included: true, benefit: "Professional PDF invoices for every project" },
         ],
       },
       {
         category: "Website & Portfolio",
         items: [
-          { name: "Custom branded website", included: true, benefit: "Your own business site with branding" },
-          { name: "Custom domain", included: true, benefit: "Own domain (decorator.com) or use yours" },
-          { name: "Portfolio gallery", included: true, benefit: "Showcase completed projects" },
-          { name: "Colour customisation", included: true, benefit: "Full control over site colours" },
+          { name: "Custom branded website", included: true, benefit: "Your own decorator site with logo and brand colours" },
+          { name: "Portfolio gallery", included: true, benefit: "Showcase completed rooms and projects" },
+          { name: "Reviews page", included: true, benefit: "Collect and display verified client reviews" },
+          { name: "Social media links", included: true, benefit: "Link Instagram, Pinterest, Facebook on your site" },
         ],
       },
       {
         category: "Business Tools",
         items: [
-          { name: "Client database", included: true, benefit: "Store client details and preferences" },
-          { name: "Project management", included: true, benefit: "Manage multiple projects simultaneously" },
-          { name: "Review management", included: true, benefit: "Display client testimonials" },
-          { name: "Social media links", included: true, benefit: "Link Instagram, Pinterest, Facebook" },
-        ],
-      },
-      {
-        category: "Tax & Finance",
-        items: [
-          { name: "Income & expense tracking", included: true, benefit: "Log all business income and expenses" },
-          { name: "Auto-calculated taxes", included: true, benefit: "UK self-employment tax calculations" },
-          { name: "Invoice storage", included: true, benefit: "Upload and organize business invoices" },
-          { name: "Quarterly tax planning", included: true, benefit: "See Self-Assessment payment schedules" },
+          { name: "Client database", included: true, benefit: "Full project history per client" },
+          { name: "Multiple project management", included: true, benefit: "Manage quotes and jobs for multiple clients at once" },
+          { name: "WhatsApp support button", included: true, benefit: "One-tap WhatsApp contact from your dashboard" },
+          { name: "Automated email notifications", included: true, benefit: "Booking and cancellation emails sent automatically" },
         ],
       },
     ],
@@ -183,46 +158,37 @@ const BUSINESS_FEATURES = {
       {
         category: "Client Management",
         items: [
-          { name: "Client profiles", included: true, benefit: "Complete client records in one place" },
-          { name: "Real-time chat", included: true, benefit: "Message clients within the app" },
-          { name: "WhatsApp integration", included: true, benefit: "Direct link to client WhatsApp" },
-          { name: "Voice consultations", included: true, benefit: "Record and transcribe session notes" },
+          { name: "Client profiles & portal", included: true, benefit: "Each client has their own private portal with forms and plans" },
+          { name: "PAR-Q & check-in forms", included: true, benefit: "Digital health screening and check-in forms per client" },
+          { name: "Food diary tracking", included: true, benefit: "Clients log daily food intake, you review it in the dashboard" },
+          { name: "Voice consultation notes", included: true, benefit: "Record voice notes from sessions, auto-transcribed" },
         ],
       },
       {
         category: "Training Programs",
         items: [
-          { name: "Workout plans", included: true, benefit: "Create custom workout routines" },
-          { name: "Exercise library", included: true, benefit: "500+ exercises with demo videos" },
-          { name: "Progress tracking", included: true, benefit: "Charts show client progress over time" },
-          { name: "Activity logging", included: true, benefit: "Clients log workouts and track activity" },
+          { name: "Workout plan builder", included: true, benefit: "Create fully custom workout plans per client" },
+          { name: "Shareable workout links", included: true, benefit: "Clients view their plans on any device without an app" },
+          { name: "Progress & activity tracking", included: true, benefit: "Log and chart client progress over time" },
+          { name: "Schedule management", included: true, benefit: "Manage session schedules per client from the dashboard" },
         ],
       },
       {
         category: "Nutrition & Coaching",
         items: [
-          { name: "Nutrition planning", included: true, benefit: "Build meal plans with 1000+ foods" },
-          { name: "Automated reminders", included: true, benefit: "Send monthly check-ins & reminders" },
-          { name: "Client forms", included: true, benefit: "PAR-Q forms, check-ins, assessments" },
-          { name: "Food generator", included: true, benefit: "AI meal plan suggestions" },
+          { name: "Food generator", included: true, benefit: "Generate personalised meal plans from a curated food database" },
+          { name: "Nutrition planning", included: true, benefit: "Build macro-tracked meal plans for clients" },
+          { name: "Automated email reminders", included: true, benefit: "Send check-in reminders and session confirmations" },
+          { name: "Consultation notes", included: true, benefit: "Store and review consultation history per client" },
         ],
       },
       {
         category: "Website & Business",
         items: [
-          { name: "Custom branded website", included: true, benefit: "Your own PT coaching site" },
-          { name: "Online booking", included: true, benefit: "Clients book sessions directly" },
-          { name: "Custom domain", included: true, benefit: "Own domain (yourtraining.com)" },
-          { name: "Payments (Stripe)", included: true, benefit: "Accept online payments for sessions" },
-        ],
-      },
-      {
-        category: "Tax & Finance",
-        items: [
-          { name: "Income & expense tracking", included: true, benefit: "Log all business income and expenses" },
-          { name: "Auto-calculated taxes", included: true, benefit: "UK self-employment tax calculations" },
-          { name: "Invoice storage", included: true, benefit: "Upload and organize business invoices" },
-          { name: "Quarterly tax planning", included: true, benefit: "See Self-Assessment payment schedules" },
+          { name: "Custom PT booking site", included: true, benefit: "Your own site where clients book sessions directly" },
+          { name: "Online payments (Stripe)", included: true, benefit: "Accept session payments online at point of booking" },
+          { name: "Reviews page", included: true, benefit: "Collect and display verified client testimonials" },
+          { name: "WhatsApp support button", included: true, benefit: "One-tap WhatsApp contact from your dashboard" },
         ],
       },
     ],
@@ -230,6 +196,8 @@ const BUSINESS_FEATURES = {
 };
 
 export default function FeatureComparisonModal({ open, onClose }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [selectedType, setSelectedType] = React.useState("barber");
   const businessTypes = ["barber", "hairdresser", "decorator", "trainer"];
   const currentBusiness = BUSINESS_FEATURES[selectedType];
@@ -244,9 +212,10 @@ export default function FeatureComparisonModal({ open, onClose }) {
       onClose={onClose}
       maxWidth="lg"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
-          borderRadius: 3,
+          borderRadius: isMobile ? 0 : 3,
           bgcolor: "#f8f9fa",
         },
       }}
@@ -254,7 +223,7 @@ export default function FeatureComparisonModal({ open, onClose }) {
       <DialogTitle
         sx={{
           fontFamily: "'Playfair Display', serif",
-          fontSize: "1.75rem",
+          fontSize: { xs: "1.15rem", sm: "1.75rem" },
           fontWeight: 800,
           bgcolor: currentBusiness.bgColor,
           borderBottom: "1px solid #e0e0e0",
@@ -269,11 +238,16 @@ export default function FeatureComparisonModal({ open, onClose }) {
           <Tabs
             value={businessTypes.indexOf(selectedType)}
             onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{
               borderBottom: "2px solid #e0e0e0",
               "& .MuiTab-root": {
                 fontWeight: 600,
-                fontSize: "0.95rem",
+                fontSize: { xs: "0.8rem", sm: "0.95rem" },
+                minWidth: { xs: "auto", sm: 90 },
+                px: { xs: 1.5, sm: 2 },
                 "&.Mui-selected": {
                   color: currentBusiness.color,
                 },
@@ -381,13 +355,13 @@ export default function FeatureComparisonModal({ open, onClose }) {
           </Typography>
           <Grid container spacing={2}>
             {[
-              "📱 Custom branded website with your domain",
-              "💳 Online payments with Stripe integration",
-              "📅 Professional booking calendar",
-              "📊 Business dashboard & analytics",
-              "👥 Client management system",
-              "✉️ Automated email reminders",
-              "📈 Mobile-friendly for your clients",
+              "📱 Custom branded website with your own domain",
+              "💳 Online payments via Stripe — no extra setup",
+              "📅 Professional booking system & calendar",
+              "📊 Business dashboard with income tracking",
+              "👥 Full client management & history",
+              "✉️ Automated email reminders & notifications",
+              "💬 WhatsApp support button in your dashboard",
             ].map((benefit, idx) => (
               <Grid item xs={12} sm={6} key={idx}>
                 <Typography variant="body2" sx={{ color: "#1a1a1a" }}>

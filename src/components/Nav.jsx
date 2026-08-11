@@ -22,7 +22,7 @@ export default function HomeNav() {
   const [pricingOpen, setPricingOpen] = useState(false);
 
   const logoPath = "/images/IMG_9763-removebg-preview.png";
-  const platformName = "Bookrty";
+  const platformName = "Bookrightly";
   const brandColor = "#C9A84C";
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);

@@ -1,41 +1,43 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  AppBar, Toolbar, Typography, Box, IconButton, 
-  Menu, MenuItem, Avatar, Button, Container, Divider 
+import {
+  AppBar, Toolbar, Typography, Box, IconButton,
+  Menu, MenuItem, Avatar, Button, Container, Divider, Drawer, List, ListItem
 } from "@mui/material";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 import { useAuth } from "../context/AuthContext";
 import { auth } from "../firebase/config";
 import { signOut } from "firebase/auth";
 
-function contrastColor(hex) {
-  if (!hex || !hex.startsWith("#")) return "#111111";
-  const r = parseInt(hex.slice(1, 3), 16) || 0;
-  const g = parseInt(hex.slice(3, 5), 16) || 0;
-  const b = parseInt(hex.slice(5, 7), 16) || 0;
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? "#111111" : "#ffffff";
-}
+const NAV_LINKS = [
+  { label: "Our Team", id: "barber-section" },
+  { label: "About",    id: "about" },
+  { label: "Find Us",  id: "find-us" },
+  { label: "Reviews",  id: "reviews" },
+];
 
 export default function TenantNav({ tenant }) {
   const { barber } = useAuth();
   const navigate = useNavigate();
   const [anchor, setAnchor] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const brandColor  = tenant?.brandColor  || "#C9A84C";
-  const navBg       = tenant?.navBgColor  || "#ffffff";
-  const navText     = contrastColor(navBg);
+  const brandColor   = tenant?.brandColor  || "#C9A84C";
   const businessName = (tenant?.businessName || "PREMIUM BARBER SHOP").toUpperCase();
-  const logo = tenant?.businessLogo || tenant?.logoUrl;
+  const logo         = tenant?.businessLogo || tenant?.logoUrl;
+  const shopRouteId  = tenant?.shopId || tenant?.id || tenant?.uid;
 
-  const getShopRedirectId = () => {
-    return tenant?.shopId || tenant?.id || tenant?.uid;
-  };
-
-  const shopRouteId = getShopRedirectId();
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   async function handleSignOut() {
     try {
@@ -47,188 +49,223 @@ export default function TenantNav({ tenant }) {
     }
   }
 
-  const scrollToBarbers = () => {
-    const section = document.getElementById("barber-section");
-    if (section) {
-      section.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      navigate(`/shop/${shopRouteId}`);
-    }
+  const scrollTo = (id) => {
+    setDrawerOpen(false);
+    setTimeout(() => {
+      const section = document.getElementById(id);
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        navigate(`/shop/${shopRouteId}`);
+      }
+    }, drawerOpen ? 300 : 0);
   };
 
   return (
-    <AppBar
-      position="sticky"
-      elevation={0}
-      sx={{
-        bgcolor: navBg,
-        backdropFilter: "blur(15px) saturate(160%)",
-        borderBottom: `1px solid ${navText === "#111111" ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"}`,
-        color: navText,
-        zIndex: (theme) => theme.zIndex.drawer + 1,
-        transition: "all 0.3s ease"
-      }}
-    >
-      <Container maxWidth="xl">
-        <Toolbar disableGutters sx={{ justifyContent: "space-between", height: { xs: 80, sm: 100 } }}>
-          
-          <Box 
-            component={Link} 
-            to={`/shop/${shopRouteId}`} 
-            sx={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: 2, 
-              textDecoration: "none", 
-              color: "inherit",
-              "&:hover": { opacity: 0.8 }
-            }}
-          >
-            {logo ? (
-              <Avatar 
-                src={logo} 
-                variant="square"
-                // imgProps ensures the underlying <img> tag scales correctly
-                imgProps={{
-                  style: { 
-                    objectFit: 'cover',
-                    width: '100%',
-                    height: '100%'
-                  }
-                }}
-                sx={{ 
-                  width: { xs: 50, sm: 65 }, // Increased size significantly
-                  height: { xs: 50, sm: 65 }, 
-                  borderRadius: '4px',
-                  border: `1px solid ${brandColor}33`, // Subtle border
-                  bgcolor: 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }} 
-              />
-            ) : (
-              <Box 
-                sx={{ 
-                  width: { xs: 50, sm: 60 }, 
-                  height: { xs: 50, sm: 60 }, 
-                  borderRadius: '4px', 
-                  bgcolor: "#111", 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  color: brandColor
-                }}
-              >
-                <ContentCutIcon sx={{ fontSize: { xs: 28, sm: 32 } }} />
-              </Box>
-            )}
-            
-            <Box>
+    <>
+      <AppBar
+        position="fixed"
+        elevation={0}
+        sx={{
+          bgcolor: scrolled ? "rgba(10,10,10,0.96)" : "transparent",
+          backdropFilter: scrolled ? "blur(20px)" : "none",
+          borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "none",
+          transition: "background-color 0.35s ease, backdrop-filter 0.35s ease, border-color 0.35s ease",
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+      >
+        <Container maxWidth="xl">
+          <Toolbar disableGutters sx={{ justifyContent: "space-between", height: 68 }}>
+
+            {/* Logo / name */}
+            <Box
+              component={Link}
+              to={`/shop/${shopRouteId}`}
+              sx={{ display: "flex", alignItems: "center", gap: 1.5, textDecoration: "none", color: "inherit", "&:hover": { opacity: 0.8 } }}
+            >
+              {logo ? (
+                <Avatar
+                  src={logo}
+                  alt={businessName}
+                  variant="square"
+                  sx={{ width: 38, height: 38, borderRadius: "4px", bgcolor: "transparent", border: `1px solid rgba(255,255,255,0.15)` }}
+                  imgProps={{ style: { objectFit: "cover", width: "100%", height: "100%" } }}
+                />
+              ) : (
+                <Box sx={{ width: 38, height: 38, borderRadius: "4px", bgcolor: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: brandColor }}>
+                  <ContentCutIcon sx={{ fontSize: 20 }} />
+                </Box>
+              )}
               <Typography
-                variant="h6"
                 sx={{
-                  fontWeight: 1000,
-                  letterSpacing: "-0.5px",
-                  lineHeight: 1.1,
-                  fontSize: { xs: '1rem', sm: '1.4rem' },
-                  fontFamily: "'Playfair Display', serif",
-                  color: navText,
+                  fontWeight: 700, letterSpacing: "0.12em", fontSize: "0.8rem",
+                  fontFamily: "'Playfair Display', serif", color: "#fff",
+                  display: { xs: "none", sm: "block" },
                 }}
               >
                 {businessName}
               </Typography>
             </Box>
-          </Box>
 
-          <Box display="flex" alignItems="center" gap={2}>
-            {barber ? (
-              <>
-                <Button
-                  component={Link}
-                  to="/dashboard"
-                  variant="text"
+            {/* Nav links — desktop centre */}
+            <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 4 }}>
+              {NAV_LINKS.map(({ label, id }) => (
+                <Typography
+                  key={id}
+                  onClick={() => scrollTo(id)}
                   sx={{
-                    color: navText,
-                    fontWeight: 900,
-                    fontSize: '0.75rem',
-                    letterSpacing: '1px',
-                    display: { xs: 'none', md: 'inline-flex' },
-                    "&:hover": { bgcolor: "transparent", color: brandColor }
+                    cursor: "pointer", fontSize: "0.72rem", fontWeight: 700,
+                    letterSpacing: "0.12em", textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.88)",
+                    transition: "color 0.2s",
+                    "&:hover": { color: "#fff" },
                   }}
                 >
-                  DASHBOARD
-                </Button>
+                  {label}
+                </Typography>
+              ))}
+            </Box>
 
-                <IconButton 
-                  onClick={(e) => setAnchor(e.currentTarget)}
-                  sx={{ p: 0.5, border: `1px solid rgba(0,0,0,0.1)` }}
-                >
-                  <Avatar 
-                    src={barber.profilePic} 
-                    sx={{ width: 42, height: 42, bgcolor: brandColor, fontSize: '0.9rem', fontWeight: 900 }}
+            {/* Right side */}
+            <Box display="flex" alignItems="center" gap={1.5}>
+              {barber ? (
+                <>
+                  <Button
+                    component={Link}
+                    to="/dashboard"
+                    sx={{
+                      color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: "0.7rem",
+                      letterSpacing: "0.12em", display: { xs: "none", md: "inline-flex" },
+                      "&:hover": { color: brandColor, bgcolor: "transparent" },
+                    }}
                   >
-                    {barber.name?.[0] || barber.displayName?.[0]}
-                  </Avatar>
-                </IconButton>
+                    DASHBOARD
+                  </Button>
 
-                <Menu 
-                  anchorEl={anchor} 
-                  open={Boolean(anchor)} 
-                  onClose={() => setAnchor(null)}
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                  PaperProps={{
-                    sx: { 
-                      mt: 1.5, 
-                      borderRadius: '4px', 
-                      minWidth: 220, 
-                      border: '1px solid #eee',
-                      boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
-                    }
+                  <IconButton onClick={(e) => setAnchor(e.currentTarget)} sx={{ p: 0.5 }}>
+                    <Avatar
+                      src={barber.profilePic}
+                      sx={{ width: 36, height: 36, bgcolor: brandColor, fontSize: "0.85rem", fontWeight: 700 }}
+                    >
+                      {barber.name?.[0] || barber.displayName?.[0]}
+                    </Avatar>
+                  </IconButton>
+
+                  <Menu
+                    anchorEl={anchor}
+                    open={Boolean(anchor)}
+                    onClose={() => setAnchor(null)}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    transformOrigin={{ vertical: "top", horizontal: "right" }}
+                    PaperProps={{
+                      sx: { mt: 1.5, borderRadius: "4px", minWidth: 200, border: "1px solid #222", bgcolor: "#111", boxShadow: "0 10px 40px rgba(0,0,0,0.5)" }
+                    }}
+                  >
+                    <Box sx={{ px: 2, py: 1.5 }}>
+                      <Typography variant="subtitle2" fontWeight={700} sx={{ color: "#fff" }}>
+                        {barber.name || barber.displayName}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.4)" }}>
+                        {barber.role === "admin" ? "Shop Owner" : "Staff Member"}
+                      </Typography>
+                    </Box>
+                    <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
+                    <MenuItem component={Link} to="/dashboard" sx={{ fontSize: "0.82rem", fontWeight: 600, py: 1.5, color: "#fff", "&:hover": { bgcolor: "rgba(255,255,255,0.06)" } }}>
+                      <DashboardIcon sx={{ mr: 1.5, fontSize: 16 }} /> Dashboard
+                    </MenuItem>
+                    <MenuItem onClick={handleSignOut} sx={{ fontSize: "0.82rem", fontWeight: 600, py: 1.5, color: "#e57373", "&:hover": { bgcolor: "rgba(255,255,255,0.06)" } }}>
+                      <LogoutIcon sx={{ mr: 1.5, fontSize: 16 }} /> Logout
+                    </MenuItem>
+                  </Menu>
+                </>
+              ) : (
+                <Button
+                  onClick={() => scrollTo("barber-section")}
+                  startIcon={<CalendarMonthIcon sx={{ fontSize: 15 }} />}
+                  sx={{
+                    bgcolor: "#fff", color: "#111", fontWeight: 800,
+                    borderRadius: "2px", px: { xs: 2, sm: 3 }, py: 0.9,
+                    fontSize: "0.7rem", letterSpacing: "0.12em",
+                    boxShadow: "none",
+                    "&:hover": { bgcolor: brandColor, boxShadow: "none" },
+                    display: { xs: "none", md: "inline-flex" },
                   }}
                 >
-                  <Box sx={{ px: 2, py: 1.5 }}>
-                    <Typography variant="subtitle2" fontWeight={900} sx={{ color: navText }}>
-                      {barber.name || barber.displayName}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {barber.role === 'admin' ? 'Shop Owner' : 'Staff Member'}
-                    </Typography>
-                  </Box>
-                  <Divider />
-                  <MenuItem component={Link} to="/dashboard" sx={{ fontSize: '0.85rem', fontWeight: 700, py: 1.5 }}>
-                    <DashboardIcon sx={{ mr: 1.5, fontSize: 18 }} /> Dashboard
-                  </MenuItem>
-                  <MenuItem onClick={handleSignOut} sx={{ fontSize: '0.85rem', fontWeight: 700, py: 1.5, color: 'error.main' }}>
-                    <LogoutIcon sx={{ mr: 1.5, fontSize: 18 }} /> Logout
-                  </MenuItem>
-                </Menu>
-              </>
-            ) : (
-              <Button
-                variant="contained"
-                onClick={scrollToBarbers}
-                startIcon={<CalendarMonthIcon sx={{ fontSize: 18 }} />}
-                sx={{
-                  bgcolor: "#111",
-                  color: "#fff",
-                  fontWeight: 900,
-                  borderRadius: "2px",
-                  px: { xs: 2, sm: 4 },
-                  py: 1.2,
-                  fontSize: '0.75rem',
-                  letterSpacing: '1px',
-                  boxShadow: 'none',
-                  "&:hover": { bgcolor: brandColor, boxShadow: 'none' }
-                }}
+                  BOOK NOW
+                </Button>
+              )}
+
+              {/* Hamburger — mobile only */}
+              <IconButton
+                aria-label="Open navigation menu"
+                onClick={() => setDrawerOpen(true)}
+                sx={{ display: { xs: "flex", md: "none" }, color: "#fff", p: 1 }}
               >
-                BOOK NOW
-              </Button>
-            )}
+                <MenuIcon />
+              </IconButton>
+            </Box>
+          </Toolbar>
+        </Container>
+      </AppBar>
+
+      {/* Mobile drawer */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        PaperProps={{
+          sx: { width: "75vw", maxWidth: 300, bgcolor: "#0a0a0a", border: "none" }
+        }}
+      >
+        <Box sx={{ p: 2.5 }}>
+          {/* Close + brand */}
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
+            <Typography sx={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: "0.85rem", letterSpacing: "0.1em", color: "#fff" }}>
+              {businessName}
+            </Typography>
+            <IconButton aria-label="Close navigation menu" onClick={() => setDrawerOpen(false)} sx={{ color: "rgba(255,255,255,0.5)", p: 0.5 }}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </Box>
-        </Toolbar>
-      </Container>
-    </AppBar>
+
+          {/* Links */}
+          <List disablePadding>
+            {NAV_LINKS.map(({ label, id }) => (
+              <ListItem key={id} disablePadding sx={{ mb: 0.5 }}>
+                <Box
+                  onClick={() => scrollTo(id)}
+                  sx={{
+                    width: "100%", py: 1.5, px: 1,
+                    cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.15em",
+                    textTransform: "uppercase", color: "rgba(255,255,255,0.7)",
+                    transition: "color 0.2s",
+                    "&:hover": { color: "#fff" },
+                  }}
+                >
+                  {label}
+                </Box>
+              </ListItem>
+            ))}
+          </List>
+
+          {/* Book Now */}
+          {!barber && (
+            <Button
+              onClick={() => scrollTo("barber-section")}
+              startIcon={<CalendarMonthIcon sx={{ fontSize: 15 }} />}
+              fullWidth
+              sx={{
+                mt: 4, bgcolor: "#fff", color: "#111", fontWeight: 800,
+                borderRadius: "2px", py: 1.4, fontSize: "0.75rem", letterSpacing: "0.12em",
+                boxShadow: "none", "&:hover": { bgcolor: brandColor, boxShadow: "none" },
+              }}
+            >
+              BOOK NOW
+            </Button>
+          )}
+        </Box>
+      </Drawer>
+    </>
   );
 }

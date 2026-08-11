@@ -43,7 +43,7 @@ export async function onRequestPost(context) {
       });
     }
 
-    const platformName = "Bookrty";
+    const platformName = "Bookrightly";
     const displayBrand = businessName || platformName;
     const displayColor = brandColor || "#C9A84C";
 
@@ -61,6 +61,40 @@ export async function onRequestPost(context) {
 
     const ref = bookingId.slice(-8).toUpperCase();
 
+    // Build ICS calendar event for client
+    const parseDateTime = (dateStr, timeStr) => {
+      try {
+        const [y, m, d] = (dateStr || "").split(/[-/]/).map(Number);
+        const timeParts = (timeStr || "09:00").replace(/[ap]m/i, "").trim().split(":");
+        let h = Number(timeParts[0]);
+        let min = Number(timeParts[1] || 0);
+        if (/pm/i.test(timeStr) && h < 12) h += 12;
+        if (/am/i.test(timeStr) && h === 12) h = 0;
+        return new Date(y, (m || 1) - 1, d || 1, h, min);
+      } catch { return new Date(); }
+    };
+    const dtStart = parseDateTime(finalDate, finalTime);
+    const dtEnd   = new Date(dtStart.getTime() + 60 * 60_000);
+    const fmtICS  = d => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    const icsContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Bookrightly//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:REQUEST",
+      "BEGIN:VEVENT",
+      `UID:${bookingId}@bookrightly.co.uk`,
+      `DTSTAMP:${fmtICS(new Date())}`,
+      `DTSTART:${fmtICS(dtStart)}`,
+      `DTEND:${fmtICS(dtEnd)}`,
+      `SUMMARY:${haircutStyle || "Appointment"} with ${barberName}`,
+      `DESCRIPTION:Booking ref: ${ref}\\nService: ${haircutStyle || "Appointment"}\\nDeposit paid: ${totalPaid ? "£" + totalPaid : "N/A"}`,
+      address ? `LOCATION:${address}` : "",
+      "STATUS:CONFIRMED",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].filter(Boolean).join("\r\n");
+
     // Recipients logic
     const recipients = [clientEmail];
     if (barberEmail && barberEmail !== clientEmail) {
@@ -71,6 +105,13 @@ export async function onRequestPost(context) {
       from: `${displayBrand} <bookings@bookehtrim.co.uk>`,
       to: recipients,
       subject: `Confirmed: Your appointment with ${barberName} on ${finalDate}`,
+      attachments: [
+        {
+          filename: "appointment.ics",
+          content: Buffer.from(icsContent).toString("base64"),
+          contentType: "text/calendar; charset=utf-8; method=REQUEST",
+        },
+      ],
       html: `
         <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #eee; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
 
@@ -159,6 +200,20 @@ export async function onRequestPost(context) {
                 <li>To receive a full refund of your deposit, cancellations must be made at least <strong>24 hours in advance</strong>.</li>
                 <li>Late cancellations and no-shows are <strong>non-refundable</strong>.</li>
               </ul>
+            </div>
+
+            <!-- Add to Calendar buttons -->
+            <div style="background: #f9fafb; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+              <p style="margin: 0 0 14px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #999; font-weight: 700;">Add to your calendar</p>
+              <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent((haircutStyle || "Appointment") + " with " + barberName)}&dates=${fmtICS(dtStart)}/${fmtICS(dtEnd)}&details=${encodeURIComponent("Booking ref: " + ref)}&location=${encodeURIComponent(address || "")}" target="_blank" style="display:inline-block;background:#4285F4;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;">
+                  Google Calendar
+                </a>
+                <a href="https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent((haircutStyle || "Appointment") + " with " + barberName)}&startdt=${dtStart.toISOString()}&enddt=${dtEnd.toISOString()}&body=${encodeURIComponent("Booking ref: " + ref)}&location=${encodeURIComponent(address || "")}" target="_blank" style="display:inline-block;background:#0078D4;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;">
+                  Outlook
+                </a>
+              </div>
+              <p style="margin: 12px 0 0; font-size: 11px; color: #bbb;">Or open the .ics attachment to add to Apple Calendar or any other app.</p>
             </div>
 
             <div style="text-align: center; margin-top: 32px;">

@@ -287,13 +287,15 @@ export default function ConsultationTab({ trainerId, clientId, clientName }) {
                           month: "short",
                           day: "numeric",
                         })}
-                        {consultation.duration && (
+                        {consultation.duration != null && (
                           <Typography
                             component="span"
                             variant="body2"
                             sx={{ ml: 1 }}
                           >
-                            • {consultation.duration} min
+                            • {consultation.duration < 60
+                              ? `${consultation.duration}s`
+                              : `${Math.round(consultation.duration / 60)} min`}
                           </Typography>
                         )}
                       </Typography>
@@ -360,6 +362,8 @@ export default function ConsultationTab({ trainerId, clientId, clientName }) {
         open={recorderOpen}
         onClose={() => setRecorderOpen(false)}
         onSave={handleRecorderSave}
+        trainerId={trainerId}
+        clientId={clientId}
       />
     </Box>
   );

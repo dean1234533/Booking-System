@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Box, Typography, Button, CircularProgress, Paper, Alert } from "@mui/material";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { getBooking, cancelBooking } from "../firebase/firestore";
+import { getBooking, cancelBooking, createNotification } from "../firebase/firestore";
 import { db } from "../firebase/config"; 
 import { doc, getDoc } from "firebase/firestore";
 
@@ -95,32 +95,16 @@ export default function CancelBooking() {
           .catch((err) => console.error("Refund endpoint error:", err));
         }
         
-        // 5. NOTIFICATION - SEND CANCELLATION EMAIL
-        if (barberData && barberData.email) {
-          fetch('/api/send-cancel-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              barberEmail: barberData.email,
-              barberName: barberData.name || "The Barber",
-              businessName: barberData.businessName,
-              brandColor: barberData.brandColor,
-              clientName: booking.name || booking.customerName || "Customer",
-              clientEmail: booking.email || booking.customerEmail,
-              clientPhone: booking.phone || booking.customerPhone,
-              serviceName: booking.haircutStyle || booking.serviceName,
-              bookingId: booking.id,
-              date: dateVal, 
-              time: timeVal,
-              depositAmount: booking.depositAmount,
-              bookingFee: booking.bookingFee,
-              address: barberData.address,
-              notes: booking.notes || booking.additionalInfo
-            })
-          })
-          .then(res => res.json())
-          .then(() => {})
-          .catch(err => console.warn("Email notification failed", err));
+        // 5. NOTIFICATION
+        if (bId) {
+          const clientName = booking.name || booking.customerName || "Customer";
+          const serviceName = booking.haircutStyle || booking.serviceName || "appointment";
+          createNotification(bId, {
+            type:  "cancellation",
+            title: "Booking Cancelled",
+            body:  `${clientName} cancelled their ${serviceName} on ${dateVal} at ${timeVal}`,
+            data:  { bookingId: booking.id, clientName, serviceName, date: dateVal, time: timeVal },
+          });
         }
 
         if (mounted) setStatus("success");

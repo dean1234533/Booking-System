@@ -27,12 +27,12 @@ export default function PayTab({
         bgcolor: "rgba(76,175,80,0.12)", border: "1px solid rgba(76,175,80,0.3)",
         display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap",
       }}>
-        <NfcIcon sx={{ color: "#7ae8a0" }} />
+        <NfcIcon sx={{ color: "#2e7d32" }} />
         <Box flex={1}>
-          <Typography variant="subtitle2" fontWeight={800} color="#7ae8a0">
+          <Typography variant="subtitle2" fontWeight={800} color="#2e7d32">
             In-Person Payments via Stripe — 1% platform fee + Stripe's ~1.5% + 10p · No hardware needed
           </Typography>
-          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)" }}>
+          <Typography variant="caption" sx={{ color: "rgba(0,0,0,0.6)" }}>
             Customer scans the QR code and pays with Apple Pay, Google Pay, or card on their phone. Lower rate than online bookings (2.5%) since you're face-to-face.
           </Typography>
         </Box>
@@ -106,7 +106,7 @@ export default function PayTab({
               startIcon={terminalStatus === "loading"
                 ? <CircularProgress size={20} color="inherit" />
                 : <NfcIcon />}
-              sx={{ bgcolor: "#1A1A1A", py: 1.5, fontSize: 16, fontWeight: 800, borderRadius: 2, "&:hover": { bgcolor: "#333" } }}>
+              sx={{ bgcolor: brandColor, color: "#111", py: 1.5, fontSize: 16, fontWeight: 800, borderRadius: 2, boxShadow: "none", "&:hover": { bgcolor: brandColor, filter: "brightness(0.92)", boxShadow: "none" } }}>
               {terminalStatus === "loading"
                 ? "Creating charge…"
                 : `Charge £${terminalAmount ? Number(terminalAmount).toFixed(2) : "0.00"}`}
@@ -194,10 +194,10 @@ export default function PayTab({
               justifyContent: "center", gap: 1.5,
             }}>
               <Box sx={{ p: 2.5, borderRadius: "50%", bgcolor: "rgba(76,175,80,0.25)" }}>
-                <CheckCircleIcon sx={{ fontSize: 56, color: "#7ae8a0" }} />
+                <CheckCircleIcon sx={{ fontSize: 56, color: "#2e7d32" }} />
               </Box>
-              <Typography variant="h6" fontWeight={800} color="#7ae8a0">Payment Received!</Typography>
-              <Typography variant="h3" fontWeight={900} sx={{ color: "#fff" }}>
+              <Typography variant="h6" fontWeight={800} color="#2e7d32">Payment Received!</Typography>
+              <Typography variant="h3" fontWeight={900} sx={{ color: "#1a1a1a" }}>
                 £{Number(terminalAmount).toFixed(2)}
               </Typography>
               {terminalService && (
@@ -206,7 +206,7 @@ export default function PayTab({
               {terminalNote && !terminalService && (
                 <Typography variant="body2" color="text.secondary">{terminalNote}</Typography>
               )}
-              <Button variant="contained" sx={{ mt: 2, bgcolor: "#1A1A1A", borderRadius: 2, fontWeight: 800 }}
+              <Button variant="contained" sx={{ mt: 2, bgcolor: brandColor, color: "#111", borderRadius: 2, fontWeight: 800, boxShadow: "none", "&:hover": { bgcolor: brandColor, filter: "brightness(0.92)", boxShadow: "none" } }}
                 startIcon={<NfcIcon />} onClick={handleResetTerminal}>
                 New Charge
               </Button>
@@ -216,8 +216,8 @@ export default function PayTab({
       </Grid>
 
       {/* How it works */}
-      <Paper sx={{ p: 2.5, borderRadius: 3, mt: 3, bgcolor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
-        <Typography variant="subtitle2" fontWeight={800} mb={1.5} sx={{ color: "#fff" }}>How it works</Typography>
+      <Paper sx={{ p: 2.5, borderRadius: 3, mt: 3, bgcolor: "#F6F7F9", border: "1px solid #ececf0" }}>
+        <Typography variant="subtitle2" fontWeight={800} mb={1.5} sx={{ color: "#1a1a1a" }}>How it works</Typography>
         <Grid container spacing={2}>
           {[
             ["1️⃣", "Enter amount or pick a service"],

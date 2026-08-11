@@ -3,12 +3,13 @@ import ReactDOM from "react-dom/client";
 import './styles/index.css';
 import App from "./App.jsx";
 
-// When a newly-deployed service worker takes control, reload once so the latest
-// build shows immediately instead of waiting for a manual refresh.
+// Reload when a *new* SW takes control (update), but not on the very first install.
+// skipWaiting+clientsClaim would otherwise cause a double-load on every fresh visit.
 if ("serviceWorker" in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
   let reloaded = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloaded) return;
+    if (!hadController || reloaded) return;
     reloaded = true;
     window.location.reload();
   });

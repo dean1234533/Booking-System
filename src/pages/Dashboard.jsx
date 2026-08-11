@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
-  Box, Snackbar, CircularProgress, Typography,
-  useMediaQuery, useTheme, ThemeProvider, createTheme
+  Box, Snackbar, CircularProgress, Typography, Button, Paper,
+  useMediaQuery, useTheme, ThemeProvider, createTheme, Badge,
 } from "@mui/material";
+import LockIcon from "@mui/icons-material/Lock";
 import {
   AccessTime as AccessTimeIcon,
   Store as StoreIcon,
@@ -13,19 +14,16 @@ import {
   Nfc as NfcIcon,
   Language as LanguageIcon,
   AutoAwesome as AutoAwesomeIcon,
+  Extension as ExtensionIcon,
   People as PeopleIcon,
-  FitnessCenter as FitnessCenterIcon,
-  RestaurantMenu as RestaurantMenuIcon,
-  TrendingUp as TrendingUpIcon,
-  Assignment as AssignmentIcon,
   ColorLens as ColorLensIcon,
   RequestQuote as RequestQuoteIcon,
   Today as TodayIcon,
   ContentCut as ContentCutIcon,
   NotificationsActive as NotificationsActiveIcon,
   ReceiptLong as ReceiptLongIcon,
-  Calculate as CalculateIcon,
   Reviews as ReviewsIcon,
+  Edit as EditIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -41,7 +39,7 @@ import { getBarberEmail, getStoredFee } from "../utils/bookingHelpers";
 
 import {
   collection, getDocs, doc, query, where,
-  getDoc, updateDoc, deleteDoc, setDoc
+  getDoc, updateDoc, deleteDoc, setDoc, onSnapshot, orderBy, limit,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 
@@ -54,6 +52,7 @@ import ManualBookingDialog from "../components/dashboard/ManualBookingDialog";
 import ScheduleTab  from "../components/dashboard/tabs/ScheduleTab";
 import BookingsTab  from "../components/dashboard/tabs/BookingsTab";
 import ProfileTab   from "../components/dashboard/tabs/ProfileTab";
+import EditPageTab  from "../components/dashboard/tabs/EditPageTab";
 import ServicesTab  from "../components/dashboard/tabs/ServicesTab";
 import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
 import ReviewsTab   from "../components/dashboard/tabs/ReviewsTab";
@@ -62,15 +61,6 @@ import PayTab       from "../components/dashboard/tabs/PayTab";
 import DomainTab    from "../components/dashboard/tabs/DomainTab";
 // ── Trainer-only tabs ──
 import ClientProfileTab    from "../components/dashboard/tabs/ClientProfileTab";
-import WorkoutPlansTab     from "../components/dashboard/tabs/WorkoutPlansTab";
-import NutritionPlanTab    from "../components/dashboard/tabs/NutritionPlanTab";
-import ProgressTrackerTab  from "../components/dashboard/tabs/ProgressTrackerTab";
-import SessionPrepTab      from "../components/dashboard/tabs/SessionPrepTab";
-import ExerciseGeneratorTab from "../components/dashboard/tabs/ExerciseGeneratorTab";
-import ClientFormsTab      from "../components/dashboard/tabs/ClientFormsTab";
-import FoodGeneratorTab    from "../components/dashboard/tabs/FoodGeneratorTab";
-import AutomationTab       from "../components/dashboard/tabs/AutomationTab";
-import NotepadTab          from "../components/dashboard/tabs/NotepadTab";
 // ── Decorator + barber-specific tabs ──
 import ColourApprovalTab   from "../components/dashboard/tabs/ColourApprovalTab";
 import QuoteTab            from "../components/dashboard/tabs/QuoteTab";
@@ -78,16 +68,30 @@ import DayPlannerTab       from "../components/dashboard/tabs/DayPlannerTab";
 import QueueManagementTab  from "../components/dashboard/tabs/QueueManagementTab";
 import HaircutTab          from "../components/dashboard/tabs/HaircutTab";
 // ── Hairdresser-specific tabs ──
-import TaxFinanceTab            from "../components/dashboard/tabs/TaxFinanceTab";
 import InvoiceTab               from "../components/dashboard/tabs/InvoiceTab";
+import PTInvoiceTab             from "../components/dashboard/tabs/PTInvoiceTab";
 import NotificationSettingsTab  from "../components/dashboard/tabs/NotificationSettingsTab";
 import PTAvailabilityTab        from "../components/dashboard/tabs/PTAvailabilityTab";
+import IntegrationsTab          from "../components/dashboard/tabs/IntegrationsTab";
+import { checkOutlookAvailability, getOutlookTokens } from "../firebase/outlook";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function TabPanel({ value, index, children }) {
   if (value !== index) return null;
-  return <Box sx={{ py: 3 }}>{children}</Box>;
+  return (
+    <Box sx={{ py: 3 }}>
+      <Box sx={{
+        bgcolor: "#ffffff",
+        borderRadius: "18px",
+        border: "1px solid #ececf0",
+        boxShadow: "0 1px 2px rgba(16,24,40,0.04), 0 8px 24px rgba(16,24,40,0.05)",
+        p: { xs: 2.25, md: 4 },
+      }}>
+        {children}
+      </Box>
+    </Box>
+  );
 }
 
 const addDays = (dateStr, days) => {
@@ -103,6 +107,19 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const navigate  = useNavigate();
   const theme     = useTheme();
   const isMobile  = useMediaQuery(theme.breakpoints.down("sm"));
+
+  // ── Notification unread count ─────────────────────────────────────────────
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  useEffect(() => {
+    const uid = barber?.uid;
+    if (!uid) return;
+    const q = query(
+      collection(db, "barbers", uid, "notifications"),
+      where("read", "==", false),
+      limit(99),
+    );
+    return onSnapshot(q, snap => setUnreadNotifs(snap.size));
+  }, [barber?.uid]);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [tab,          setTab]          = useState(0);
@@ -322,6 +339,20 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   async function handleAddSlot() {
     if (!newSlot.date || !newSlot.time || !barber?.uid) return;
     try {
+      // Check Outlook calendar if connected — block slot if user is busy
+      const outlookTokens = await getOutlookTokens(barber.uid);
+      if (outlookTokens?.accessToken) {
+        // Use longest service duration so we never overlap a running appointment
+        const maxDuration = profile.services?.length
+          ? Math.max(...profile.services.map(s => Number(s.duration) || 60))
+          : 60;
+        const { available, conflict } = await checkOutlookAvailability(barber.uid, newSlot.date, newSlot.time, maxDuration);
+        if (!available) {
+          setToast(`Blocked — "${conflict}" is in your Outlook calendar and could overlap this ${maxDuration}-min slot.`);
+          return;
+        }
+      }
+
       let iterations = 1;
       if (newSlot.repeat === "week")  iterations = 7;
       if (newSlot.repeat === "month") iterations = 30;
@@ -520,6 +551,17 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     catch { setToast("Copy failed — try manually."); }
   };
 
+  // ── Trial / subscription gate ─────────────────────────────────────────────
+  function toDateDash(v) {
+    if (!v) return null;
+    if (v?.toDate) return v.toDate();
+    return new Date(v);
+  }
+  const subStatus   = profile.subscriptionStatus || "trialing";
+  const trialEndDate = toDateDash(profile.trialEndsAt);
+  const isExpiredTrial = subStatus === "trialing" && trialEndDate && trialEndDate < new Date();
+  const isBlocked   = isExpiredTrial || subStatus === "past_due" || subStatus === "canceled";
+
   // ── Tab config ────────────────────────────────────────────────────────────
   // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
   const brandColor      = profile.brandColor || "#C9A84C";
@@ -571,23 +613,17 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     },
   }), [brandColor]);
 
-  // Web shows essentials only; installed PWA shows all tabs.
-  const isPWA = window.matchMedia("(display-mode: standalone)").matches || !!window.navigator.standalone;
+  // Previously these tools were gated to the installed PWA only, but standalone
+  // detection is unreliable across install/launch scenarios and was hiding the
+  // owner's own client-management tabs inside the app. They are login-protected
+  // owner tools, so always show them (web + installed app alike).
+  const isPWA = true;
 
   // Trainer-only tabs — client-related tools are PWA-only; web shows nothing client-facing.
   const trainerTabs = isTrainer ? [
-    { key: "pt-availability", label: "Availability", icon: <AccessTimeIcon /> },
+    { key: "pt-invoices",     label: "Invoices",     icon: <ReceiptLongIcon /> },
     ...(isPWA ? [
-      { key: "clients",     label: "Clients",      icon: <PeopleIcon /> },
-      { key: "workouts",    label: "Workouts",     icon: <FitnessCenterIcon /> },
-      { key: "nutrition",   label: "Nutrition",    icon: <RestaurantMenuIcon /> },
-      { key: "progress",    label: "Progress",     icon: <TrendingUpIcon /> },
-      { key: "forms",       label: "Forms",        icon: <AssignmentIcon /> },
-      { key: "automation",  label: "Automation",   icon: <AutoAwesomeIcon /> },
-      { key: "sessionprep", label: "Session Prep", icon: <AccessTimeIcon /> },
-      { key: "exercises",   label: "Exercises",    icon: <FitnessCenterIcon /> },
-      { key: "foodgen",     label: "Food Gen",     icon: <RestaurantMenuIcon /> },
-      { key: "notepad",     label: "Notepad",      icon: <ListIcon /> },
+      { key: "clients", label: "Clients", icon: <PeopleIcon /> },
     ] : []),
   ] : [];
 
@@ -595,55 +631,40 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "colourapproval", label: "Colour",   icon: <ColorLensIcon /> },
     { key: "quote",          label: "Quotes",   icon: <RequestQuoteIcon /> },
     { key: "dayplanner",     label: "Day Plan", icon: <TodayIcon /> },
-    ...(isPWA ? [
-      { key: "dec-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
-      { key: "dec-tax",      label: "Tax",      icon: <CalculateIcon /> },
-    ] : []),
+    { key: "dec-invoices",   label: "Invoices", icon: <ReceiptLongIcon /> },
   ] : [];
 
-  const hairdresserTabs = isHairdresser ? [
-    ...(isPWA ? [
-      { key: "hd-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
-      { key: "hd-tax",      label: "Tax",      icon: <CalculateIcon /> },
-    ] : []),
-  ] : [];
+  const hairdresserTabs = [];
 
   const barberTabs = isBarber ? [
     { key: "queue",   label: "Queue",   icon: <PeopleIcon /> },
     { key: "haircut", label: "Haircut", icon: <ContentCutIcon /> },
-    ...(isPWA ? [
-      { key: "bar-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
-      { key: "bar-tax",      label: "Tax",      icon: <CalculateIcon /> },
-    ] : []),
   ] : [];
 
   const tabs = [
-    { label: "Schedule", icon: <AccessTimeIcon /> },
-    { label: "Bookings", icon: <StoreIcon /> },
-    { label: "Profile",  icon: <PersonIcon /> },
-    { label: "Services", icon: <ListIcon /> },
-    { label: "Finance",  icon: <PaymentsIcon /> },
-    ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon /> }]  : []),
-    ...(userRole.isOwner ? [{ label: "Design",  icon: <PaletteIcon /> }]  : []),
-    // Domain tab: owner only AND not inside a tenant dashboard
-    ...(userRole.isOwner && !initialTenant ? [{ label: "Domain", icon: <LanguageIcon /> }] : []),
-    { label: "Pay",      icon: <NfcIcon /> },
-    { key: "notifications", label: "Notifications", icon: <NotificationsActiveIcon /> },
+    { key: "schedule",      label: "Schedule", icon: <AccessTimeIcon /> },
+    { key: "bookings",      label: "Bookings", icon: <StoreIcon /> },
+    { key: "edit-page",     label: "Profile",  icon: <PersonIcon /> },
+    ...(!isTrainer ? [{ key: "services", label: "Services", icon: <ListIcon /> }] : []),
+    { key: "finance",       label: "Finance",  icon: <PaymentsIcon /> },
+    ...(userRole.isOwner ? [{ key: "reviews", label: "Reviews", icon: <ReviewsIcon /> }]  : []),
+    ...(userRole.isOwner ? [{ key: "design",    label: "Design",    icon: <PaletteIcon /> }]  : []),
+    ...(userRole.isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
+    { key: "pay",           label: "Pay",      icon: <NfcIcon /> },
+    { key: "notifications",  label: "Notifications",  icon: <Badge badgeContent={unreadNotifs} color="error" max={99}><NotificationsActiveIcon /></Badge> },
+    { key: "integrations",   label: "Integrations",   icon: <ExtensionIcon /> },
     ...trainerTabs,
     ...decoratorTabs,
     ...hairdresserTabs,
     ...barberTabs,
   ];
-  // Trainer tabs are addressed by key (robust to the conditional tabs above).
   const tabIdx = (key) => tabs.findIndex((t) => t.key === key);
 
-  // Derive tab indices — must match the tabs array order above exactly:
-  // 0:Schedule 1:Bookings 2:Profile 3:Services 4:Finance [5:Reviews] [6:Design] [7:Domain] 8|7|5:Pay
-  const IDX_FINANCE = 4;                                               // always position 4
-  const IDX_REVIEWS = userRole.isOwner ? 5 : -1;                      // owner only
-  const IDX_DESIGN  = userRole.isOwner ? 6 : -1;                      // owner only
-  const IDX_DOMAIN  = userRole.isOwner && !initialTenant ? 7 : -1;   // owner only, no tenant
-  const IDX_PAY     = userRole.isOwner ? (initialTenant ? 7 : 8) : 5;
+  const IDX_FINANCE = tabIdx("finance");
+  const IDX_REVIEWS = tabIdx("reviews");
+  const IDX_DESIGN  = tabIdx("design");
+  const IDX_DOMAIN  = tabIdx("domain");
+  const IDX_PAY     = tabIdx("pay");
 
   // ── Grouped tab nav config (drives DashboardTabBar) ──────────────────────────
   // Items whose tab key isn't in the current tabs array (e.g. PWA-only tabs on web)
@@ -666,19 +687,18 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       label: "Clients",
       icon: <PeopleIcon />,
       items: filterItems([
-        ...(userRole.isOwner ? [{ label: "Reviews",      icon: <ReviewsIcon />, index: IDX_REVIEWS }] : []),
-        ...(isTrainer        ? [{ label: "Availability", icon: <AccessTimeIcon />, index: tabIdx("pt-availability") }] : []),
-        ...(isTrainer        ? [{ label: "Clients",      icon: <PeopleIcon />, index: tabIdx("clients") }] : []),
+        ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon />, index: IDX_REVIEWS }] : []),
+        ...(isTrainer        ? [{ label: "Clients", icon: <PeopleIcon />, index: tabIdx("clients") }] : []),
       ]),
     },
     {
       label: "Website",
       icon: <LanguageIcon />,
       items: filterItems([
-        { label: "Profile",  icon: <PersonIcon />,  index: 2 },
-        { label: "Services", icon: <ListIcon />,    index: 3 },
-        ...(userRole.isOwner                   ? [{ label: "Design",  icon: <PaletteIcon />,  index: IDX_DESIGN }] : []),
-        ...(userRole.isOwner && !initialTenant ? [{ label: "Domain",  icon: <LanguageIcon />, index: IDX_DOMAIN }] : []),
+        { label: "Profile",  icon: <PersonIcon />,  index: tabIdx("edit-page") },
+        ...(!isTrainer ? [{ label: "Services", icon: <ListIcon />, index: tabIdx("services") }] : []),
+        ...(userRole.isOwner                   ? [{ label: "Design",    icon: <PaletteIcon />,  index: IDX_DESIGN }] : []),
+        ...(userRole.isOwner && !initialTenant ? [{ label: "Domain",    icon: <LanguageIcon />, index: IDX_DOMAIN }] : []),
       ]),
     },
     {
@@ -687,15 +707,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       items: filterItems([
         { label: "Finance", icon: <PaymentsIcon />, index: IDX_FINANCE },
         { label: "Pay",     icon: <NfcIcon />,      index: IDX_PAY },
-        ...(isBarber ? [
-          { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("bar-invoices") },
-          { label: "Tax",      icon: <CalculateIcon />,   index: tabIdx("bar-tax") },
-        ] : isHairdresser ? [
-          { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("hd-invoices") },
-          { label: "Tax",      icon: <CalculateIcon />,   index: tabIdx("hd-tax") },
+        ...(isTrainer ? [
+          { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("pt-invoices") },
         ] : isDecorator ? [
           { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("dec-invoices") },
-          { label: "Tax",      icon: <CalculateIcon />,   index: tabIdx("dec-tax") },
         ] : []),
       ]),
     },
@@ -717,38 +732,15 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         { label: "Day Plan", icon: <TodayIcon />,        index: tabIdx("dayplanner") },
       ]),
     }] : []),
-    // ── Settings (all business types) ──
+    // ── Settings (all business types) — kept last so it sits at the far right ──
     {
       label: "Settings",
       icon: <NotificationsActiveIcon />,
       items: filterItems([
         { label: "Notifications", icon: <NotificationsActiveIcon />, index: tabIdx("notifications") },
+        { label: "Integrations",  icon: <ExtensionIcon />,           index: tabIdx("integrations") },
       ]),
     },
-    // ── Trainer groups ──
-    ...(isTrainer ? [
-      {
-        label: "Training",
-        icon: <FitnessCenterIcon />,
-        items: filterItems([
-          { label: "Workouts",     icon: <FitnessCenterIcon />,  index: tabIdx("workouts") },
-          { label: "Nutrition",    icon: <RestaurantMenuIcon />, index: tabIdx("nutrition") },
-          { label: "Progress",     icon: <TrendingUpIcon />,     index: tabIdx("progress") },
-          { label: "Session Prep", icon: <AccessTimeIcon />,     index: tabIdx("sessionprep") },
-          { label: "Exercises",    icon: <FitnessCenterIcon />,  index: tabIdx("exercises") },
-          { label: "Food Gen",     icon: <RestaurantMenuIcon />, index: tabIdx("foodgen") },
-        ]),
-      },
-      {
-        label: "Coaching",
-        icon: <AssignmentIcon />,
-        items: filterItems([
-          { label: "Forms",      icon: <AssignmentIcon />,     index: tabIdx("forms") },
-          { label: "Automation", icon: <AutoAwesomeIcon />,    index: tabIdx("automation") },
-          { label: "Notepad",    icon: <ListIcon />,           index: tabIdx("notepad") },
-        ]),
-      },
-    ] : []),
   ];
 
   // ── Loading guard ─────────────────────────────────────────────────────────
@@ -756,6 +748,170 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  // ── Trial expired / subscription lapsed — hard block ─────────────────────
+  if (isBlocked) {
+    const [subLoading, setSubLoading]       = React.useState(false);
+    const [portalLoading, setPortalLoading] = React.useState(false);
+    async function goBillingPortal() {
+      if (!barber?.uid) return;
+      setPortalLoading(true);
+      try {
+        const res  = await fetch("/api/billing-portal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ barberId: barber.uid }),
+        });
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+      } catch (err) {
+        console.error("Billing portal failed:", err.message);
+      } finally {
+        setPortalLoading(false);
+      }
+    }
+    async function goSubscribe() {
+      if (!barber?.uid || !barber?.email) return;
+      setSubLoading(true);
+      try {
+        const res  = await fetch("/api/create-subscription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            barberId:     barber.uid,
+            email:        barber.email,
+            businessType: profile.businessType || "barber",
+          }),
+        });
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+      } catch (err) {
+        console.error("Subscription checkout failed:", err.message);
+      } finally {
+        setSubLoading(false);
+      }
+    }
+    const bc = profile.brandColor || "#C9A84C";
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          bgcolor: "#F6F7F9",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          px: 2,
+        }}
+      >
+        <Paper
+          elevation={0}
+          sx={{
+            maxWidth: 460,
+            width: "100%",
+            p: { xs: 3, md: 5 },
+            borderRadius: "20px",
+            border: "1.5px solid #e5e7eb",
+            textAlign: "center",
+          }}
+        >
+          <Box
+            sx={{
+              width: 64, height: 64, borderRadius: "50%",
+              bgcolor: "#fef3c7", display: "flex",
+              alignItems: "center", justifyContent: "center",
+              mx: "auto", mb: 3,
+            }}
+          >
+            <LockIcon sx={{ fontSize: 32, color: "#d97706" }} />
+          </Box>
+
+          <Typography variant="h5" fontWeight={800} mb={1}>
+            {isExpiredTrial ? "Your free trial has ended" : "Subscription required"}
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary" mb={3} lineHeight={1.7}>
+            {isExpiredTrial
+              ? "Your 90-day free trial has expired. Subscribe to keep full access to your dashboard and all features."
+              : "Your subscription is no longer active. Reactivate to regain access to your dashboard."}
+          </Typography>
+
+          <Box
+            sx={{
+              bgcolor: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: "12px",
+              p: 2.5,
+              mb: 3,
+              textAlign: "left",
+            }}
+          >
+            <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: "uppercase", letterSpacing: "0.07em" }}>
+              What's included
+            </Typography>
+            {[
+              "Unlimited bookings & scheduling",
+              "Client management & messaging",
+              "Online payments & invoicing",
+              "Custom branding & public page",
+              "All future feature updates",
+            ].map(f => (
+              <Box key={f} sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
+                <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: bc, flexShrink: 0 }} />
+                <Typography variant="body2">{f}</Typography>
+              </Box>
+            ))}
+          </Box>
+
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            onClick={goSubscribe}
+            disabled={subLoading}
+            sx={{
+              borderRadius: "10px",
+              fontWeight: 700,
+              height: 52,
+              boxShadow: "none",
+              fontSize: "1rem",
+              bgcolor: bc,
+              "&:hover": { bgcolor: bc, filter: "brightness(0.9)" },
+            }}
+          >
+            {subLoading ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : "Subscribe & Continue →"}
+          </Button>
+
+          <Typography variant="caption" color="text.secondary" display="block" mt={2}>
+            You'll be taken to a secure Stripe checkout.
+          </Typography>
+
+          {subStatus !== "trialing" && (
+            <Button
+              fullWidth
+              variant="text"
+              size="small"
+              onClick={goBillingPortal}
+              disabled={portalLoading}
+              sx={{ mt: 1.5, color: "text.secondary", fontSize: "0.8rem" }}
+            >
+              {portalLoading ? <CircularProgress size={16} /> : "Manage billing / cancel subscription"}
+            </Button>
+          )}
+
+          <Button
+            fullWidth
+            variant="text"
+            size="small"
+            onClick={handleLogout}
+            sx={{ mt: 0.5, color: "text.disabled", fontSize: "0.75rem" }}
+          >
+            Log out
+          </Button>
+        </Paper>
       </Box>
     );
   }
@@ -809,12 +965,16 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
         {/* ── 0 Schedule ── */}
         <TabPanel value={tab} index={0}>
-          <ScheduleTab
-            slots={slots} newSlot={newSlot} setNewSlot={setNewSlot}
-            handleAddSlot={handleAddSlot} handleDeleteSlot={handleDeleteSlot}
-            handleRestoreSlot={handleRestoreSlot} openManualBooking={openManualBooking}
-            brandColor={brandColor}
-          />
+          {isTrainer ? (
+            <PTAvailabilityTab barber={barber} profile={profile} brandColor={brandColor} />
+          ) : (
+            <ScheduleTab
+              slots={slots} newSlot={newSlot} setNewSlot={setNewSlot}
+              handleAddSlot={handleAddSlot} handleDeleteSlot={handleDeleteSlot}
+              handleRestoreSlot={handleRestoreSlot} openManualBooking={openManualBooking}
+              brandColor={brandColor}
+            />
+          )}
         </TabPanel>
 
         {/* ── 1 Bookings ── */}
@@ -826,30 +986,30 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           />
         </TabPanel>
 
-        {/* ── 2 Profile (staff + owners) ──
-              ProfileTab contains Instagram & TikTok fields for ALL barbers.
-              Facebook is owner-only (gated inside ProfileTab via userRole.isOwner).
-              Domain tab is NOT shown to staff — see tab array above.            */}
-        <TabPanel value={tab} index={2}>
-          <ProfileTab
+        {/* ── Profile (merged with Edit Page) ── */}
+        <TabPanel value={tab} index={tabIdx("edit-page")}>
+          <EditPageTab
             profile={profile} setProfile={setProfile}
             brandColor={brandColor} userRole={userRole}
             profilePreview={profilePreview}
             setProfileFile={setProfileFile} setProfilePreview={setProfilePreview}
             handleDeleteProfile={handleDeleteProfile}
             handleImageChange={handleImageChange}
+            businessType={profile.businessType}
           />
         </TabPanel>
 
-        {/* ── 3 Services ── */}
-        <TabPanel value={tab} index={3}>
-          <ServicesTab
-            profile={profile}
-            newService={newService} setNewService={setNewService}
-            handleAddService={handleAddService} handleRemoveService={handleRemoveService}
-            brandColor={brandColor}
-          />
-        </TabPanel>
+        {/* ── Services (non-trainer only) ── */}
+        {!isTrainer && (
+          <TabPanel value={tab} index={tabIdx("services")}>
+            <ServicesTab
+              profile={profile}
+              newService={newService} setNewService={setNewService}
+              handleAddService={handleAddService} handleRemoveService={handleRemoveService}
+              brandColor={brandColor}
+            />
+          </TabPanel>
+        )}
 
         {/* ── Reviews (owner only) ── */}
         {userRole.isOwner && (
@@ -878,6 +1038,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             />
           </TabPanel>
         )}
+
 
         {/* ── Domain (owner only on main dashboard — hidden in tenant context) ── */}
         {userRole.isOwner && !initialTenant && (
@@ -914,38 +1075,11 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         {/* ── Trainer-only tabs ── */}
         {isTrainer && (
           <>
-            <TabPanel value={tab} index={tabIdx("pt-availability")}>
-              <PTAvailabilityTab barber={barber} profile={profile} brandColor={brandColor} />
+            <TabPanel value={tab} index={tabIdx("pt-invoices")}>
+              <PTInvoiceTab barber={barber} profile={profile} brandColor={brandColor} />
             </TabPanel>
             <TabPanel value={tab} index={tabIdx("clients")}>
               <ClientProfileTab barber={barber} profile={profile} brandColor={brandColor} bookings={bookings} />
-            </TabPanel>
-            <TabPanel value={tab} index={tabIdx("workouts")}>
-              <WorkoutPlansTab barber={barber} brandColor={brandColor} />
-            </TabPanel>
-            <TabPanel value={tab} index={tabIdx("nutrition")}>
-              <NutritionPlanTab barber={barber} profile={profile} brandColor={brandColor} bookings={bookings} />
-            </TabPanel>
-            <TabPanel value={tab} index={tabIdx("progress")}>
-              <ProgressTrackerTab barber={barber} profile={profile} brandColor={brandColor} />
-            </TabPanel>
-            <TabPanel value={tab} index={tabIdx("sessionprep")}>
-              <SessionPrepTab barber={barber} profile={profile} brandColor={brandColor} />
-            </TabPanel>
-            <TabPanel value={tab} index={tabIdx("exercises")}>
-              <ExerciseGeneratorTab barber={barber} profile={profile} brandColor={brandColor} />
-            </TabPanel>
-            <TabPanel value={tab} index={tabIdx("forms")}>
-              <ClientFormsTab barber={barber} brandColor={brandColor} />
-            </TabPanel>
-            <TabPanel value={tab} index={tabIdx("foodgen")}>
-              <FoodGeneratorTab barber={barber} brandColor={brandColor} />
-            </TabPanel>
-            <TabPanel value={tab} index={tabIdx("automation")}>
-              <AutomationTab barber={barber} profile={profile} brandColor={brandColor} />
-            </TabPanel>
-            <TabPanel value={tab} index={tabIdx("notepad")}>
-              <NotepadTab barber={barber} profile={profile} brandColor={brandColor} />
             </TabPanel>
           </>
         )}
@@ -965,9 +1099,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             <TabPanel value={tab} index={tabIdx("dec-invoices")}>
               <InvoiceTab barber={barber} profile={profile} brandColor={brandColor} />
             </TabPanel>
-            <TabPanel value={tab} index={tabIdx("dec-tax")}>
-              <TaxFinanceTab barberId={barber?.uid} profile={profile} />
-            </TabPanel>
           </>
         )}
 
@@ -976,9 +1107,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           <>
             <TabPanel value={tab} index={tabIdx("hd-invoices")}>
               <InvoiceTab barber={barber} profile={profile} brandColor={brandColor} />
-            </TabPanel>
-            <TabPanel value={tab} index={tabIdx("hd-tax")}>
-              <TaxFinanceTab barberId={barber?.uid} profile={profile} />
             </TabPanel>
           </>
         )}
@@ -995,11 +1123,45 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             <TabPanel value={tab} index={tabIdx("bar-invoices")}>
               <InvoiceTab barber={barber} profile={profile} brandColor={brandColor} />
             </TabPanel>
-            <TabPanel value={tab} index={tabIdx("bar-tax")}>
-              <TaxFinanceTab barberId={barber?.uid} profile={profile} />
-            </TabPanel>
           </>
         )}
+
+        {/* Integrations — all business types */}
+        <TabPanel value={tab} index={tabIdx("integrations")}>
+          <IntegrationsTab barber={barber} brandColor={brandColor} />
+        </TabPanel>
+
+      </Box>
+
+      {/* WhatsApp support button */}
+      <Box
+        component="a"
+        href="https://wa.me/447752300937?text=Hi%2C%20I%20need%20help%20with%20my%20Bookriightly%20dashboard"
+        target="_blank"
+        rel="noopener noreferrer"
+        sx={{
+          position: "fixed",
+          bottom: isMobile ? 90 : 24,
+          right: 20,
+          zIndex: 1300,
+          width: 52,
+          height: 52,
+          borderRadius: "50%",
+          bgcolor: "#25D366",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 4px 16px rgba(37,211,102,0.45)",
+          transition: "transform 0.15s, box-shadow 0.15s",
+          "&:hover": {
+            transform: "scale(1.08)",
+            boxShadow: "0 6px 24px rgba(37,211,102,0.6)",
+          },
+        }}
+      >
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
       </Box>
     </Box>
     </ThemeProvider>

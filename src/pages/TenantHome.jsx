@@ -85,7 +85,7 @@ export default function TenantHome({ tenant: initialTenant }) {
   useEffect(() => { if (fontKey) loadGoogleFont(fontKey); }, [fontKey]);
 
   const isBarberShop    = !freshTenant?.businessType || freshTenant?.businessType === "barber";
-  const brandColor      = freshTenant?.brandColor      || "#C9A84C";
+  const brandColor      = freshTenant?.brandColor      || "#2563EB";
   const businessName    = freshTenant?.businessName     || "TRIMZ"; 
   const address         = freshTenant?.address          || "Location TBD";
   const aboutBgColor    = freshTenant?.aboutSectionColor || "#f8f7f4";
@@ -169,7 +169,7 @@ export default function TenantHome({ tenant: initialTenant }) {
           .map(member => ({
             ...member,
             shopId:        activeTenantId,
-            brandColor:    member.brandColor    || finalTenantData.brandColor    || "#C9A84C",
+            brandColor:    member.brandColor    || finalTenantData.brandColor    || "#2563EB",
             businessName:  finalTenantData.businessName,
             businessLogo:  finalTenantData.businessLogo || finalTenantData.logoUrl,
           }))
@@ -315,13 +315,20 @@ export default function TenantHome({ tenant: initialTenant }) {
       </Box>
  
       {/* ── 4. TEAM GRID ─────────────────────────────────────────────────── */}
+      {/* Solo accounts (no staff) skip the "choose your barber" framing —
+          there's nothing to choose, so this reads as a direct booking CTA
+          instead of a pointless single-option picker. */}
       <Container id="barber-section" sx={{ py: 15 }}>
         <Box sx={{ mb: 10, textAlign: 'center' }}>
-          <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>EXPERTS</Typography>
-          <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>Our Master Barbers</Typography>
+          <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>
+            {team.length > 1 ? "EXPERTS" : "BOOK NOW"}
+          </Typography>
+          <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>
+            {team.length > 1 ? "Our Master Barbers" : "Ready when you are"}
+          </Typography>
           <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: 'auto' }} />
         </Box>
-        
+
         <Grid container spacing={4}>
           {team.map(barber => {
             const depositValue   = Number(barber?.depositAmount) || 10;
@@ -447,7 +454,7 @@ export default function TenantHome({ tenant: initialTenant }) {
                         {/* Stars */}
                         <Box sx={{ display: "flex", justifyContent: "center", gap: 0.3, mb: 3 }}>
                           {[...Array(5)].map((_, i) => (
-                            <StarIcon key={i} sx={{ fontSize: 16, color: i < stars ? brandColor : "rgba(201,168,76,0.2)" }} />
+                            <StarIcon key={i} sx={{ fontSize: 16, color: i < stars ? brandColor : "rgba(37,99,235,0.2)" }} />
                           ))}
                         </Box>
                         {/* Review text */}

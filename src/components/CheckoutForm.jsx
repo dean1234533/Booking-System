@@ -2,11 +2,6 @@ import React, { useState } from "react";
 import { useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, CircularProgress, Alert, Divider, Typography } from "@mui/material";
-import { createBooking, createNotification } from "../firebase/firestore";
-import { formatDate, formatTime } from "../stripe/formatters";
-// ✅ IMPORT: db and doc/updateDoc to change slot status
-import { db } from "../firebase/config";
-import { doc, updateDoc } from "firebase/firestore";
 // ✅ IMPORT: booking helpers
 import { resolveBarberEmailAndFee } from "../utils/bookingHelpers";
 
@@ -39,16 +34,26 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
         return;
       }
 
-      const amountInPence = Math.round(Math.max(10, Number(barber.depositAmount) || 10) * 100);
-
+      // The ONE PaymentIntent creation for this booking — server-verified,
+      // server-priced (never trusts a client-sent amount), and the only
+      // place metadata gets attached. Previously this ran twice (once here,
+      // once in BookingForm, with the earlier one discarded and its
+      // metadata lost) — collapsed to a single call.
       const response = await fetch("/api/create-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: amountInPence,
-          barberStripeId: barber.stripeAccountId,
-          barberName: barber.name,
+          barberId,
           email: formData.email,
+          metadata: {
+            customerName:  formData.name,
+            customerPhone: formData.phone,
+            serviceName:   formData.haircutStyle,
+            bookingDate:   appointmentDate,
+            bookingTime:   appointmentTime,
+            slotId:        slotId || "",
+            bookingSlug:   tenant?.bookingSlug || "",
+          },
         }),
       });
 
@@ -73,45 +78,34 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
       }
 
       if (paymentIntent?.status === "succeeded") {
-        // ✅ STEP 1: Update the status in the main 'slots' collection
-        // This ensures it "disappears" from the availability list
-        if (slotId) {
-          const slotRef = doc(db, "slots", slotId);
-          await updateDoc(slotRef, { 
-            status: "booked" 
-          });
+        // Booking creation + slot marking now happens server-side, via a
+        // Cloud Function that re-verifies payment status directly with
+        // Stripe (rather than a client-side Firestore write, which an
+        // unauthenticated booking customer's browser can't make anyway —
+        // see firestore.rules). A payment_intent.succeeded webhook also
+        // reconciles this in the background as a safety net if this call
+        // never completes (e.g. the tab closes right after payment).
+        const finalizeRes = await fetch("/api/finalize-booking", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentIntentId: paymentIntent.id,
+            slotId,
+            barberId,
+            formData,
+            date: appointmentDate,
+            time: appointmentTime,
+          }),
+        });
+
+        if (!finalizeRes.ok) {
+          const errorData = await finalizeRes.json().catch(() => ({}));
+          throw new Error(errorData.error || "Payment succeeded but we couldn't finish confirming your booking — please contact us.");
         }
 
-        // ✅ STEP 2: Create the booking record
-        const bookingId = await createBooking({
-          ...formData,
-          barberId,
-          slotId,
-          barberName:      barber.name,
-          depositAmount:   fee.depositPounds,
-          bookingFee:      bookingFeePounds,
-          paymentIntentId: paymentIntent.id,
-          date:            appointmentDate,
-          time:            appointmentTime,
-        });
+        const { bookingId } = await finalizeRes.json();
 
-        // ✅ Notification
-        createNotification(barberId, {
-          type:  "booking",
-          title: "New Booking!",
-          body:  `${formData.name} booked ${formData.haircutStyle || "an appointment"} on ${formatDate(appointmentDate)} at ${formatTime(appointmentTime)}`,
-          data: {
-            bookingId,
-            clientName:    formData.name,
-            clientEmail:   formData.email,
-            service:       formData.haircutStyle,
-            slotDate:      formatDate(appointmentDate),
-            slotTime:      formatTime(appointmentTime),
-            depositAmount: fee.depositPounds,
-          },
-        });
-
-        // ✅ Calendar Sync (if owner has Google Calendar connected)
+        // Calendar Sync (if owner has Google Calendar connected) — fire and forget, non-blocking
         fetch("/api/google-calendar/create-event", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
@@ -127,7 +121,7 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
           }),
         }).catch(err => console.error("Calendar sync fail (non-critical):", err));
 
-        // ✅ Outlook Calendar Sync — fire and forget, non-blocking
+        // Outlook Calendar Sync — fire and forget, non-blocking
         fetch("/api/outlook/sync-booking", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },

@@ -48,7 +48,7 @@ function darkField(brand) {
 
 const EMPTY_FORM = { barberName: "", notes: "", guards: { top: "", sides: "", back: "", fade: "" } };
 
-export default function HaircutMemory({ shopId, brandColor = "#C9A84C" }) {
+export default function HaircutMemory({ shopId, brandColor = "#2563EB" }) {
   const [open, setOpen]         = useState(false);
   const [phone, setPhone]       = useState("");
   const [cuts, setCuts]         = useState([]);

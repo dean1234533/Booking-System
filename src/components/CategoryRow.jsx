@@ -4,7 +4,7 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import BarberCard from "./BarberCard";
 
-const G = { gold: "#C9A84C", goldLight: "#e8c97a", dark: "#0d0d0d", warmWhite: "#faf8f4", border: "#e8e2d8" };
+const G = { gold: "#2563EB", goldLight: "#60A5FA", dark: "#0d0d0d", warmWhite: "#faf8f4", border: "#e8e2d8" };
 const SERIF = "'Playfair Display', serif";
 const SANS = "'DM Sans', sans-serif";
 

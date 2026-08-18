@@ -40,11 +40,11 @@ function printPDF(sub) {
     <title>Food Diary – ${esc(sub.clientName)}</title>
     <style>
       *{box-sizing:border-box}body{font-family:Georgia,serif;max-width:720px;margin:0 auto;padding:36px 28px;color:#111}
-      .hdr{border-bottom:3px solid #C9A84C;padding-bottom:10px;margin-bottom:6px}
+      .hdr{border-bottom:3px solid #2563EB;padding-bottom:10px;margin-bottom:6px}
       h1{font-size:26px;font-weight:normal;margin:0}
       .meta{font-family:sans-serif;font-size:12px;color:#888;margin-bottom:28px;margin-top:4px}
       .day{margin-bottom:20px;page-break-inside:avoid}
-      .day-label{font-family:sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;padding-bottom:6px;border-bottom:1px solid #C9A84C;margin-bottom:8px}
+      .day-label{font-family:sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#2563EB;padding-bottom:6px;border-bottom:1px solid #2563EB;margin-bottom:8px}
       .meal{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #f5f0e8;font-size:13px}
       .time{color:#aaa;font-family:monospace;width:50px;flex-shrink:0}
       .type{font-family:sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;width:72px;flex-shrink:0;padding-top:2px}

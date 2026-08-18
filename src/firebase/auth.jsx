@@ -6,7 +6,8 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth, db } from "./config";
 import { doc, setDoc, deleteDoc, serverTimestamp, getDoc, Timestamp } from "firebase/firestore";
@@ -49,7 +50,7 @@ export async function signUpBarber(data) {
     profileData.customDomain      = customDomain || "";
     profileData.subscriptionStatus = "trialing";
     profileData.trialEndsAt        = Timestamp.fromDate(
-      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
     );
   }
 
@@ -114,6 +115,10 @@ export async function signInBarber(email, password) {
   // Ensures the user stays logged in across refreshes and dynamic domains
   await setPersistence(auth, browserLocalPersistence);
   return await signInWithEmailAndPassword(auth, email, password);
+}
+
+export async function resetBarberPassword(email) {
+  return await sendPasswordResetEmail(auth, email);
 }
 
 export async function logoutBarber() {

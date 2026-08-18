@@ -141,7 +141,7 @@ export default function BarberProfile({ tenant: initialTenant }) {
 
   // Navigation state (from BarberCard) takes priority for branding
   const effectiveTenant = location.state?.tenant || initialTenant || footerData;
-  const brandColor  = effectiveTenant?.brandColor || barber?.brandColor || "#C9A84C";
+  const brandColor  = effectiveTenant?.brandColor || barber?.brandColor || "#2563EB";
   const btnText     = contrastColor(brandColor);
 
   const instagramUrl = barber?.instagramUrl || "";

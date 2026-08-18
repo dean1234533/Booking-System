@@ -23,7 +23,7 @@ export default function BookingCard({ booking, onCancelled }) {
   // --- DYNAMIC BRANDING & DATA SYNC ---
   // Ensure deposit is a Number to avoid formatting errors
   const depositValue = Number(booking?.depositAmount) || 10;
-  const brandColor = booking.brandColor || authBarber?.brandColor || "#C9A84C";
+  const brandColor = booking.brandColor || authBarber?.brandColor || "#2563EB";
 
   const refundable = isRefundEligible(booking.slotDate);
 
@@ -66,26 +66,36 @@ export default function BookingCard({ booking, onCancelled }) {
   return (
     <>
       <Card 
-        variant="outlined" 
         sx={{ 
-          borderRadius: 3, 
+          borderRadius: "7px 28px 28px 28px",
+          display: { xs: "block", sm: "grid" },
+          gridTemplateColumns: "132px minmax(0,1fr)",
+          overflow: "hidden",
+          border: "1px solid #dedbd3",
+          bgcolor: "#f4f1e9",
+          boxShadow: "none",
           transition: 'all 0.3s ease', 
           '&:hover': { 
-            borderColor: brandColor,
-            boxShadow: `0 4px 12px ${brandColor}15`
+            transform: "translateY(-3px)",
+            boxShadow: "0 20px 44px rgba(17,17,22,.1)"
           } 
         }}
       >
-        <CardContent sx={{ p: 3 }}>
+        <Box sx={{ bgcolor: brandColor, color: "#fff", p: { xs: 2, sm: 2.5 }, display: "flex", flexDirection: { xs: "row", sm: "column" }, alignItems: { xs: "center", sm: "flex-start" }, justifyContent: "space-between", gap: 1 }}>
+          <Box>
+            <Typography sx={{ opacity: .65, fontWeight: 900, fontSize: ".62rem", letterSpacing: ".12em", textTransform: "uppercase" }}>Appointment</Typography>
+            <Typography sx={{ mt: .65, fontWeight: 950, fontSize: { xs: "1rem", sm: "1.3rem" }, lineHeight: 1.1 }}>{formatDate(booking.slotDate)}</Typography>
+          </Box>
+          <Typography sx={{ fontSize: { xs: "1.1rem", sm: "1.55rem" }, fontWeight: 950 }}>{formatTime(booking.slotTime ?? booking.time)}</Typography>
+        </Box>
+        <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
 
           <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
             <Box>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ letterSpacing: '-0.01em' }}>
-                {formatDate(booking.slotDate)}
+              <Typography variant="subtitle1" fontWeight={900} sx={{ letterSpacing: '-0.02em', fontSize: "1.05rem" }}>
+                {booking.clientName}
               </Typography>
-              <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                {formatTime(booking.slotTime ?? booking.time)}
-              </Typography>
+              <Typography variant="body2" color="text.secondary" fontWeight={600}>Client booking</Typography>
             </Box>
             <Chip
               label={`${formatCurrency(depositValue)}`}
@@ -100,13 +110,13 @@ export default function BookingCard({ booking, onCancelled }) {
             />
           </Box>
 
-          <Divider sx={{ mb: 2 }} />
+          <Divider sx={{ mb: 2, borderStyle: "dashed" }} />
 
           <Box display="flex" flexDirection="column" gap={1.2} mb={3}>
             <Box display="flex" alignItems="center" gap={1.5}>
               <PersonIcon fontSize="small" sx={{ color: brandColor }} />
               <Typography variant="body2" fontWeight={700}>
-                {booking.clientName}
+                Contact
                 {booking.gender && (
                   <Typography component="span" variant="caption" sx={{ ml: 1, opacity: 0.6, fontWeight: 400 }}>
                     • {booking.gender}
@@ -129,13 +139,13 @@ export default function BookingCard({ booking, onCancelled }) {
               sx={{ 
                 mt: 1, 
                 p: 1.5, 
-                bgcolor: 'grey.50', 
-                borderRadius: 2, 
+                bgcolor: '#fff',
+                borderRadius: "4px 18px 18px 18px",
                 display: 'flex', 
                 alignItems: 'flex-start', 
                 gap: 1.5,
-                border: '1px dashed',
-                borderColor: 'grey.200'
+                border: '1px solid',
+                borderColor: '#dedbd3'
               }}
             >
               <ContentCutIcon fontSize="small" sx={{ color: brandColor, mt: 0.2 }} />
@@ -147,17 +157,17 @@ export default function BookingCard({ booking, onCancelled }) {
 
           {!booking.cancelled ? (
             <Button
-              variant="outlined"
-              color="error"
+              variant="text"
+              color="inherit"
               size="medium"
               fullWidth
               onClick={() => setOpen(true)}
               sx={{ 
-                borderRadius: 2, 
+                borderRadius: 99,
                 fontWeight: 800, 
                 textTransform: 'none',
-                borderWidth: 2,
-                '&:hover': { borderWidth: 2 }
+                bgcolor: "#111116", color: "#fff",
+                '&:hover': { bgcolor: "#2a2b31" }
               }}
             >
               Cancel Booking

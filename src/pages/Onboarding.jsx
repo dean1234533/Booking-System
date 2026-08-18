@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CircularProgress } from "@mui/material";
+import { CircularProgress, TextField, MenuItem, Select, InputLabel, FormControl, Alert } from "@mui/material";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase/config";
+import { useAuth } from "../context/AuthContext";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { getApp } from "firebase/app";
+import { updateBarber, addSlot, uploadBarberImage } from "../firebase/firestore";
+import { sanitizeSlug, isValidSlugFormat, isReservedSlug } from "../utils/bookingSlug";
+import BookingLinkCard from "../components/dashboard/BookingLinkCard";
 
 /* ── Inline styles ── */
 const css = `
@@ -91,7 +99,7 @@ const css = `
     margin: 0 2px;
   }
   .ob-step-dot.done { background: var(--brand); }
-  .ob-step-dot.active { background: #fff; box-shadow: 0 0 0 3px rgba(201,168,76,0.25); }
+  .ob-step-dot.active { background: #fff; box-shadow: 0 0 0 3px rgba(37,99,235,0.25); }
 
   .ob-step-labels {
     display: flex;
@@ -167,44 +175,115 @@ const css = `
     line-height: 1.8;
     color: rgba(255,255,255,0.55);
     margin-bottom: 32px;
-    max-width: 380px;
+    max-width: 420px;
   }
 
-  /* ── Checklist ── */
-  .ob-checklist {
-    list-style: none;
+  /* ── Form fields ── */
+  .ob-field-stack {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-bottom: 36px;
+    gap: 16px;
+    margin-bottom: 28px;
+    max-width: 420px;
   }
-  .ob-check-item {
+  .ob-field-row {
     display: flex;
-    align-items: flex-start;
     gap: 12px;
-    font-size: 14px;
-    color: rgba(255,255,255,0.65);
-    line-height: 1.5;
-    font-weight: 400;
-    opacity: 0;
-    transform: translateX(-12px);
-    animation: slideInLeft 0.4s ease forwards;
   }
-  @keyframes slideInLeft {
-    to { opacity: 1; transform: translateX(0); }
+  .ob-field-row > * { flex: 1; }
+
+  /* ── Choice cards (account type) ── */
+  .ob-choice-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 32px;
+    max-width: 420px;
   }
-  .ob-check-icon {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: rgba(201,168,76,0.12);
-    border: 1px solid rgba(201,168,76,0.3);
+  .ob-choice-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+    padding: 18px 20px;
+    background: rgba(255,255,255,0.03);
+    border: 1.5px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .ob-choice-card:hover { border-color: rgba(255,255,255,0.25); }
+  .ob-choice-card.selected { border-color: var(--brand); background: rgba(37,99,235,0.12); }
+  .ob-choice-title { font-weight: 700; font-size: 15px; }
+  .ob-choice-sub { font-size: 12.5px; color: rgba(255,255,255,0.45); font-weight: 300; }
+
+  /* ── Slug input row ── */
+  .ob-slug-row {
     display: flex;
     align-items: center;
-    justify-content: center;
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 0 4px 0 14px;
+    max-width: 420px;
+  }
+  .ob-slug-prefix { font-size: 13px; color: rgba(255,255,255,0.35); font-family: monospace; white-space: nowrap; }
+  .ob-slug-row input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-family: monospace;
+    font-size: 14px;
+    padding: 12px 6px;
+  }
+  .ob-slug-hint { font-size: 12.5px; margin-top: 8px; min-height: 18px; }
+  .ob-slug-hint.available { color: #4ade80; }
+  .ob-slug-hint.taken { color: #f87171; }
+  .ob-slug-hint.checking { color: rgba(255,255,255,0.35); }
+
+  /* ── Availability day rows ── */
+  .ob-day-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+  }
+  .ob-day-toggle {
+    width: 44px;
+    height: 24px;
+    border-radius: 99px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    cursor: pointer;
+    position: relative;
     flex-shrink: 0;
-    margin-top: 1px;
-    font-size: 10px;
+    transition: background 0.2s;
+  }
+  .ob-day-toggle.on { background: var(--brand); }
+  .ob-day-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+  }
+  .ob-day-toggle.on::after { transform: translateX(20px); }
+  .ob-day-label { width: 44px; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.7); }
+  .ob-day-times { display: flex; gap: 8px; align-items: center; opacity: 0.4; pointer-events: none; }
+  .ob-day-times.enabled { opacity: 1; pointer-events: auto; }
+  .ob-day-times input[type="time"] {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: #fff;
+    padding: 5px 8px;
+    font-size: 12.5px;
+    font-family: 'DM Sans', sans-serif;
+    color-scheme: dark;
   }
 
   /* ── CTA button ── */
@@ -226,7 +305,7 @@ const css = `
     transition: opacity 0.2s, transform 0.15s;
   }
   .ob-cta:hover { opacity: 0.88; transform: translateY(-2px); }
-  .ob-cta:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .ob-cta:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
   .ob-cta-arrow {
     width: 18px;
@@ -282,7 +361,7 @@ const css = `
     top: -60px; right: -60px;
     width: 200px; height: 200px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%);
     pointer-events: none;
   }
 
@@ -299,8 +378,8 @@ const css = `
     width: 56px;
     height: 56px;
     border-radius: 14px;
-    background: rgba(201,168,76,0.1);
-    border: 1px solid rgba(201,168,76,0.2);
+    background: rgba(37,99,235,0.1);
+    border: 1px solid rgba(37,99,235,0.2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -322,88 +401,14 @@ const css = `
     margin-bottom: 24px;
   }
 
-  /* ── Mockup elements inside card ── */
-  .ob-mock-domain {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
-  .ob-mock-domain-text { font-size: 13px; color: rgba(255,255,255,0.7); font-family: monospace; }
-  .ob-mock-badge {
-    margin-left: auto;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 99px;
-  }
-  .ob-mock-badge.available { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
-  .ob-mock-badge.taken     { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.15); }
-
-  .ob-mock-stripe {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: rgba(99,91,255,0.08);
-    border: 1px solid rgba(99,91,255,0.15);
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-  }
-  .ob-mock-stripe-logo {
-    width: 32px; height: 32px; border-radius: 8px;
-    background: #635BFF;
+  .ob-card-checklist { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .ob-card-check-item { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; }
+  .ob-card-check-icon {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: rgba(37,99,235,0.12); border: 1px solid rgba(37,99,235,0.3);
     display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 900; color: #fff; font-family: 'Syne', sans-serif;
+    flex-shrink: 0; margin-top: 1px; font-size: 9px;
   }
-  .ob-mock-stripe-text { font-size: 13px; color: rgba(255,255,255,0.7); }
-  .ob-mock-stripe-sub  { font-size: 11px; color: rgba(255,255,255,0.3); }
-
-  .ob-mock-site-preview {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .ob-mock-site-bar {
-    background: rgba(255,255,255,0.05);
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-  }
-  .ob-mock-dot { width: 8px; height: 8px; border-radius: 50%; }
-  .ob-mock-url {
-    flex: 1;
-    background: rgba(255,255,255,0.06);
-    border-radius: 4px;
-    padding: 3px 8px;
-    font-size: 10px;
-    color: rgba(255,255,255,0.3);
-    font-family: monospace;
-    margin: 0 6px;
-  }
-  .ob-mock-site-body {
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .ob-mock-line {
-    height: 8px;
-    border-radius: 4px;
-    background: rgba(255,255,255,0.06);
-  }
-  .ob-mock-line.accent { background: rgba(201,168,76,0.25); width: 40%; }
-  .ob-mock-line.title  { background: rgba(255,255,255,0.12); width: 70%; height: 14px; }
-  .ob-mock-line.short  { width: 50%; }
 
   /* ── Done state ── */
   .ob-done-wrap {
@@ -417,16 +422,16 @@ const css = `
   .ob-done-ring {
     width: 80px; height: 80px;
     border-radius: 50%;
-    background: rgba(201,168,76,0.1);
-    border: 2px solid rgba(201,168,76,0.3);
+    background: rgba(37,99,235,0.1);
+    border: 2px solid rgba(37,99,235,0.3);
     display: flex; align-items: center; justify-content: center;
     font-size: 32px;
     margin-bottom: 24px;
     animation: pulseBrand 2s ease infinite;
   }
   @keyframes pulseBrand {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.15); }
-    50%       { box-shadow: 0 0 0 16px rgba(201,168,76,0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0.15); }
+    50%       { box-shadow: 0 0 0 16px rgba(37,99,235,0); }
   }
   .ob-done-title {
     font-family: 'Syne', sans-serif;
@@ -438,7 +443,7 @@ const css = `
     font-size: 14px;
     color: rgba(255,255,255,0.45);
     line-height: 1.7;
-    max-width: 320px;
+    max-width: 360px;
     margin-bottom: 32px;
   }
 
@@ -456,12 +461,7 @@ const css = `
     .ob-step-label { font-size: 8px; }
     .ob-desc { max-width: 100%; font-size: 14px; }
     .ob-heading { font-size: clamp(1.75rem, 8vw, 2.5rem); }
-    .ob-mock-domain-text {
-      max-width: 130px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
+    .ob-field-stack, .ob-choice-grid, .ob-slug-row { max-width: 100%; }
     .ob-cta-secondary { margin-left: 0; }
     .ob-done-wrap { padding: 20px 0; }
   }
@@ -473,176 +473,432 @@ const css = `
     .ob-card { padding: 18px; }
     .ob-step-labels { display: none; }
     .ob-cta { width: 100%; justify-content: center; }
-    .ob-check-item { font-size: 13px; }
     .ob-logo { font-size: 15px; }
     .ob-skip { font-size: 11px; }
     .ob-card-title { font-size: 18px; }
+    .ob-field-row { flex-direction: column; }
   }
 `;
 
-/* ── Step data ── */
-const STEPS = [
-  {
-    num: "Step 01",
-    heading: <>Your<br /><em>domain</em> name</>,
-    desc: "Claim your corner of the web. A custom domain makes your booking site look professional and is memorable for your clients.",
-    checks: [
-      "Search any domain name you want",
-      "We register it and connect it automatically — no DNS setup needed",
-      "Free SSL certificate included",
-      "Or skip and add one later from the Domain tab",
-    ],
-    ctaLabel: "Search Domains",
-    ctaRoute: "/dashboard",
-    ctaTab: "domain",
-    skipLabel: "Skip for now",
-    cardEyebrow: "Domain Setup",
-    cardIcon: "🌐",
-    cardTitle: "Find your perfect domain",
-    cardBody: "Type a name and we'll tell you instantly if it's available. Once purchased, it goes live in minutes.",
-    card: "domain",
-  },
-  {
-    num: "Step 02",
-    heading: <>Connect<br /><em>Stripe</em> payments</>,
-    desc: "Start taking deposits and payments from clients online. Stripe is the world's most trusted payment platform — setup takes 5 minutes.",
-    checks: [
-      "Accept booking deposits automatically",
-      "Take full payments or send pay links",
-      "Funds land directly in your bank account",
-      "Cancel & refund bookings with one click",
-    ],
-    ctaLabel: "Connect Stripe",
-    ctaRoute: "/dashboard",
-    ctaTab: "finance",
-    skipLabel: "Skip for now",
-    cardEyebrow: "Payments Setup",
-    cardIcon: "💳",
-    cardTitle: "Stripe — trusted by millions",
-    cardBody: "Your money goes straight to your bank. Bookrightly never holds your funds.",
-    card: "stripe",
-  },
-  {
-    num: "Step 03",
-    heading: <>Customise<br /><em>your site</em></>,
-    desc: "Make your booking page yours. Upload your logo, set your brand colour, write your bio, add services and pricing — all in minutes.",
-    checks: [
-      "Upload your hero image and logo",
-      "Set your brand colour — it applies everywhere",
-      "Add your services and pricing plans",
-      "Edit every line of text on your public page",
-    ],
-    ctaLabel: "Go to Dashboard",
-    ctaRoute: "/dashboard",
-    ctaTab: "domain",
-    skipLabel: null,
-    cardEyebrow: "Your Website",
-    cardIcon: "✨",
-    cardTitle: "Your site, your brand",
-    cardBody: "Everything your clients see is editable. No code required.",
-    card: "site",
-  },
+const STEP_LABELS = ["Account", "Profile", "Link", "Service", "Hours", "Live"];
+
+const BUSINESS_TYPES = [
+  { value: "barber",      label: "Barbershop" },
+  { value: "hairdresser", label: "Hair Salon" },
+  { value: "decorator",   label: "Painting & Decorating" },
+  { value: "trainer",     label: "Personal Trainer" },
 ];
 
-/* ── Card visuals ── */
-function DomainCard() {
-  return (
-    <div>
-      {[
-        { domain: "yourbusiness.co.uk", status: "available" },
-        { domain: "myshop.com",         status: "taken" },
-        { domain: "yourbusiness.com",   status: "available" },
-      ].map((d, i) => (
-        <div key={i} className="ob-mock-domain" style={{ animationDelay: `${i * 80}ms` }}>
-          <span style={{ fontSize: 14 }}>🔍</span>
-          <span className="ob-mock-domain-text">{d.domain}</span>
-          <span className={`ob-mock-badge ${d.status}`}>
-            {d.status === "available" ? "✓ Available" : "✗ Taken"}
-          </span>
-        </div>
-      ))}
-      <div style={{ marginTop: 16, padding: "10px 14px", background: "rgba(201,168,76,0.06)", border: "1px solid rgba(201,168,76,0.12)", borderRadius: 8, fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
-        🔒 Free SSL · Auto DNS · Renews yearly
-      </div>
-    </div>
-  );
-}
+const DAYS = [
+  { key: "mon", label: "Mon" }, { key: "tue", label: "Tue" }, { key: "wed", label: "Wed" },
+  { key: "thu", label: "Thu" }, { key: "fri", label: "Fri" }, { key: "sat", label: "Sat" }, { key: "sun", label: "Sun" },
+];
+const DAY_INDEX = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
 
-function StripeCard() {
-  return (
-    <div>
-      <div className="ob-mock-stripe">
-        <div className="ob-mock-stripe-logo">S</div>
-        <div>
-          <div className="ob-mock-stripe-text">Stripe Connect</div>
-          <div className="ob-mock-stripe-sub">Secure · Instant payouts · No setup fees</div>
-        </div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-        {[
-          { label: "Deposits", val: "✓ Auto", color: "#4ade80" },
-          { label: "Pay links", val: "✓ Tap-to-Pay", color: "#4ade80" },
-          { label: "Refunds",  val: "✓ 1-click", color: "#4ade80" },
-          { label: "Payouts",  val: "Next day", color: "rgba(255,255,255,0.5)" },
-        ].map((s, i) => (
-          <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "10px 12px" }}>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>{s.label}</div>
-            <div style={{ fontSize: 13, color: s.color, fontWeight: 600 }}>{s.val}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SiteCard() {
-  return (
-    <div className="ob-mock-site-preview">
-      <div className="ob-mock-site-bar">
-        <div className="ob-mock-dot" style={{ background: "#ff5f57" }} />
-        <div className="ob-mock-dot" style={{ background: "#ffbd2e" }} />
-        <div className="ob-mock-dot" style={{ background: "#28c840" }} />
-        <div className="ob-mock-url">yourbusiness.co.uk</div>
-      </div>
-      <div className="ob-mock-site-body">
-        <div className="ob-mock-line accent" />
-        <div className="ob-mock-line title" />
-        <div className="ob-mock-line" style={{ width: "85%" }} />
-        <div className="ob-mock-line short" />
-        <div style={{ height: 12 }} />
-        <div style={{ display: "flex", gap: 8 }}>
-          <div style={{ height: 28, flex: 1, borderRadius: 4, background: "rgba(201,168,76,0.25)" }} />
-          <div style={{ height: 28, flex: 1, borderRadius: 4, background: "rgba(255,255,255,0.05)" }} />
-        </div>
-        <div style={{ height: 12 }} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-          {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ height: 40, borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+function addDays(dateStr, days) {
+  const result = new Date(dateStr);
+  result.setDate(result.getDate() + days);
+  return result.toISOString().split("T")[0];
 }
 
 /* ── Main Onboarding component ── */
-export default function Onboarding({ brandColor = "#C9A84C" }) {
-  const navigate  = useNavigate();
+export default function Onboarding({ brandColor: brandColorProp }) {
+  const navigate = useNavigate();
+  const { barber: authUser } = useAuth();
   const [step, setStep] = useState(0);
-  const [key,  setKey]  = useState(0); // force re-animation on step change
+  const [key, setKey] = useState(0);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const [brandColor, setBrandColor] = useState(brandColorProp || "#2563EB");
+  const [accountType, setAccountType] = useState(null);
+  const [businessName, setBusinessName] = useState("");
+  const [businessType, setBusinessType] = useState("barber");
+  const [location, setLocation] = useState("");
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugStatus, setSlugStatus] = useState({ state: "idle", message: "" }); // idle | checking | available | taken | invalid
+  const [claimedSlug, setClaimedSlug] = useState("");
+  const [serviceName, setServiceName] = useState("");
+  const [serviceDuration, setServiceDuration] = useState(30);
+  const [servicePrice, setServicePrice] = useState("");
+  const [serviceDeposit, setServiceDeposit] = useState("");
+  const [days, setDays] = useState(() =>
+    Object.fromEntries(DAYS.map(d => [d.key, { enabled: false, start: "09:00", end: "17:00" }]))
+  );
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
-  const current = STEPS[step];
+  // Load existing profile to pre-fill (business name, type, brand colour)
+  useEffect(() => {
+    if (!authUser?.uid) return;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, "barbers", authUser.uid));
+        if (snap.exists()) {
+          const data = snap.data();
+          setBusinessName(data.businessName || data.name || "");
+          setBusinessType(data.businessType || "barber");
+          setLocation(data.location || data.city || "");
+          if (data.brandColor) setBrandColor(data.brandColor);
+          if (data.bookingSlug) setClaimedSlug(data.bookingSlug);
+        }
+      } catch { /* non-fatal — form just starts blank */ }
+      finally { setLoadingProfile(false); }
+    })();
+  }, [authUser?.uid]);
 
-  function advance(tab) {
-    // CTA always navigates directly — to a specific tab or the root dashboard
-    navigate(tab ? `/dashboard?tab=${tab}` : "/dashboard");
-  }
+  // Suggest a slug once we know the business name and reach that step
+  useEffect(() => {
+    if (step === 2 && !slug && businessName) {
+      setSlug(sanitizeSlug(businessName));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
-  function skip() {
+  // Live slug availability check (debounced)
+  useEffect(() => {
+    if (step !== 2) return;
+    const clean = sanitizeSlug(slug);
+    if (!clean) { setSlugStatus({ state: "idle", message: "" }); return; }
+    if (!isValidSlugFormat(clean)) {
+      setSlugStatus({ state: "invalid", message: "Use 3-30 lowercase letters, numbers, or hyphens." });
+      return;
+    }
+    if (isReservedSlug(clean)) {
+      setSlugStatus({ state: "taken", message: "This link is reserved." });
+      return;
+    }
+    if (clean === claimedSlug) {
+      setSlugStatus({ state: "available", message: "This is already your link." });
+      return;
+    }
+    setSlugStatus({ state: "checking", message: "Checking…" });
+    const t = setTimeout(async () => {
+      try {
+        const s = await getDoc(doc(db, "bookingSlugs", clean));
+        if (s.exists() && s.data()?.barberId) {
+          setSlugStatus({ state: "taken", message: `bookrightly.co.uk/${clean} is already taken.` });
+        } else {
+          setSlugStatus({ state: "available", message: `✓ bookrightly.co.uk/${clean} is available` });
+        }
+      } catch {
+        setSlugStatus({ state: "idle", message: "" });
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [slug, step, claimedSlug]);
+
+  function skipToDashboard() { navigate("/dashboard"); }
+
+  function goNext() {
     setStep(s => s + 1);
     setKey(k => k + 1);
+    setError("");
+  }
+
+  async function handleAccountType(type) {
+    setAccountType(type);
+    setSaving(true);
+    setError("");
+    try {
+      await updateBarber(authUser.uid, { accountType: type });
+      goNext();
+    } catch (e) {
+      setError("Couldn't save that — please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleProfileSubmit() {
+    if (!businessName.trim()) { setError("Please enter your business name."); return; }
+    setSaving(true);
+    setError("");
+    try {
+      let businessLogo;
+      if (photoFile) {
+        businessLogo = await uploadBarberImage(photoFile, "logo.jpg", authUser.uid);
+      }
+      await updateBarber(authUser.uid, {
+        businessName: businessName.trim(),
+        businessType,
+        location: location.trim(),
+        ...(businessLogo ? { businessLogo, logoUrl: businessLogo } : {}),
+      });
+      goNext();
+    } catch (e) {
+      setError("Couldn't save your profile — please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSlugSubmit() {
+    const clean = sanitizeSlug(slug);
+    if (slugStatus.state !== "available" && clean !== claimedSlug) {
+      setError("Please choose an available link first.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const functions = getFunctions(getApp(), "us-central1");
+      const claim = httpsCallable(functions, "claimBookingSlug");
+      const res = await claim({ slug: clean });
+      setClaimedSlug(res.data.slug);
+      goNext();
+    } catch (e) {
+      setError(e.message?.replace(/^.*claimBookingSlug:\s*/, "") || "Couldn't claim that link — please try a different one.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleServiceSubmit() {
+    if (!serviceName.trim() || !servicePrice) { setError("Please add a service name and price."); return; }
+    setSaving(true);
+    setError("");
+    try {
+      const snap = await getDoc(doc(db, "barbers", authUser.uid));
+      const existing = Array.isArray(snap.data()?.services) ? snap.data().services : [];
+      const newService = {
+        name: serviceName.trim(),
+        price: Number(servicePrice) || 0,
+        duration: Number(serviceDuration) || 30,
+        ...(serviceDeposit ? { deposit: Number(serviceDeposit) } : {}),
+      };
+      await updateBarber(authUser.uid, { services: [...existing, newService] });
+      if (serviceDeposit) {
+        await updateBarber(authUser.uid, { depositAmount: Number(serviceDeposit) });
+      }
+      goNext();
+    } catch (e) {
+      setError("Couldn't save that service — please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleAvailabilitySubmit() {
+    const enabledDays = DAYS.filter(d => days[d.key].enabled);
+    setSaving(true);
+    setError("");
+    try {
+      if (enabledDays.length > 0) {
+        const today = new Date();
+        const jobs = [];
+        // Next 28 days — simple weekly pattern, repeated for 4 weeks.
+        for (let i = 0; i < 28; i++) {
+          const date = addDays(today.toISOString().split("T")[0], i);
+          const weekday = new Date(date + "T00:00:00").getDay();
+          const dayCfg = enabledDays.find(d => DAY_INDEX[d.key] === weekday);
+          if (dayCfg) {
+            const cfg = days[dayCfg.key];
+            jobs.push(addSlot({ barberId: authUser.uid, shopId: authUser.uid, date, time: cfg.start }));
+          }
+        }
+        await Promise.all(jobs);
+      }
+      goNext();
+    } catch (e) {
+      setError("Couldn't save your availability — you can add it later from the Schedule tab.");
+      goNext();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function toggleDay(key) {
+    setDays(prev => ({ ...prev, [key]: { ...prev[key], enabled: !prev[key].enabled } }));
+  }
+  function setDayTime(key, field, value) {
+    setDays(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+  }
+
+  const steps = [
+    // 0 — Account type
+    {
+      num: "Step 01",
+      heading: <>How will you<br /><em>use Bookrightly?</em></>,
+      desc: "Both work the same way underneath — this just tunes what you see, and you can change it later from Settings.",
+      body: (
+        <div className="ob-choice-grid">
+          <button type="button" className={`ob-choice-card ${accountType === "solo" ? "selected" : ""}`} onClick={() => handleAccountType("solo")} disabled={saving}>
+            <div className="ob-choice-title">Just me</div>
+            <div className="ob-choice-sub">For self-employed professionals and individuals.</div>
+          </button>
+          <button type="button" className={`ob-choice-card ${accountType === "team" ? "selected" : ""}`} onClick={() => handleAccountType("team")} disabled={saving}>
+            <div className="ob-choice-title">Me + my team</div>
+            <div className="ob-choice-sub">For businesses with multiple staff members.</div>
+          </button>
+        </div>
+      ),
+      cardEyebrow: "Getting started",
+      cardIcon: "👋",
+      cardTitle: "Welcome to Bookrightly",
+      cardBody: "In the next few minutes you'll have your own booking page live — no website or domain needed.",
+    },
+    // 1 — Profile
+    {
+      num: "Step 02",
+      heading: <>Tell us about<br /><em>your business</em></>,
+      desc: "This appears on your public booking page — you can edit all of it later.",
+      body: (
+        <>
+          <div className="ob-field-stack">
+            <TextField label="Business or your name" value={businessName} onChange={e => setBusinessName(e.target.value)}
+              variant="filled" fullWidth InputProps={{ disableUnderline: true }} sx={fieldSx} />
+            <FormControl variant="filled" fullWidth sx={fieldSx}>
+              <InputLabel sx={{ color: "rgba(255,255,255,0.5)" }}>Trade</InputLabel>
+              <Select value={businessType} onChange={e => setBusinessType(e.target.value)} disableUnderline sx={{ color: "#fff" }}>
+                {BUSINESS_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <TextField label="Location (town/city)" value={location} onChange={e => setLocation(e.target.value)}
+              variant="filled" fullWidth InputProps={{ disableUnderline: true }} sx={fieldSx} />
+            <label style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", cursor: "pointer" }}>
+              {photoPreview ? "Photo selected ✓" : "+ Add a logo or photo (optional)"}
+              <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+                const f = e.target.files?.[0];
+                if (f) { setPhotoFile(f); setPhotoPreview(URL.createObjectURL(f)); }
+              }} />
+            </label>
+          </div>
+        </>
+      ),
+      onNext: handleProfileSubmit,
+      ctaLabel: "Continue",
+      cardEyebrow: "Your profile",
+      cardIcon: "🏷️",
+      cardTitle: "How clients find you",
+      cardBody: "Your business name, trade and location help clients recognise your page immediately.",
+    },
+    // 2 — Booking link
+    {
+      num: "Step 03",
+      heading: <>Choose your<br /><em>booking link</em></>,
+      desc: "This is the address clients will use to book you — share it anywhere.",
+      body: (
+        <>
+          <div className="ob-slug-row">
+            <span className="ob-slug-prefix">bookrightly.co.uk/</span>
+            <input
+              value={slug}
+              onChange={e => setSlug(e.target.value.toLowerCase())}
+              placeholder="yourbusiness"
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
+          <div className={`ob-slug-hint ${slugStatus.state}`}>{slugStatus.message}</div>
+        </>
+      ),
+      onNext: handleSlugSubmit,
+      nextDisabled: !(slugStatus.state === "available" || sanitizeSlug(slug) === claimedSlug),
+      ctaLabel: "Claim link",
+      cardEyebrow: "Your address",
+      cardIcon: "🔗",
+      cardTitle: "One link, everywhere",
+      cardBody: "Put it in your Instagram, TikTok, Facebook or WhatsApp bio so clients can book you anytime.",
+    },
+    // 3 — First service
+    {
+      num: "Step 04",
+      heading: <>Add your<br /><em>first service</em></>,
+      desc: "You can add more, edit prices, or change anything later from your dashboard.",
+      body: (
+        <div className="ob-field-stack">
+          <TextField label="Service name" placeholder="e.g. Haircut, Consultation" value={serviceName} onChange={e => setServiceName(e.target.value)}
+            variant="filled" fullWidth InputProps={{ disableUnderline: true }} sx={fieldSx} />
+          <div className="ob-field-row">
+            <TextField label="Duration (mins)" type="number" value={serviceDuration} onChange={e => setServiceDuration(e.target.value)}
+              variant="filled" InputProps={{ disableUnderline: true }} sx={fieldSx} />
+            <TextField label="Price (£)" type="number" value={servicePrice} onChange={e => setServicePrice(e.target.value)}
+              variant="filled" InputProps={{ disableUnderline: true }} sx={fieldSx} />
+          </div>
+          <TextField label="Deposit (£, optional)" type="number" value={serviceDeposit} onChange={e => setServiceDeposit(e.target.value)}
+            variant="filled" fullWidth InputProps={{ disableUnderline: true }} sx={fieldSx} />
+        </div>
+      ),
+      onNext: handleServiceSubmit,
+      ctaLabel: "Continue",
+      cardEyebrow: "Services",
+      cardIcon: "💈",
+      cardTitle: "What you offer",
+      cardBody: "A deposit here cuts no-shows — clients pay upfront to secure the slot.",
+    },
+    // 4 — Availability
+    {
+      num: "Step 05",
+      heading: <>Set your<br /><em>weekly hours</em></>,
+      desc: "Turn on the days you work — we'll open slots for the next four weeks. Fine-tune anytime from Schedule.",
+      body: (
+        <div style={{ maxWidth: 420, marginBottom: 28 }}>
+          {DAYS.map(d => (
+            <div className="ob-day-row" key={d.key}>
+              <button type="button" className={`ob-day-toggle ${days[d.key].enabled ? "on" : ""}`} onClick={() => toggleDay(d.key)} />
+              <span className="ob-day-label">{d.label}</span>
+              <div className={`ob-day-times ${days[d.key].enabled ? "enabled" : ""}`}>
+                <input type="time" value={days[d.key].start} onChange={e => setDayTime(d.key, "start", e.target.value)} />
+                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>to</span>
+                <input type="time" value={days[d.key].end} onChange={e => setDayTime(d.key, "end", e.target.value)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ),
+      onNext: handleAvailabilitySubmit,
+      ctaLabel: "Continue",
+      skipLabel: "Skip for now",
+      cardEyebrow: "Availability",
+      cardIcon: "🗓️",
+      cardTitle: "When you're free",
+      cardBody: "Clients can only book the times you open — no double bookings, ever.",
+    },
+  ];
+
+  const isLastFormStep = step === steps.length - 1;
+  const current = steps[step];
+
+  if (loadingProfile) {
+    return (
+      <div className="ob-root" style={{ alignItems: "center", justifyContent: "center" }}>
+        <CircularProgress sx={{ color: brandColor }} />
+      </div>
+    );
+  }
+
+  // ── Final "live" step ──
+  if (step >= steps.length) {
+    return (
+      <>
+        <style>{css}</style>
+        <div className="ob-root" style={{ "--brand": brandColor }}>
+          <div className="ob-topbar">
+            <div className="ob-logo">Bookrightly</div>
+          </div>
+          <div className="ob-body" style={{ gridTemplateColumns: "1fr" }}>
+            <div className="ob-done-wrap">
+              <div className="ob-done-ring">🎉</div>
+              <h1 className="ob-done-title">You're ready to take bookings</h1>
+              <p className="ob-done-sub">Your booking page is live at bookrightly.co.uk/{claimedSlug}. Share it anywhere — no website or domain needed.</p>
+              <BookingLinkCard bookingSlug={claimedSlug} brandColor={brandColor} showQrButton={false} sx={{ maxWidth: 420, mb: 3, textAlign: "left" }} />
+              <div className="ob-cta-row">
+                <a className="ob-cta" href={`/${claimedSlug}`} target="_blank" rel="noopener noreferrer">
+                  View my booking page
+                </a>
+                <button className="ob-cta-secondary" onClick={() => navigate("/dashboard")}>
+                  Go to dashboard →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
   }
 
   return (
@@ -653,7 +909,7 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
         {/* Top bar */}
         <div className="ob-topbar">
           <div className="ob-logo">Bookrightly</div>
-          <button className="ob-skip" onClick={() => navigate("/dashboard")}>
+          <button className="ob-skip" onClick={skipToDashboard}>
             Skip setup →
           </button>
         </div>
@@ -661,13 +917,13 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
         {/* Progress */}
         <div className="ob-progress-wrap">
           <div className="ob-step-row">
-            {STEPS.map((_, i) => {
-              const isDone   = i < step;
+            {steps.map((_, i) => {
+              const isDone = i < step;
               const isActive = i === step;
               return (
                 <React.Fragment key={i}>
                   <div className={`ob-step-pill ${isDone ? "done" : isActive ? "active" : ""}`} key={isActive ? key : i} />
-                  {i < STEPS.length - 1 && (
+                  {i < steps.length - 1 && (
                     <div className={`ob-step-dot ${isDone ? "done" : isActive ? "active" : ""}`} />
                   )}
                 </React.Fragment>
@@ -675,9 +931,9 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
             })}
           </div>
           <div className="ob-step-labels">
-            {STEPS.map((s, i) => (
+            {steps.map((_, i) => (
               <div key={i} className={`ob-step-label ${i < step ? "done" : i === step ? "active" : ""}`}>
-                {i === 0 ? "Domain" : i === 1 ? "Payments" : "Website"}
+                {STEP_LABELS[i]}
               </div>
             ))}
           </div>
@@ -692,30 +948,23 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
             <h1 className="ob-heading">{current.heading}</h1>
             <p className="ob-desc">{current.desc}</p>
 
-            <ul className="ob-checklist">
-              {current.checks.map((c, i) => (
-                <li key={i} className="ob-check-item" style={{ animationDelay: `${i * 80 + 100}ms` }}>
-                  <div className="ob-check-icon">✓</div>
-                  {c}
-                </li>
-              ))}
-            </ul>
+            {current.body}
 
-            <div className="ob-cta-row">
-              {step < STEPS.length - 1 ? (
-                /* Steps 1 & 2 — informational only, just advance */
-                <button className="ob-cta" onClick={skip}>
-                  Next
-                  <span className="ob-cta-arrow">→</span>
+            {error && <Alert severity="error" sx={{ mb: 2, maxWidth: 420 }}>{error}</Alert>}
+
+            {current.onNext && (
+              <div className="ob-cta-row">
+                <button className="ob-cta" onClick={current.onNext} disabled={saving || current.nextDisabled}>
+                  {saving ? "Saving…" : current.ctaLabel}
+                  {!saving && <span className="ob-cta-arrow">→</span>}
                 </button>
-              ) : (
-                /* Step 3 — final, go to dashboard */
-                <button className="ob-cta" onClick={() => advance(current.ctaTab)}>
-                  {current.ctaLabel}
-                  <span className="ob-cta-arrow">→</span>
-                </button>
-              )}
-            </div>
+                {current.skipLabel && (
+                  <button className="ob-cta-secondary" onClick={goNext} disabled={saving}>
+                    {current.skipLabel}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right */}
@@ -724,10 +973,6 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
             <div className="ob-card-icon">{current.cardIcon}</div>
             <div className="ob-card-title">{current.cardTitle}</div>
             <p className="ob-card-body">{current.cardBody}</p>
-
-            {current.card === "domain" && <DomainCard />}
-            {current.card === "stripe" && <StripeCard />}
-            {current.card === "site"   && <SiteCard />}
           </div>
 
         </div>
@@ -736,3 +981,10 @@ export default function Onboarding({ brandColor = "#C9A84C" }) {
     </>
   );
 }
+
+const fieldSx = {
+  "& .MuiFilledInput-root": { bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1, border: "1.5px solid rgba(255,255,255,0.12)" },
+  "& .MuiFilledInput-input": { color: "#fff" },
+  "& .MuiInputLabel-root": { color: "rgba(255,255,255,0.5)" },
+  "& .MuiInputLabel-root.Mui-focused": { color: "var(--brand, #2563EB)" },
+};

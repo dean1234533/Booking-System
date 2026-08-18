@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  Box, Container, Typography, TextField,
-  Button, Alert, CircularProgress, Paper, Divider
+  Alert, Box, Button, CircularProgress, IconButton, InputAdornment,
+  Stack, TextField, Typography,
 } from "@mui/material";
-import ContentCutIcon from "@mui/icons-material/ContentCut";
-import { signInBarber } from "../firebase/auth";
+import {
+  ArrowForward as ArrowForwardIcon,
+  LockOutlined as LockIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
+} from "@mui/icons-material";
+import AuthShell, { AUTH_GOLD } from "../components/auth/AuthShell";
+import { resetBarberPassword, signInBarber } from "../firebase/auth";
 
-/**
- * Marketplace-Only Login Component
- * Dedicated to the main platform home page.
- */
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,107 +20,139 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
 
-  // Default Platform Branding
-  const brandColor = "#C9A84C";
-  const businessName = "Bookrightly";
-  const logoPath = "/images/IMG_9763-removebg-preview.png";
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
-  // Effect to ensure the page starts at the top when mounted
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (!email.trim() || !password) {
+      setError("Enter your email address and password.");
+      return;
+    }
     setLoading(true);
     setError(null);
-
+    setNotice(null);
     try {
-      await signInBarber(email, password);
+      await signInBarber(email.trim(), password);
       navigate(from, { replace: true });
-    } catch (err) {
-      setError("Invalid email or password. Please try again.");
+    } catch {
+      setError("We couldn’t sign you in. Check your email and password, then try again.");
     } finally {
       setLoading(false);
     }
   }
 
+  async function handlePasswordReset() {
+    if (!email.trim()) {
+      setError("Enter your email address first, then choose “Forgot password?”");
+      return;
+    }
+    setResetLoading(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await resetBarberPassword(email.trim());
+      setNotice("Password reset email sent. Check your inbox for the next step.");
+    } catch {
+      setError("We couldn’t send the reset email. Check the address and try again.");
+    } finally {
+      setResetLoading(false);
+    }
+  }
+
   return (
-    /* Removed top padding to pull the content to the top of the viewport */
-   <Container maxWidth="xs" sx={{ pt: { xs: 10, md: 14 }, pb: { xs: 6, md: 10 } }}>
-      <Box textAlign="center" mb={4} display="flex" flexDirection="column" alignItems="center">
-        <Box 
-          component="img"
-          src={logoPath}
-          alt="Bookrightly logo"
-          sx={{ 
-            height: 100, 
-            width: 'auto', 
-            mb: 2 
-          }}
-        />
-        
-        <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: "-0.04em", textTransform: 'uppercase' }}>
-          {businessName}
-        </Typography>
-        
-        <Typography variant="body2" color="text.secondary" mt={1} sx={{ fontWeight: 500 }}>
-          Sign in to manage your shop.
-        </Typography>
-      </Box>
-
-      <Paper 
-        variant="outlined" 
-        sx={{ 
-          p: 4, borderRadius: 4, borderTop: `6px solid ${brandColor}`,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.05)'
-        }}
-      >
-        <Box component="form" onSubmit={handleSubmit} noValidate>
-          {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
-
-          <TextField
-            label="Email Address"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            fullWidth required autoFocus autoComplete="email"
-            sx={{ mb: 2, '& .MuiOutlinedInput-root.Mui-focused fieldset': { borderColor: brandColor }, '& .MuiInputLabel-root.Mui-focused': { color: brandColor } }}
-          />
-          <TextField
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            fullWidth required autoComplete="current-password"
-            sx={{ mb: 3, '& .MuiOutlinedInput-root.Mui-focused fieldset': { borderColor: brandColor }, '& .MuiInputLabel-root.Mui-focused': { color: brandColor } }}
-          />
-
-          <Button
-            type="submit" variant="contained" fullWidth size="large" disabled={loading}
-            sx={{ py: 1.8, fontWeight: 900, bgcolor: brandColor, borderRadius: 2, '&:hover': { bgcolor: brandColor, filter: 'brightness(0.9)' } }}
-          >
-            {loading ? <CircularProgress size={24} color="inherit" /> : "Sign In"}
-          </Button>
+    <AuthShell
+      compact
+      eyebrow="Welcome back"
+      title="Your business, ready when you are."
+      description="Sign in to manage bookings, clients, payments and your public business page."
+    >
+      <Box sx={{ maxWidth: 460, mx: "auto" }}>
+        <Box sx={{ mb: 3.5 }}>
+          <Typography component="h2" sx={{ fontWeight: 900, fontSize: { xs: "1.65rem", sm: "2rem" }, letterSpacing: "-.04em" }}>
+            Sign in
+          </Typography>
+          <Typography sx={{ color: "text.secondary", fontSize: ".84rem", mt: .75 }}>
+            New to Bookrightly?{" "}
+            <Box component={Link} to="/signup" sx={{ color: AUTH_GOLD, fontWeight: 850, textDecoration: "none" }}>
+              Start your free trial
+            </Box>
+          </Typography>
         </Box>
 
-        <Divider sx={{ my: 3 }}>
-           <Typography variant="caption" color="text.secondary" sx={{ px: 1, fontWeight: 700 }}>OR</Typography>
-        </Divider>
+        <Box component="form" onSubmit={handleSubmit} noValidate>
+          <Stack spacing={2.25}>
+            {error && <Alert severity="error" sx={{ borderRadius: 2.5 }}>{error}</Alert>}
+            {notice && <Alert severity="success" sx={{ borderRadius: 2.5 }}>{notice}</Alert>}
 
-        <Typography variant="body2" color="text.secondary" textAlign="center">
-          New to {businessName}?{" "}
-          <Link 
-            to="/signup" 
-            style={{ color: brandColor, fontWeight: 800, textDecoration: 'none' }}
-          >
-            Create Account
-          </Link>
+            <TextField
+              label="Email address"
+              type="email"
+              value={email}
+              onChange={event => setEmail(event.target.value)}
+              fullWidth required autoFocus autoComplete="email"
+              inputProps={{ inputMode: "email" }}
+            />
+
+            <Box>
+              <TextField
+                label="Password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={event => setPassword(event.target.value)}
+                fullWidth required autoComplete="current-password"
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><LockIcon sx={{ fontSize: 18, color: "#9ca1ab" }} /></InputAdornment>,
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        edge="end"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        onClick={() => setShowPassword(value => !value)}
+                      >
+                        {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <Button
+                type="button"
+                size="small"
+                disabled={resetLoading}
+                onClick={handlePasswordReset}
+                sx={{ display: "block", ml: "auto", mt: .65, px: 0, color: "#666d78", fontSize: ".72rem" }}
+              >
+                {resetLoading ? "Sending…" : "Forgot password?"}
+              </Button>
+            </Box>
+
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              size="large"
+              disabled={loading}
+              endIcon={!loading && <ArrowForwardIcon />}
+              sx={{
+                minHeight: 54, bgcolor: AUTH_GOLD, color: "#171717", fontWeight: 900,
+                borderRadius: 2.5, "&:hover": { bgcolor: AUTH_GOLD, filter: "brightness(.92)" },
+              }}
+            >
+              {loading ? <CircularProgress size={23} color="inherit" /> : "Sign in to dashboard"}
+            </Button>
+          </Stack>
+        </Box>
+
+        <Typography sx={{ color: "text.secondary", textAlign: "center", fontSize: ".69rem", mt: 3 }}>
+          Secure sign-in · Your session stays private on this device
         </Typography>
-      </Paper>
-    </Container>
+      </Box>
+    </AuthShell>
   );
 }

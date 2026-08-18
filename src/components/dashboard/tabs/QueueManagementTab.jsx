@@ -8,6 +8,7 @@ import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { SITE_URL } from "../../../utils/siteUrl";
 
 const SANS  = "'DM Sans', sans-serif";
 const SERIF = "'Playfair Display', serif";
@@ -25,13 +26,13 @@ function cfgFieldSx() {
   };
 }
 
-export default function QueueManagementTab({ barber, brandColor = "#C9A84C" }) {
+export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
   const [queue,  setQueue]  = useState([]);
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [copied, setCopied] = useState(false);
   const tid = barber?.uid;
 
-  const queueUrl = `${window.location.origin}/queue/${tid}`;
+  const queueUrl = `${SITE_URL}/queue/${tid}`;
 
   // Real-time queue listener
   useEffect(() => {

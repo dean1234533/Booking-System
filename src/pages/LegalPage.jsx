@@ -5,8 +5,8 @@ import { useNavigate } from "react-router-dom";
 
 // ── Brand tokens (match Home) ──────────────────────────────────────────────
 const G = {
-  gold:      "#C9A84C",
-  goldLight: "#e8c97a",
+  gold:      "#2563EB",
+  goldLight: "#60A5FA",
   dark:      "#0d0d0d",
   dark2:     "#1a1a1a",
   warmWhite: "#faf8f4",

@@ -54,6 +54,34 @@ export const getBarberByDomain = async (rawDomain) => {
   return null;
 };
 
+// Resolves a Bookrightly-hosted vanity URL (bookrightly.co.uk/{slug}) to its
+// owning barber doc. Falls back to previousBookingSlugs so a visitor who
+// hits an old link (e.g. bookmarked before a slug change) still resolves —
+// the caller can check `_redirectFromOldSlug` and issue a client-side
+// redirect to the account's current slug.
+export const getBarberBySlug = async (rawSlug) => {
+  if (!rawSlug) return null;
+  const slug = rawSlug.toLowerCase().trim();
+
+  const currentSnap = await getDocs(
+    query(collection(db, "barbers"), where("bookingSlug", "==", slug))
+  );
+  if (!currentSnap.empty) {
+    const d = currentSnap.docs[0];
+    return { id: d.id, ...d.data() };
+  }
+
+  const prevSnap = await getDocs(
+    query(collection(db, "barbers"), where("previousBookingSlugs", "array-contains", slug))
+  );
+  if (!prevSnap.empty) {
+    const d = prevSnap.docs[0];
+    return { id: d.id, ...d.data(), _redirectFromOldSlug: slug };
+  }
+
+  return null;
+};
+
 export const getAllBarbers = async () => {
   const snap = await getDocs(collection(db, "barbers"));
   const rawData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));

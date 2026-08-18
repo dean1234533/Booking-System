@@ -32,7 +32,7 @@ export default function TenantFooter({ tenant, businessType }) {
   // --- DATA MAPPING (Synced with TenantNav) ---
   const logo = tenant?.businessLogo || tenant?.logoUrl;
   const businessName = (tenant?.businessName || "PREMIUM BARBER SHOP").toUpperCase();
-  const brandColor  = tenant?.brandColor    || "#C9A84C";
+  const brandColor  = tenant?.brandColor    || "#2563EB";
   const footerBg    = tenant?.footerBgColor || "#0a0a0a";
   const footerText  = contrastColor(footerBg);
   const mutedText   = footerText === "#ffffff"
@@ -72,28 +72,29 @@ export default function TenantFooter({ tenant, businessType }) {
   };
 
   return (
-    <Box component="footer" sx={{ bgcolor: footerBg, color: footerText, pt: { xs: 6, md: 8 }, pb: 4, mt: 'auto', px: { xs: 3, md: 5 } }}>
-      <Container maxWidth="lg" disableGutters>
+    <Box component="footer" sx={{ bgcolor: footerBg, color: footerText, pt: { xs: 7, md: 10 }, pb: 4, mt: 'auto', px: { xs: 3, md: 5 }, borderRadius: { xs: "34px 34px 0 0", md: "58px 58px 0 0" }, position: "relative", overflow: "hidden" }}>
+      <Typography aria-hidden="true" sx={{ position: "absolute", right: -20, top: -35, fontSize: { xs: "5rem", md: "10rem" }, fontWeight: 950, lineHeight: 1, color: footerText, opacity: .035, whiteSpace: "nowrap" }}>{businessName}</Typography>
+      <Container maxWidth="lg" disableGutters sx={{ position: "relative" }}>
         {/* Top: brand/contact (left) + social (right) — centred on mobile */}
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           justifyContent="space-between"
           alignItems={{ xs: 'center', md: 'flex-start' }}
           spacing={{ xs: 4, md: 4 }}
-          sx={{ textAlign: { xs: 'center', md: 'left' } }}
+          sx={{ textAlign: { xs: 'center', md: 'left' }, border: `1px solid ${dividerColor}`, borderRadius: "7px 30px 30px 30px", p: { xs: 3, md: 4 } }}
         >
           {/* Brand + contact */}
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-start' } }}>
             {logo ? (
               <Avatar src={logo} variant="square"
-                sx={{ width: 56, height: 56, borderRadius: '6px', border: `1.5px solid ${brandColor}`, objectFit: 'contain', bgcolor: 'transparent', mb: 2 }} />
+                sx={{ width: 58, height: 58, borderRadius: '5px 20px 20px 20px', border: `2px solid ${brandColor}`, objectFit: 'contain', bgcolor: 'transparent', mb: 2 }} />
             ) : (
-              <Box sx={{ width: 56, height: 56, borderRadius: '6px', bgcolor: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: brandColor, border: `1px solid ${brandColor}44`, mb: 2 }}>
+              <Box sx={{ width: 58, height: 58, borderRadius: '5px 20px 20px 20px', bgcolor: brandColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: contrastColor(brandColor), mb: 2 }}>
                 <ContentCutIcon sx={{ fontSize: 28 }} />
               </Box>
             )}
 
-            <Typography variant="h6" sx={{ fontWeight: 900, mb: address ? 1 : 2, letterSpacing: 1, fontFamily: "'Playfair Display', serif", color: footerText }}>
+            <Typography variant="h6" sx={{ fontWeight: 950, mb: address ? 1 : 2, letterSpacing: "-.04em", fontSize: { xs: "1.6rem", md: "2.2rem" }, color: footerText }}>
               {businessName}
             </Typography>
 

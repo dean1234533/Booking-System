@@ -15,6 +15,7 @@ import {
   collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { SITE_URL } from "../../../utils/siteUrl";
 
 const SANS  = "'DM Sans', sans-serif";
 const SERIF = "'Playfair Display', serif";
@@ -184,7 +185,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
   }
 
   function copyLink(q) {
-    const url = `${window.location.origin}/quote-view/${tid}/${q.id}`;
+    const url = `${SITE_URL}/quote-view/${tid}/${q.id}`;
     navigator.clipboard.writeText(url).catch(() => {});
     setToast("Quote link copied to clipboard!");
     setTimeout(() => setToast(""), 2800);

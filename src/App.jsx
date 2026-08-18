@@ -4,10 +4,15 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, matchPat
 import { Box, CircularProgress, ThemeProvider, createTheme, CssBaseline } from "@mui/material";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Helmet, HelmetProvider } from 'react-helmet-async';
-import Home from "./pages/Home";
+import Home from "./pages/HomeRebuild";
+import { RESERVED_SLUGS } from "./utils/bookingSlug";
 
-// Firebase imports
-import { getBarberByDomain, getBarberById } from "./firebase/firestore";
+// firebase/firestore.js is loaded on demand (dynamic import inside
+// identifyTenant, below) rather than imported statically here — App.jsx runs
+// on every page including the homepage, and a static import here was forcing
+// this ~1,100-line module (and everything it pulls in) into the main bundle
+// for every visitor, even though every other page that needs it already
+// dynamically imports it.
 
 // Page/Component imports — lazy so Vite splits each route into its own chunk instead of
 // bundling all ~35 pages (dashboard, every business template, every SEO page, every
@@ -87,6 +92,8 @@ function AppShell() {
   const lastIdentifiedId = useRef(null);
 
   const platformDomains = [
+    'bookrightly.co.uk',
+    'www.bookrightly.co.uk',
     'bookehtrim.co.uk',
     'www.bookehtrim.co.uk',
     'bookehtrim.pages.dev',
@@ -135,6 +142,17 @@ function AppShell() {
       barberMatch?.params.id ||
       bookingMatch?.params.barberId;
 
+    // Bookrightly-hosted vanity booking URL (bookrightly.co.uk/{slug}) — only
+    // considered when nothing else matched and the first path segment isn't
+    // one of the platform's own static routes (RESERVED_SLUGS is kept a
+    // superset of every top-level path in this file's <Routes> table).
+    // Platform-domain only: a custom-domain visitor's path resolution is
+    // unchanged, still handled entirely by the getBarberByDomain fallback below.
+    const firstSegment = path.split("/")[1] || "";
+    const slugMatch = (isPlatformDomain && !targetId && firstSegment && !RESERVED_SLUGS.has(firstSegment))
+      ? matchPath("/:bookingSlug", path)
+      : null;
+
     try {
       if (isAuthPath && tenantBarber) {
         setIsFetchingTenant(false);
@@ -153,9 +171,13 @@ function AppShell() {
         return;
       }
 
+      const { getBarberById, getBarberByDomain, getBarberBySlug } = await import("./firebase/firestore");
+
       let data = null;
       if (targetId) {
         data = await getBarberById(targetId);
+      } else if (slugMatch) {
+        data = await getBarberBySlug(slugMatch.params.bookingSlug);
       } else if (!isPlatformDomain) {
         data = await getBarberByDomain(hostname);
       }
@@ -220,27 +242,70 @@ function AppShell() {
   }, [identifyTenant]);
 
   const dynamicTheme = useMemo(() => {
-    const selectedColor = tenantBarber?.brandColor || "#C9A84C";
+    const selectedColor = tenantBarber?.brandColor || "#FF735C";
     return createTheme({
       palette: {
-        primary:   { main: "#1A1A1A" },
+        primary:   { main: "#2563EB", dark: "#1D4ED8", contrastText: "#FFFFFF" },
         secondary: { main: selectedColor },
+        background: { default: "#F5F3ED", paper: "#FFFFFF" },
+        text: { primary: "#111116", secondary: "#696A73" },
+        divider: "#DEDDD8",
       },
-      shape: { borderRadius: 12 },
+      shape: { borderRadius: 18 },
+      typography: {
+        fontFamily: "'DM Sans','Plus Jakarta Sans','Inter',system-ui,sans-serif",
+        h1: { fontWeight: 900, letterSpacing: "-0.065em", lineHeight: 0.98 },
+        h2: { fontWeight: 900, letterSpacing: "-0.055em", lineHeight: 1 },
+        h3: { fontWeight: 900, letterSpacing: "-0.045em", lineHeight: 1.05 },
+        h4: { fontWeight: 900, letterSpacing: "-0.035em" },
+        h5: { fontWeight: 850, letterSpacing: "-0.025em" },
+        h6: { fontWeight: 850, letterSpacing: "-0.02em" },
+        button: { textTransform: "none", fontWeight: 850, letterSpacing: 0 },
+      },
       components: {
         MuiCssBaseline: {
           styleOverrides: {
             body: {
-              selection: { background: selectedColor, color: "#FFFFFF" }
-            }
-          }
-        }
+              backgroundColor: "#F5F3ED",
+              color: "#111116",
+              selection: { background: "#93C5FD", color: "#111116" },
+            },
+            "*": { scrollbarColor: "#B9B8B3 transparent" },
+          },
+        },
+        MuiPaper: {
+          defaultProps: { elevation: 0 },
+          styleOverrides: { root: { backgroundImage: "none", border: "1px solid #DEDDD8", borderRadius: "6px 22px 22px 22px", boxShadow: "0 14px 40px rgba(17,17,22,.055)" } },
+        },
+        MuiCard: {
+          defaultProps: { elevation: 0 },
+          styleOverrides: { root: { borderRadius: "6px 24px 24px 24px", border: "1px solid #DEDDD8", boxShadow: "0 14px 40px rgba(17,17,22,.055)" } },
+        },
+        MuiButton: {
+          defaultProps: { disableElevation: true },
+          styleOverrides: {
+            root: { minHeight: 42, borderRadius: 999, paddingInline: 20 },
+            containedPrimary: { boxShadow: "0 10px 28px rgba(37,99,235,.22)", "&:hover": { boxShadow: "0 12px 32px rgba(37,99,235,.28)" } },
+          },
+        },
+        MuiOutlinedInput: {
+          styleOverrides: { root: { borderRadius: 16, backgroundColor: "#FFFFFF", "& fieldset": { borderColor: "#D8D7D2" }, "&:hover fieldset": { borderColor: "#A9A8A3" }, "&.Mui-focused fieldset": { borderWidth: 2 } } },
+        },
+        MuiInputLabel: { styleOverrides: { root: { fontWeight: 700 } } },
+        MuiChip: { styleOverrides: { root: { borderRadius: 999, fontWeight: 800 } } },
+        MuiDialog: { styleOverrides: { paper: { borderRadius: 28, border: "1px solid #DEDDD8" } } },
+        MuiAccordion: { defaultProps: { elevation: 0 }, styleOverrides: { root: { boxShadow: "none", "&:before": { display: "none" } } } },
+        MuiAlert: { styleOverrides: { root: { borderRadius: 16, fontWeight: 700 } } },
+        MuiTabs: { styleOverrides: { indicator: { height: 3, borderRadius: 3 } } },
+        MuiTableCell: { styleOverrides: { head: { fontWeight: 900, backgroundColor: "#F5F3ED" }, root: { borderColor: "#ECEBE7" } } },
+        MuiTooltip: { styleOverrides: { tooltip: { borderRadius: 10, backgroundColor: "#111116", fontWeight: 700 } } },
       }
     });
   }, [tenantBarber]);
 
   const isDashboard    = location.pathname.startsWith('/dashboard');
   const isHomePage     = location.pathname === '/';
+  const isAuthPage     = location.pathname === '/login' || location.pathname === '/signup';
   const isReviewPath   = location.pathname.startsWith('/review');
   const isOnboarding   = location.pathname.startsWith('/onboarding');
   const isWorkoutView  = location.pathname.startsWith('/workout')
@@ -304,7 +369,7 @@ function AppShell() {
 
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         
-        {!isDashboard && !isOnboarding && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
+        {!isDashboard && !isOnboarding && !isAuthPage && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
           tenantBarber ? (
             <TenantNav 
               key={`nav-${location.pathname}`} 
@@ -368,12 +433,23 @@ function AppShell() {
             <Route path="/pt-book/:ptId"                         element={<PTBookingPage />} />
             <Route path="/onboarding" element={<BarberRoute><Onboarding /></BarberRoute>} />
             <Route path="/dashboard/*" element={<BarberRoute><Dashboard onProfileUpdate={identifyTenant} /></BarberRoute>} />
+            <Route
+              path="/:bookingSlug"
+              element={
+                isTenantOffline ? <OfflinePage /> :
+                tenantBarber ? (
+                  tenantBarber._redirectFromOldSlug
+                    ? <Navigate to={`/${tenantBarber.bookingSlug}`} replace />
+                    : renderTenantHome(tenantBarber)
+                ) : <Navigate to="/" replace />
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </Suspense>
         </Box>
 
-        {!isDashboard && !isOnboarding && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
+        {!isDashboard && !isOnboarding && !isAuthPage && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
           tenantBarber ? (
             <TenantFooter 
               key={`footer-${location.pathname}`} 
@@ -381,8 +457,7 @@ function AppShell() {
               businessType={tenantBarber.businessType} 
             />
           ) : (
-            // Home page renders its own footer inline, so skip the global one there
-            !isHomePage && <Footer isMainSite={true} />
+            <Footer isMainSite={true} />
           )
         )}
       </Box>

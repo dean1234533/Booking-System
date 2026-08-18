@@ -48,7 +48,7 @@ self.addEventListener('push', (event) => {
   const {
     title   = 'Bookrightly',
     body    = 'You have a new notification',
-    icon    = '/images/IMG_9763-removebg-preview.png',
+    icon    = '/images/icon-192.png',
     sound   = true,
     vibrate = true,
     url     = '/dashboard',
@@ -59,7 +59,7 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(title, {
       body,
       icon,
-      badge: '/images/IMG_9763-removebg-preview.png',
+      badge: '/images/icon-192.png',
       silent:  !sound,
       vibrate: vibrate ? [200, 100, 200, 100, 200] : undefined,
       data:    { url },

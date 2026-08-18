@@ -18,10 +18,10 @@ function getPricingLabel(businessType) {
   return "£10/month";
 }
 
-// ── Fee calculator (mirrors create-intent.js) ────────────────────────────────
+// ── Fee calculator (mirrors src/utils/bookingHelpers.jsx / worker.js's handleCreateIntent) ──
 function calcFees(depositGbp) {
   const depositPence      = Math.round(Number(depositGbp) * 100);
-  const platformFee       = Math.round(depositPence * 0.025);          // 2.5%
+  const platformFee       = Math.round(depositPence * 0.05);           // 5%
   const stripeTotalPct    = 0.0175;                                      // 1.5% + 0.25% connect
   const stripeFixed       = 45;                                          // 20p + 25p connect
   const customerPays      = Math.ceil(
@@ -263,7 +263,7 @@ function FeeBreakdown({ depositAmount, brandColor }) {
       </Box>
       {[
         { label: "Client pays (grossed up)", value: `£${fees.clientPays}`, bold: true, color: "#1e293b" },
-        { label: "Platform fee (2.5%)",       value: `−£${fees.platformFee}`, color: "#6b7280" },
+        { label: "Platform fee (5%)",         value: `−£${fees.platformFee}`, color: "#6b7280" },
         { label: "Stripe fees (~1.75% + 45p)", value: `−£${fees.stripeFees}`, color: "#6b7280" },
         { label: "You receive",               value: `£${fees.youReceive}`, bold: true, color: brandColor },
       ].map(row => (
@@ -288,7 +288,7 @@ export default function FinanceTab({
   stripeLoading, handleConnectStripe,
   hideDeposit = false,
 }) {
-  const brandColor = profile.brandColor || "#C9A84C";
+  const brandColor = profile.brandColor || "#2563EB";
 
   return (
     <Grid container spacing={3}>
@@ -308,7 +308,7 @@ export default function FinanceTab({
           <Typography variant="h6" fontWeight={800} mb={2}>Stripe Connect</Typography>
           <Typography sx={{ fontSize: "0.82rem", color: "#6b7280", mb: 2, lineHeight: 1.7 }}>
             Connect your own Stripe account to receive online booking payments and deposits
-            directly. The 2.5% platform fee is deducted automatically on every transaction.
+            directly. The 5% platform fee is added to what your client pays — you always receive your full deposit amount.
           </Typography>
 
           {profile.stripeConnected ? (

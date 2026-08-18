@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 // ── Brand tokens (match Home/LegalPage) ─────────────────────────────────────
 const G = {
-  gold:      "#C9A84C",
+  gold:      "#2563EB",
   dark:      "#0d0d0d",
   dark2:     "#1a1a1a",
   warmWhite: "#faf8f4",
@@ -73,7 +73,7 @@ export default function ContactPage() {
             <Button
               variant="outlined"
               onClick={() => navigate("/#feedback-section")}
-              sx={{ borderColor: G.gold, color: G.dark2, textTransform: "none", "&:hover": { borderColor: G.gold, bgcolor: "rgba(201,168,76,0.06)" } }}
+              sx={{ borderColor: G.gold, color: G.dark2, textTransform: "none", "&:hover": { borderColor: G.gold, bgcolor: "rgba(37,99,235,0.06)" } }}
             >
               Homepage feedback form
             </Button>

@@ -878,6 +878,204 @@ async function handleCheckStripe(request, env) {
   }
 }
 
+// Mirrors src/utils/bookingHelpers.jsx's PLATFORM_FEE_PERCENT/STRIPE_PERCENT/
+// STRIPE_FIXED_PENCE — Workers can't import Vite src/ modules directly, so
+// these are duplicated here. Keep both in sync if the fee ever changes.
+const PLATFORM_FEE_PERCENT = 0.05;
+const STRIPE_PERCENT       = 0.0175;
+const STRIPE_FIXED_PENCE   = 45;
+
+function calculateGrossUp(depositPence) {
+  const platformFee  = Math.round(depositPence * PLATFORM_FEE_PERCENT);
+  const customerPays = Math.ceil((depositPence + platformFee + STRIPE_FIXED_PENCE) / (1 - STRIPE_PERCENT));
+  return { customerPays, platformFee };
+}
+
+// The single, server-verified PaymentIntent creation path. Never trusts a
+// client-sent amount or Stripe account — both are re-fetched from Firestore
+// so pricing/destination can't be spoofed. Called once, from CheckoutForm,
+// right before stripe.confirmPayment() (deferred-Elements pattern).
+async function handleCreateIntent(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON body" }, 400); }
+
+  const { email, barberId, metadata } = body ?? {};
+  if (!barberId) return json({ error: "Missing barberId" }, 400);
+
+  const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+
+  try {
+    const fbRes = await fetch(`${base}/barbers/${barberId}`);
+    if (!fbRes.ok) return json({ error: "Barber not found" }, 404);
+    const fields = (await fbRes.json()).fields || {};
+
+    const rawDeposit    = fields.depositAmount?.stringValue ?? fields.depositAmount?.doubleValue ?? fields.depositAmount?.integerValue;
+    const depositPounds = Number(rawDeposit);
+    const FALLBACK_PENCE = 2500; // £25
+    const finalAmount = (depositPounds > 0) ? Math.round(depositPounds * 100) : FALLBACK_PENCE;
+
+    const barberStripeId = fields.stripeAccountId?.stringValue;
+    if (!barberStripeId) return json({ error: "Barber Stripe account not configured" }, 400);
+
+    if (finalAmount < 30) {
+      return json({ error: `Deposit (${finalAmount}p) is below the Stripe minimum of 30p (£0.30).` }, 400);
+    }
+
+    const { customerPays, platformFee } = calculateGrossUp(finalAmount);
+
+    // accountId/providerId derived server-side from the already-verified
+    // barber doc, rather than trusted from the client — barberId is always
+    // the specific provider (staff or owner); shopId (normalized to "self"
+    // for owners) resolves the parent account.
+    const shopId    = fields.shopId?.stringValue;
+    const accountId = (shopId && shopId !== "self") ? shopId : barberId;
+
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: customerPays,
+      currency: "gbp",
+      receipt_email: email,
+      metadata: {
+        ...(metadata || {}),
+        accountId,
+        providerId: barberId,
+        depositPounds:    (finalAmount / 100).toFixed(2),
+        bookingFeePounds: ((customerPays - finalAmount) / 100).toFixed(2),
+      },
+      automatic_payment_methods: { enabled: true },
+      application_fee_amount: platformFee,
+      transfer_data: { destination: barberStripeId },
+      on_behalf_of: barberStripeId,
+    });
+
+    console.log(`[create-intent] ...${paymentIntent.id.slice(-6)} for ${customerPays}p (deposit ${finalAmount}p, fee ${platformFee}p)`);
+    return json({ clientSecret: paymentIntent.client_secret });
+  } catch (err) {
+    console.error("[create-intent] Error:", err.message);
+    return json({ error: err.message, type: err.type }, err.statusCode || 500);
+  }
+}
+
+// Server-side booking finalization — re-verifies the PaymentIntent directly
+// with Stripe (never trusts the client's claim that payment succeeded), then
+// writes the booking + marks the slot via the admin-equivalent REST calls
+// below (unauthenticated public booking customers have no Firebase Auth
+// session, so a client-side Firestore write here would be rejected by
+// firestore.rules — this is why finalization has to happen server-side).
+async function handleFinalizeBooking(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON body" }, 400); }
+
+  const { paymentIntentId, slotId, barberId, formData, date, time } = body ?? {};
+  if (!paymentIntentId || !barberId) {
+    return json({ error: "Missing paymentIntentId or barberId" }, 400);
+  }
+
+  try {
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (intent.status !== "succeeded") {
+      return json({ error: "Payment has not succeeded" }, 402);
+    }
+    if (intent.metadata?.providerId && intent.metadata.providerId !== barberId) {
+      return json({ error: "barberId does not match the payment" }, 400);
+    }
+
+    const bookingId = await finalizeBookingRecords({
+      env, paymentIntentId, slotId, barberId, formData: formData || {}, date, time, intent,
+    });
+
+    return json({ bookingId });
+  } catch (err) {
+    console.error("[finalize-booking] Error:", err.message);
+    return json({ error: err.message }, 500);
+  }
+}
+
+// Shared by handleFinalizeBooking (synchronous, primary path) and the
+// payment_intent.succeeded webhook (reconciliation safety net) — idempotent
+// via the paymentIntentId existence check, so it's safe for both to race.
+async function finalizeBookingRecords({ env, paymentIntentId, slotId, barberId, formData, date, time, intent }) {
+  const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+
+  // Idempotency guard — if a booking already exists for this PaymentIntent
+  // (e.g. the synchronous call already ran and the webhook is just
+  // reconciling), don't create a duplicate.
+  const existingQuery = await fetch(`${base}:runQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "bookings" }],
+        where: { fieldFilter: { field: { fieldPath: "paymentIntentId" }, op: "EQUAL", value: { stringValue: paymentIntentId } } },
+        limit: 1,
+      },
+    }),
+  }).then(r => r.json()).catch(() => []);
+  const existing = (existingQuery || []).find(r => r.document);
+  if (existing) {
+    return existing.document.name.split("/").pop();
+  }
+
+  const meta = intent.metadata || {};
+
+  const bookingFields = toFirestoreFields({
+    barberId,
+    slotId: slotId || "",
+    name:  formData.name  || meta.customerName  || "",
+    email: formData.email || "",
+    phone: formData.phone || meta.customerPhone || "",
+    haircutStyle: formData.haircutStyle || meta.serviceName || "",
+    barberName: meta.barberName || meta.providerId || "",
+    depositAmount: meta.depositPounds    || "",
+    bookingFee:    meta.bookingFeePounds || "",
+    paymentIntentId,
+    date: date || "",
+    time: time || "",
+    status: "confirmed",
+    createdAt: new Date().toISOString(),
+  });
+
+  const createRes = await fetch(`${base}/bookings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fields: bookingFields }),
+  });
+  const createdDoc = await createRes.json();
+  const bookingId  = createdDoc.name.split("/").pop();
+
+  if (slotId) {
+    await fetch(`${base}/slots/${slotId}?updateMask.fieldPaths=status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: toFirestoreFields({ status: "booked" }) }),
+    }).catch(() => {});
+  }
+
+  await fetch(`${base}/barbers/${barberId}/notifications`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fields: toFirestoreFields({
+        type: "booking",
+        title: "New Booking!",
+        body: `${formData.name || meta.customerName || "A client"} booked ${formData.haircutStyle || meta.serviceName || "an appointment"} on ${date || ""} at ${time || ""}`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      }),
+    }),
+  }).catch(() => {});
+
+  return bookingId;
+}
+
 async function handleStripeWebhook(request, env) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -934,6 +1132,34 @@ async function handleStripeWebhook(request, env) {
         console.log(`[stripe-webhook] Subscription activated for ${meta.barberId}`);
       } catch (err) {
         console.error("[stripe-webhook] Failed to activate subscription:", err.message);
+      }
+    }
+  }
+
+  // Reconciliation safety net for booking deposits — normally the booking is
+  // already created synchronously by /api/finalize-booking right after
+  // stripe.confirmPayment() resolves in the browser. This exists purely to
+  // catch the case where the browser tab crashes/closes between the charge
+  // succeeding and that call completing; finalizeBookingRecords is idempotent
+  // (keyed on paymentIntentId), so it's safe for both paths to race.
+  if (event.type === "payment_intent.succeeded") {
+    const intent = event.data.object;
+    const meta   = intent.metadata ?? {};
+    if (meta.providerId) {
+      try {
+        await finalizeBookingRecords({
+          env,
+          paymentIntentId: intent.id,
+          slotId:   meta.slotId || "",
+          barberId: meta.providerId,
+          formData: { name: meta.customerName, email: intent.receipt_email, phone: meta.customerPhone, haircutStyle: meta.serviceName },
+          date: meta.bookingDate || "",
+          time: meta.bookingTime || "",
+          intent,
+        });
+        console.log(`[stripe-webhook] Reconciled booking for payment ...${intent.id.slice(-6)}`);
+      } catch (err) {
+        console.error("[stripe-webhook] Booking reconciliation failed:", err.message);
       }
     }
   }
@@ -1190,6 +1416,51 @@ const ROUTE_TYPE_LABEL = {
 // Regex to detect business profile routes and extract [routeType, businessId]
 const BUSINESS_ROUTE_RE = /^\/(barber|shop|pt-book|pt-booking|hairdresser|decorator)\/([^/]+)\/?$/;
 
+// Mirrors src/utils/bookingSlug.js's RESERVED_SLUGS — keep in sync. Used here
+// so a single-segment path that's actually a static platform page never
+// triggers a wasted Firestore round-trip looking it up as a booking slug.
+const RESERVED_SLUGS_WORKER = new Set([
+  "shop", "pt-booking", "decorator", "hairdresser", "barber", "book",
+  "confirmation", "auth", "review", "login", "signup", "cancel-booking",
+  "website-design", "compare", "fresha-alternative", "treatwell-alternative",
+  "booking-software", "pricing", "how-it-works", "blog", "tools", "terms",
+  "privacy", "contact", "workout", "food-diary", "check-in", "par-q",
+  "colour-approval", "quote-view", "queue", "food-generator", "client-portal",
+  "pt-book", "onboarding", "dashboard",
+  "admin", "api", "account", "settings", "support", "help", "about",
+  "bookrightly", "www", "register", "sitemap.xml", "robots.txt",
+]);
+
+async function fetchBarberSEOBySlug(slug, projectId) {
+  try {
+    const res = await fetch(`${firestoreBase(projectId)}:runQuery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: "barbers" }],
+          where: { fieldFilter: { field: { fieldPath: "bookingSlug" }, op: "EQUAL", value: { stringValue: slug } } },
+          limit: 1,
+        },
+      }),
+    });
+    if (!res.ok) return null;
+    const results = await res.json();
+    const match = (results || []).find(r => r.document);
+    if (!match) return null;
+    const f = match.document.fields ?? {};
+    return {
+      name:      f.businessName?.stringValue || f.name?.stringValue || "Bookrightly Professional",
+      specialty: f.specialty?.stringValue || f.bio?.stringValue || "",
+      type:      f.businessType?.stringValue || "",
+      city:      f.city?.stringValue || f.location?.stringValue || "",
+      image:     f.profileImage?.stringValue || f.logoUrl?.stringValue || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchBarberSEO(barberId, projectId) {
   try {
     const res = await fetch(`${firestoreBase(projectId)}/barbers/${barberId}`);
@@ -1274,14 +1545,25 @@ async function handleDynamicSitemap(env) {
       const res  = await fetch(`${firestoreBase(projectId)}/barbers?pageSize=300`);
       const data = await res.json();
       for (const doc of data.documents ?? []) {
-        const id   = doc.name.split("/").pop();
-        const f    = doc.fields ?? {};
-        const type = f.businessType?.stringValue?.toLowerCase() ?? "";
-        const slug = type.includes("pt") || type.includes("trainer") ? "pt-book"
-                   : type.includes("hair")                           ? "hairdresser"
-                   : type.includes("decor")                          ? "decorator"
-                   : "barber";
-        businessUrls += `\n  <url><loc>${base}/${slug}/${id}</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`;
+        const id          = doc.name.split("/").pop();
+        const f           = doc.fields ?? {};
+        const bookingSlug = f.bookingSlug?.stringValue || "";
+
+        // Canonical URL is the account's booking-link slug once it has one;
+        // falls back to the type-prefixed ID path for any not-yet-migrated
+        // account (see twa/backfill-booking-slugs.cjs).
+        let loc;
+        if (bookingSlug) {
+          loc = `${base}/${bookingSlug}`;
+        } else {
+          const type = f.businessType?.stringValue?.toLowerCase() ?? "";
+          const typePrefix = type.includes("pt") || type.includes("trainer") ? "pt-book"
+                            : type.includes("hair")                          ? "hairdresser"
+                            : type.includes("decor")                         ? "decorator"
+                            : "barber";
+          loc = `${base}/${typePrefix}/${id}`;
+        }
+        businessUrls += `\n  <url><loc>${loc}</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`;
       }
     } catch { /* silently skip if Firestore unavailable */ }
   }
@@ -1339,6 +1621,10 @@ async function handleFetch(request, env, ctx) {
         return handleConnectExistingDomain(request, env);
       case "/api/check-stripe":
         return handleCheckStripe(request, env);
+      case "/api/create-intent":
+        return handleCreateIntent(request, env);
+      case "/api/finalize-booking":
+        return handleFinalizeBooking(request, env);
       case "/api/stripe-webhook":
         return handleStripeWebhook(request, env);
       case "/api/send-push":
@@ -1613,6 +1899,29 @@ async function handleFetch(request, env, ctx) {
             .on('meta[name="twitter:description"]',{ element: el => el.setAttribute("content", desc) })
             .on("head", { element: el => el.append(`<link rel="canonical" href="${canon}"><script type="application/ld+json">${ldJson}</script>`, { html: true }) })
             .transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
+        }
+
+        // 6d. SEO injection for Bookrightly-hosted vanity booking URLs
+        // (bookrightly.co.uk/{slug}) — only a single, non-reserved path
+        // segment reaches here, since every static/business page above
+        // would already have matched and returned. Cheap regex guard first
+        // so a 404/asset request doesn't cost an extra Firestore round-trip.
+        const slugCandidate = /^\/([a-z0-9-]{3,30})\/?$/.exec(url.pathname)?.[1];
+        if (
+          slugCandidate &&
+          !RESERVED_SLUGS_WORKER.has(slugCandidate) &&
+          response.headers.get("content-type")?.includes("text/html") &&
+          env.VITE_FIREBASE_PROJECT_ID
+        ) {
+          const seoData = await fetchBarberSEOBySlug(slugCandidate, env.VITE_FIREBASE_PROJECT_ID);
+          if (seoData) {
+            const noCache = new Headers(response.headers);
+            noCache.set("Cache-Control", "no-store, no-cache, must-revalidate");
+            return injectBusinessSEO(
+              new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }),
+              { ...seoData, type: seoData.type || "Professional", canonicalUrl: `https://bookrightly.co.uk${url.pathname}` }
+            );
+          }
         }
 
         // 7. Prevent Cloudflare edge-caching sw.js and index.html so browsers

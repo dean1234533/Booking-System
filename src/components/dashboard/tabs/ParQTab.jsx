@@ -16,6 +16,7 @@ import WarningAmberIcon    from "@mui/icons-material/WarningAmber";
 import CheckCircleIcon     from "@mui/icons-material/CheckCircle";
 import { collection, getDocs, deleteDoc, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { SITE_URL } from "../../../utils/siteUrl";
 
 const DEFAULT_QUESTIONS = [
   { text: "Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?" },
@@ -56,7 +57,7 @@ function printPDF(sub) {
     <style>
       *{box-sizing:border-box}
       body{font-family:Georgia,serif;max-width:720px;margin:0 auto;padding:36px 28px;color:#111}
-      .hdr{border-bottom:3px solid #C9A84C;padding-bottom:10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:flex-end}
+      .hdr{border-bottom:3px solid #2563EB;padding-bottom:10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:flex-end}
       h1{font-size:22px;font-weight:normal;margin:0}
       .sub{font-size:11px;color:#888;letter-spacing:.08em;text-transform:uppercase}
       .meta{font-family:sans-serif;font-size:12px;color:#888;margin-bottom:24px;margin-top:6px}
@@ -64,7 +65,7 @@ function printPDF(sub) {
       .qa{margin-bottom:18px;page-break-inside:avoid;padding:10px 12px;background:#faf8f4}
       .qa.flagged{background:#fff8f0;border-left:3px solid #e0a800}
       .q{font-family:sans-serif;font-size:12px;font-weight:600;color:#444;margin-bottom:8px;display:flex;gap:6px;line-height:1.5}
-      .qnum{color:#C9A84C;font-weight:700;flex-shrink:0}
+      .qnum{color:#2563EB;font-weight:700;flex-shrink:0}
       .a-row{display:flex;align-items:flex-start;gap:10px}
       .badge{font-family:sans-serif;font-size:10px;font-weight:900;letter-spacing:.1em;padding:3px 8px;border-radius:2px;flex-shrink:0}
       .badge.yes{background:#e0a800;color:#fff}
@@ -153,13 +154,13 @@ export default function ParQTab({ barber, brandColor }) {
   }
 
   function share() {
-    navigator.clipboard.writeText(`${window.location.origin}/par-q/${tid}`);
+    navigator.clipboard.writeText(`${SITE_URL}/par-q/${tid}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2200);
   }
 
   const validQs = questions.filter(q => q.text.trim());
-  const parqLink = `${window.location.origin}/par-q/${tid}`;
+  const parqLink = `${SITE_URL}/par-q/${tid}`;
 
   // ── Header ──────────────────────────────────────────────────────────────────
   const Header = () => (

@@ -15,6 +15,7 @@ import {
   collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { SITE_URL } from "../../../utils/siteUrl";
 
 const SANS  = "'DM Sans', sans-serif";
 const SERIF = "'Playfair Display', serif";
@@ -33,7 +34,7 @@ function fieldSx(brand) {
   };
 }
 
-const blankColour = () => ({ id: `c-${Date.now()}-${Math.random()}`, name: "", hex: "#C9A84C" });
+const blankColour = () => ({ id: `c-${Date.now()}-${Math.random()}`, name: "", hex: "#2563EB" });
 
 export default function ColourApprovalTab({ barber, brandColor }) {
   const [palettes,   setPalettes]   = useState([]);
@@ -111,7 +112,7 @@ export default function ColourApprovalTab({ barber, brandColor }) {
   }
 
   function copyLink(pal) {
-    const url = `${window.location.origin}/colour-approval/${tid}/${pal.id}`;
+    const url = `${SITE_URL}/colour-approval/${tid}/${pal.id}`;
     navigator.clipboard.writeText(url).catch(() => {});
     setToast("Client link copied to clipboard!");
     setTimeout(() => setToast(""), 2800);

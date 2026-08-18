@@ -143,7 +143,7 @@ function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = 
       <div style={{
         fontFamily: "'Playfair Display', serif",
         fontSize: 'clamp(80px, 14vw, 160px)',
-        lineHeight: 0.8, color: '#b8962e', opacity: 0.22,
+        lineHeight: 0.8, color: '#2563EB', opacity: 0.22,
         position: 'absolute', top: -16, left: 0,
         userSelect: 'none', pointerEvents: 'none',
       }}>"</div>
@@ -156,11 +156,11 @@ function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = 
       }}>
         <div style={{
           position: 'absolute', top: 0, left: 0, width: '100%', height: 4,
-          background: `linear-gradient(90deg, #b8962e, #e0c060, #b8962e)`,
+          background: `linear-gradient(90deg, #2563EB, #93C5FD, #2563EB)`,
         }} />
         <div style={{ display: 'flex', gap: 3, marginBottom: 20 }}>
           {[...Array(stars)].map((_, i) => (
-            <StarIcon key={i} sx={{ fontSize: 20, color: '#b8962e' }} />
+            <StarIcon key={i} sx={{ fontSize: 20, color: '#2563EB' }} />
           ))}
         </div>
         <p style={{
@@ -172,13 +172,13 @@ function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
             width: 46, height: 46, borderRadius: '50%',
-            background: `linear-gradient(135deg, #b8962e, #e0c060)`,
+            background: `linear-gradient(135deg, #2563EB, #93C5FD)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontFamily: displayFont, fontSize: 22, color: '#fff', flexShrink: 0,
           }}>{name.charAt(0).toUpperCase()}</div>
           <div>
             <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, color: '#0f0f0f', letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: 13 }}>{name}</div>
-            <div style={{ fontSize: 11, color: '#b8962e', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700 }}>Verified Client</div>
+            <div style={{ fontSize: 11, color: '#2563EB', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700 }}>Verified Client</div>
           </div>
           <div style={{ marginLeft: 'auto', color: '#a1a1aa', fontFamily: "'DM Sans', sans-serif", fontSize: 12 }}>
             {idx + 1} / {reviews.length}
@@ -193,7 +193,7 @@ function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = 
             borderRadius: '50%', background: 'transparent', color: '#fff',
             fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#b8962e'; e.currentTarget.style.borderColor = '#b8962e'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#2563EB'; e.currentTarget.style.borderColor = '#2563EB'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
           >{label}</button>
         ))}
@@ -201,7 +201,7 @@ function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = 
           {reviews.map((_, i) => (
             <button key={i} onClick={() => { setIdx(i); setAnimKey(k => k + 1); }} style={{
               width: i === idx ? 20 : 7, height: 7, borderRadius: 4,
-              background: i === idx ? '#b8962e' : 'rgba(255,255,255,0.2)',
+              background: i === idx ? '#2563EB' : 'rgba(255,255,255,0.2)',
               border: 'none', cursor: 'pointer', transition: 'all 0.3s', padding: 0,
             }} />
           ))}
@@ -213,7 +213,7 @@ function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = 
 
 /* ─── Pricing Card ──────────────────────────────────────────── */
 function PricingCard({ plan, brandColor,displayFont }) {
-  const gold = '#b8962e';
+  const gold = '#2563EB';
   return (
     <div className="card-hover" style={{
       borderRadius: 16, overflow: 'hidden', background: 'var(--cream)',

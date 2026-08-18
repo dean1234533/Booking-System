@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Box, Typography, Slider, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
-const GOLD = "#C9A84C";
+const GOLD = "#2563EB";
 const DARK = "#0d0d0d";
 const DARK2 = "#111";
 const DARK3 = "#1a1a1a";
@@ -11,7 +11,7 @@ const SANS = "'DM Sans', sans-serif";
 
 function StatBox({ label, value, highlight }) {
   return (
-    <Box sx={{ bgcolor: highlight ? "rgba(201,168,76,0.08)" : DARK3, border: `1px solid ${highlight ? "rgba(201,168,76,0.35)" : "rgba(255,255,255,0.06)"}`, p: 3, textAlign: "center" }}>
+    <Box sx={{ bgcolor: highlight ? "rgba(37,99,235,0.08)" : DARK3, border: `1px solid ${highlight ? "rgba(37,99,235,0.35)" : "rgba(255,255,255,0.06)"}`, p: 3, textAlign: "center" }}>
       <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "2rem", md: "2.6rem" }, color: highlight ? GOLD : "#fff", lineHeight: 1 }}>{value}</Typography>
       <Typography sx={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.4)", mt: 1, lineHeight: 1.5 }}>{label}</Typography>
     </Box>
@@ -75,7 +75,7 @@ export default function PTRateCalculator() {
   return (
     <Box sx={{ bgcolor: DARK, color: "#fff", minHeight: "100vh", fontFamily: SANS }}>
       <Box sx={{ pt: { xs: 10, md: 14 }, pb: { xs: 6, md: 8 }, px: { xs: 3, md: 5 }, textAlign: "center", position: "relative" }}>
-        <Box sx={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <Box sx={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(37,99,235,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
         <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: GOLD, mb: 2 }}>
           Free Tool
         </Typography>
@@ -129,7 +129,7 @@ export default function PTRateCalculator() {
                   </Grid>
                 </Box>
 
-                <Box sx={{ mt: 1, bgcolor: "rgba(201,168,76,0.05)", border: "1px solid rgba(201,168,76,0.2)", p: 3, textAlign: "center" }}>
+                <Box sx={{ mt: 1, bgcolor: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.2)", p: 3, textAlign: "center" }}>
                   <Typography sx={{ fontFamily: SERIF, fontSize: "1.6rem", color: GOLD }}>{fmt(results.annualNet)}</Typography>
                   <Typography sx={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.35)", mt: 1 }}>annual net income at recommended rate</Typography>
                 </Box>
@@ -137,7 +137,7 @@ export default function PTRateCalculator() {
             </Grid>
           </Grid>
 
-          <Box sx={{ mt: 6, bgcolor: DARK2, border: "1px solid rgba(201,168,76,0.2)", p: 4, textAlign: "center" }}>
+          <Box sx={{ mt: 6, bgcolor: DARK2, border: "1px solid rgba(37,99,235,0.2)", p: 4, textAlign: "center" }}>
             <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.4rem", md: "1.8rem" }, mb: 1.5 }}>
               Take bookings and payments online
             </Typography>
@@ -157,7 +157,7 @@ export default function PTRateCalculator() {
               ["Package pricing protects your income", "Selling 10-session blocks upfront smooths out cancellations and gives clients a commitment incentive. It also simplifies your admin — fewer individual transactions to track."],
               ["Online booking fills your calendar", "Clients forget to book, life gets busy, and gaps appear in your week. An online booking page with deposit collection means clients can commit at midnight on a Sunday when motivation is high."],
             ].map(([title, body]) => (
-              <Box key={title} sx={{ mb: 3, pl: 3, borderLeft: "2px solid rgba(201,168,76,0.25)" }}>
+              <Box key={title} sx={{ mb: 3, pl: 3, borderLeft: "2px solid rgba(37,99,235,0.25)" }}>
                 <Typography sx={{ fontWeight: 700, fontSize: "0.92rem", mb: 0.75, color: "#fff" }}>{title}</Typography>
                 <Typography sx={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.8 }}>{body}</Typography>
               </Box>

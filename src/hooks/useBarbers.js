@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { getAllBarbers } from "../firebase/firestore";
 
 export function useBarbers() {
   const [barbers, setBarbers] = useState([]);
@@ -10,6 +9,7 @@ export function useBarbers() {
     async function fetchBarbers() {
       try {
         setLoading(true);
+        const { getAllBarbers } = await import("../firebase/firestore");
         const data = await getAllBarbers();
         setBarbers(data);
       } catch (err) {

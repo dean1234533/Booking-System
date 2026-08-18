@@ -80,7 +80,7 @@ const TOOLKIT = [
   },
 ];
 
-export default function ToolkitTab({ brandColor = "#C9A84C" }) {
+export default function ToolkitTab({ brandColor = "#2563EB" }) {
   return (
     <Box>
       {/* Header */}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, lazy, Suspense } from "react";
 import {
   Box, Container, Typography, Grid, Paper,
   Skeleton, Button, Stack, Chip, InputBase, TextField, Alert,
@@ -23,9 +23,12 @@ import InstagramIcon          from "@mui/icons-material/Instagram";
 import YouTubeIcon            from "@mui/icons-material/YouTube";
 import { Helmet }             from "react-helmet-async";
 import CategoryRow            from "../components/CategoryRow";
-import TenantHome             from "./TenantHome";
-import PricingModal           from "../components/PricingModal";
-import FeatureComparisonModal from "../components/FeatureComparisonModal";
+// Lazy: TenantHome only renders for the rare custom-domain case (not the
+// bookrightly.co.uk homepage itself), and both modals only mount once a
+// user actually clicks to open them — none belong in the initial bundle.
+const TenantHome             = lazy(() => import("./TenantHome"));
+const PricingModal           = lazy(() => import("../components/PricingModal"));
+const FeatureComparisonModal = lazy(() => import("../components/FeatureComparisonModal"));
 import { useBarbers }         from "../hooks/useBarbers";
 import { useNavigate, Link }  from "react-router-dom";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -33,10 +36,10 @@ import { db } from "../firebase/config";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const G = {
-  gold:      "#C9A84C",
-  goldLight: "#e8c97a",
-  goldPale:  "#f5e9c8",
-  goldAlpha: "rgba(201,168,76,0.12)",
+  gold:      "#2563EB",
+  goldLight: "#60A5FA",
+  goldPale:  "#EAF2FF",
+  goldAlpha: "rgba(37,99,235,0.12)",
   dark:      "#0d0d0d",
   dark2:     "#1a1a1a",
   warmWhite: "#faf8f4",
@@ -53,7 +56,7 @@ const CATEGORIES = [
   { label: "Barbers",           icon: <ContentCutIcon />,      color: G.gold,    bg: G.goldPale  },
   { label: "Hairdressers",      icon: <ContentCutIcon />,      color: "#7c4e8a", bg: "#f5e8f5"   },
   { label: "Decorators",        icon: <BrushIcon />,           color: "#7a3520", bg: "#f5e8e3"   },
-  { label: "Personal Trainers", icon: <FitnessCenterIcon />,   color: "#3d2c0e", bg: "#f0e4cc"   },
+  { label: "Personal Trainers", icon: <FitnessCenterIcon />,   color: "#2563EB", bg: "#EAF2FF"   },
 ];
 
 const CAT_TYPE_MAP = {
@@ -137,7 +140,7 @@ export default function Home({ tenant }) {
 
   useEffect(() => {
     const tag = document.querySelector('meta[name="theme-color"]');
-    if (tag) tag.setAttribute("content", "#C9A84C");
+    if (tag) tag.setAttribute("content", "#2563EB");
     return () => { if (tag) tag.setAttribute("content", "#0a0a0a"); };
   }, []);
 
@@ -186,7 +189,7 @@ export default function Home({ tenant }) {
     }
   };
 
-  if (tenant) return <TenantHome tenant={tenant} />;
+  if (tenant) return <Suspense fallback={null}><TenantHome tenant={tenant} /></Suspense>;
 
   const filteredBarbers = useMemo(() => {
     return barbers.filter(b => {
@@ -274,7 +277,7 @@ export default function Home({ tenant }) {
                 name: "Bookrightly",
                 url: "https://bookrightly.co.uk",
                 description: "The multi-industry appointment booking network for personal trainers, barbers, hairdressers, decorators, and more.",
-                logo: "https://bookrightly.co.uk/images/IMG_9763-removebg-preview.png",
+                logo: "https://bookrightly.co.uk/brand/bookrightly-google-business-logo.png",
                 email: "support@bookrightly.com",
               },
               {
@@ -329,7 +332,7 @@ export default function Home({ tenant }) {
         <Typography sx={{
           position: "absolute", right: { xs: -16, md: -24 }, top: 10,
           fontFamily: SERIF, fontSize: { xs: "10rem", md: "18rem" }, fontWeight: 400,
-          color: "rgba(201,168,76,0.04)", lineHeight: 1,
+          color: "rgba(37,99,235,0.04)", lineHeight: 1,
           pointerEvents: "none", userSelect: "none", zIndex: 0,
         }}>
           Book
@@ -345,7 +348,7 @@ export default function Home({ tenant }) {
             {/* Badge */}
             <Box sx={{
               display: "inline-flex", alignItems: "center", gap: 1,
-              bgcolor: G.goldAlpha, border: `1px solid rgba(201,168,76,0.3)`,
+              bgcolor: G.goldAlpha, border: `1px solid rgba(37,99,235,0.3)`,
               borderRadius: "99px", px: 2, py: 0.7, mb: 3,
             }}>
               <Box sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: G.gold }} />
@@ -389,11 +392,11 @@ export default function Home({ tenant }) {
                 variant="outlined"
                 onClick={() => document.getElementById("browse-section")?.scrollIntoView({ behavior: "smooth" })}
                 sx={{
-                  borderColor: "rgba(201,168,76,0.4)", color: G.goldLight,
+                  borderColor: "rgba(37,99,235,0.4)", color: G.goldLight,
                   fontFamily: SANS, fontWeight: 500, fontSize: "0.85rem",
                   px: 3.5, py: 1.6, borderRadius: "2px",
-                  bgcolor: "rgba(201,168,76,0.06)",
-                  "&:hover": { bgcolor: "rgba(201,168,76,0.12)", borderColor: G.gold },
+                  bgcolor: "rgba(37,99,235,0.06)",
+                  "&:hover": { bgcolor: "rgba(37,99,235,0.12)", borderColor: G.gold },
                 }}
               >
                 Find a professional
@@ -433,7 +436,7 @@ export default function Home({ tenant }) {
       </Box>
 
       {/* ── SEARCH BAR ── */}
-      <Box sx={{ bgcolor: G.dark2, borderBottom: `1px solid rgba(201,168,76,0.15)`, px: { xs: 2, md: 5 }, py: 2 }}>
+      <Box sx={{ bgcolor: G.dark2, borderBottom: `1px solid rgba(37,99,235,0.15)`, px: { xs: 2, md: 5 }, py: 2 }}>
         <Container maxWidth="lg">
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="stretch">
             <Box sx={{
@@ -500,7 +503,7 @@ export default function Home({ tenant }) {
 
       {/* ── CATEGORY PILLS ── */}
       <Box id="browse-section" sx={{
-        bgcolor: G.dark2, borderBottom: `1px solid rgba(201,168,76,0.1)`,
+        bgcolor: G.dark2, borderBottom: `1px solid rgba(37,99,235,0.1)`,
         px: { xs: 2, md: 5 }, py: 1.5, overflowX: "auto", display: "flex", gap: 1,
         "&::-webkit-scrollbar": { display: "none" },
       }}>
@@ -544,7 +547,7 @@ export default function Home({ tenant }) {
               <Box sx={{
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
                 width: 72, height: 72, borderRadius: "50%",
-                bgcolor: G.goldAlpha, border: `1px solid rgba(201,168,76,0.25)`, mb: 3,
+                bgcolor: G.goldAlpha, border: `1px solid rgba(37,99,235,0.25)`, mb: 3,
               }}>
                 <SearchIcon sx={{ fontSize: 30, color: G.gold, opacity: 0.7 }} />
               </Box>
@@ -655,7 +658,7 @@ export default function Home({ tenant }) {
             ].map((item, i) => (
               <Grid item xs={12} sm={6} md={4} key={i}>
                 <Box sx={{ p: 3.5, bgcolor: "#fff", border: `1px solid ${G.border}`, height: "100%", display: "flex", flexDirection: "column", gap: 1.5 }}>
-                  <Typography sx={{ fontFamily: SERIF, fontSize: "2rem", fontWeight: 400, color: `rgba(201,168,76,0.5)`, lineHeight: 1 }}>
+                  <Typography sx={{ fontFamily: SERIF, fontSize: "2rem", fontWeight: 400, color: `rgba(37,99,235,0.5)`, lineHeight: 1 }}>
                     {item.num}
                   </Typography>
                   <Typography sx={{ fontFamily: SERIF, fontSize: "1.1rem", fontWeight: 400, color: G.dark }}>
@@ -687,7 +690,7 @@ export default function Home({ tenant }) {
         position: "relative", overflow: "hidden",
         borderTop: `2px solid ${G.gold}`,
       }}>
-        <Box sx={{ position: "absolute", right: -24, top: "50%", transform: "translateY(-50%)", fontFamily: SERIF, fontSize: { xs: "16rem", md: "26rem" }, color: "rgba(201,168,76,0.03)", lineHeight: 1, pointerEvents: "none", userSelect: "none" }}>
+        <Box sx={{ position: "absolute", right: -24, top: "50%", transform: "translateY(-50%)", fontFamily: SERIF, fontSize: { xs: "16rem", md: "26rem" }, color: "rgba(37,99,235,0.03)", lineHeight: 1, pointerEvents: "none", userSelect: "none" }}>
           &amp;
         </Box>
         <Container maxWidth="lg" sx={{ position: "relative" }}>
@@ -724,7 +727,7 @@ export default function Home({ tenant }) {
                 Start free — 90 days on us
               </Button>
               <Button variant="outlined" onClick={() => setFeatureModalOpen(true)}
-                sx={{ border: `2px solid ${G.gold}`, color: G.gold, fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", px: 5, py: 1.5, borderRadius: "2px", "&:hover": { borderColor: G.goldLight, color: G.goldLight, bgcolor: "rgba(201,168,76,0.08)" } }}>
+                sx={{ border: `2px solid ${G.gold}`, color: G.gold, fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", px: 5, py: 1.5, borderRadius: "2px", "&:hover": { borderColor: G.goldLight, color: G.goldLight, bgcolor: "rgba(37,99,235,0.08)" } }}>
                 View features by type
               </Button>
             </Stack>
@@ -744,8 +747,8 @@ export default function Home({ tenant }) {
           <Grid container spacing={{ xs: 3, md: 4 }}>
             {HOW_STEPS.map((step, i) => (
               <Grid item xs={12} md={4} key={step.num}>
-                <Box sx={{ position: "relative", pl: 3, borderLeft: `2px solid ${i === 1 ? G.gold : "rgba(201,168,76,0.25)"}` }}>
-                  <Typography sx={{ fontFamily: SERIF, fontSize: "2.5rem", fontWeight: 400, color: `rgba(201,168,76,${i === 1 ? "0.6" : "0.25"})`, lineHeight: 1, mb: 1.5 }}>
+                <Box sx={{ position: "relative", pl: 3, borderLeft: `2px solid ${i === 1 ? G.gold : "rgba(37,99,235,0.25)"}` }}>
+                  <Typography sx={{ fontFamily: SERIF, fontSize: "2.5rem", fontWeight: 400, color: `rgba(37,99,235,${i === 1 ? "0.6" : "0.25"})`, lineHeight: 1, mb: 1.5 }}>
                     {step.num}
                   </Typography>
                   <Typography sx={{ fontFamily: SERIF, fontSize: "1.2rem", fontWeight: 400, color: G.dark, mb: 1 }}>{step.title}</Typography>
@@ -1044,8 +1047,8 @@ export default function Home({ tenant }) {
             <Grid item xs={12} md={4}>
               <Box sx={{
                 p: 2.5, borderRadius: 2,
-                border: "1px solid rgba(201,168,76,0.2)",
-                bgcolor: "rgba(201,168,76,0.04)",
+                border: "1px solid rgba(37,99,235,0.2)",
+                bgcolor: "rgba(37,99,235,0.04)",
               }}>
                 <Typography sx={{ fontFamily: SERIF, fontSize: "1.05rem", color: "#fff", mb: 0.75 }}>
                   90 days free. No card needed.
@@ -1136,8 +1139,10 @@ export default function Home({ tenant }) {
         </Container>
       </Box>
 
-      <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
-      <FeatureComparisonModal open={featureModalOpen} onClose={() => setFeatureModalOpen(false)} />
+      <Suspense fallback={null}>
+        <PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} />
+        <FeatureComparisonModal open={featureModalOpen} onClose={() => setFeatureModalOpen(false)} />
+      </Suspense>
 
     </Box>
   );

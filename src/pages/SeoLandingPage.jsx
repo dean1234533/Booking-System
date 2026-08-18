@@ -5,8 +5,8 @@ import { Box, Container, Typography, Button, Divider } from "@mui/material";
 import { SEO_PAGE_MAP } from "../data/seoPages";
 
 const G = {
-  gold:      "#C9A84C",
-  goldLight: "#e8c97a",
+  gold:      "#2563EB",
+  goldLight: "#60A5FA",
   dark:      "#0d0d0d",
   dark2:     "#1a1a1a",
   warmWhite: "#faf8f4",

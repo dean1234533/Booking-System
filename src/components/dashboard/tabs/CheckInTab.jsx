@@ -16,6 +16,7 @@ import WhatsAppIcon     from "@mui/icons-material/WhatsApp";
 import CheckCircleIcon  from "@mui/icons-material/CheckCircle";
 import { collection, getDocs, deleteDoc, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { SITE_URL } from "../../../utils/siteUrl";
 import { getClientsList } from "../../../firebase/firestore";
 
 function printPDF(sub) {
@@ -30,13 +31,13 @@ function printPDF(sub) {
     <title>Check-In – ${esc(sub.clientName)}</title>
     <style>
       *{box-sizing:border-box}body{font-family:Georgia,serif;max-width:700px;margin:0 auto;padding:36px 28px;color:#111}
-      .hdr{border-bottom:3px solid #C9A84C;padding-bottom:10px;margin-bottom:6px}
+      .hdr{border-bottom:3px solid #2563EB;padding-bottom:10px;margin-bottom:6px}
       h1{font-size:26px;font-weight:normal;margin:0}
       .meta{font-family:sans-serif;font-size:12px;color:#888;margin-bottom:28px;margin-top:4px}
       .qa{margin-bottom:22px;page-break-inside:avoid}
       .q{font-family:sans-serif;font-size:12px;font-weight:700;letter-spacing:.04em;color:#555;margin-bottom:6px;display:flex;gap:6px}
-      .qnum{color:#C9A84C;font-weight:700}
-      .a{font-size:14px;line-height:1.7;padding:10px 14px;background:#faf8f4;border-left:3px solid #C9A84C}
+      .qnum{color:#2563EB;font-weight:700}
+      .a{font-size:14px;line-height:1.7;padding:10px 14px;background:#faf8f4;border-left:3px solid #2563EB}
       @media print{@page{margin:20px}}
     </style>
   </head><body>
@@ -233,7 +234,7 @@ export default function CheckInTab({ barber, brandColor }) {
   if (subView === "send") {
     const selectedClient = clients.find(c => c.id === selClient);
     const portalUrl = selClient
-      ? `${window.location.origin}/client-portal/${tid}/${selClient}`
+      ? `${SITE_URL}/client-portal/${tid}/${selClient}`
       : "";
 
     function copyPortalLink() {

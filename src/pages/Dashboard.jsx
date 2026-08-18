@@ -24,6 +24,7 @@ import {
   ReceiptLong as ReceiptLongIcon,
   Reviews as ReviewsIcon,
   Edit as EditIcon,
+  Dashboard as DashboardIcon,
 } from "@mui/icons-material";
 
 import imageCompression from "browser-image-compression";
@@ -42,10 +43,14 @@ import {
   getDoc, updateDoc, deleteDoc, setDoc, onSnapshot, orderBy, limit,
 } from "firebase/firestore";
 import { db } from "../firebase/config";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { getApp } from "firebase/app";
+import { sanitizeSlug } from "../utils/bookingSlug";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 import DashboardHeader     from "../components/dashboard/DashboardHeader";
 import DashboardTabBar     from "../components/dashboard/DashboardTabBar";
+import DashboardOverview   from "../components/dashboard/DashboardOverview";
 import PWAInstallBanner    from "../components/dashboard/PWAInstallBanner";
 import OfflineIndicator    from "../components/dashboard/OfflineIndicator";
 import ManualBookingDialog from "../components/dashboard/ManualBookingDialog";
@@ -77,8 +82,9 @@ import { checkOutlookAvailability, getOutlookTokens } from "../firebase/outlook"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function TabPanel({ value, index, children }) {
+function TabPanel({ value, index, children, bare = false }) {
   if (value !== index) return null;
+  if (bare) return <Box sx={{ py: 2 }}>{children}</Box>;
   return (
     <Box sx={{ py: 3 }}>
       <Box sx={{
@@ -122,7 +128,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   }, [barber?.uid]);
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const [tab,          setTab]          = useState(0);
+  const [tab,          setTab]          = useState("overview");
   const [dataLoading,  setDataLoading]  = useState(true);
   const [stripeLoading,setStripeLoading]= useState(false);
   const [uploading,    setUploading]    = useState(false);
@@ -131,7 +137,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   // ── Data state ────────────────────────────────────────────────────────────
   const [userRole, setUserRole] = useState({ isOwner: true, shopId: null });
   const [profile,  setProfile]  = useState({
-    name: "", businessName: "", brandColor: "#C9A84C",
+    name: "", businessName: "", brandColor: "#2563EB",
     services: [], depositAmount: 10,
     specialty: "", address: "", bio: "", role: "staff",
     openingHours: "", vercelUrl: "", customDomain: "", aboutUs: "",
@@ -206,15 +212,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
     if (!tabParam) return;
-    window.history.replaceState({}, "", "/dashboard");
-    const map = {
-      domain:   userRole.isOwner && !initialTenant ? 7 : -1,
-      finance:  4,
-      design:   userRole.isOwner ? 6 : -1,
-      reviews:  userRole.isOwner ? 5 : -1,
-    };
-    const idx = map[tabParam] ?? -1;
-    if (idx >= 0) setTab(idx);
+    const knownSections = [
+      "overview", "schedule", "bookings", "edit-page", "services", "finance",
+      "reviews", "design", "domain", "pay", "notifications", "integrations",
+      "pt-invoices", "clients", "colourapproval", "quote", "dayplanner",
+      "dec-invoices", "hd-invoices", "queue", "haircut", "bar-invoices",
+    ];
+    setTab(knownSections.includes(tabParam) ? tabParam : "overview");
   }, [dataLoading]);
 
   // ── Data loading ──────────────────────────────────────────────────────────
@@ -240,6 +244,20 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           domainStatus:     data.domainStatus     || "",
           customHostnameId: data.customHostnameId || "",
         }));
+
+        // Self-heal: accounts created before the booking-slug feature (or
+        // anything the one-off backfill script missed) silently claim a
+        // slug in the background on next dashboard load. Idempotent —
+        // no-ops once bookingSlug is set. Owners only; staff never get one.
+        if (isOwner && !data.bookingSlug) {
+          const candidate = sanitizeSlug(data.businessName || data.name || barber.email?.split("@")[0]);
+          if (candidate) {
+            const functions = getFunctions(getApp(), "us-central1");
+            httpsCallable(functions, "claimBookingSlug")({ slug: candidate })
+              .then(res => setProfile(prev => ({ ...prev, bookingSlug: res.data.slug })))
+              .catch(() => {}); // best-effort — a real claim happens explicitly from onboarding/settings
+          }
+        }
       }
       setUserRole({ isOwner, shopId: activeShopId });
 
@@ -564,7 +582,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
   // ── Tab config ────────────────────────────────────────────────────────────
   // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
-  const brandColor      = profile.brandColor || "#C9A84C";
+  const brandColor      = profile.brandColor || "#2563EB";
   const isTrainer       = profile.businessType === "trainer";
   const isDecorator     = profile.businessType === "decorator";
   const isHairdresser   = profile.businessType === "hairdresser";
@@ -580,32 +598,34 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const dashTheme = useMemo(() => createTheme({
     palette: {
       mode: "light",
-      primary:    { main: brandColor },
-      background: { default: "#F6F7F9", paper: "#ffffff" },
-      text:       { primary: "#16181d", secondary: "#6b7280" },
-      divider:    "#ececf0",
+      primary:    { main: "#2563EB", dark: "#1D4ED8", contrastText: "#ffffff" },
+      secondary:  { main: brandColor },
+      background: { default: "#F5F3ED", paper: "#ffffff" },
+      text:       { primary: "#111116", secondary: "#696A73" },
+      divider:    "#DEDDD8",
     },
     shape: { borderRadius: 12 },
     typography: {
       fontFamily: "'DM Sans','Plus Jakarta Sans','Inter',system-ui,sans-serif",
-      button: { textTransform: "none", fontWeight: 700, letterSpacing: "0.01em" },
-      h6: { fontWeight: 700 },
-      subtitle1: { fontWeight: 700 },
+      button: { textTransform: "none", fontWeight: 850, letterSpacing: 0 },
+      h6: { fontWeight: 900, letterSpacing: "-.025em" },
+      subtitle1: { fontWeight: 850 },
     },
     components: {
       MuiPaper: {
         defaultProps: { elevation: 0 },
-        styleOverrides: { root: { backgroundImage: "none", border: "1px solid #ededf1", boxShadow: "0 1px 2px rgba(16,24,40,0.04)" } },
+        styleOverrides: { root: { backgroundImage: "none", border: "1px solid #DEDDD8", borderRadius: 18, boxShadow: "0 14px 38px rgba(17,17,22,.05)" } },
       },
       MuiCard: {
         defaultProps: { elevation: 0 },
-        styleOverrides: { root: { borderRadius: 14, border: "1px solid #ededf1", boxShadow: "0 1px 3px rgba(16,24,40,0.06)" } },
+        styleOverrides: { root: { borderRadius: 20, border: "1px solid #DEDDD8", boxShadow: "0 14px 38px rgba(17,17,22,.05)" } },
       },
       MuiButton: {
-        styleOverrides: { root: { borderRadius: 10, boxShadow: "none", paddingInline: 18, "&:hover": { boxShadow: "none" } } },
+        defaultProps: { disableElevation: true },
+        styleOverrides: { root: { borderRadius: 999, boxShadow: "none", paddingInline: 20, "&:hover": { boxShadow: "none" } } },
       },
       MuiOutlinedInput: {
-        styleOverrides: { root: { borderRadius: 10 } },
+        styleOverrides: { root: { borderRadius: 14, backgroundColor: "#fff" } },
       },
       MuiChip: {
         styleOverrides: { root: { fontWeight: 600 } },
@@ -634,14 +654,18 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "dec-invoices",   label: "Invoices", icon: <ReceiptLongIcon /> },
   ] : [];
 
-  const hairdresserTabs = [];
+  const hairdresserTabs = isHairdresser ? [
+    { key: "hd-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
+  ] : [];
 
   const barberTabs = isBarber ? [
     { key: "queue",   label: "Queue",   icon: <PeopleIcon /> },
     { key: "haircut", label: "Haircut", icon: <ContentCutIcon /> },
+    { key: "bar-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
   ] : [];
 
   const tabs = [
+    { key: "overview",      label: "Today", icon: <DashboardIcon /> },
     { key: "schedule",      label: "Schedule", icon: <AccessTimeIcon /> },
     { key: "bookings",      label: "Bookings", icon: <StoreIcon /> },
     { key: "edit-page",     label: "Profile",  icon: <PersonIcon /> },
@@ -658,7 +682,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     ...hairdresserTabs,
     ...barberTabs,
   ];
-  const tabIdx = (key) => tabs.findIndex((t) => t.key === key);
+  const tabIdx = (key) => tabs.some((t) => t.key === key) ? key : null;
 
   const IDX_FINANCE = tabIdx("finance");
   const IDX_REVIEWS = tabIdx("reviews");
@@ -669,15 +693,20 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   // ── Grouped tab nav config (drives DashboardTabBar) ──────────────────────────
   // Items whose tab key isn't in the current tabs array (e.g. PWA-only tabs on web)
   // return index -1 from tabIdx — filter those out so no broken menu entries appear.
-  const filterItems = (items) => items.filter(i => i.index !== -1);
+  const filterItems = (items) => items.filter(i => i.index != null);
 
   const tabGroups = [
+    {
+      label: "Overview",
+      icon: <DashboardIcon />,
+      items: [{ label: "Today", icon: <DashboardIcon />, index: "overview" }],
+    },
     {
       label: "Booking",
       icon: <AccessTimeIcon />,
       items: filterItems([
-        { label: "Schedule", icon: <AccessTimeIcon />, index: 0 },
-        { label: "Bookings", icon: <StoreIcon />,      index: 1 },
+        { label: "Schedule", icon: <AccessTimeIcon />, index: "schedule" },
+        { label: "Bookings", icon: <StoreIcon />,      index: "bookings" },
         ...(isBarber ? [
           { label: "Queue", icon: <PeopleIcon />, index: tabIdx("queue") },
         ] : []),
@@ -711,6 +740,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("pt-invoices") },
         ] : isDecorator ? [
           { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("dec-invoices") },
+        ] : isHairdresser ? [
+          { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("hd-invoices") },
+        ] : isBarber ? [
+          { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("bar-invoices") },
         ] : []),
       ]),
     },
@@ -742,6 +775,24 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       ]),
     },
   ];
+
+  const sectionMeta = tabs.find(item => item.key === tab) || tabs[0];
+  const mobileItems = [
+    tabs.find(item => item.key === "overview"),
+    tabs.find(item => item.key === "schedule"),
+    tabs.find(item => item.key === "bookings"),
+    tabs.find(item => item.key === (isTrainer ? "clients" : isDecorator ? "quote" : isBarber ? "queue" : "services")),
+  ].filter(Boolean).map(item => ({ label: item.label, icon: item.icon, index: item.key }));
+
+  const handleSectionChange = (key) => {
+    if (!tabs.some(item => item.key === key)) return;
+    setTab(key);
+    window.history.replaceState({}, "", key === "overview" ? "/dashboard" : `/dashboard?tab=${key}`);
+  };
+
+  useEffect(() => {
+    if (!tabs.some(item => item.key === tab)) setTab("overview");
+  }, [tab, profile.businessType, userRole.isOwner, initialTenant]);
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (authLoading || (dataLoading && !barber)) {
@@ -794,12 +845,12 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         setSubLoading(false);
       }
     }
-    const bc = profile.brandColor || "#C9A84C";
+    const bc = profile.brandColor || "#2563EB";
     return (
       <Box
         sx={{
           minHeight: "100vh",
-          bgcolor: "#F6F7F9",
+          bgcolor: "#F5F3ED",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -919,7 +970,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <ThemeProvider theme={dashTheme}>
-    <Box sx={{ pb: isMobile ? 12 : 6, bgcolor: "#F6F7F9", minHeight: "100vh" }}>
+    <Box sx={{ pb: isMobile ? 12 : 6, bgcolor: "#F5F3ED", minHeight: "100vh", backgroundImage: "radial-gradient(circle at 90% 0%, rgba(37,99,235,.08), transparent 28%)" }}>
       <Snackbar
         open={Boolean(toast)} autoHideDuration={4000}
         onClose={() => setToast(null)} message={toast}
@@ -946,25 +997,47 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         uploading={uploading}
         handleLogout={handleLogout}
         handleSaveProfile={handleSaveProfile}
+        showSave={["edit-page", "services", "design"].includes(tab)}
       />
 
       <OfflineIndicator />
       <PWAInstallBanner brandColor={brandColor} />
 
-      <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 1.5, md: 3 }, mt: 3 }}>
-        <Typography sx={{ fontWeight: 800, fontSize: { xs: "1rem", md: "1.15rem" }, color: brandColor, mb: 1.5, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          {businessTypeLabel} Dashboard
-        </Typography>
+      <Box sx={{ maxWidth: 1440, mx: "auto", px: { xs: 1.5, md: 3 }, mt: 3, display: "flex", alignItems: "flex-start", gap: 3 }}>
         <DashboardTabBar
           groups={tabGroups}
           activeTab={tab}
-          onTabChange={setTab}
+          onTabChange={handleSectionChange}
           brandColor={brandColor}
           isMobile={isMobile}
+          mobileItems={mobileItems}
         />
 
-        {/* ── 0 Schedule ── */}
-        <TabPanel value={tab} index={0}>
+        <Box component="main" sx={{ flex: 1, minWidth: 0 }}>
+          {tab !== "overview" && (
+            <Box sx={{ mb: 1 }}>
+              <Typography sx={{ color: brandColor, fontWeight: 850, fontSize: ".68rem", letterSpacing: ".11em", textTransform: "uppercase" }}>
+                {businessTypeLabel} workspace
+              </Typography>
+              <Typography sx={{ fontWeight: 850, fontSize: { xs: "1.35rem", md: "1.65rem" }, letterSpacing: "-.025em", mt: .35 }}>
+                {sectionMeta.label}
+              </Typography>
+            </Box>
+          )}
+
+        <TabPanel value={tab} index="overview" bare>
+          <DashboardOverview
+            profile={profile}
+            bookings={bookings}
+            slots={slots}
+            businessType={profile.businessType || "barber"}
+            brandColor={brandColor}
+            onNavigate={handleSectionChange}
+          />
+        </TabPanel>
+
+        {/* ── Schedule ── */}
+        <TabPanel value={tab} index="schedule">
           {isTrainer ? (
             <PTAvailabilityTab barber={barber} profile={profile} brandColor={brandColor} />
           ) : (
@@ -977,8 +1050,8 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           )}
         </TabPanel>
 
-        {/* ── 1 Bookings ── */}
-        <TabPanel value={tab} index={1}>
+        {/* ── Bookings ── */}
+        <TabPanel value={tab} index="bookings">
           <BookingsTab
             bookings={bookings} isMobile={isMobile} brandColor={brandColor}
             handleCompleteBooking={handleCompleteBooking}
@@ -1055,7 +1128,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         <TabPanel value={tab} index={IDX_PAY}>
           <PayTab
             profile={profile} barber={barber}
-            setTab={setTab} financeTabIndex={IDX_FINANCE} brandColor={brandColor}
+            setTab={handleSectionChange} financeTabIndex={IDX_FINANCE} brandColor={brandColor}
             terminalAmount={terminalAmount}   setTerminalAmount={setTerminalAmount}
             terminalService={terminalService} setTerminalService={setTerminalService}
             terminalNote={terminalNote}       setTerminalNote={setTerminalNote}
@@ -1131,6 +1204,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           <IntegrationsTab barber={barber} brandColor={brandColor} />
         </TabPanel>
 
+        </Box>
       </Box>
 
       {/* WhatsApp support button */}

@@ -3,7 +3,7 @@ import { Box, Typography, Button, Stack } from "@mui/material";
 import { Link } from "react-router-dom";
 
 const STORAGE_KEY = "br_cookie_consent";
-const G = { gold: "#C9A84C", dark: "#0d0d0d" };
+const G = { gold: "#2563EB", dark: "#0d0d0d" };
 const SANS = "'DM Sans', sans-serif";
 
 // Real cookies are set on this site — Stripe.js (used for Payment Elements /
@@ -58,7 +58,7 @@ export default function CookieConsent() {
             bgcolor: G.gold, color: G.dark, fontFamily: SANS, fontWeight: 700,
             fontSize: "0.75rem", letterSpacing: "0.06em", textTransform: "uppercase",
             borderRadius: "2px", boxShadow: "none",
-            "&:hover": { bgcolor: "#e8c97a", boxShadow: "none" },
+            "&:hover": { bgcolor: "#60A5FA", boxShadow: "none" },
           }}
         >
           Accept

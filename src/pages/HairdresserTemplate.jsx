@@ -438,6 +438,8 @@ export default function HairdresserTemplate({ tenantData }) {
     isOwner: true,
   };
   const allTeam = [ownerMember, ...team];
+  // "Our Team" nav link only makes sense once the #team section actually renders (>1 person)
+  const navLinkList = [['about','About'],['services','Services'], ...(allTeam.length > 1 ? [['team','Our Team']] : []), ['reviews','Reviews']];
 
   const privacyText = tenantData?.privacyPolicy   || `At ${businessName}, we take your privacy seriously. We collect only the information needed to manage your appointments and never share your data with third parties.`;
   const termsText   = tenantData?.termsConditions || `By booking with ${businessName}, you agree to our cancellation policy. We require 24 hours notice for cancellations. Late cancellations or no-shows may incur a charge.`;
@@ -482,7 +484,7 @@ export default function HairdresserTemplate({ tenantData }) {
             <span>{businessName}</span>
           </a>
           <div className="hs-nav-links">
-            {[['about','About'],['services','Services'],['team','Our Team'],['reviews','Reviews']].map(([id, label]) => (
+            {navLinkList.map(([id, label]) => (
               <a key={id} href={`#${id}`}>{label}</a>
             ))}
           </div>
@@ -496,7 +498,7 @@ export default function HairdresserTemplate({ tenantData }) {
 
         {menuOpen && (
           <div className="hs-mobile-menu">
-            {[['about','About'],['services','Services'],['team','Our Team'],['reviews','Reviews'],['booking','Book']].map(([id, label]) => (
+            {[...navLinkList, ['booking','Book']].map(([id, label]) => (
               <a key={id} href={`#${id}`} onClick={() => scroll(id)}>{label}</a>
             ))}
             <a href="#booking" className="hs-mobile-cta" style={{ background: brandColor }} onClick={() => scroll('booking')}>
@@ -607,6 +609,11 @@ export default function HairdresserTemplate({ tenantData }) {
         </section>
 
         {/* ─── TEAM ─── */}
+        {/* Solo accounts (no staff beyond the owner) skip this section — the
+            owner's already introduced in "About", and booking doesn't run
+            through team selection here, so a one-person team grid would
+            just be a redundant, pointless extra section. */}
+        {allTeam.length > 1 && (
         <section id="team" className="hs-team">
           <div className="hs-team-header">
             <span className="hs-section-label" style={{ color: brandColor }}>The Stylists</span>
@@ -636,6 +643,7 @@ export default function HairdresserTemplate({ tenantData }) {
             ))}
           </div>
         </section>
+        )}
 
         {/* ─── REVIEWS ─── */}
         <section id="reviews" className="hs-reviews">

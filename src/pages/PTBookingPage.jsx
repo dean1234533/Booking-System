@@ -90,7 +90,7 @@ export default function PTBookingPage() {
   const [submitError, setSubmitError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const brandColor = ptProfile?.brandColor || "#C9A84C";
+  const brandColor = ptProfile?.brandColor || "#2563EB";
   const ptName = ptProfile?.businessName || ptProfile?.name || "Personal Trainer";
   const logoUrl = ptProfile?.logoUrl;
   const tagline = ptProfile?.heroTagline || "Professional Personal Training";

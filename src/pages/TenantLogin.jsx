@@ -28,7 +28,7 @@ export default function TenantLogin({ tenant }) {
     return tenant || location.state?.tenant || (Object.keys(saved).length ? saved : null);
   }, [tenant, location.state?.tenant]);
 
-  const brandColor = activeTenant?.brandColor || "#C9A84C";
+  const brandColor = activeTenant?.brandColor || "#2563EB";
   const businessName = activeTenant?.businessName || "Bookrightly";
   const logoUrl = activeTenant?.businessLogo || activeTenant?.logoUrl || null;
 

@@ -1,370 +1,97 @@
 import React from "react";
-import { Box, Typography, Container, Stack, Grid, Chip } from "@mui/material";
+import { Box, Typography, Stack, Button, Chip } from "@mui/material";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
+import ArrowOutwardRoundedIcon from "@mui/icons-material/ArrowOutwardRounded";
 import { useNavigate } from "react-router-dom";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CancelIcon from "@mui/icons-material/Cancel";
-import RemoveIcon from "@mui/icons-material/Remove";
 
-const GOLD   = "#C9A84C";
-const DARK   = "#0d0d0d";
-const DARK2  = "#111";
-const DARK3  = "#1a1a1a";
-const SERIF  = "'Playfair Display', serif";
-const SANS   = "'DM Sans', sans-serif";
-
-/* ── comparison data ───────────────────────────────────────── */
 const COMPETITORS = [
-  { name: "Bookrightly", highlight: true },
-  { name: "Fresha" },
-  { name: "Treatwell" },
-  { name: "Bark.com" },
-  { name: "Mindbody" },
+  { name: "Fresha", price: "Free + fees", model: "Transaction-led", note: "Costs increase when customers pay online." },
+  { name: "Treatwell", price: "~30%", model: "Booking commission", note: "A percentage of every marketplace booking." },
+  { name: "Booksy", price: "£40 + VAT", model: "Monthly subscription", note: "Booking, marketplace and payment tools focused mainly on beauty professionals." },
+  { name: "Mindbody", price: "£100–400+", model: "Tiered monthly", note: "Broad enterprise tooling at enterprise pricing." },
 ];
 
-const YES  = "yes";
-const NO   = "no";
-const PART = "partial";
-
-const ROWS = [
-  {
-    label: "Multi-industry support",
-    sub: "Barbers, salons, PTs, decorators",
-    values: [YES, NO, NO, PART, PART],
-  },
-  {
-    label: "Your own branded page",
-    sub: "Not buried in a marketplace",
-    values: [YES, NO, NO, NO, NO],
-  },
-  {
-    label: "Flat monthly fee",
-    sub: "Know exactly what you pay",
-    values: [YES, NO, NO, NO, NO],
-  },
-  {
-    label: "No commission per booking",
-    sub: "Keep 100% of your service price",
-    values: [YES, NO, NO, YES, YES],
-  },
-  {
-    label: "90-day free trial",
-    sub: "No credit card needed",
-    values: [YES, YES, NO, NO, NO],
-  },
-  {
-    label: "UK-built and UK-focused",
-    sub: "Built for UK pricing, currency, regulations",
-    values: [YES, YES, YES, YES, NO],
-  },
-  {
-    label: "Installable PWA app",
-    sub: "Customers install it like a native app",
-    values: [YES, NO, NO, NO, NO],
-  },
-  {
-    label: "Stripe payments built in",
-    sub: "Deposits collected at booking",
-    values: [YES, YES, NO, NO, YES],
-  },
-  {
-    label: "Full client portal",
-    sub: "Forms, check-ins, food diary, PAR-Q",
-    values: [YES, NO, NO, NO, NO],
-  },
-  {
-    label: "PT-specific features",
-    sub: "Workout plans, progress tracking",
-    values: [YES, NO, NO, NO, YES],
-  },
-  {
-    label: "Decorator / trades booking",
-    sub: "Quote forms, site visit scheduling",
-    values: [YES, NO, NO, PART, NO],
-  },
-  {
-    label: "Affordable for small businesses",
-    sub: "From £10/month",
-    values: [YES, PART, NO, NO, NO],
-  },
+const FEATURES = [
+  ["Multi-industry support", "Barbers, salons, PTs and decorators", ["no", "no", "partial", "partial"]],
+  ["Your own branded page", "Your identity stays front and centre", ["no", "no", "partial", "no"]],
+  ["Flat monthly price", "Know your software cost", ["no", "no", "yes", "no"]],
+  ["No booking commission", "Your growth does not raise the fee", ["no", "no", "yes", "yes"]],
+  ["90-day free trial", "No card needed to begin", ["yes", "no", "no", "no"]],
+  ["Installable web app", "Works from a phone home screen", ["no", "no", "no", "no"]],
+  ["Full client portal", "Forms, plans, notes and check-ins", ["no", "no", "partial", "no"]],
+  ["Trade-specific workflows", "Quotes, queues, PAR-Q and approvals", ["no", "no", "partial", "partial"]],
 ];
 
-const PRICING = [
-  {
-    name: "Bookrightly",
-    price: "£10–20/month",
-    model: "Flat subscription",
-    highlight: true,
-    notes: "90-day free trial. Small Stripe processing fee only when you earn.",
-  },
-  {
-    name: "Fresha",
-    price: "Free + commission",
-    model: "Pay-now transaction fee",
-    highlight: false,
-    notes: "\"Free\" until customers pay online — then they charge a cut of every booking.",
-  },
-  {
-    name: "Treatwell",
-    price: "~30% commission",
-    model: "Per-booking commission",
-    highlight: false,
-    notes: "For every £50 booking, Treatwell keeps ~£15. Costs grow as you do.",
-  },
-  {
-    name: "Bark.com",
-    price: "£5–50 per lead",
-    model: "Pay-per-lead credits",
-    highlight: false,
-    notes: "Buy credits, spend them on leads that may not convert. Costs add up fast.",
-  },
-  {
-    name: "Mindbody",
-    price: "£100–400+/month",
-    model: "Tiered subscription",
-    highlight: false,
-    notes: "US-designed, expensive, and far more complex than most UK small businesses need.",
-  },
+const REASONS = [
+  ["01", "Your name stays above the door", "A branded booking page makes the client relationship yours—not the marketplace’s."],
+  ["02", "Growth does not trigger a penalty", "A flat plan stays predictable whether you take five bookings or fifty."],
+  ["03", "Different work gets different tools", "A decorator should not see the same workspace as a barber or personal trainer."],
+  ["04", "Clients get more than a calendar", "History, forms, plans, payments and communication stay attached to the right person."],
 ];
 
-const USP_CARDS = [
-  {
-    icon: "🏷️",
-    title: "Your brand, not theirs",
-    body: "Fresha and Treatwell put your business inside their marketplace — customers book 'via Treatwell', not you. On Bookrightly, every business gets its own branded page at bookrightly.co.uk/your-name. Your identity, your reputation.",
-  },
-  {
-    icon: "💸",
-    title: "No commission on your earnings",
-    body: "Treatwell takes up to 30% of every booking. Fresha charges a 'pay-now' transaction fee that sounds small but scales painfully. Bookrightly charges a flat £10–20/month — so a £500 week earns the same whether you have 5 bookings or 50.",
-  },
-  {
-    icon: "🏭",
-    title: "Built for more than beauty",
-    body: "Fresha, Treatwell, and Booksy are built exclusively for salons and beauty. Bookrightly supports barbers, hairdressers, personal trainers, and decorators — all with industry-specific pages, features, and booking flows.",
-  },
-  {
-    icon: "📱",
-    title: "Installs like a real app",
-    body: "Bookrightly is a Progressive Web App — customers can add it to their home screen and it works like a native mobile app. No App Store barriers. No £99/year Apple developer fee needed by the customer.",
-  },
-  {
-    icon: "📋",
-    title: "Full client management",
-    body: "No other booking platform in this price range includes a client portal with PAR-Q health forms, food diary, check-ins, workout plans, and colour approval workflows. Built for professionals who need more than a calendar.",
-  },
-  {
-    icon: "🇬🇧",
-    title: "UK-first, always",
-    body: "Mindbody is a US product retrofitted for the UK. Bookrightly was built in the UK, priced in GBP, designed around UK service businesses, and is maintained by a UK developer.",
-  },
-];
-
-function Cell({ value, isFirst }) {
-  if (isFirst) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 2 }}>
-        <CheckCircleIcon sx={{ color: GOLD, fontSize: 22 }} />
-      </Box>
-    );
-  }
-  if (value === YES)   return <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}><CheckCircleIcon sx={{ color: "#4ade80", fontSize: 20 }} /></Box>;
-  if (value === NO)    return <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}><CancelIcon sx={{ color: "rgba(255,255,255,0.15)", fontSize: 20 }} /></Box>;
-  return <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}><RemoveIcon sx={{ color: "rgba(255,255,255,0.25)", fontSize: 20 }} /></Box>;
+function Status({ value = "yes" }) {
+  const partial = value === "partial";
+  const no = value === "no";
+  const Icon = no ? CloseRoundedIcon : partial ? RemoveRoundedIcon : CheckRoundedIcon;
+  return <Box sx={{ width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: no ? "#ebe9e3" : partial ? "#EAF2FF" : "#93C5FD", color: no ? "#999a9f" : "#111116" }}><Icon sx={{ fontSize: 17 }} /></Box>;
 }
 
 export default function ComparePage() {
   const navigate = useNavigate();
+  const [selected, setSelected] = React.useState(0);
+  const competitor = COMPETITORS[selected];
 
   return (
-    <Box sx={{ bgcolor: DARK, color: "#fff", minHeight: "100vh", fontFamily: SANS }}>
-
-      {/* ── Hero ── */}
-      <Box sx={{ pt: { xs: 10, md: 14 }, pb: { xs: 8, md: 10 }, px: { xs: 3, md: 5 }, textAlign: "center", position: "relative", overflow: "hidden" }}>
-        <Box sx={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,0.08) 0%, transparent 70%)`, pointerEvents: "none" }} />
-        <Chip label="Honest Comparison" sx={{ mb: 3, bgcolor: "rgba(201,168,76,0.1)", color: GOLD, fontFamily: SANS, fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.1em", border: `1px solid rgba(201,168,76,0.25)` }} />
-        <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "2.2rem", md: "3.4rem" }, fontWeight: 400, lineHeight: 1.2, mb: 2.5, maxWidth: 780, mx: "auto" }}>
-          Why UK service businesses are switching to Bookrightly
-        </Typography>
-        <Typography sx={{ fontSize: "1.05rem", color: "rgba(255,255,255,0.55)", maxWidth: 600, mx: "auto", lineHeight: 1.75, mb: 5 }}>
-          Fresha, Treatwell, and Bark look free — until you do the maths. Bookrightly charges a flat fee, gives you a branded page, and keeps your clients yours.
-        </Typography>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="center">
-          <Box
-            component="button"
-            onClick={() => navigate("/signup")}
-            sx={{ px: 4, py: 1.75, bgcolor: GOLD, color: "#0d0d0d", fontFamily: SANS, fontWeight: 800, fontSize: "0.9rem", letterSpacing: "0.04em", border: "none", cursor: "pointer", "&:hover": { opacity: 0.9 } }}
-          >
-            Start free — 90 days
-          </Box>
-          <Box
-            component="button"
-            onClick={() => navigate("/")}
-            sx={{ px: 4, py: 1.75, bgcolor: "transparent", color: "rgba(255,255,255,0.7)", fontFamily: SANS, fontWeight: 600, fontSize: "0.9rem", border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer", "&:hover": { borderColor: "rgba(255,255,255,0.35)" } }}
-          >
-            See how it works
-          </Box>
-        </Stack>
-      </Box>
-
-      {/* ── USP Cards ── */}
-      <Container maxWidth="lg" sx={{ pb: 10 }}>
-        <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.6rem", md: "2.2rem" }, fontWeight: 400, textAlign: "center", mb: 1.5 }}>
-          What makes Bookrightly different
-        </Typography>
-        <Typography sx={{ color: "rgba(255,255,255,0.4)", textAlign: "center", fontSize: "0.9rem", mb: 6 }}>
-          Six things no other booking platform at this price point offers
-        </Typography>
-        <Grid container spacing={3}>
-          {USP_CARDS.map((card) => (
-            <Grid item xs={12} sm={6} md={4} key={card.title}>
-              <Box sx={{ bgcolor: DARK3, border: "1px solid rgba(255,255,255,0.06)", p: 3.5, height: "100%", "&:hover": { borderColor: "rgba(201,168,76,0.2)" }, transition: "border-color 0.2s" }}>
-                <Typography sx={{ fontSize: "2rem", mb: 1.5 }}>{card.icon}</Typography>
-                <Typography sx={{ fontFamily: SANS, fontWeight: 700, fontSize: "1rem", mb: 1.5, color: "#fff" }}>{card.title}</Typography>
-                <Typography sx={{ color: "rgba(255,255,255,0.5)", fontSize: "0.85rem", lineHeight: 1.75 }}>{card.body}</Typography>
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
-
-      {/* ── Feature comparison table ── */}
-      <Box sx={{ bgcolor: DARK2, py: 10, px: { xs: 2, md: 5 } }}>
-        <Container maxWidth="lg">
-          <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.6rem", md: "2.2rem" }, fontWeight: 400, textAlign: "center", mb: 1.5 }}>
-            Feature-by-feature comparison
-          </Typography>
-          <Typography sx={{ color: "rgba(255,255,255,0.4)", textAlign: "center", fontSize: "0.9rem", mb: 6 }}>
-            Bookrightly vs Fresha, Treatwell, Bark.com, and Mindbody
-          </Typography>
-
-          <Box sx={{ overflowX: "auto" }}>
-            <Box sx={{ minWidth: 640 }}>
-              {/* Header row */}
-              <Box sx={{ display: "grid", gridTemplateColumns: "2fr repeat(5, 1fr)", gap: 0, borderBottom: "1px solid rgba(255,255,255,0.08)", pb: 2, mb: 1 }}>
-                <Box />
-                {COMPETITORS.map((c) => (
-                  <Box key={c.name} sx={{ textAlign: "center", px: 1 }}>
-                    <Typography sx={{
-                      fontFamily: SANS, fontWeight: 800, fontSize: "0.75rem",
-                      color: c.highlight ? GOLD : "rgba(255,255,255,0.4)",
-                      letterSpacing: "0.05em", textTransform: "uppercase",
-                    }}>
-                      {c.name}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-
-              {/* Data rows */}
-              {ROWS.map((row, i) => (
-                <Box
-                  key={row.label}
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "2fr repeat(5, 1fr)",
-                    borderBottom: "1px solid rgba(255,255,255,0.04)",
-                    bgcolor: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
-                    "&:hover": { bgcolor: "rgba(201,168,76,0.04)" },
-                    transition: "background 0.15s",
-                  }}
-                >
-                  <Box sx={{ py: 2, px: 1 }}>
-                    <Typography sx={{ fontFamily: SANS, fontWeight: 600, fontSize: "0.85rem", color: "rgba(255,255,255,0.85)" }}>{row.label}</Typography>
-                    <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(255,255,255,0.3)", mt: 0.25 }}>{row.sub}</Typography>
-                  </Box>
-                  {row.values.map((v, ci) => (
-                    <Cell key={ci} value={v} isFirst={ci === 0 && v === YES} />
-                  ))}
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        </Container>
-      </Box>
-
-      {/* ── Pricing comparison ── */}
-      <Container maxWidth="lg" sx={{ py: 10 }}>
-        <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.6rem", md: "2.2rem" }, fontWeight: 400, textAlign: "center", mb: 1.5 }}>
-          The real cost of each platform
-        </Typography>
-        <Typography sx={{ color: "rgba(255,255,255,0.4)", textAlign: "center", fontSize: "0.9rem", mb: 6 }}>
-          "Free" platforms are never free — they just hide the fee inside your earnings
-        </Typography>
-        <Grid container spacing={2.5}>
-          {PRICING.map((p) => (
-            <Grid item xs={12} sm={6} md={p.highlight ? 12 / 1 : 12 / 2} key={p.name}>
-              <Box sx={{
-                bgcolor: p.highlight ? "rgba(201,168,76,0.07)" : DARK3,
-                border: `1px solid ${p.highlight ? "rgba(201,168,76,0.35)" : "rgba(255,255,255,0.06)"}`,
-                p: 3, height: "100%",
-              }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1.5}>
-                  <Typography sx={{ fontFamily: SANS, fontWeight: 800, fontSize: "0.95rem", color: p.highlight ? GOLD : "#fff" }}>
-                    {p.name}
-                  </Typography>
-                  {p.highlight && <Chip label="Best value" size="small" sx={{ bgcolor: GOLD, color: "#0d0d0d", fontWeight: 800, fontSize: "0.6rem" }} />}
-                </Stack>
-                <Typography sx={{ fontFamily: SERIF, fontSize: "1.6rem", fontWeight: 400, color: p.highlight ? GOLD : "rgba(255,255,255,0.7)", mb: 0.5 }}>
-                  {p.price}
-                </Typography>
-                <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.08em", mb: 1.5 }}>
-                  {p.model}
-                </Typography>
-                <Typography sx={{ fontSize: "0.83rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
-                  {p.notes}
-                </Typography>
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
-
-      {/* ── Industries ── */}
-      <Box sx={{ bgcolor: DARK2, py: 10, px: { xs: 3, md: 5 } }}>
-        <Container maxWidth="md" sx={{ textAlign: "center" }}>
-          <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.6rem", md: "2.2rem" }, fontWeight: 400, mb: 2 }}>
-            The only platform that covers all four industries
-          </Typography>
-          <Typography sx={{ color: "rgba(255,255,255,0.45)", fontSize: "0.9rem", mb: 6, lineHeight: 1.8 }}>
-            Fresha and Treatwell are beauty-only. Mindbody is fitness-only. Bark is a lead generator, not a booking platform. Bookrightly is the only UK platform built for barbers, hairdressers, personal trainers, and decorators — all under one roof.
-          </Typography>
-          <Grid container spacing={3} justifyContent="center">
-            {[
-              ["💇", "Barbers", "Real-time slots, hot towel shave, service menu, deposit booking"],
-              ["💅", "Hairdressers", "Treatment pages, colour consultations, before/after portfolio"],
-              ["🏋️", "Personal Trainers", "PAR-Q forms, workout plans, client portal, food diary, check-ins"],
-              ["🎨", "Decorators", "Quote request forms, site visit scheduling, colour approval flow"],
-            ].map(([icon, label, desc]) => (
-              <Grid item xs={12} sm={6} key={label}>
-                <Box sx={{ bgcolor: DARK3, border: "1px solid rgba(255,255,255,0.06)", p: 3, textAlign: "left" }}>
-                  <Typography sx={{ fontSize: "1.8rem", mb: 1 }}>{icon}</Typography>
-                  <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", mb: 0.75, color: GOLD }}>{label}</Typography>
-                  <Typography sx={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>{desc}</Typography>
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* ── Final CTA ── */}
-      <Box sx={{ py: { xs: 10, md: 14 }, px: { xs: 3, md: 5 }, textAlign: "center", position: "relative", overflow: "hidden" }}>
-        <Box sx={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 60% 80% at 50% 100%, rgba(201,168,76,0.07) 0%, transparent 70%)`, pointerEvents: "none" }} />
-        <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.8rem", md: "2.8rem" }, fontWeight: 400, mb: 2, maxWidth: 640, mx: "auto" }}>
-          90 days free. No credit card. No commission.
-        </Typography>
-        <Typography sx={{ color: "rgba(255,255,255,0.45)", fontSize: "0.95rem", mb: 5, maxWidth: 480, mx: "auto", lineHeight: 1.8 }}>
-          Join UK service professionals already using Bookrightly to take bookings, manage clients, and grow their business — without losing a cut to a marketplace.
-        </Typography>
-        <Box
-          component="button"
-          onClick={() => navigate("/signup")}
-          sx={{ px: 5, py: 2, bgcolor: GOLD, color: "#0d0d0d", fontFamily: SANS, fontWeight: 800, fontSize: "1rem", letterSpacing: "0.05em", border: "none", cursor: "pointer", "&:hover": { opacity: 0.9 } }}
-        >
-          Get started free
+    <Box sx={{ bgcolor: "#f4f1e9", color: "#111116", minHeight: "100vh" }}>
+      <Box sx={{ px: { xs: 2, md: 5 }, pt: { xs: 13, md: 17 }, pb: { xs: 7, md: 10 }, maxWidth: 1240, mx: "auto" }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.2fr .8fr" }, gap: 6, alignItems: "end" }}>
+          <Box><Chip label="An honest side-by-side" sx={{ bgcolor: "#EAF2FF", color: "#2563EB", fontWeight: 900 }} /><Typography component="h1" sx={{ mt: 2.5, fontSize: { xs: "3rem", md: "6.2rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .87 }}>Compare the fit.<br/>Not just the list.</Typography></Box>
+          <Box><Typography sx={{ color: "#696a73", fontSize: "1.05rem", lineHeight: 1.75 }}>Most comparisons hide the working model behind a wall of ticks. Pick a platform and see what changes for your brand, clients and monthly cost.</Typography><Stack direction="row" spacing={1.2} sx={{ mt: 3 }}><Button onClick={() => navigate("/signup")} sx={{ bgcolor: "#111116", color: "#fff", borderRadius: 99, px: 3, py: 1.25, fontWeight: 900 }}>Start free</Button><Button onClick={() => navigate("/pricing")} endIcon={<ArrowOutwardRoundedIcon />} sx={{ color: "#111116", fontWeight: 900 }}>See pricing</Button></Stack></Box>
         </Box>
       </Box>
 
+      <Box sx={{ bgcolor: "#111116", color: "#fff", borderRadius: { xs: "32px 32px 0 0", md: "58px 58px 0 0" }, px: { xs: 2, md: 5 }, py: { xs: 6, md: 9 } }}>
+        <Box sx={{ maxWidth: 1160, mx: "auto" }}>
+          <Typography sx={{ color: "#9da6ff", fontSize: ".68rem", fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase" }}>Choose who to compare</Typography>
+          <Box sx={{ display: "flex", gap: 1, overflowX: "auto", py: 2.5 }}>
+            {COMPETITORS.map((item, index) => <Button key={item.name} onClick={() => setSelected(index)} sx={{ whiteSpace: "nowrap", color: selected === index ? "#111116" : "#fff", bgcolor: selected === index ? "#93C5FD" : "#ffffff0c", border: "1px solid #ffffff22", borderRadius: 99, px: 2.5, "&:hover": { bgcolor: selected === index ? "#93C5FD" : "#ffffff18" } }}>{item.name}</Button>)}
+          </Box>
+
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: ".78fr 1.22fr" }, border: "1px solid #ffffff1c", borderRadius: { xs: 4, md: 7 }, overflow: "hidden" }}>
+            <Box sx={{ p: { xs: 3, md: 5 }, bgcolor: "#2563EB", display: "flex", flexDirection: "column", minHeight: 370 }}>
+              <Typography sx={{ fontSize: ".68rem", fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase", opacity: .65 }}>Bookrightly</Typography>
+              <Typography sx={{ fontSize: { xs: "3.5rem", md: "5.2rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .85, mt: "auto" }}>£10–20</Typography>
+              <Typography sx={{ fontWeight: 850, mt: 1 }}>/month • flat subscription</Typography>
+              <Typography sx={{ color: "#ffffffaa", mt: 3, lineHeight: 1.65 }}>Your branded page, purpose-built workspace and 90-day trial are included.</Typography>
+            </Box>
+            <Box sx={{ p: { xs: 3, md: 5 }, bgcolor: "#191a20", display: "flex", flexDirection: "column", minHeight: 370 }}>
+              <Typography sx={{ color: "#ffffff77", fontSize: ".68rem", fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase" }}>{competitor.name}</Typography>
+              <Typography sx={{ fontSize: { xs: "3rem", md: "4.7rem" }, fontWeight: 950, letterSpacing: "-.07em", lineHeight: .9, mt: "auto" }}>{competitor.price}</Typography>
+              <Typography sx={{ color: "#ff765c", fontWeight: 850, mt: 1 }}>{competitor.model}</Typography>
+              <Typography sx={{ color: "#ffffff77", mt: 3, lineHeight: 1.65 }}>{competitor.note}</Typography>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
+      <Box sx={{ bgcolor: "#fff", px: { xs: 2, md: 5 }, py: { xs: 7, md: 11 } }}>
+        <Box sx={{ maxWidth: 1160, mx: "auto" }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: ".8fr 1.2fr" }, gap: 5, mb: 5 }}><Typography sx={{ fontSize: { xs: "2.4rem", md: "4rem" }, fontWeight: 950, letterSpacing: "-.07em", lineHeight: .95 }}>What changes in practice.</Typography><Typography sx={{ color: "#696a73", lineHeight: 1.75, alignSelf: "end" }}>Bookrightly is always the left status. The right status updates when you select another platform above.</Typography></Box>
+          <Stack spacing={0}>
+            {FEATURES.map(([label, sub, values], index) => <Box key={label} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr auto auto", sm: "1fr 130px 130px" }, alignItems: "center", gap: 1, py: 2.2, borderBottom: "1px solid #dedbd3" }}><Box><Typography sx={{ fontWeight: 900 }}>{label}</Typography><Typography sx={{ color: "#818189", fontSize: ".73rem", mt: .25 }}>{sub}</Typography></Box><Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Status/><Typography sx={{ display: { xs: "none", sm: "block" }, fontSize: ".7rem", fontWeight: 800 }}>Bookrightly</Typography></Box><Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Status value={values[selected]}/><Typography sx={{ display: { xs: "none", sm: "block" }, fontSize: ".7rem", fontWeight: 800 }}>{competitor.name}</Typography></Box></Box>)}
+          </Stack>
+        </Box>
+      </Box>
+
+      <Box sx={{ px: { xs: 2, md: 5 }, py: { xs: 7, md: 11 } }}>
+        <Box sx={{ maxWidth: 1160, mx: "auto" }}>
+          <Typography sx={{ color: "#2563EB", fontWeight: 900, fontSize: ".68rem", letterSpacing: ".14em", textTransform: "uppercase" }}>Why people switch</Typography>
+          <Box sx={{ mt: 3, display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2,1fr)" }, gap: 2 }}>{REASONS.map(([number,title,body], index) => <Box key={title} sx={{ minHeight: 240, p: { xs: 3, md: 4 }, borderRadius: index % 2 ? "30px 7px 30px 30px" : "7px 30px 30px 30px", bgcolor: index === 0 ? "#93C5FD" : index === 1 ? "#2563EB" : "#fff", color: index === 1 ? "#fff" : "#111116", display: "flex", flexDirection: "column" }}><Typography sx={{ opacity: .5, fontWeight: 950 }}>{number}</Typography><Box sx={{ mt: "auto" }}><Typography sx={{ fontSize: "1.25rem", fontWeight: 950 }}>{title}</Typography><Typography sx={{ mt: 1, opacity: .62, fontSize: ".82rem", lineHeight: 1.7 }}>{body}</Typography></Box></Box>)}</Box>
+          <Box sx={{ mt: 3, bgcolor: "#ff765c", borderRadius: "30px 7px 30px 30px", p: { xs: 4, md: 6 }, display: "flex", flexDirection: { xs: "column", md: "row" }, justifyContent: "space-between", alignItems: { md: "center" }, gap: 3 }}><Typography sx={{ fontSize: { xs: "2.2rem", md: "3.8rem" }, fontWeight: 950, letterSpacing: "-.07em", lineHeight: .95, maxWidth: 720 }}>Try the difference before you pay.</Typography><Button onClick={() => navigate("/signup")} endIcon={<ArrowOutwardRoundedIcon />} sx={{ bgcolor: "#111116", color: "#fff", borderRadius: 99, px: 3, py: 1.4, fontWeight: 900 }}>Start 90 days free</Button></Box>
+        </Box>
+      </Box>
     </Box>
   );
 }

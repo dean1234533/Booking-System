@@ -20,7 +20,7 @@ function statusColor(status) {
   return { bgcolor: "#f5f5f5", color: "#616161" };
 }
 
-export default function PTInvoiceTab({ barber, profile, brandColor = "#C9A84C" }) {
+export default function PTInvoiceTab({ barber, profile, brandColor = "#2563EB" }) {
   const trainerId = barber?.uid;
 
   const [clients,   setClients]   = useState([]);

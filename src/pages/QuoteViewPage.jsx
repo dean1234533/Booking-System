@@ -44,7 +44,7 @@ export default function QuoteViewPage() {
 
   if (loading) return (
     <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", bgcolor: "#faf9f7" }}>
-      <CircularProgress sx={{ color: "#C9A84C" }} />
+      <CircularProgress sx={{ color: "#2563EB" }} />
     </Box>
   );
 
@@ -55,7 +55,7 @@ export default function QuoteViewPage() {
     </Box>
   );
 
-  const brand      = business?.brandColor || "#C9A84C";
+  const brand      = business?.brandColor || "#2563EB";
   const bizName    = business?.businessName || business?.displayName || "Your Decorator";
   const logoUrl    = business?.businessLogo || business?.logoUrl || "";
   const bizEmail   = business?.businessEmail || business?.email || "";

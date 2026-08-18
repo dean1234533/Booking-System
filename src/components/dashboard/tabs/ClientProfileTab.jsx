@@ -29,6 +29,7 @@ import {
   doc, getDoc,
 } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { SITE_URL } from "../../../utils/siteUrl";
 import ClientSubmittedForms    from "./ClientSubmittedForms";
 import WorkoutPlansTab         from "./WorkoutPlansTab";
 import NutritionPlanTab        from "./NutritionPlanTab";
@@ -186,7 +187,7 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
   };
 
   const handleCopyPortalLink = async () => {
-    const url = `${window.location.origin}/client-portal/${trainerId}/${selectedId}`;
+    const url = `${SITE_URL}/client-portal/${trainerId}/${selectedId}`;
     try {
       await navigator.clipboard.writeText(url);
       setLinkCopied(true);
@@ -196,7 +197,7 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
 
   const handleWhatsApp = () => {
     if (clientProfile?.customerPhone) {
-      const msg = encodeURIComponent(`Hi ${clientProfile.customerName}, here's your training portal: ${window.location.origin}/client-portal/${trainerId}/${selectedId}`);
+      const msg = encodeURIComponent(`Hi ${clientProfile.customerName}, here's your training portal: ${SITE_URL}/client-portal/${trainerId}/${selectedId}`);
       window.open(`https://wa.me/${clientProfile.customerPhone.replace(/\D/g, "")}?text=${msg}`, "_blank");
     }
   };

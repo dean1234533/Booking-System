@@ -84,7 +84,7 @@ export default function TreatwellAlternativePage() {
             ["Treatwell at 25%", "Commission taken", "£250/week to Treatwell"],
             ["Bookrightly", "£20/month flat", "£5/week. Save £245/week."],
           ].map(([label, sub, value]) => (
-            <Box key={label} sx={{ bgcolor: "rgba(201,168,76,0.05)", border: "1px solid rgba(201,168,76,0.2)", p: 3, textAlign: "center" }}>
+            <Box key={label} sx={{ bgcolor: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.2)", p: 3, textAlign: "center" }}>
               <Typography sx={{ fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", color: GOLD, letterSpacing: "0.08em", textTransform: "uppercase", mb: 1 }}>{label}</Typography>
               <Typography sx={{ color: "rgba(255,255,255,0.45)", fontSize: "0.8rem", mb: 1 }}>{sub}</Typography>
               <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: "1.2rem", color: "#fff" }}>{value}</Typography>

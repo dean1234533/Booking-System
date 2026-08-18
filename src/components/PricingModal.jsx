@@ -8,8 +8,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useNavigate } from "react-router-dom";
 
 const G = {
-  gold:      "#C9A84C",
-  goldLight: "#e8c97a",
+  gold:      "#2563EB",
+  goldLight: "#60A5FA",
   dark:      "#0d0d0d",
 };
 const SANS  = "'DM Sans', sans-serif";
@@ -18,12 +18,12 @@ const SERIF = "'Playfair Display', serif";
 const FEES = [
   {
     type: "Online bookings",
-    rate: "2.5%",
-    desc: "Added on top of your price at checkout. The client pays the fee — you receive your full amount minus Stripe processing.",
+    rate: "5%",
+    desc: "Added on top of your price at checkout. The client pays the fee — you receive your full deposit amount.",
   },
   {
     type: "Invoices",
-    rate: "2.5%",
+    rate: "5%",
     desc: "Deducted automatically when your client pays a Stripe invoice you send from the dashboard.",
   },
   {
@@ -72,7 +72,7 @@ export default function PricingModal({ open, onClose }) {
           label="Transparent pricing"
           size="small"
           sx={{
-            bgcolor: "rgba(201,168,76,0.15)", color: G.gold,
+            bgcolor: "rgba(37,99,235,0.15)", color: G.gold,
             fontFamily: SANS, fontWeight: 600, fontSize: "0.68rem",
             letterSpacing: "0.08em", mb: 2,
           }}
@@ -221,7 +221,7 @@ export default function PricingModal({ open, onClose }) {
                       label={f.rate}
                       size="small"
                       sx={{
-                        bgcolor: "rgba(201,168,76,0.12)", color: G.gold,
+                        bgcolor: "rgba(37,99,235,0.12)", color: G.gold,
                         fontWeight: 700, fontFamily: SANS, fontSize: "0.8rem",
                       }}
                     />
@@ -241,8 +241,8 @@ export default function PricingModal({ open, onClose }) {
                 Example payout
               </Typography>
               <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "#2F855A", lineHeight: 1.75 }}>
-                On a £20 online booking: your client pays £20.50 (2.5% added on top).
-                After Stripe processing (~39p), you receive approximately <strong>£20.11</strong>.
+                On a £20 online booking: your client pays £21.84 (5% platform fee plus card processing, added on top).
+                You receive the full <strong>£20.00</strong> deposit — nothing is deducted.
               </Typography>
             </Paper>
           </Grid>

@@ -15,6 +15,16 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && resource.data.barberId == request.auth.uid;
     }
 
+    // ── Booking-link slug uniqueness index (bookrightly.co.uk/{slug}) ──────────
+    // Public read — powers the live "is this link available" hint in onboarding
+    // and settings. Writes are exclusively via the claimBookingSlug Cloud
+    // Function (admin SDK bypasses these rules) — a transaction is the only way
+    // to enforce cross-document uniqueness, which rules alone can't express.
+    match /bookingSlugs/{slug} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ── Barbers ───────────────────────────────────────────────────────────────
     match /barbers/{barberId} {
       // Public read — needed for all tenant pages, booking, search

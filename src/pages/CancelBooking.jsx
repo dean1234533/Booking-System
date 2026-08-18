@@ -11,7 +11,7 @@ export default function CancelBooking() {
   const navigate = useNavigate();
   
   const [status, setStatus] = useState("loading");
-  const [branding, setBranding] = useState({ color: "#C9A84C", tenant: null });
+  const [branding, setBranding] = useState({ color: "#2563EB", tenant: null });
 
   useEffect(() => {
     let mounted = true;
@@ -56,7 +56,7 @@ export default function CancelBooking() {
             if (barberSnap.exists() && mounted) {
               barberData = barberSnap.data();
               setBranding({
-                color: barberData.brandColor || "#C9A84C",
+                color: barberData.brandColor || "#2563EB",
                 tenant: { id: bId, ...barberData } 
               });
             }
@@ -123,7 +123,7 @@ export default function CancelBooking() {
     navigate(path, { state: { tenant: branding?.tenant } });
   };
 
-  const themeColor = branding?.color || "#C9A84C";
+  const themeColor = branding?.color || "#2563EB";
 
   return (
     <Box sx={{ p: 4, maxWidth: 500, mx: "auto", mt: 8, textAlign: "center" }}>

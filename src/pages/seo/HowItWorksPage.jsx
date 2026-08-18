@@ -35,7 +35,7 @@ export default function HowItWorksPage() {
           ].map(([number, title, body]) => (
             <Grid item xs={12} sm={6} md={4} key={title}>
               <Box sx={{ bgcolor: DARK3, border: "1px solid rgba(255,255,255,0.06)", p: 3.5, height: "100%" }}>
-                <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: "2.5rem", color: "rgba(201,168,76,0.2)", lineHeight: 1, mb: 1.5 }}>{number}</Typography>
+                <Typography sx={{ width: 48, height: 48, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "#2563EB", color: "#fff", fontSize: "1.25rem", fontWeight: 950, lineHeight: 1, mb: 1.75, boxShadow: "0 8px 24px rgba(37,99,235,.3)" }}>{number}</Typography>
                 <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", mb: 1, color: "#fff" }}>{title}</Typography>
                 <Typography sx={{ color: "rgba(255,255,255,0.5)", fontSize: "0.84rem", lineHeight: 1.75 }}>{body}</Typography>
               </Box>

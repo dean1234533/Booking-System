@@ -23,7 +23,7 @@ export default function QueuePage() {
     load();
   }, [shopId]);
 
-  const brandColor  = shop?.brandColor  || "#C9A84C";
+  const brandColor  = shop?.brandColor  || "#2563EB";
   const fontKey     = shop?.siteFont;
   const displayFont = getFontFamily(fontKey, "playfair");
 

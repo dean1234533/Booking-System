@@ -19,6 +19,15 @@
  *     from "../utils/bookingHelpers";
  */
 
+// ─── PLATFORM FEE ───────────────────────────────────────────────────────────
+// Single source of truth for the platform's cut of a deposit. worker.js's
+// /api/create-intent handler can't import this directly (Workers runtime,
+// not Vite), so it mirrors these three values verbatim with a comment
+// pointing back here — keep both in sync if this ever changes.
+export const PLATFORM_FEE_PERCENT = 0.05;
+export const STRIPE_PERCENT       = 0.0175;
+export const STRIPE_FIXED_PENCE   = 45;
+
 // ─── EMAIL ────────────────────────────────────────────────────────────────────
 
 /**
@@ -94,10 +103,6 @@ function isValidEmail(value) {
  *   fee.customerPaysPounds // "27.18"
  */
 export function calculateBookingFee(depositAmount) {
-  const PLATFORM_FEE_PERCENT = 0.05;
-  const STRIPE_PERCENT       = 0.0175;
-  const STRIPE_FIXED_PENCE   = 45;
-
   // Handles both string "25" and number 25 from Firestore
   const depositPounds = Number(depositAmount);
 

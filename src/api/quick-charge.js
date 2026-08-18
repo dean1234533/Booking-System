@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 
-// In-person platform fee — lower than online bookings (2.5%) since face-to-face
+// In-person platform fee — lower than online bookings (5%) since face-to-face
 // payments have no fraud risk and the business is present to handle disputes.
 const IN_PERSON_FEE_PCT = 0.01; // 1%
 

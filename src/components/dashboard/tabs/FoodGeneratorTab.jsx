@@ -12,6 +12,7 @@ import {
   collection, getDocs, doc, setDoc, updateDoc, serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { SITE_URL } from "../../../utils/siteUrl";
 
 function genToken() {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)))
@@ -26,7 +27,7 @@ export default function FoodGeneratorTab({ barber, brandColor }) {
   const [toast,    setToast]    = useState(null);
 
   const barberId = barber?.uid;
-  const origin   = window.location.origin;
+  const origin   = SITE_URL;
 
   useEffect(() => {
     if (!barberId) return;

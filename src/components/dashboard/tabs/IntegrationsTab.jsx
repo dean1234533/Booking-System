@@ -16,7 +16,7 @@ import {
 import { collection, getDocs, doc, updateDoc, query, where } from "firebase/firestore";
 import { db } from "../../../firebase/config";
 
-export default function IntegrationsTab({ barber, brandColor = "#C9A84C" }) {
+export default function IntegrationsTab({ barber, brandColor = "#2563EB" }) {
   const uid = barber?.uid;
   const [outlook,    setOutlook]    = useState(null);
   const [loading,    setLoading]    = useState(true);

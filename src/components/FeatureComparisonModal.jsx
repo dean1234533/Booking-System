@@ -1,27 +1,23 @@
 import React from "react";
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
-  DialogActions,
   Button,
   Box,
   Typography,
-  Grid,
-  Paper,
-  Tabs,
-  Tab,
+  IconButton,
+  Stack,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { Check, Close } from "@mui/icons-material";
+import { ArrowForward, Check, Close } from "@mui/icons-material";
 
 const BUSINESS_FEATURES = {
   barber: {
     name: "Barbers",
     icon: "✂️",
-    color: "#C9A84C",
-    bgColor: "#f5e9c8",
+    color: "#2563EB",
+    bgColor: "#EAF2FF",
     features: [
       {
         category: "Booking & Calendar",
@@ -153,7 +149,7 @@ const BUSINESS_FEATURES = {
     name: "Personal Trainers",
     icon: "💪",
     color: "#3d2c0e",
-    bgColor: "#f0e4cc",
+    bgColor: "#EAF2FF",
     features: [
       {
         category: "Client Management",
@@ -202,190 +198,70 @@ export default function FeatureComparisonModal({ open, onClose }) {
   const businessTypes = ["barber", "hairdresser", "decorator", "trainer"];
   const currentBusiness = BUSINESS_FEATURES[selectedType];
 
-  const handleTabChange = (event, newValue) => {
-    setSelectedType(businessTypes[newValue]);
-  };
-
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="lg"
+      maxWidth="xl"
       fullWidth
       fullScreen={isMobile}
       PaperProps={{
         sx: {
-          borderRadius: isMobile ? 0 : 3,
-          bgcolor: "#f8f9fa",
+          borderRadius: isMobile ? 0 : 6,
+          bgcolor: "#f4f1e9",
+          overflow: "hidden",
+          minHeight: isMobile ? "100%" : "min(820px, 90vh)",
         },
       }}
     >
-      <DialogTitle
-        sx={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: { xs: "1.15rem", sm: "1.75rem" },
-          fontWeight: 800,
-          bgcolor: currentBusiness.bgColor,
-          borderBottom: "1px solid #e0e0e0",
-        }}
-      >
-        {currentBusiness.icon} {currentBusiness.name} — Full Feature Breakdown
-      </DialogTitle>
-
-      <DialogContent sx={{ py: 4 }}>
-        {/* Tab Selection */}
-        <Box sx={{ mb: 4 }}>
-          <Tabs
-            value={businessTypes.indexOf(selectedType)}
-            onChange={handleTabChange}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
-            sx={{
-              borderBottom: "2px solid #e0e0e0",
-              "& .MuiTab-root": {
-                fontWeight: 600,
-                fontSize: { xs: "0.8rem", sm: "0.95rem" },
-                minWidth: { xs: "auto", sm: 90 },
-                px: { xs: 1.5, sm: 2 },
-                "&.Mui-selected": {
-                  color: currentBusiness.color,
-                },
-              },
-              "& .MuiTabs-indicator": {
-                backgroundColor: currentBusiness.color,
-              },
-            }}
-          >
-            {Object.values(BUSINESS_FEATURES).map((b) => (
-              <Tab key={b.name} label={b.name} />
-            ))}
-          </Tabs>
+      <DialogContent sx={{ p: 0, display: "grid", gridTemplateColumns: { xs: "1fr", md: "300px 1fr" } }}>
+        <Box sx={{ bgcolor: "#101116", color: "#fff", p: { xs: 2.5, md: 4 }, position: "relative" }}>
+          <IconButton onClick={onClose} sx={{ position: "absolute", right: 18, top: 18, color: "#fff", border: "1px solid #ffffff33" }}><Close /></IconButton>
+          <Typography sx={{ color: "#9da6ff", fontSize: ".68rem", fontWeight: 900, letterSpacing: ".16em", textTransform: "uppercase" }}>Compare by trade</Typography>
+          <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: { xs: "2rem", md: "2.8rem" }, lineHeight: 1.02, mt: 2, maxWidth: 230 }}>Built around how you work.</Typography>
+          <Typography sx={{ color: "#ffffff99", fontSize: ".8rem", lineHeight: 1.7, mt: 2, mb: 4 }}>Choose your business to see the tools shaped for your day—not a generic software checklist.</Typography>
+          <Stack spacing={1} direction={{ xs: "row", md: "column" }} sx={{ overflowX: "auto", pb: 1 }}>
+            {businessTypes.map((type, index) => {
+              const item = BUSINESS_FEATURES[type];
+              const active = selectedType === type;
+              return <Button key={type} onClick={() => setSelectedType(type)} sx={{ minWidth: { xs: 170, md: 0 }, justifyContent: "space-between", px: 2, py: 1.5, borderRadius: 3, color: active ? "#101116" : "#fff", bgcolor: active ? "#93C5FD" : "#ffffff0b", border: "1px solid", borderColor: active ? "#93C5FD" : "#ffffff18", "&:hover": { bgcolor: active ? "#93C5FD" : "#ffffff16" } }}>
+                <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 1.25 }}><Box component="span" sx={{ fontSize: 20 }}>{item.icon}</Box><Box component="span" sx={{ fontWeight: 850, textTransform: "none" }}>{item.name}</Box></Box>
+                <Typography component="span" sx={{ fontSize: ".65rem", opacity: .6 }}>0{index + 1}</Typography>
+              </Button>;
+            })}
+          </Stack>
         </Box>
 
-        {/* Features Grid */}
-        <Grid container spacing={3}>
-          {currentBusiness.features.map((section, idx) => (
-            <Grid item xs={12} sm={6} key={idx}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2.5,
-                  bgcolor: "#ffffff",
-                  border: "1px solid #e0e0e0",
-                  borderRadius: 2,
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  fontWeight={700}
-                  sx={{ mb: 2, color: currentBusiness.color }}
-                >
-                  {section.category}
-                </Typography>
+        <Box sx={{ p: { xs: 2.5, sm: 4, md: 5 }, overflowY: "auto" }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "flex-start", mb: 4 }}>
+            <Box>
+              <Typography sx={{ color: currentBusiness.color, fontWeight: 900, fontSize: ".7rem", letterSpacing: ".13em", textTransform: "uppercase" }}>16 purpose-built tools</Typography>
+              <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: { xs: "2rem", md: "3.1rem" }, lineHeight: 1.05, mt: 1 }}>{currentBusiness.name}, covered.</Typography>
+            </Box>
+            <Box sx={{ width: 64, height: 64, borderRadius: "20px 20px 20px 4px", bgcolor: currentBusiness.bgColor, display: { xs: "none", sm: "grid" }, placeItems: "center", fontSize: 30 }}>{currentBusiness.icon}</Box>
+          </Box>
 
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-                  {section.items.map((item, itemIdx) => (
-                    <Box
-                      key={itemIdx}
-                      sx={{
-                        display: "flex",
-                        gap: 1.5,
-                        alignItems: "flex-start",
-                        pb: 1.5,
-                        borderBottom:
-                          itemIdx < section.items.length - 1
-                            ? "1px solid #f0f0f0"
-                            : "none",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: 24,
-                          height: 24,
-                          borderRadius: "50%",
-                          bgcolor: item.included ? "#4CAF50" : "#e0e0e0",
-                          color: "#ffffff",
-                          flexShrink: 0,
-                          mt: 0.2,
-                        }}
-                      >
-                        {item.included ? (
-                          <Check sx={{ fontSize: 16 }} />
-                        ) : (
-                          <Close sx={{ fontSize: 16, color: "#999" }} />
-                        )}
-                      </Box>
-
-                      <Box>
-                        <Typography
-                          variant="body2"
-                          fontWeight={600}
-                          sx={{ color: "#1a1a1a" }}
-                        >
-                          {item.name}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "#666",
-                            display: "block",
-                            mt: 0.25,
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          💡 {item.benefit}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  ))}
-                </Box>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
-
-        {/* Benefits Summary */}
-        <Box sx={{ mt: 4, p: 3, bgcolor: currentBusiness.bgColor, borderRadius: 2 }}>
-          <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>
-            ✨ All {currentBusiness.name} Get:
-          </Typography>
-          <Grid container spacing={2}>
-            {[
-              "📱 Custom branded website with your own domain",
-              "💳 Online payments via Stripe — no extra setup",
-              "📅 Professional booking system & calendar",
-              "📊 Business dashboard with income tracking",
-              "👥 Full client management & history",
-              "✉️ Automated email reminders & notifications",
-              "💬 WhatsApp support button in your dashboard",
-            ].map((benefit, idx) => (
-              <Grid item xs={12} sm={6} key={idx}>
-                <Typography variant="body2" sx={{ color: "#1a1a1a" }}>
-                  {benefit}
-                </Typography>
-              </Grid>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" }, gap: 2 }}>
+            {currentBusiness.features.map((section, idx) => (
+              <Box key={section.category} sx={{ bgcolor: idx === 0 ? "#2563EB" : idx === 3 ? "#101116" : "#fff", color: idx === 0 || idx === 3 ? "#fff" : "#15161b", borderRadius: idx % 2 ? "28px 8px 28px 28px" : "8px 28px 28px 28px", p: 2.5, border: "1px solid #dad7ce", minHeight: 260 }}>
+                <Typography sx={{ opacity: .55, fontSize: ".65rem", fontWeight: 900, letterSpacing: ".12em" }}>0{idx + 1}</Typography>
+                <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: "1.35rem", mt: .75, mb: 2 }}>{section.category}</Typography>
+                <Stack spacing={1.45}>
+                  {section.items.map(item => <Box key={item.name} sx={{ display: "grid", gridTemplateColumns: "24px 1fr", gap: 1.1 }}>
+                    <Box sx={{ width: 21, height: 21, borderRadius: 1.5, bgcolor: idx === 0 ? "#93C5FD" : idx === 3 ? "#ff765c" : currentBusiness.bgColor, color: "#101116", display: "grid", placeItems: "center" }}><Check sx={{ fontSize: 14 }} /></Box>
+                    <Box><Typography sx={{ fontWeight: 850, fontSize: ".8rem", lineHeight: 1.25 }}>{item.name}</Typography><Typography sx={{ opacity: .58, fontSize: ".68rem", lineHeight: 1.45, mt: .25 }}>{item.benefit}</Typography></Box>
+                  </Box>)}
+                </Stack>
+              </Box>
             ))}
-          </Grid>
+          </Box>
+
+          <Box sx={{ mt: 3, px: 3, py: 2.25, borderRadius: 99, bgcolor: "#93C5FD", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+            <Typography sx={{ fontWeight: 900, fontSize: { xs: ".82rem", sm: "1rem" } }}>Every plan includes your branded site, payments and client history.</Typography>
+            <Button onClick={onClose} endIcon={<ArrowForward />} sx={{ flexShrink: 0, color: "#101116", fontWeight: 900 }}>Done</Button>
+          </Box>
         </Box>
       </DialogContent>
-
-      <DialogActions sx={{ p: 2, borderTop: "1px solid #e0e0e0" }}>
-        <Button
-          onClick={onClose}
-          variant="contained"
-          sx={{
-            bgcolor: currentBusiness.color,
-            color: "#fff",
-            "&:hover": { opacity: 0.9 },
-          }}
-        >
-          Got it!
-        </Button>
-      </DialogActions>
     </Dialog>
   );
 }

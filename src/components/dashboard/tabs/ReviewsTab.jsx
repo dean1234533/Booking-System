@@ -10,12 +10,13 @@ import WhatsAppIcon     from "@mui/icons-material/WhatsApp";
 import CheckIcon        from "@mui/icons-material/Check";
 import QrCode2Icon      from "@mui/icons-material/QrCode2";
 import FullscreenIcon   from "@mui/icons-material/Fullscreen";
+import { SITE_URL } from "../../../utils/siteUrl";
 
-export default function ReviewsTab({ reviews, onDeleteReview, shopId, brandColor = "#C9A84C" }) {
+export default function ReviewsTab({ reviews, onDeleteReview, shopId, brandColor = "#2563EB" }) {
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
 
-  const reviewLink = shopId ? `${window.location.origin}/review/${shopId}` : null;
+  const reviewLink = shopId ? `${SITE_URL}/review/${shopId}` : null;
 
   const handleCopy = async () => {
     if (!reviewLink) return;

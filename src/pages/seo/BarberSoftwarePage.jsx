@@ -19,6 +19,12 @@ export default function BarberSoftwarePage() {
         title="Online booking software built for UK barbers"
         subtitle="Stop taking bookings over WhatsApp. Bookrightly gives your barbershop a professional online presence, real-time slot availability, and deposit collection — for £10/month."
         cta="Start free for 90 days"
+        sx={{
+          pt: {
+            xs: "calc(68px + 48px + env(safe-area-inset-top, 0px))",
+            md: "calc(76px + 64px)",
+          },
+        }}
       />
 
       <Section dark>
@@ -61,7 +67,7 @@ export default function BarberSoftwarePage() {
 
       <Section dark>
         <SectionHead eyebrow="Pricing" title="£10/month. Nothing else." sub="No setup fee. No commission. No contract. Cancel anytime." />
-        <Box sx={{ maxWidth: 480, mx: "auto", bgcolor: "rgba(201,168,76,0.06)", border: "1px solid rgba(201,168,76,0.25)", p: 4, textAlign: "center" }}>
+        <Box sx={{ maxWidth: 480, mx: "auto", bgcolor: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.25)", p: 4, textAlign: "center" }}>
           {[
             "Public barbershop profile page",
             "Unlimited services and slots",
@@ -72,7 +78,7 @@ export default function BarberSoftwarePage() {
             "90-day free trial included",
           ].map((item) => (
             <Box key={item} sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5, textAlign: "left" }}>
-              <Box sx={{ width: 6, height: 6, bgcolor: "#C9A84C", borderRadius: "50%", flexShrink: 0 }} />
+              <Box sx={{ width: 6, height: 6, bgcolor: "#2563EB", borderRadius: "50%", flexShrink: 0 }} />
               <Box component="span" sx={{ fontSize: "0.87rem", color: "rgba(255,255,255,0.7)" }}>{item}</Box>
             </Box>
           ))}

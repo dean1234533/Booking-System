@@ -8,6 +8,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import CheckoutForm from "../components/CheckoutForm";
 import { formatDate, formatTime } from "../stripe/formatters";
 import { stripePromise } from "../stripe/stripeClient";
+import { calculateBookingFee } from "../utils/bookingHelpers";
 
 // Direct Firebase imports
 import { db } from "../firebase/config";
@@ -19,6 +20,7 @@ export default function BookingForm({ tenant }) {
   // ✅ Extract slotId from params since it's in the URL path
   const { barberId, slotId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   
   const queryParams = new URLSearchParams(location.search);
   
@@ -31,7 +33,6 @@ export default function BookingForm({ tenant }) {
   const [barber, setBarber] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [clientSecret, setClientSecret] = useState("");
   const [formReady, setFormReady] = useState(false);
   const [isStripeActive, setIsStripeActive] = useState(false);
 
@@ -108,7 +109,7 @@ export default function BookingForm({ tenant }) {
     }[businessType] || "Barber";
 
     return {
-      brandColor:        tenant?.brandColor    || barber?.brandColor    || "#C9A84C",
+      brandColor:        tenant?.brandColor    || barber?.brandColor    || "#2563EB",
       depositAmount:     Math.max(10, isNaN(numericAmount) || numericAmount === null ? 10 : numericAmount),
       barberName:        barber?.name          || "Professional",
       businessName:      tenant?.businessName  || barber?.businessName  || "the salon",
@@ -164,44 +165,17 @@ export default function BookingForm({ tenant }) {
       return;
     }
 
-    try {
-      const finalNumericValue = Number(ui.depositAmount);
-      const amountInPence = Math.round(finalNumericValue * 100);
-
-      if (amountInPence < 1000) {
-        throw new Error(`Deposit amount (£${finalNumericValue.toFixed(2)}) is below the £10.00 minimum. Please ask the business owner to update their deposit setting.`);
-      }
-
-      const response = await fetch('/api/create-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: amountInPence,
-          email: formData.email,
-          barberStripeId: barber?.stripeAccountId,
-          metadata: {
-            customerName: formData.name,
-            customerPhone: formData.phone,
-            haircutStyle: formData.haircutStyle,
-            barberName: ui.barberName,
-            bookingDate: formatDate(slotData.date),
-            bookingTime: formatTime(slotData.time),
-            barberId: barberId
-          }
-        }),
-      });
-
-      const data = await response.json();
-      if (response.ok && data.clientSecret) {
-        setClientSecret(data.clientSecret);
-        setFormReady(true);
-      } else {
-        throw new Error(data.error || "Payment failed to initialize.");
-      }
-    } catch (err) {
-      console.error("Submission Error:", err.message);
-      setError(err.message);
+    // The actual PaymentIntent is created once, server-side, by CheckoutForm
+    // right before confirmPayment() — never here. This step just validates
+    // the deposit meets Stripe's minimum and moves to the payment step;
+    // Elements mounts in deferred mode (an estimated amount, no real
+    // clientSecret yet) so nothing is trusted from the client for pricing.
+    const finalNumericValue = Number(ui.depositAmount);
+    if (finalNumericValue * 100 < 1000) {
+      setError(`Deposit amount (£${finalNumericValue.toFixed(2)}) is below the £10.00 minimum. Please ask the business owner to update their deposit setting.`);
+      return;
     }
+    setFormReady(true);
   };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress sx={{ color: ui.brandColor }} /></Box>;
@@ -255,12 +229,23 @@ export default function BookingForm({ tenant }) {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {formReady && clientSecret ? (
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
-          {/* ✅ UPDATED: Added slotId prop here */}
-          <CheckoutForm 
-            appointmentDate={slotData.date} appointmentTime={slotData.time} 
-            barber={barber} formData={formData} barberId={barberId} 
+      {formReady ? (
+        // Deferred mode — no real PaymentIntent (and no real clientSecret)
+        // exists yet at mount time. CheckoutForm creates the actual,
+        // server-verified PaymentIntent right before confirmPayment().
+        // `amount` here is only an estimate so PaymentElement can show the
+        // right payment methods; it has no bearing on what's actually charged.
+        <Elements
+          stripe={stripePromise}
+          options={{
+            mode: "payment",
+            currency: "gbp",
+            amount: calculateBookingFee(ui.depositAmount).customerPaysPence,
+          }}
+        >
+          <CheckoutForm
+            appointmentDate={slotData.date} appointmentTime={slotData.time}
+            barber={barber} formData={formData} barberId={barberId}
             brandColor={ui.brandColor} tenant={tenant} slotId={slotId}
           />
         </Elements>

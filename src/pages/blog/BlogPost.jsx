@@ -3,7 +3,7 @@ import { Box, Typography, Container } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { BLOG_POSTS } from "./posts";
 
-const GOLD = "#C9A84C";
+const GOLD = "#2563EB";
 const DARK = "#0d0d0d";
 const DARK2 = "#111";
 const DARK3 = "#1a1a1a";
@@ -11,7 +11,7 @@ const SERIF = "'Playfair Display', serif";
 const SANS = "'DM Sans', sans-serif";
 
 const CATEGORY_COLOR = {
-  Barbers: "#C9A84C",
+  Barbers: "#2563EB",
   "Personal Trainers": "#4caf80",
   Marketing: "#5b9bd5",
   Salons: "#e05c5c",
@@ -40,7 +40,7 @@ function renderBlock(block, i) {
       );
     case "cta":
       return (
-        <Box key={i} sx={{ bgcolor: "rgba(201,168,76,0.07)", border: "1px solid rgba(201,168,76,0.25)", p: 3.5, mt: 5 }}>
+        <Box key={i} sx={{ bgcolor: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.25)", p: 3.5, mt: 5 }}>
           <Typography sx={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)", lineHeight: 1.8 }}>
             {block.text}
           </Typography>
@@ -130,7 +130,7 @@ export default function BlogPost() {
                 <Box
                   key={p.slug}
                   onClick={() => navigate(`/blog/${p.slug}`)}
-                  sx={{ bgcolor: DARK3, border: "1px solid rgba(255,255,255,0.06)", p: 3, cursor: "pointer", "&:hover": { borderColor: "rgba(201,168,76,0.25)" }, transition: "border-color 0.2s" }}
+                  sx={{ bgcolor: DARK3, border: "1px solid rgba(255,255,255,0.06)", p: 3, cursor: "pointer", "&:hover": { borderColor: "rgba(37,99,235,0.25)" }, transition: "border-color 0.2s" }}
                 >
                   <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: CATEGORY_COLOR[p.category] || GOLD, textTransform: "uppercase", letterSpacing: "0.08em", mb: 1.5 }}>
                     {p.category}

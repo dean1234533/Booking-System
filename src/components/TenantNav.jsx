@@ -28,7 +28,7 @@ export default function TenantNav({ tenant }) {
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const brandColor   = tenant?.brandColor  || "#C9A84C";
+  const brandColor   = tenant?.brandColor  || "#2563EB";
   const businessName = (tenant?.businessName || "PREMIUM BARBER SHOP").toUpperCase();
   const logo         = tenant?.businessLogo || tenant?.logoUrl;
   const shopRouteId  = tenant?.shopId || tenant?.id || tenant?.uid;
@@ -67,15 +67,14 @@ export default function TenantNav({ tenant }) {
         position="fixed"
         elevation={0}
         sx={{
-          bgcolor: scrolled ? "rgba(10,10,10,0.96)" : "transparent",
-          backdropFilter: scrolled ? "blur(20px)" : "none",
-          borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "none",
+          bgcolor: "transparent",
+          pt: { xs: 1, md: 1.5 },
           transition: "background-color 0.35s ease, backdrop-filter 0.35s ease, border-color 0.35s ease",
           zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
       >
         <Container maxWidth="xl">
-          <Toolbar disableGutters sx={{ justifyContent: "space-between", height: 68 }}>
+          <Toolbar sx={{ justifyContent: "space-between", minHeight: 66, px: { xs: 1.4, md: 2.2 }, bgcolor: scrolled ? "rgba(10,10,10,.94)" : "rgba(10,10,10,.66)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "7px 26px 26px 26px", boxShadow: scrolled ? "0 18px 45px rgba(0,0,0,.28)" : "none" }}>
 
             {/* Logo / name */}
             <Box
@@ -88,11 +87,11 @@ export default function TenantNav({ tenant }) {
                   src={logo}
                   alt={businessName}
                   variant="square"
-                  sx={{ width: 38, height: 38, borderRadius: "4px", bgcolor: "transparent", border: `1px solid rgba(255,255,255,0.15)` }}
+                  sx={{ width: 40, height: 40, borderRadius: "4px 14px 14px 14px", bgcolor: "transparent", border: `2px solid ${brandColor}` }}
                   imgProps={{ style: { objectFit: "cover", width: "100%", height: "100%" } }}
                 />
               ) : (
-                <Box sx={{ width: 38, height: 38, borderRadius: "4px", bgcolor: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: brandColor }}>
+                <Box sx={{ width: 40, height: 40, borderRadius: "4px 14px 14px 14px", bgcolor: brandColor, display: "flex", alignItems: "center", justifyContent: "center", color: "#111" }}>
                   <ContentCutIcon sx={{ fontSize: 20 }} />
                 </Box>
               )}
@@ -183,8 +182,8 @@ export default function TenantNav({ tenant }) {
                   onClick={() => scrollTo("barber-section")}
                   startIcon={<CalendarMonthIcon sx={{ fontSize: 15 }} />}
                   sx={{
-                    bgcolor: "#fff", color: "#111", fontWeight: 800,
-                    borderRadius: "2px", px: { xs: 2, sm: 3 }, py: 0.9,
+                    bgcolor: brandColor, color: "#111", fontWeight: 900,
+                    borderRadius: "4px 18px 18px 18px", px: { xs: 2, sm: 3 }, py: 0.9,
                     fontSize: "0.7rem", letterSpacing: "0.12em",
                     boxShadow: "none",
                     "&:hover": { bgcolor: brandColor, boxShadow: "none" },

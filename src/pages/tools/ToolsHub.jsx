@@ -2,7 +2,7 @@ import React from "react";
 import { Box, Typography, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
-const GOLD = "#C9A84C";
+const GOLD = "#2563EB";
 const DARK = "#0d0d0d";
 const DARK2 = "#111";
 const DARK3 = "#1a1a1a";
@@ -47,7 +47,7 @@ export default function ToolsHub() {
     <Box sx={{ bgcolor: DARK, color: "#fff", minHeight: "100vh", fontFamily: SANS }}>
       {/* Hero */}
       <Box sx={{ pt: { xs: 10, md: 14 }, pb: { xs: 6, md: 8 }, px: { xs: 3, md: 5 }, textAlign: "center", position: "relative" }}>
-        <Box sx={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <Box sx={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(37,99,235,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
         <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: GOLD, mb: 2 }}>
           Free Tools
         </Typography>
@@ -74,7 +74,7 @@ export default function ToolsHub() {
                     cursor: "pointer",
                     height: "100%",
                     transition: "border-color 0.2s",
-                    "&:hover": { borderColor: "rgba(201,168,76,0.35)" },
+                    "&:hover": { borderColor: "rgba(37,99,235,0.35)" },
                   }}
                 >
                   <Typography sx={{ fontSize: "2rem", mb: 2 }}>{tool.icon}</Typography>
@@ -105,7 +105,7 @@ export default function ToolsHub() {
           </Box>
 
           {/* CTA */}
-          <Box sx={{ mt: 6, bgcolor: DARK3, border: "1px solid rgba(201,168,76,0.2)", p: { xs: 4, md: 6 }, textAlign: "center" }}>
+          <Box sx={{ mt: 6, bgcolor: DARK3, border: "1px solid rgba(37,99,235,0.2)", p: { xs: 4, md: 6 }, textAlign: "center" }}>
             <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.4rem", md: "2rem" }, mb: 1.5 }}>
               Ready to take bookings online?
             </Typography>

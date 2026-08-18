@@ -52,7 +52,7 @@ export default function Signup({ tenant }) {
   const [error,            setError]            = useState(null);
 
   // --- DYNAMIC BRANDING ASSIGNMENT ---
-  const activeBrandColor = activeTenant?.brandColor || selectedShopData?.brandColor || "#C9A84C";
+  const activeBrandColor = activeTenant?.brandColor || selectedShopData?.brandColor || "#2563EB";
   const activeLogo = activeTenant?.businessLogo || activeTenant?.logoUrl || selectedShopData?.logoUrl || null;
   const activeBusinessName = activeTenant?.businessName || selectedShopData?.displayLabel || "Bookrightly";
 

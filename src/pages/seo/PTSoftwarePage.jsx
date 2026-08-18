@@ -62,7 +62,7 @@ export default function PTSoftwarePage() {
 
       <Section dark>
         <SectionHead eyebrow="Pricing" title="£20/month for the full PT suite" sub="No other platform gives you this much for this price." />
-        <Box sx={{ maxWidth: 500, mx: "auto", bgcolor: "rgba(201,168,76,0.06)", border: "1px solid rgba(201,168,76,0.25)", p: 4, textAlign: "center" }}>
+        <Box sx={{ maxWidth: 500, mx: "auto", bgcolor: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.25)", p: 4, textAlign: "center" }}>
           {[
             "Public PT profile with booking page",
             "Digital PAR-Q health screening",
@@ -76,7 +76,7 @@ export default function PTSoftwarePage() {
             "90-day free trial",
           ].map((item) => (
             <Box key={item} sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5, textAlign: "left" }}>
-              <Box sx={{ width: 6, height: 6, bgcolor: "#C9A84C", borderRadius: "50%", flexShrink: 0 }} />
+              <Box sx={{ width: 6, height: 6, bgcolor: "#2563EB", borderRadius: "50%", flexShrink: 0 }} />
               <Box component="span" sx={{ fontSize: "0.87rem", color: "rgba(255,255,255,0.7)" }}>{item}</Box>
             </Box>
           ))}

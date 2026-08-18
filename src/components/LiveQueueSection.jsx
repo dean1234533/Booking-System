@@ -28,7 +28,7 @@ function fieldSx(brand) {
   };
 }
 
-export default function LiveQueueSection({ shopId, brandColor = "#C9A84C", displayFont, team = [], showWhenClosed = false }) {
+export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displayFont, team = [], showWhenClosed = false }) {
   const [config, setConfig]   = useState({ avgCutMins: 20, activeBarbers: 1, isPaused: false, isOpen: false });
   const [configLoaded, setCL] = useState(false);
   const [queue, setQueue]     = useState([]);

@@ -76,7 +76,7 @@ export default function WorkoutPlanView() {
   const [loading, setLoading] = useState(true);
   const [videoUrl, setVideoUrl] = useState(null);
 
-  const brandColor = trainer?.brandColor || "#C9A84C";
+  const brandColor = trainer?.brandColor || "#2563EB";
   const activeId   = videoUrl ? extractYouTubeId(videoUrl) : null;
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export default function WorkoutPlanView() {
   if (loading) {
     return (
       <Box sx={{ minHeight: "100vh", bgcolor: "#0d0d0d", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <CircularProgress sx={{ color: "#C9A84C" }} thickness={2} size={52} />
+        <CircularProgress sx={{ color: "#2563EB" }} thickness={2} size={52} />
       </Box>
     );
   }

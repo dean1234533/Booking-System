@@ -413,6 +413,90 @@ exports.checkDomainAuto = onCall(
     },
 );
 
+// ── Bookrightly booking-link slugs (bookrightly.co.uk/{slug}) ────────────────
+// Mirrors src/utils/bookingSlug.js — Cloud Functions can't import Vite src/
+// modules directly. Keep both in sync if this list/logic ever changes.
+const RESERVED_SLUGS = new Set([
+  "shop", "pt-booking", "decorator", "hairdresser", "barber", "book",
+  "confirmation", "auth", "review", "login", "signup", "cancel-booking",
+  "website-design", "compare", "fresha-alternative", "treatwell-alternative",
+  "booking-software", "pricing", "how-it-works", "blog", "tools", "terms",
+  "privacy", "contact", "workout", "food-diary", "check-in", "par-q",
+  "colour-approval", "quote-view", "queue", "food-generator", "client-portal",
+  "pt-book", "onboarding", "dashboard",
+  "admin", "api", "account", "settings", "support", "help", "about",
+  "bookrightly", "www", "register", "sitemap.xml", "robots.txt",
+]);
+
+function sanitizeSlug(raw) {
+  return String(raw || "")
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/-{2,}/g, "-")
+      .replace(/^-+|-+$/g, "");
+}
+
+function isValidSlugFormat(slug) {
+  return /^[a-z0-9]([a-z0-9-]{1,28}[a-z0-9])?$/.test(slug) && slug.length >= 3 && slug.length <= 30;
+}
+
+// Claims (or changes) the caller's booking-link slug. This is the ONLY place
+// bookingSlug is ever written — never directly from client updateDoc calls,
+// which would bypass uniqueness entirely (barbers/{uid} is owner-writable by
+// firestore.rules, same as any other profile field). Race-safe via a
+// Firestore transaction against a bookingSlugs/{slug} sentinel doc (Firestore
+// has no native unique-constraint mechanism, and a plain query-then-write
+// from the client would be racy under concurrent claims of the same slug).
+exports.claimBookingSlug = onCall({invoker: "public"}, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+  const uid = request.auth.uid;
+
+  const slug = sanitizeSlug(request.data && request.data.slug);
+  if (!isValidSlugFormat(slug)) {
+    throw new HttpsError("invalid-argument", "Use 3-30 lowercase letters, numbers, or hyphens.");
+  }
+  if (RESERVED_SLUGS.has(slug)) {
+    throw new HttpsError("already-exists", "This link is reserved.");
+  }
+
+  const db = admin.firestore();
+  const slugRef = db.doc(`bookingSlugs/${slug}`);
+  const barberRef = db.doc(`barbers/${uid}`);
+  const RECLAIM_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+  return db.runTransaction(async (tx) => {
+    const [slugSnap, barberSnap] = await Promise.all([tx.get(slugRef), tx.get(barberRef)]);
+    if (!barberSnap.exists) throw new HttpsError("not-found", "Account not found.");
+
+    if (slugSnap.exists) {
+      const data = slugSnap.data();
+      const isOwnCurrentSlug = data.barberId === uid;
+      const isReleasedLongEnoughAgo = !data.barberId && data.releasedAt &&
+        (Date.now() - data.releasedAt.toMillis()) > RECLAIM_COOLDOWN_MS;
+      if (!isOwnCurrentSlug && !isReleasedLongEnoughAgo) {
+        throw new HttpsError("already-exists", "This link is already taken.");
+      }
+    }
+
+    const prevSlug = barberSnap.data().bookingSlug;
+    if (prevSlug && prevSlug !== slug) {
+      tx.set(db.doc(`bookingSlugs/${prevSlug}`), {
+        barberId: null,
+        releasedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.update(barberRef, {
+        previousBookingSlugs: admin.firestore.FieldValue.arrayUnion(prevSlug),
+      });
+    }
+
+    tx.set(slugRef, {barberId: uid, claimedAt: admin.firestore.FieldValue.serverTimestamp()});
+    tx.update(barberRef, {bookingSlug: slug});
+    return {slug};
+  });
+});
+
 exports.stripeWebhook = onRequest(
     {
       secrets: [
@@ -606,8 +690,9 @@ exports.createStripeInvoice = onCall(
       const stripe = new (require("stripe"))(STRIPE_SECRET.value());
 
       // Route the invoice through the barber's own Stripe Connect account so
-      // the money lands in their account. The platform takes 2.5% as an
-      // application fee, consistent with online booking payments.
+      // the money lands in their account. The platform takes 5% as an
+      // application fee, consistent with online booking payments (mirrors
+      // src/utils/bookingHelpers.jsx's PLATFORM_FEE_PERCENT — keep in sync).
       const barberSnap = await admin.firestore()
           .collection("barbers").doc(request.auth.uid).get();
       const stripeAccountId = barberSnap.data()?.stripeAccountId;
@@ -621,7 +706,7 @@ exports.createStripeInvoice = onCall(
 
       const connectOpts = {stripeAccount: stripeAccountId};
       const amountPence = Math.round(amount * 100);
-      const platformFee = Math.round(amountPence * 0.025); // 2.5%
+      const platformFee = Math.round(amountPence * 0.05); // 5%
 
       try {
         // Customer must exist on the connected account, not the platform account

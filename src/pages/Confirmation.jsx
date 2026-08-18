@@ -47,7 +47,7 @@ export default function Confirmation() {
 
   if (loading) return (
     <Container maxWidth="sm" sx={{ py: 10, textAlign: "center" }}>
-      <CircularProgress sx={{ color: '#C9A84C' }} />
+      <CircularProgress sx={{ color: '#2563EB' }} />
     </Container>
   );
 
@@ -58,7 +58,7 @@ export default function Confirmation() {
     </Container>
   );
 
-  const brandColor = barber?.brandColor || "#C9A84C";
+  const brandColor = barber?.brandColor || "#2563EB";
   const totalPaid = (Number(booking.depositAmount) || 0) + (Number(booking.bookingFee) || 0);
   const balanceDue = booking.serviceName
     ? null
@@ -152,7 +152,7 @@ export default function Confirmation() {
           textAlign: "left",
           mb: 4,
           borderColor: "warning.light",
-          bgcolor: "rgba(201,168,76,0.04)"
+          bgcolor: "rgba(37,99,235,0.04)"
         }}
       >
         <Typography variant="body2" fontWeight={800} color="warning.dark" mb={0.5}>

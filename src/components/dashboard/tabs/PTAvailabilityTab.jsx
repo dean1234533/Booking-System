@@ -29,6 +29,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { SITE_URL } from "../../../utils/siteUrl";
 
 const DURATION_OPTIONS = [
   { label: "30 min", value: 30 },
@@ -73,7 +74,7 @@ function groupByDate(slots) {
   }, {});
 }
 
-export default function PTAvailabilityTab({ barber, profile, brandColor = "#C9A84C" }) {
+export default function PTAvailabilityTab({ barber, profile, brandColor = "#2563EB" }) {
   const ptId = barber?.uid || barber?.id;
 
   const [slots, setSlots] = useState([]);
@@ -90,7 +91,7 @@ export default function PTAvailabilityTab({ barber, profile, brandColor = "#C9A8
   const [copied, setCopied] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  const bookingLink = `${window.location.origin}/pt-book/${ptId}`;
+  const bookingLink = `${SITE_URL}/pt-book/${ptId}`;
 
   const fetchSlots = useCallback(async () => {
     if (!ptId) return;

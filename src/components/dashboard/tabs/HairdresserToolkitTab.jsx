@@ -78,7 +78,7 @@ const TOOLKIT = [
   },
 ];
 
-export default function HairdresserToolkitTab({ brandColor = "#C9A84C" }) {
+export default function HairdresserToolkitTab({ brandColor = "#2563EB" }) {
   return (
     <Box>
       <Box sx={{ mb: 4 }}>

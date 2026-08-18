@@ -55,7 +55,7 @@ export default function ManualBookingDialog({ open, onClose, slot, barber, profi
     }
   };
 
-  const brandColor = profile?.brandColor || "#C9A84C";
+  const brandColor = profile?.brandColor || "#2563EB";
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>

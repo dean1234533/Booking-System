@@ -46,7 +46,7 @@ export default function OfflinePage() {
           variant="contained"
           href="/login"
           sx={{
-            bgcolor: "#C9A84C",
+            bgcolor: "#2563EB",
             color: "#0d0d0d",
             fontFamily: SANS,
             fontWeight: 700,

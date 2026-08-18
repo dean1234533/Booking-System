@@ -1,200 +1,160 @@
 import React, { useState } from "react";
-import { Box, Button, Menu, MenuItem, ListItemIcon, Typography } from "@mui/material";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import { Box, Button, ListItemIcon, Menu, MenuItem, Paper, Typography } from "@mui/material";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 
-/**
- * Compressed, grouped tab bar for the dashboard.
- *
- * groups: Array of { label, icon, items: [{ label, icon, index }] }
- *
- * Groups with 1 item render as a plain tab.
- * Groups with 2+ items render as a dropdown button.
- */
-export default function DashboardTabBar({ groups, activeTab, onTabChange, brandColor = "#C9A84C", isMobile }) {
-  const [anchor,    setAnchor]    = useState(null);
-  const [openGroup, setOpenGroup] = useState(null);
+function NavItem({ item, active, brandColor, onClick }) {
+  return (
+    <Button
+      fullWidth
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      startIcon={React.cloneElement(item.icon, { sx: { fontSize: "18px !important" } })}
+      sx={{
+        justifyContent: "flex-start", px: 1.5, py: 1.05, borderRadius: 2.25,
+        color: active ? "#111116" : "#ffffff8a",
+        bgcolor: active ? "#93C5FD" : "transparent",
+        fontWeight: active ? 800 : 600, fontSize: ".79rem",
+        "& .MuiButton-startIcon": { color: active ? "#111116" : "#ffffff66", mr: 1.25 },
+        "&:hover": { bgcolor: active ? "#93C5FD" : "#ffffff10" },
+      }}
+    >
+      {item.label}
+    </Button>
+  );
+}
 
-  const openMenu  = (e, label) => { setAnchor(e.currentTarget); setOpenGroup(label); };
-  const closeMenu = ()          => { setAnchor(null); setOpenGroup(null); };
-  const pick      = (idx)       => { onTabChange(idx); closeMenu(); };
+export default function DashboardTabBar({
+  groups, activeTab, onTabChange, brandColor = "#2563EB", isMobile, mobileItems = [],
+}) {
+  const [anchor, setAnchor] = useState(null);
+  const visibleGroups = groups.filter(group => group.items.length > 0);
+  const allItems = visibleGroups.flatMap(group => group.items);
+  const primaryKeys = new Set(mobileItems.map(item => item.index));
+  const moreItems = allItems.filter(item => !primaryKeys.has(item.index));
+  const moreActive = moreItems.some(item => item.index === activeTab);
 
-  const visible = groups.filter(g => g.items.length > 0);
+  if (!isMobile) {
+    return (
+      <Paper
+        component="nav"
+        aria-label="Dashboard sections"
+        sx={{
+          width: 238, flexShrink: 0, p: 1.5, borderRadius: "6px 24px 24px 24px",
+          bgcolor: "#111116", color: "#fff", border: 0,
+          position: "sticky", top: 94, alignSelf: "flex-start",
+          maxHeight: "calc(100vh - 118px)", overflowY: "auto",
+        }}
+      >
+        <Typography sx={{ px: 1.25, pt: .5, pb: 1.25, color: "#9ba0a9", fontSize: ".63rem", fontWeight: 850, letterSpacing: ".12em", textTransform: "uppercase" }}>
+          Workspace
+        </Typography>
+        {visibleGroups.map((group, groupIndex) => (
+          <Box key={group.label} sx={{ mt: groupIndex ? 1.5 : 0 }}>
+            <Typography sx={{ px: 1.25, mb: .45, color: "#9ba0a9", fontSize: ".6rem", fontWeight: 850, letterSpacing: ".1em", textTransform: "uppercase" }}>
+              {group.label}
+            </Typography>
+            <Box sx={{ display: "grid", gap: .25 }}>
+              {group.items.map(item => (
+                <NavItem
+                  key={item.index}
+                  item={item}
+                  active={activeTab === item.index}
+                  brandColor={brandColor}
+                  onClick={() => onTabChange(item.index)}
+                />
+              ))}
+            </Box>
+          </Box>
+        ))}
+      </Paper>
+    );
+  }
 
   return (
-    <Box sx={{
-      display: "flex",
-      flexWrap: "wrap",
-      gap: { xs: 0.25, sm: 0.5 },
-      alignItems: "flex-end",
-      borderBottom: "1.5px solid #e8e8e8",
-      mb: 3,
-      pb: 0,
-      px: 0,
-    }}>
-      {visible.map((group) => {
-        const isActive  = group.items.some(i => i.index === activeTab);
-        const isOpen    = openGroup === group.label;
-
-        // ── Single-item group → plain tab ──
-        if (group.items.length === 1) {
-          const item = group.items[0];
+    <>
+      <Paper
+        component="nav"
+        aria-label="Dashboard sections"
+        sx={{
+          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 1250,
+          display: "grid", gridTemplateColumns: `repeat(${mobileItems.length + 1}, minmax(0, 1fr))`,
+          borderRadius: 0, borderInline: 0, borderBottom: 0,
+          px: .5, pb: "max(6px, env(safe-area-inset-bottom))", pt: .55,
+          boxShadow: "0 -8px 24px rgba(16,24,40,.08)",
+        }}
+      >
+        {mobileItems.map(item => {
           const active = activeTab === item.index;
           return (
-            <SingleTab
-              key={group.label}
-              label={group.label}
-              icon={item.icon}
-              active={active}
-              isMobile={isMobile}
-              brandColor={brandColor}
-              onClick={() => pick(item.index)}
-            />
-          );
-        }
-
-        // ── Multi-item group → dropdown ──
-        return (
-          <React.Fragment key={group.label}>
             <Button
-              onClick={(e) => openMenu(e, group.label)}
-              disableRipple
-              endIcon={
-                <KeyboardArrowDownIcon sx={{
-                  fontSize: "15px !important",
-                  ml: -0.25,
-                  opacity: 0.6,
-                  transition: "transform .2s",
-                  transform: isOpen ? "rotate(180deg)" : "none",
-                }} />
-              }
+              key={item.index}
+              onClick={() => onTabChange(item.index)}
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
               sx={{
-                color:       isActive ? "#1a1a1a" : "#6b6b6b",
-                borderBottom: isActive ? `2.5px solid ${brandColor}` : "2.5px solid transparent",
-                borderRadius: 0,
-                px: { xs: 1, sm: 1.5 },
-                py: 1.2,
-                minWidth: 0,
-                fontWeight: isActive ? 700 : 500,
-                fontSize:   "0.78rem",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                lineHeight: 1,
-                bgcolor: isOpen ? "rgba(0,0,0,0.03)" : "transparent",
-                transition: "color .15s, border-color .15s, background .15s",
-                "&:hover": {
-                  bgcolor: "rgba(0,0,0,0.04)",
-                  color: "#1a1a1a",
-                },
+                minWidth: 0, px: .25, py: .55, borderRadius: 2,
+                display: "flex", flexDirection: "column", gap: .25,
+                color: active ? brandColor : "#747a85", fontSize: ".58rem", fontWeight: active ? 850 : 650,
+                "&:hover": { bgcolor: "transparent" },
               }}
             >
-              {isMobile
-                ? React.cloneElement(group.icon, { sx: { fontSize: 18 } })
-                : group.label
-              }
+              {React.cloneElement(item.icon, { sx: { fontSize: 20 } })}
+              <span>{item.label}</span>
             </Button>
+          );
+        })}
+        <Button
+          onClick={event => setAnchor(event.currentTarget)}
+          aria-label="More dashboard sections"
+          aria-expanded={Boolean(anchor)}
+          sx={{
+            minWidth: 0, px: .25, py: .55, borderRadius: 2,
+            display: "flex", flexDirection: "column", gap: .25,
+            color: moreActive ? brandColor : "#747a85", fontSize: ".58rem", fontWeight: moreActive ? 850 : 650,
+            "&:hover": { bgcolor: "transparent" },
+          }}
+        >
+          <MoreHorizIcon sx={{ fontSize: 20 }} />
+          <span>More</span>
+        </Button>
+      </Paper>
 
-            <Menu
-              anchorEl={anchor}
-              open={isOpen}
-              onClose={closeMenu}
-              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              transformOrigin={{ vertical: "top", horizontal: "left" }}
-              TransitionProps={{ timeout: 150 }}
-              PaperProps={{
-                elevation: 4,
-                sx: {
-                  minWidth: 210,
-                  borderRadius: "10px",
-                  mt: 0.75,
-                  border: "1px solid #f0f0f0",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.10)",
-                  overflow: "hidden",
-                  "& .MuiList-root": { py: 0.75 },
-                },
-              }}
-            >
-              {/* Dropdown header */}
-              <Box sx={{ px: 2, pt: 1.5, pb: 0.75, borderBottom: "1px solid #f4f4f4" }}>
-                <Typography sx={{
-                  fontSize: "0.62rem",
-                  fontWeight: 800,
-                  letterSpacing: "0.14em",
-                  textTransform: "uppercase",
-                  color: "#aaa",
-                }}>
-                  {group.label}
-                </Typography>
-              </Box>
-
-              {group.items.map((item) => {
-                const sel = activeTab === item.index;
+      <Menu
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={() => setAnchor(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        transformOrigin={{ vertical: "bottom", horizontal: "right" }}
+        PaperProps={{ sx: { width: 260, maxHeight: "60vh", borderRadius: 3, mb: 1.5 } }}
+      >
+        {visibleGroups.map(group => {
+          const remaining = group.items.filter(item => !primaryKeys.has(item.index));
+          if (!remaining.length) return null;
+          return (
+            <Box key={group.label}>
+              <Typography sx={{ px: 2, pt: 1.25, pb: .5, color: "#9ba0a9", fontSize: ".61rem", fontWeight: 850, letterSpacing: ".1em", textTransform: "uppercase" }}>
+                {group.label}
+              </Typography>
+              {remaining.map(item => {
+                const active = activeTab === item.index;
                 return (
                   <MenuItem
-                    key={item.label}
-                    onClick={() => pick(item.index)}
-                    selected={sel}
-                    dense
-                    sx={{
-                      mx: 0.75,
-                      my: 0.25,
-                      px: 1.25,
-                      py: 0.9,
-                      borderRadius: "6px",
-                      fontSize: "0.84rem",
-                      fontWeight: sel ? 700 : 400,
-                      color: sel ? brandColor : "#333",
-                      bgcolor: sel ? `${brandColor}14` : "transparent",
-                      transition: "background .12s, color .12s",
-                      "&:hover": {
-                        bgcolor: sel ? `${brandColor}20` : "#f7f7f7",
-                      },
-                      "&.Mui-selected": { bgcolor: `${brandColor}14` },
-                      "&.Mui-selected:hover": { bgcolor: `${brandColor}20` },
-                    }}
+                    key={item.index}
+                    selected={active}
+                    onClick={() => { onTabChange(item.index); setAnchor(null); }}
+                    sx={{ mx: .75, mb: .25, borderRadius: 2, fontSize: ".82rem", fontWeight: active ? 800 : 500 }}
                   >
-                    <ListItemIcon sx={{
-                      minWidth: 28,
-                      color: sel ? brandColor : "#999",
-                    }}>
-                      {React.cloneElement(item.icon, { style: { fontSize: 15 } })}
+                    <ListItemIcon sx={{ minWidth: 32, color: active ? brandColor : "#8b919c" }}>
+                      {React.cloneElement(item.icon, { sx: { fontSize: 18 } })}
                     </ListItemIcon>
                     {item.label}
                   </MenuItem>
                 );
               })}
-            </Menu>
-          </React.Fragment>
-        );
-      })}
-    </Box>
-  );
-}
-
-function SingleTab({ label, icon, active, isMobile, brandColor, onClick }) {
-  return (
-    <Button
-      onClick={onClick}
-      disableRipple
-      startIcon={React.cloneElement(icon, { style: { fontSize: 15 } })}
-      sx={{
-        color:        active ? "#1a1a1a" : "#6b6b6b",
-        borderBottom: active ? `2.5px solid ${brandColor}` : "2.5px solid transparent",
-        borderRadius: 0,
-        px: { xs: 1, sm: 1.5 },
-        py: 1.2,
-        minWidth: 0,
-        fontWeight: active ? 700 : 500,
-        fontSize:   "0.78rem",
-        letterSpacing: "0.04em",
-        textTransform: "uppercase",
-        lineHeight: 1,
-        gap: 0.5,
-        transition: "color .15s, border-color .15s",
-        "& .MuiButton-startIcon": { mr: isMobile ? 0 : 0.75 },
-        "&:hover": { bgcolor: "transparent", color: "#1a1a1a" },
-      }}
-    >
-      {!isMobile && label}
-    </Button>
+            </Box>
+          );
+        })}
+      </Menu>
+    </>
   );
 }

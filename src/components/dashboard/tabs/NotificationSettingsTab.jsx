@@ -46,7 +46,7 @@ function timeAgo(ts) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-export default function NotificationSettingsTab({ barber, brandColor = "#C9A84C" }) {
+export default function NotificationSettingsTab({ barber, brandColor = "#2563EB" }) {
   const [enabled,       setEnabled]       = useState(false);
   const [sound,         setSound]         = useState(true);
   const [vibrate,       setVibrate]       = useState(true);

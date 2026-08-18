@@ -3,14 +3,14 @@ import { Box, Grid, Typography, Container } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { BLOG_POSTS } from "./posts";
 
-const GOLD = "#C9A84C";
+const GOLD = "#2563EB";
 const DARK = "#0d0d0d";
 const DARK3 = "#1a1a1a";
 const SERIF = "'Playfair Display', serif";
 const SANS = "'DM Sans', sans-serif";
 
 const CATEGORY_COLOR = {
-  Barbers: "#C9A84C",
+  Barbers: "#2563EB",
   "Personal Trainers": "#4caf80",
   Marketing: "#5b9bd5",
   Salons: "#e05c5c",
@@ -23,7 +23,7 @@ export default function BlogIndex() {
     <Box sx={{ bgcolor: DARK, color: "#fff", minHeight: "100vh", fontFamily: SANS }}>
       {/* Hero */}
       <Box sx={{ pt: { xs: 10, md: 14 }, pb: { xs: 6, md: 8 }, px: { xs: 3, md: 5 }, textAlign: "center", position: "relative" }}>
-        <Box sx={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <Box sx={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(37,99,235,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
         <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: GOLD, mb: 2 }}>
           Bookrightly Blog
         </Typography>
@@ -47,7 +47,7 @@ export default function BlogIndex() {
                     bgcolor: DARK3, border: "1px solid rgba(255,255,255,0.06)", p: 3.5,
                     height: "100%", display: "flex", flexDirection: "column", cursor: "pointer",
                     transition: "border-color 0.2s",
-                    "&:hover": { borderColor: "rgba(201,168,76,0.3)" },
+                    "&:hover": { borderColor: "rgba(37,99,235,0.3)" },
                   }}
                 >
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>

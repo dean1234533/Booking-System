@@ -1,13 +1,13 @@
 {
   "name": "Bookrightly",
   "short_name": "Bookrightly",
-  "description": "The Multi-Industry Appointment Booking Network for barbers, personal trainers, hairdressers and decorators.",
+  "description": "Bookings, payments and your whole working day — connected in one clear place.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#F5F3ED",
+  "theme_color": "#2563EB",
   "lang": "en-GB",
   "categories": ["business", "productivity"],
   "icons": [

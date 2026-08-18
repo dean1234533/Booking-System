@@ -13,19 +13,20 @@ function contrastColor(hex) {
 }
 
 export default function DashboardHeader({
-  profile, setProfile, profilePreview, brandColor, uploading, handleLogout, handleSaveProfile
+  profile, setProfile, profilePreview, brandColor, uploading, handleLogout, handleSaveProfile,
+  showSave = false,
 }) {
   const saveTextColor = contrastColor(brandColor);
 
   return (
     <Box sx={{
-      background: "linear-gradient(to bottom, #151515, #0f0f0f)",
-      borderTop: `3px solid ${brandColor}`,
-      borderBottom: "1px solid rgba(255,255,255,0.05)",
+      background: "rgba(245,243,237,.9)",
+      backdropFilter: "blur(18px)",
+      borderBottom: "1px solid #DEDDD8",
       position: "sticky", top: 0, zIndex: 100,
     }}>
       {/* Subtle ambient glow strip beneath the brand border */}
-      <Box sx={{ height: 1, background: `linear-gradient(to right, transparent, ${brandColor}30, transparent)` }} />
+      <Box sx={{ height: 3, background: `linear-gradient(to right, #2563EB, ${brandColor}, #FF735C)` }} />
 
       <Box sx={{
         maxWidth: 1200, mx: "auto",
@@ -45,7 +46,7 @@ export default function DashboardHeader({
                 width:  { xs: 38, sm: 46 },
                 height: { xs: 38, sm: 46 },
                 border: `2px solid ${brandColor}`,
-                boxShadow: `0 0 0 3px ${brandColor}22, 0 0 16px ${brandColor}28`,
+                boxShadow: `0 0 0 4px ${brandColor}18`,
                 fontFamily: SERIF,
               }}
             />
@@ -54,7 +55,7 @@ export default function DashboardHeader({
               position: "absolute", bottom: 1, right: 1,
               width: 9, height: 9, borderRadius: "50%",
               bgcolor: "#4ade80",
-              border: "2px solid #0f0f0f",
+              border: "2px solid #F5F3ED",
               boxShadow: "0 0 5px rgba(74,222,128,0.6)",
             }} />
           </Box>
@@ -62,9 +63,9 @@ export default function DashboardHeader({
           {/* Name + role */}
           <Box>
             <Typography sx={{
-              fontFamily: SERIF, fontWeight: 400, lineHeight: 1.15,
-              color: "#fff", fontSize: { xs: "0.95rem", sm: "1.05rem" },
-              letterSpacing: "0.01em",
+              fontFamily: SERIF, lineHeight: 1.15,
+              color: "#111116", fontSize: { xs: "0.95rem", sm: "1.05rem" },
+              letterSpacing: "-.025em", fontWeight: 800,
             }}>
               {profile.name || "Dashboard"}
             </Typography>
@@ -73,7 +74,7 @@ export default function DashboardHeader({
               <Typography sx={{
                 fontFamily: SANS, fontSize: "0.6rem", fontWeight: 700,
                 letterSpacing: "0.18em", textTransform: "uppercase",
-                color: "rgba(255,255,255,0.3)",
+                color: "#85858D",
               }}>
                 {profile.role === "owner" ? "Shop Owner" : "Staff"}
               </Typography>
@@ -89,14 +90,14 @@ export default function DashboardHeader({
               >
                 <Box sx={{
                   width: 20, height: 20, borderRadius: "50%", bgcolor: brandColor, flexShrink: 0,
-                  border: "2px solid rgba(255,255,255,0.12)",
+                  border: "2px solid #fff",
                   boxShadow: `0 0 0 3px ${brandColor}22, 0 0 10px ${brandColor}35`,
                   transition: "transform .15s, box-shadow .15s",
                   "&:hover": { transform: "scale(1.2)", boxShadow: `0 0 0 3px ${brandColor}40, 0 0 18px ${brandColor}50` },
                 }} />
                 <Typography sx={{
                   fontFamily: SANS, fontSize: "0.57rem", fontWeight: 700, letterSpacing: "0.14em",
-                  textTransform: "uppercase", color: "rgba(255,255,255,0.25)",
+                  textTransform: "uppercase", color: "#85858D",
                   display: { xs: "none", sm: "block" },
                 }}>
                   Brand
@@ -116,11 +117,12 @@ export default function DashboardHeader({
         <Box sx={{ display: "flex", gap: { xs: 0.75, sm: 1 }, alignItems: "center" }}>
           <IconButton
             onClick={handleLogout}
+            aria-label="Log out"
             size="small"
             sx={{
-              color: "rgba(255,255,255,0.38)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 0, p: 0.9,
+              color: "#696A73",
+              border: "1px solid #DEDDD8", bgcolor: "#fff",
+              borderRadius: 99, p: 0.9,
               transition: "all .18s",
               "&:hover": { color: "#ff6b6b", borderColor: "rgba(255,107,107,0.3)", bgcolor: "rgba(255,107,107,0.06)" },
             }}
@@ -128,7 +130,7 @@ export default function DashboardHeader({
             <LogoutIcon sx={{ fontSize: 17 }} />
           </IconButton>
 
-          <Button
+          {showSave && <Button
             variant="contained"
             onClick={handleSaveProfile}
             disabled={uploading}
@@ -142,8 +144,8 @@ export default function DashboardHeader({
               fontFamily: SANS,
               fontWeight: 700,
               letterSpacing: "0.08em",
-              borderRadius: 0,
-              boxShadow: `0 0 16px ${brandColor}38`,
+              borderRadius: 99,
+              boxShadow: `0 10px 26px ${brandColor}28`,
               transition: "box-shadow .2s, filter .2s",
               "&:hover":    { bgcolor: brandColor, filter: "brightness(1.1)", boxShadow: `0 0 24px ${brandColor}55` },
               "&:disabled": { bgcolor: brandColor, opacity: 0.55, boxShadow: "none" },
@@ -152,8 +154,8 @@ export default function DashboardHeader({
               ? <CircularProgress size={13} sx={{ color: saveTextColor }} />
               : <SaveIcon sx={{ fontSize: { xs: 14, sm: 15 } }} />}
           >
-            {uploading ? "Saving…" : "Save"}
-          </Button>
+            {uploading ? "Saving…" : "Save changes"}
+          </Button>}
         </Box>
       </Box>
     </Box>

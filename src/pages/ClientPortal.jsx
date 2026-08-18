@@ -355,7 +355,7 @@ export default function ClientPortal() {
   const [foodError,    setFoodError]    = useState("");
 
 
-  const brandColor = trainer?.brandColor || "#C9A84C";
+  const brandColor = trainer?.brandColor || "#2563EB";
   const iSx = inputSx(brandColor);
 
   function notifyTrainer(title, body, tag, data = {}) {
@@ -570,7 +570,7 @@ export default function ClientPortal() {
   if (loading) {
     return (
       <Box sx={{ minHeight: "100vh", bgcolor: "#0d0d0d", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <CircularProgress sx={{ color: "#C9A84C" }} />
+        <CircularProgress sx={{ color: "#2563EB" }} />
       </Box>
     );
   }

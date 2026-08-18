@@ -18,7 +18,7 @@ export default function DesignTab({
   handleImageChange,
 }) {
   const set = (key, val) => setProfile(p => ({ ...p, [key]: val }));
-  const brandColor   = profile.brandColor || "#C9A84C";
+  const brandColor   = profile.brandColor || "#2563EB";
   const selectedFont = profile.siteFont   || "playfair";
 
   useEffect(() => { FONT_OPTIONS.forEach(f => loadGoogleFont(f.key)); }, []);
@@ -46,7 +46,7 @@ export default function DesignTab({
         <Grid item xs={12} sm={6}>
           <Typography variant="subtitle2" fontWeight={700} mb={1}>Brand Colour</Typography>
           <Box display="flex" alignItems="center" gap={1.5}>
-            <input type="color" value={profile.brandColor || "#C9A84C"}
+            <input type="color" value={profile.brandColor || "#2563EB"}
               onChange={e => set("brandColor", e.target.value)}
               style={{ width: 48, height: 48, border: "none", cursor: "pointer", borderRadius: 8 }} />
             <Typography variant="caption" color="text.secondary">Buttons, tabs &amp; accents</Typography>

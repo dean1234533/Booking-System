@@ -14,7 +14,7 @@ export default function SlotPicker({
   displayMode = "all-times",
   busyBlocks = []
 }) {
-  const activeColor = brandColor || "#C9A84C";
+  const activeColor = brandColor || "#2563EB";
 
   const [selectedDate, setSelectedDate] = useState(null);
 

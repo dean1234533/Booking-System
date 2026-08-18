@@ -15,7 +15,7 @@ function getPlatform() {
   return "other";
 }
 
-export default function PWAInstallBanner({ brandColor = "#C9A84C" }) {
+export default function PWAInstallBanner({ brandColor = "#2563EB" }) {
   const [visible, setVisible]             = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
@@ -101,7 +101,7 @@ export default function PWAInstallBanner({ brandColor = "#C9A84C" }) {
         }}>
           <Box
             component="img"
-            src="/images/IMG_9763-removebg-preview.png"
+            src="/images/icon-192.png"
             alt="Bookrightly"
             sx={{ width: 34, height: 34, objectFit: "contain" }}
           />

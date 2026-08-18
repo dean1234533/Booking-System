@@ -14,6 +14,7 @@ import EditIcon           from "@mui/icons-material/Edit";
 import FitnessCenterIcon  from "@mui/icons-material/FitnessCenter";
 import { collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { SITE_URL } from "../../../utils/siteUrl";
 
 function extractYouTubeId(url) {
   if (!url) return null;
@@ -108,7 +109,7 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
   }
 
   function copyShareLink(planId) {
-    const url = `${window.location.origin}/workout/${trainerId}/${planId}`;
+    const url = `${SITE_URL}/workout/${trainerId}/${planId}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(planId);
       setTimeout(() => setCopiedId(null), 2000);

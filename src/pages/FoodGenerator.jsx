@@ -26,7 +26,7 @@ export default function FoodGenerator() {
     })();
   }, [barberId, token]);
 
-  const brandColor = trainerInfo?.brandColor || "#C9A84C";
+  const brandColor = trainerInfo?.brandColor || "#2563EB";
 
   if (status === "loading") {
     return (

@@ -25,6 +25,8 @@ import {
 import {getFunctions, httpsCallable} from "firebase/functions";
 import {getFirestore, doc, onSnapshot} from "firebase/firestore";
 import { getApp } from "firebase/app";
+import BookingLinkCard from "../BookingLinkCard";
+import BookingLinkQrDialog from "../BookingLinkQrDialog";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -133,6 +135,8 @@ export default function DomainTab({barber, brandColor}) {
   // Live barber doc from Firestore (real-time)
   const [barberDoc, setBarberDoc] = useState(null);
   const pollRef = useRef(null);
+  const [qrOpen, setQrOpen] = useState(false);
+  const bookingSlug = barberDoc?.bookingSlug || barber?.bookingSlug;
 
   // Real-time listener on barber doc
   useEffect(() => {
@@ -324,6 +328,22 @@ export default function DomainTab({barber, brandColor}) {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
+    <Box>
+      {/* ── Your Bookrightly booking link — always live, no domain needed ── */}
+      {bookingSlug && (
+        <>
+          <BookingLinkCard bookingSlug={bookingSlug} brandColor={brandColor} onShowQr={() => setQrOpen(true)} sx={{mb: 3}} />
+          <BookingLinkQrDialog open={qrOpen} onClose={() => setQrOpen(false)} bookingSlug={bookingSlug} brandColor={brandColor} />
+        </>
+      )}
+
+      <Box display="flex" alignItems="baseline" gap={1} mb={2}>
+        <Typography variant="h6" fontWeight={800}>Want your own domain?</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Optional — your Bookrightly link above already works everywhere.
+        </Typography>
+      </Box>
+
     <Grid container spacing={3}>
 
       {/* ── Left: Search + Purchase ── */}
@@ -728,5 +748,6 @@ export default function DomainTab({barber, brandColor}) {
       </Grid>
 
     </Grid>
+    </Box>
   );
 }

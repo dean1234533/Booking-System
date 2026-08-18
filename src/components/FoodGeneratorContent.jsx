@@ -65,7 +65,7 @@ function GuideSection({ section }) {
   );
 }
 
-export default function FoodGeneratorContent({ brandColor = "#C9A84C" }) {
+export default function FoodGeneratorContent({ brandColor = "#2563EB" }) {
   const [goal,         setGoal]         = useState("weight-loss");
   const [mealTab,      setMealTab]      = useState(0);
   const [gender,       setGender]       = useState("male");

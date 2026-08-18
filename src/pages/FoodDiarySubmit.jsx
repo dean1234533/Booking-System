@@ -47,7 +47,7 @@ export default function FoodDiarySubmit() {
   const [submitted,  setSubmitted]  = useState(false);
   const [error,      setError]      = useState("");
 
-  const brand = trainer?.brandColor || "#C9A84C";
+  const brand = trainer?.brandColor || "#2563EB";
   const sx    = inputSx(brand);
 
   useEffect(() => {
@@ -106,7 +106,7 @@ export default function FoodDiarySubmit() {
   if (loading) {
     return (
       <Box sx={{ minHeight: "100vh", bgcolor: "#0d0d0d", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <CircularProgress sx={{ color: "#C9A84C" }} thickness={2} size={50} />
+        <CircularProgress sx={{ color: "#2563EB" }} thickness={2} size={50} />
       </Box>
     );
   }

@@ -512,7 +512,7 @@ const DecoratorTemplate = ({ tenantData }) => {
           <span className="dt-nav-name">{businessName}</span>
         </a>
         <div className="dt-nav-links">
-          {[['Services','services'],['Portfolio','portfolio'],['Reviews','reviews'],['Book','booking'],['Contact','contact']].map(([label, id]) => (
+          {[['Services','services'],['Portfolio','portfolio'],...(allTeam.length > 0 ? [['Team','team']] : []),['Reviews','reviews'],['Book','booking'],['Contact','contact']].map(([label, id]) => (
             <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }}>{label}</a>
           ))}
         </div>
@@ -524,7 +524,7 @@ const DecoratorTemplate = ({ tenantData }) => {
         </button>
       </nav>
       <div className={`dt-mobile-menu${mobileMenuOpen ? ' open' : ''}`}>
-        {[['Services','services'],['Portfolio','portfolio'],['Reviews','reviews'],['Book','booking'],['Contact','contact']].map(([label, id]) => (
+        {[['Services','services'],['Portfolio','portfolio'],...(allTeam.length > 0 ? [['Team','team']] : []),['Reviews','reviews'],['Book','booking'],['Contact','contact']].map(([label, id]) => (
           <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); setMobileMenuOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }}>{label}</a>
         ))}
       </div>

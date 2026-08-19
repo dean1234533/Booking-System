@@ -251,6 +251,18 @@ export default function TenantHome({ tenant: initialTenant }) {
               </Typography>
               <Box sx={{ width: 40, height: '1px', bgcolor: 'rgba(255,255,255,0.4)' }} />
             </Box>
+            <Button
+              variant="contained"
+              onClick={() => document.getElementById('barber-section')?.scrollIntoView({ behavior: 'smooth' })}
+              sx={{
+                mt: 2, bgcolor: brandColor, color: getContrastText(brandColor),
+                fontWeight: 700, letterSpacing: 2, px: 5, py: 1.75, borderRadius: 0,
+                fontSize: '0.85rem',
+                '&:hover': { bgcolor: brandColor, filter: 'brightness(1.1)' },
+              }}
+            >
+              Book Now
+            </Button>
           </Box>
  
         </Container>

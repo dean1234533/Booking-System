@@ -131,8 +131,8 @@ export default function TenantHome({ tenant: initialTenant }) {
         if (!activeTenantId) {
           const currentHost = window.location.hostname;
           const q = query(
-            collection(db, "tenants"), 
-            where("vercelUrl", "==", currentHost), 
+            collection(db, "barbers"),
+            where("vercelUrl", "==", currentHost),
             limit(1)
           );
           const querySnapshot = await getDocs(q);

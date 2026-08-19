@@ -143,7 +143,7 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
         if (staffData) {
           setBarber(staffData);
           if (staffData.shopId && !initialTenant) {
-            const shopSnap = await getDoc(doc(db, "tenants", staffData.shopId));
+            const shopSnap = await getDoc(doc(db, "barbers", staffData.shopId));
             if (shopSnap.exists()) setFooterData({ id: shopSnap.id, ...shopSnap.data() });
           }
           setError(null);

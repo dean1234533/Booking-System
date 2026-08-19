@@ -1,14 +1,89 @@
 import React, { useEffect, useState } from "react";
 import {
-  Box, Button, TextField, Typography, IconButton, Grid,
+  Box, Button, TextField, Typography, IconButton, Grid, Switch,
   CircularProgress, Alert,
 } from "@mui/material";
 import {
   Delete as DeleteIcon, AddCircle as AddCircleIcon,
   Instagram as InstagramIcon, Facebook as FacebookIcon,
 } from "@mui/icons-material";
-import { getShopStaff, addStaffMember, removeStaffMember, updateBarber } from "../../../firebase/firestore";
+import { getShopStaff, addStaffMember, removeStaffMember, updateBarber, addSlot } from "../../../firebase/firestore";
 import { Section, ImageField, PortfolioSection, TikTokIcon } from "./sharedFormComponents";
+
+// Staff added here have no login of their own — the owner manages
+// everything including availability. Mirrors Onboarding.jsx's weekly-hours
+// step exactly (same DAYS/DAY_INDEX/date-walk), just scoped to a specific
+// staff member's barberId instead of the owner's own uid.
+const HOURS_DAYS = [
+  { key: "mon", label: "Mon" }, { key: "tue", label: "Tue" }, { key: "wed", label: "Wed" },
+  { key: "thu", label: "Thu" }, { key: "fri", label: "Fri" }, { key: "sat", label: "Sat" }, { key: "sun", label: "Sun" },
+];
+const HOURS_DAY_INDEX = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+const addDaysToDate = (dateStr, n) => {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split("T")[0];
+};
+
+function WeeklyHours({ staffId, shopId, brandColor }) {
+  const [hours, setHours] = useState(() =>
+    Object.fromEntries(HOURS_DAYS.map(d => [d.key, { enabled: false, start: "09:00", end: "17:00" }]))
+  );
+  const [generating, setGenerating] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const toggleDay = (key) => setHours(prev => ({ ...prev, [key]: { ...prev[key], enabled: !prev[key].enabled } }));
+  const setDayTime = (key, field, value) => setHours(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+
+  async function handleGenerate() {
+    const enabledDays = HOURS_DAYS.filter(d => hours[d.key].enabled);
+    if (enabledDays.length === 0) return;
+    setGenerating(true);
+    setDone(false);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const jobs = [];
+      for (let i = 0; i < 28; i++) {
+        const date = addDaysToDate(today, i);
+        const weekday = new Date(date + "T00:00:00").getDay();
+        const dayCfg = enabledDays.find(d => HOURS_DAY_INDEX[d.key] === weekday);
+        if (dayCfg) {
+          jobs.push(addSlot({ barberId: staffId, shopId, isStaff: true, date, time: hours[dayCfg.key].start }));
+        }
+      }
+      await Promise.all(jobs);
+      setDone(true);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  return (
+    <Section title="🗓️ Weekly Hours">
+      <Typography variant="body2" color="text.secondary" mb={2}>
+        This team member has no login of their own, so their availability is set here. Turn on the days they work — this opens slots for the next 4 weeks. Running it again adds another 4 weeks on top, so only re-run it once existing slots are running low.
+      </Typography>
+      {HOURS_DAYS.map(d => (
+        <Box key={d.key} sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 0.75, borderBottom: "1px solid #f0f0f0" }}>
+          <Switch size="small" checked={hours[d.key].enabled} onChange={() => toggleDay(d.key)}
+            sx={{ "& .MuiSwitch-switchBase.Mui-checked": { color: brandColor }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: brandColor } }} />
+          <Typography sx={{ width: 40, fontWeight: 600, fontSize: 13 }}>{d.label}</Typography>
+          <TextField type="time" size="small" value={hours[d.key].start} disabled={!hours[d.key].enabled}
+            onChange={e => setDayTime(d.key, "start", e.target.value)} sx={{ width: 120 }} />
+          <Typography variant="caption" color="text.secondary">to</Typography>
+          <TextField type="time" size="small" value={hours[d.key].end} disabled={!hours[d.key].enabled}
+            onChange={e => setDayTime(d.key, "end", e.target.value)} sx={{ width: 120 }} />
+        </Box>
+      ))}
+      <Box display="flex" alignItems="center" gap={1.5} mt={2}>
+        <Button variant="contained" size="small" disabled={generating} onClick={handleGenerate} sx={{ bgcolor: brandColor }}>
+          {generating ? <CircularProgress size={16} color="inherit" /> : "Generate 4 Weeks of Slots"}
+        </Button>
+        {done && <Typography variant="caption" color="success.main">Slots created</Typography>}
+      </Box>
+    </Section>
+  );
+}
 
 function StaffMemberCard({ member, shopId, brandColor, onRemove }) {
   const [data, setData] = useState(member);
@@ -83,6 +158,8 @@ function StaffMemberCard({ member, shopId, brandColor, onRemove }) {
             InputProps={{ startAdornment: <FacebookIcon fontSize="small" sx={{ mr: 1, color: "#1877F2" }} /> }} />
         </Grid>
       </Grid>
+
+      <WeeklyHours staffId={member.id} shopId={shopId} brandColor={brandColor} />
 
       <Box display="flex" justifyContent="space-between" alignItems="center" mt={3}>
         <Button color="error" size="small" onClick={() => onRemove(member.id)}>Remove from team</Button>

@@ -76,6 +76,10 @@ export default function PTStaffProfile({ tenant }) {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: 'var(--ink)', background: '#fff', overflowX: 'hidden' }}>
+      <style>{`
+        .ptsp-hero { display: grid; grid-template-columns: ${member.profilePic ? '260px 1fr' : '1fr'}; }
+        @media (max-width: 640px) { .ptsp-hero { grid-template-columns: 1fr !important; } }
+      `}</style>
 
       <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--mid)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 68 }}>
@@ -85,7 +89,7 @@ export default function PTStaffProfile({ tenant }) {
       </header>
 
       {/* ── HERO ── */}
-      <section style={{ position: 'relative', padding: 'clamp(60px,10vw,100px) clamp(24px,5vw,80px)', background: 'var(--charcoal)', display: 'grid', gridTemplateColumns: member.profilePic ? '260px 1fr' : '1fr', gap: 'clamp(2rem,5vw,4rem)', alignItems: 'center', maxWidth: 1100, margin: '0 auto' }}>
+      <section className="ptsp-hero" style={{ position: 'relative', padding: 'clamp(60px,10vw,100px) clamp(24px,5vw,80px)', background: 'var(--charcoal)', gap: 'clamp(2rem,5vw,4rem)', alignItems: 'center', maxWidth: 1100, margin: '0 auto' }}>
         {member.profilePic && (
           <img src={member.profilePic} alt={member.name} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 16, boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }} />
         )}

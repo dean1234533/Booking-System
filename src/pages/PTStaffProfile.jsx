@@ -5,7 +5,7 @@ import { db } from '../firebase/config';
 import { getFontFamily, loadGoogleFont } from '../utils/fontOptions';
 import SlotPicker from '../components/SlotPicker';
 import BeforeAfterSlider from '../components/BeforeAfterSlider';
-import { CircularProgress } from '@mui/material';
+import { CircularProgress, useMediaQuery } from '@mui/material';
 import { FadeIn, ReviewCarousel } from './PTBookingSite';
 
 // A single trainer's own page, linked from the gym/studio's team section
@@ -16,6 +16,7 @@ import { FadeIn, ReviewCarousel } from './PTBookingSite';
 export default function PTStaffProfile({ tenant }) {
   const { tenantId, staffId } = useParams();
   const navigate = useNavigate();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const [shop, setShop] = useState(null);
   const [member, setMember] = useState(null);
@@ -130,7 +131,7 @@ export default function PTStaffProfile({ tenant }) {
             <div style={{ maxWidth: 1100, margin: '0 auto' }}>
               <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Results</p>
               <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(28px,5vw,48px)', color: '#fff', textAlign: 'center', marginBottom: 40, letterSpacing: '0.04em' }}>Client Transformations</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: isMobile ? 12 : 24 }}>
                 {portfolioItems.map((item, i) => (
                   <div key={i}>
                     <BeforeAfterSlider before={item.before} after={item.after} />

@@ -626,6 +626,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
     { label: 'About',    href: '#about' },
     { label: 'Services', href: '#specializations' },
     ...(portfolioItems.length > 0 ? [{ label: 'Results', href: '#gallery' }] : []),
+    ...(team.length > 0 ? [{ label: 'Team', href: '#team' }] : []),
     { label: 'Pricing',  href: '#pricing' },
     { label: 'Reviews',  href: '#reviews' },
   ];

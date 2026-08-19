@@ -2,15 +2,15 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, Grid,
-  IconButton, InputAdornment, LinearProgress, MenuItem, Stack, TextField, Typography,
+  IconButton, InputAdornment, LinearProgress, Stack, TextField, Typography,
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon, ArrowForward as ArrowForwardIcon,
   Brush as BrushIcon, Check as CheckIcon, ContentCut as ContentCutIcon,
-  FitnessCenter as FitnessCenterIcon, Groups as GroupsIcon, Person as PersonIcon,
-  Storefront as StoreIcon, Visibility as VisibilityIcon, VisibilityOff as VisibilityOffIcon,
+  FitnessCenter as FitnessCenterIcon, Person as PersonIcon,
+  Visibility as VisibilityIcon, VisibilityOff as VisibilityOffIcon,
 } from "@mui/icons-material";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import AuthShell, { AUTH_GOLD } from "../components/auth/AuthShell";
 import { db } from "../firebase/config";
 import { signUpBarber } from "../firebase/auth";
@@ -53,43 +53,15 @@ function StepProgress({ step }) {
 export default function Signup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [isOwner, setIsOwner] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", specialty: "", password: "", confirm: "",
-    shopId: "", businessName: "", businessType: "barber", marketingOptIn: false,
+    businessName: "", businessType: "barber", marketingOptIn: false,
   });
-  const [shops, setShops] = useState([]);
-  const [loadingShops, setLoadingShops] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => { window.scrollTo(0, 0); logFunnelEvent("signup_view"); }, []);
-
-  useEffect(() => {
-    if (isOwner) return;
-    async function fetchShops() {
-      try {
-        setLoadingShops(true);
-        const shopsQuery = query(
-          collection(db, "barbers"),
-          where("role", "==", "owner"),
-          where("businessType", "==", "barber"),
-        );
-        const snap = await getDocs(shopsQuery);
-        setShops(snap.docs.map(item => ({
-          id: item.id,
-          displayLabel: item.data().businessName || item.data().displayName || "Unnamed shop",
-          businessType: "barber",
-        })));
-      } catch {
-        setError("We couldn’t load the barbershop list. Please try again.");
-      } finally {
-        setLoadingShops(false);
-      }
-    }
-    fetchShops();
-  }, [isOwner]);
 
   function handleChange(event) {
     const value = event.target.type === "checkbox" ? event.target.checked : event.target.value;
@@ -98,16 +70,14 @@ export default function Signup() {
   }
 
   function selectBusinessType(value) {
-    setForm(current => ({ ...current, businessType: value, shopId: value === "barber" ? current.shopId : "" }));
-    if (value !== "barber") setIsOwner(true);
+    setForm(current => ({ ...current, businessType: value }));
     setError(null);
   }
 
   function validateCurrentStep() {
     if (step === 0 && !form.businessType) return "Choose the type of business you run.";
     if (step === 1) {
-      if (isOwner && !form.businessName.trim()) return "Enter your business name.";
-      if (!isOwner && !form.shopId) return "Select the barbershop you’re joining.";
+      if (!form.businessName.trim()) return "Enter your business name.";
       if (!form.name.trim()) return "Enter your full name.";
       if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) return "Enter a valid email address.";
     }
@@ -148,25 +118,14 @@ export default function Signup() {
     setLoading(true);
     setError(null);
     try {
-      const role = isOwner ? "owner" : "staff";
-      let resolvedBusinessType = form.businessType;
-      if (!isOwner) {
-        const selectedShop = shops.find(shop => shop.id === form.shopId);
-        if (selectedShop?.businessType) {
-          resolvedBusinessType = selectedShop.businessType;
-        } else {
-          const shopSnap = await getDoc(doc(db, "barbers", form.shopId));
-          if (shopSnap.exists()) resolvedBusinessType = shopSnap.data().businessType || "barber";
-        }
-      }
       const user = await signUpBarber({
-        ...form, role, shopId: isOwner ? "self" : form.shopId,
-        brandColor: AUTH_GOLD, businessType: resolvedBusinessType,
+        ...form, role: "owner", shopId: "self",
+        brandColor: AUTH_GOLD, businessType: form.businessType,
       });
-      await waitForBarberDoc(user.uid, role);
-      if (isOwner) fetch("/api/ping-google", { method: "POST" }).catch(() => {});
-      logFunnelEvent("signup_completed", { businessType: resolvedBusinessType, role });
-      navigate(isOwner ? "/onboarding" : "/dashboard");
+      await waitForBarberDoc(user.uid, "owner");
+      fetch("/api/ping-google", { method: "POST" }).catch(() => {});
+      logFunnelEvent("signup_completed", { businessType: form.businessType, role: "owner" });
+      navigate("/onboarding");
     } catch (signupError) {
       logFunnelEvent("signup_error", { step, message: signupError.message || "unknown" });
       setError(signupError.message || "We couldn’t create your account. Please try again.");
@@ -226,50 +185,13 @@ export default function Signup() {
                   );
                 })}
               </Grid>
-
-              {form.businessType === "barber" && (
-                <Box>
-                  <Typography sx={{ fontSize: ".7rem", fontWeight: 850, color: "#555c66", mb: .75 }}>How are you joining?</Typography>
-                  <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
-                    {[
-                      { owner: true, label: "Business owner", icon: <StoreIcon /> },
-                      { owner: false, label: "Join a shop", icon: <GroupsIcon /> },
-                    ].map(option => (
-                      <Button
-                        type="button" key={option.label} aria-pressed={isOwner === option.owner}
-                        onClick={() => { setIsOwner(option.owner); setError(null); }}
-                        startIcon={option.icon}
-                        sx={{
-                          py: 1.25, border: "1px solid " + (isOwner === option.owner ? AUTH_GOLD : "#e1e4e9"),
-                          bgcolor: isOwner === option.owner ? AUTH_GOLD + "12" : "#fff",
-                          color: "#272a30", fontWeight: 800, borderRadius: 2.5,
-                        }}
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
-                  </Box>
-                </Box>
-              )}
             </Stack>
           )}
 
           {step === 1 && (
             <Grid container spacing={2}>
               <Grid item xs={12}>
-                {isOwner ? (
-                  <TextField label="Business name" name="businessName" fullWidth required value={form.businessName} onChange={handleChange} autoFocus />
-                ) : (
-                  <TextField
-                    select fullWidth required label="Barbershop to join" name="shopId"
-                    value={form.shopId} onChange={handleChange} disabled={loadingShops} autoFocus
-                    helperText={!loadingShops && shops.length === 0 ? "No barbershops are currently available." : "Your shop owner will see you in their staff list."}
-                  >
-                    {loadingShops
-                      ? <MenuItem disabled><CircularProgress size={18} sx={{ mr: 1.5 }} /> Loading shops…</MenuItem>
-                      : shops.map(shop => <MenuItem key={shop.id} value={shop.id}>{shop.displayLabel}</MenuItem>)}
-                  </TextField>
-                )}
+                <TextField label="Business name" name="businessName" fullWidth required value={form.businessName} onChange={handleChange} autoFocus />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField label="Full name" name="name" fullWidth required value={form.name} onChange={handleChange} autoComplete="name" InputProps={{ startAdornment: <InputAdornment position="start"><PersonIcon sx={{ color: "#9ca1ab", fontSize: 19 }} /></InputAdornment> }} />
@@ -304,12 +226,10 @@ export default function Signup() {
                 autoComplete="new-password" error={Boolean(form.confirm && form.password !== form.confirm)}
                 helperText={form.confirm && form.password !== form.confirm ? "Passwords don’t match yet." : " "}
               />
-              {isOwner && (
-                <Box sx={{ p: 2, borderRadius: 2.5, bgcolor: AUTH_GOLD + "0d", border: "1px solid " + AUTH_GOLD + "44" }}>
-                  <Typography sx={{ fontWeight: 850, fontSize: ".78rem" }}>Your 90-day free trial</Typography>
-                  <Typography sx={{ color: "text.secondary", fontSize: ".69rem", mt: .35 }}>Full access, no card required and no automatic charge today.</Typography>
-                </Box>
-              )}
+              <Box sx={{ p: 2, borderRadius: 2.5, bgcolor: AUTH_GOLD + "0d", border: "1px solid " + AUTH_GOLD + "44" }}>
+                <Typography sx={{ fontWeight: 850, fontSize: ".78rem" }}>Your 90-day free trial</Typography>
+                <Typography sx={{ color: "text.secondary", fontSize: ".69rem", mt: .35 }}>Full access, no card required and no automatic charge today.</Typography>
+              </Box>
               <FormControlLabel
                 sx={{ alignItems: "flex-start", mx: 0 }}
                 control={<Checkbox name="marketingOptIn" checked={form.marketingOptIn} onChange={handleChange} size="small" sx={{ color: "#bbb", "&.Mui-checked": { color: AUTH_GOLD } }} />}
@@ -330,7 +250,7 @@ export default function Signup() {
               endIcon={!loading && (step < 2 ? <ArrowForwardIcon /> : <CheckIcon />)}
               sx={{ ml: "auto", minWidth: { xs: 150, sm: 190 }, minHeight: 52, bgcolor: AUTH_GOLD, color: "#171717", fontWeight: 900, borderRadius: 2.5, "&:hover": { bgcolor: AUTH_GOLD, filter: "brightness(.92)" } }}
             >
-              {loading ? <CircularProgress size={22} color="inherit" /> : step < 2 ? "Continue" : isOwner ? "Create free account" : "Join barbershop"}
+              {loading ? <CircularProgress size={22} color="inherit" /> : step < 2 ? "Continue" : "Create free account"}
             </Button>
           </Box>
         </Box>

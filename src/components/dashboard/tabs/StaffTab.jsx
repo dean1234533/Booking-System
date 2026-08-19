@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from "react";
 import {
   Box, Button, TextField, Typography, IconButton, Grid, Switch,
-  CircularProgress, Alert,
+  CircularProgress, Alert, Chip,
 } from "@mui/material";
 import {
   Delete as DeleteIcon, AddCircle as AddCircleIcon,
   Instagram as InstagramIcon, Facebook as FacebookIcon,
+  Link as LinkIcon, CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
 import { getShopStaff, addStaffMember, removeStaffMember, updateBarber, addSlot } from "../../../firebase/firestore";
 import { Section, ImageField, PortfolioSection, TikTokIcon } from "./sharedFormComponents";
 
-// Staff added here have no login of their own — the owner manages
-// everything including availability. Mirrors Onboarding.jsx's weekly-hours
-// step exactly (same DAYS/DAY_INDEX/date-walk), just scoped to a specific
-// staff member's barberId instead of the owner's own uid.
+// Staff added here start with no login — the owner manages everything
+// including availability, until the team member claims their invite link
+// (see InviteBox/StaffSignup.jsx) and starts managing it themselves.
+// Mirrors Onboarding.jsx's weekly-hours step exactly (same DAYS/DAY_INDEX/
+// date-walk), just scoped to a specific staff member's barberId instead of
+// the owner's own uid.
 const HOURS_DAYS = [
   { key: "mon", label: "Mon" }, { key: "tue", label: "Tue" }, { key: "wed", label: "Wed" },
   { key: "thu", label: "Thu" }, { key: "fri", label: "Fri" }, { key: "sat", label: "Sat" }, { key: "sun", label: "Sun" },
@@ -25,7 +28,12 @@ const addDaysToDate = (dateStr, n) => {
   return d.toISOString().split("T")[0];
 };
 
-function WeeklyHours({ staffId, shopId, brandColor }) {
+function WeeklyHours({ staffId, shopId, brandColor, businessType }) {
+  // Barber is the only type with real per-person booking pages (BarberProfile
+  // queries slots by its own id) — hairdresser/decorator/PT staff pages all
+  // book against the shop's shared pool (queried by shopId), so a staff
+  // member's slots there need to carry the shop's id to actually show up.
+  const slotBarberId = businessType === "barber" ? staffId : shopId;
   const [hours, setHours] = useState(() =>
     Object.fromEntries(HOURS_DAYS.map(d => [d.key, { enabled: false, start: "09:00", end: "17:00" }]))
   );
@@ -48,7 +56,7 @@ function WeeklyHours({ staffId, shopId, brandColor }) {
         const weekday = new Date(date + "T00:00:00").getDay();
         const dayCfg = enabledDays.find(d => HOURS_DAY_INDEX[d.key] === weekday);
         if (dayCfg) {
-          jobs.push(addSlot({ barberId: staffId, shopId, isStaff: true, date, time: hours[dayCfg.key].start }));
+          jobs.push(addSlot({ barberId: slotBarberId, shopId, isStaff: true, date, time: hours[dayCfg.key].start }));
         }
       }
       await Promise.all(jobs);
@@ -85,7 +93,33 @@ function WeeklyHours({ staffId, shopId, brandColor }) {
   );
 }
 
-function StaffMemberCard({ member, shopId, brandColor, onRemove }) {
+function InviteBox({ member, shopId, brandColor }) {
+  const [copied, setCopied] = useState(false);
+  const inviteUrl = `${window.location.origin}/staff-signup/${shopId}/${member.id}`;
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("Copy this invite link:", inviteUrl);
+    }
+  }
+
+  return (
+    <Section title="🔗 Give them their own login">
+      <Typography variant="body2" color="text.secondary" mb={2}>
+        Send this link to {member.name || "this team member"} so they can set a password, then manage their own hours, photo and page from their own dashboard — instead of you doing it for them.
+      </Typography>
+      <Button variant="outlined" size="small" startIcon={<LinkIcon />} onClick={handleCopy} sx={{ borderColor: brandColor, color: brandColor }}>
+        {copied ? "Link copied!" : "Copy invite link"}
+      </Button>
+    </Section>
+  );
+}
+
+function StaffMemberCard({ member, shopId, brandColor, businessType, onRemove }) {
   const [data, setData] = useState(member);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -107,6 +141,9 @@ function StaffMemberCard({ member, shopId, brandColor, onRemove }) {
 
   return (
     <Section title={`${data.name || "New team member"}${data.specialty ? " — " + data.specialty : ""}`}>
+      {data.hasLogin && (
+        <Chip icon={<CheckCircleIcon />} label="Has their own login" size="small" color="success" variant="outlined" sx={{ mb: 2 }} />
+      )}
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6}>
           <TextField fullWidth size="small" label="Name" value={data.name || ""} onChange={e => set("name", e.target.value)} />
@@ -159,7 +196,16 @@ function StaffMemberCard({ member, shopId, brandColor, onRemove }) {
         </Grid>
       </Grid>
 
-      <WeeklyHours staffId={member.id} shopId={shopId} brandColor={brandColor} />
+      {data.hasLogin ? (
+        <Typography variant="body2" color="text.secondary" mt={3}>
+          🗓️ {data.name || "This team member"} manages their own hours and profile from their own dashboard.
+        </Typography>
+      ) : (
+        <>
+          <WeeklyHours staffId={member.id} shopId={shopId} brandColor={brandColor} businessType={businessType} />
+          <InviteBox member={data} shopId={shopId} brandColor={brandColor} />
+        </>
+      )}
 
       <Box display="flex" justifyContent="space-between" alignItems="center" mt={3}>
         <Button color="error" size="small" onClick={() => onRemove(member.id)}>Remove from team</Button>
@@ -174,7 +220,7 @@ function StaffMemberCard({ member, shopId, brandColor, onRemove }) {
   );
 }
 
-export default function StaffTab({ shopId, brandColor }) {
+export default function StaffTab({ shopId, brandColor, businessType }) {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -232,7 +278,7 @@ export default function StaffTab({ shopId, brandColor }) {
         <Typography color="text.secondary" textAlign="center" mt={4}>No team members yet.</Typography>
       ) : (
         staff.map(member => (
-          <StaffMemberCard key={member.id} member={member} shopId={shopId} brandColor={brandColor} onRemove={handleRemove} />
+          <StaffMemberCard key={member.id} member={member} shopId={shopId} brandColor={brandColor} businessType={businessType} onRemove={handleRemove} />
         ))
       )}
     </Box>

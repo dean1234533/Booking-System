@@ -751,7 +751,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             </div>
 
             <div style={{ flex: '1 1 320px' }}>
-              <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 12 }}>Meet Your Coach</p>
+              <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 12 }}>{team.length > 0 ? 'Our Story' : 'Meet Your Coach'}</p>
               <h2 className="ruled-heading" style={{ fontFamily: displayFont, fontSize: 'clamp(36px, 5vw, 56px)', letterSpacing: '0.04em', margin: '0 0 28px', lineHeight: 1 }}>
                 {profile?.coachName || barber?.name || 'Your Personal Trainer'}
               </h2>
@@ -808,7 +808,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Results</p>
             <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(28px,5vw,48px)', color: '#fff', textAlign: 'center', marginBottom: 12, letterSpacing: '0.04em' }}>{portfolioHeading}</h2>
             <p style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', maxWidth: 480, margin: '0 auto 48px', fontSize: 14, fontWeight: 300, lineHeight: 1.7 }}>{portfolioSubtext}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: isMobile ? 12 : 24 }}>
               {portfolioItems.map((item, i) => (
                 <div key={i}>
                   <BeforeAfterSlider before={item.before} after={item.after} />

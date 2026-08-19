@@ -16,6 +16,13 @@ export function getFontFamily(key, defaultKey = "playfair") {
   return f ? f.family : "'Playfair Display', serif";
 }
 
+// Name kept as loadGoogleFont to avoid touching every call site — it
+// actually loads from Bunny Fonts, a privacy-friendly proxy that mirrors
+// the Google Fonts catalog under the same family names (lowercase,
+// hyphenated) with no request ever reaching Google. This matches the
+// rest of the app, which was deliberately migrated off fonts.googleapis.com
+// for GDPR reasons; the CSP only ever allowed fonts.bunny.net, so this
+// picker's font choices were silently failing to load before this fix.
 export function loadGoogleFont(key) {
   const f = FONT_OPTIONS.find(o => o.key === key);
   if (!f) return;
@@ -24,6 +31,10 @@ export function loadGoogleFont(key) {
   const link = document.createElement('link');
   link.id = id;
   link.rel = 'stylesheet';
-  link.href = `https://fonts.googleapis.com/css2?family=${f.googleParam}&display=swap`;
+  const slug = f.label.toLowerCase().replace(/\s+/g, '-');
+  const weights = f.googleParam.includes('wght@')
+    ? f.googleParam.split('wght@')[1].replace(/;/g, ',')
+    : '';
+  link.href = `https://fonts.bunny.net/css?family=${slug}${weights ? ':' + weights : ''}&display=swap`;
   document.head.appendChild(link);
 }

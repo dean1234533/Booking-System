@@ -106,17 +106,23 @@ const FadeIn = ({ children, delay = 0 }) => {
 };
 
 /* ─── YouTube helper ────────────────────────────────────────── */
-function getYouTubeEmbedUrl(url) {
+// Returns the bare video ID only — the video is shown as a clickable
+// thumbnail linking out to YouTube, not embedded via iframe. An iframe
+// embed depends on the site's CSP, the visitor's ad-blocker/privacy
+// extensions, and the channel owner's embedding permissions all
+// cooperating at once; a plain thumbnail + link has none of those
+// failure points and always works.
+function getYouTubeId(url) {
   if (!url) return null;
   try {
     const u = new URL(url);
-    let id = null;
-    if (u.hostname === 'youtu.be') id = u.pathname.slice(1);
-    else if (u.hostname.includes('youtube.com'))
-      id = u.searchParams.get('v')
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1) || null;
+    if (u.hostname.includes('youtube.com'))
+      return u.searchParams.get('v')
         || u.pathname.split('/embed/')[1]
-        || u.pathname.split('/shorts/')[1];
-    return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+        || u.pathname.split('/shorts/')[1]
+        || null;
+    return null;
   } catch { return null; }
 }
 
@@ -579,7 +585,9 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   const aboutText2   = profile?.aboutText2 || 'Whether you\'re building explosive strength, improving mobility, or transforming your physique — I provide the tools and accountability to get you there.';
   const privacyText  = profile?.privacyPolicy   || `At ${businessName}, we value your privacy. We collect only information necessary to provide our services and never sell your data.`;
   const termsText    = profile?.termsConditions || `By using ${businessName}, you agree to our terms of service. All bookings are subject to our cancellation policy.`;
-  const youtubeUrl   = getYouTubeEmbedUrl(profile?.youtubeUrl);
+  const youtubeId       = getYouTubeId(profile?.youtubeUrl);
+  const youtubeThumb    = youtubeId ? `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg` : null;
+  const youtubeWatchUrl = youtubeId ? `https://www.youtube.com/watch?v=${youtubeId}` : null;
   const contactPhone  = profile?.phone || '';
   const contactEmail  = profile?.businessEmail || profile?.contactEmail || barber?.email || '';
   const instagramUrl  = profile?.instagramUrl || '';
@@ -759,11 +767,18 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
           <div style={{ maxWidth: 860, margin: '0 auto' }}>
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>See It In Action</p>
             <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(28px,5vw,48px)', color: '#fff', textAlign: 'center', marginBottom: 32, letterSpacing: '0.04em' }}>Watch My Training</h2>
-            {youtubeUrl ? (
-              <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
-                <iframe src={youtubeUrl} title="Training video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }} />
-              </div>
+            {youtubeId ? (
+              <a href={youtubeWatchUrl} target="_blank" rel="noopener noreferrer"
+                style={{ position: 'relative', display: 'block', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', textDecoration: 'none' }}>
+                <img src={youtubeThumb} alt="Training video thumbnail" loading="lazy"
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}>
+                  <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'rgba(255,255,255,0.96)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill={brandColor}><path d="M8 5v14l11-7z" /></svg>
+                  </div>
+                </div>
+                <span style={{ position: 'absolute', bottom: 16, right: 16, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 14px', borderRadius: 6 }}>Watch on YouTube ↗</span>
+              </a>
             ) : (
               <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.12)' }}>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>

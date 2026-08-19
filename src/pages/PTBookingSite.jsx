@@ -586,7 +586,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   const privacyText  = profile?.privacyPolicy   || `At ${businessName}, we value your privacy. We collect only information necessary to provide our services and never sell your data.`;
   const termsText    = profile?.termsConditions || `By using ${businessName}, you agree to our terms of service. All bookings are subject to our cancellation policy.`;
   const youtubeId       = getYouTubeId(profile?.youtubeUrl);
-  const youtubeThumb    = youtubeId ? `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg` : null;
+  const youtubeThumb    = youtubeId ? `https://i.ytimg.com/vi/${youtubeId}/maxresdefault.jpg` : null;
   const youtubeWatchUrl = youtubeId ? `https://www.youtube.com/watch?v=${youtubeId}` : null;
   const contactPhone  = profile?.phone || '';
   const contactEmail  = profile?.businessEmail || profile?.contactEmail || barber?.email || '';
@@ -771,6 +771,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
               <a href={youtubeWatchUrl} target="_blank" rel="noopener noreferrer"
                 style={{ position: 'relative', display: 'block', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.5)', textDecoration: 'none' }}>
                 <img src={youtubeThumb} alt="Training video thumbnail" loading="lazy"
+                  onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`; }}
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}>
                   <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'rgba(255,255,255,0.96)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>

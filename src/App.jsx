@@ -35,6 +35,7 @@ const TenantSignup      = lazy(() => import("./pages/TenantSignup"));
 const CancelBooking     = lazy(() => import("./pages/CancelBooking"));
 const ReviewPage        = lazy(() => import("./pages/ReviewPage"));
 const PTBookingSite       = lazy(() => import("./pages/PTBookingSite"));
+const PTStaffProfile      = lazy(() => import("./pages/PTStaffProfile"));
 const DecoratorTemplate   = lazy(() => import("./pages/DecoratorTemplate"));
 const DecoratorStaffProfile = lazy(() => import("./pages/DecoratorStaffProfile"));
 const HairdresserTemplate = lazy(() => import("./pages/HairdresserTemplate"));
@@ -393,6 +394,7 @@ function AppShell() {
             <Route path="/" element={(!isPlatformDomain && tenantBarber) ? (isTenantOffline ? <OfflinePage /> : renderTenantHome(tenantBarber)) : <Home />} />
             <Route path="/shop/:tenantId" element={isTenantOffline ? <OfflinePage /> : (tenantBarber ? renderTenantHome(tenantBarber) : <TenantHome tenant={tenantBarber} />)} />
             <Route path="/pt-booking/:tenantId" element={isTenantOffline ? <OfflinePage /> : <PTBookingSite barber={tenantBarber} profile={tenantBarber} />} />
+            <Route path="/pt-booking/:tenantId/:staffId" element={isTenantOffline ? <OfflinePage /> : <PTStaffProfile tenant={tenantBarber} />} />
             <Route path="/decorator/:tenantId" element={isTenantOffline ? <OfflinePage /> : <DecoratorTemplate tenantData={tenantBarber} />} />
             <Route path="/decorator/:tenantId/:staffId" element={isTenantOffline ? <OfflinePage /> : <DecoratorStaffProfile tenant={tenantBarber} />} />
             <Route path="/hairdresser/:tenantId" element={isTenantOffline ? <OfflinePage /> : <HairdresserTemplate tenantData={tenantBarber} />} />

@@ -86,7 +86,7 @@ styleTag.textContent = `
 document.head.appendChild(styleTag);
 
 /* ─── FadeIn on scroll ──────────────────────────────────────── */
-const FadeIn = ({ children, delay = 0 }) => {
+export const FadeIn = ({ children, delay = 0 }) => {
   const [vis, setVis] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -127,7 +127,7 @@ function getYouTubeId(url) {
 }
 
 /* ─── Review Carousel ───────────────────────────────────────── */
-function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = '2px solid #0f0f0f',displayFont }) {
+export function ReviewCarousel({ reviews, brandColor, cardBg = '#ffffff', cardBorder = '2px solid #0f0f0f',displayFont }) {
   const [idx, setIdx] = useState(0);
   const [animKey, setAnimKey] = useState(0);
 
@@ -542,6 +542,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   const navigate = useNavigate();
   const [slots,    setSlots]    = useState([]);
   const [reviews,  setReviews]  = useState(propReviews);
+  const [team,     setTeam]     = useState([]);
   const [modal,    setModal]    = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [consultationSlot, setConsultationSlot] = useState(null);
@@ -570,6 +571,9 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         const revRef = collection(db, 'barbers', barber.uid, 'reviews');
         const ssRevs = await getDocs(revRef);
         setReviews(ssRevs.docs.map(d => d.data()));
+
+        const ssTeam = await getDocs(collection(db, 'barbers', barber.uid, 'staff'));
+        setTeam(ssTeam.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.name));
       } catch (err) { console.error(err); }
     }
     fetchData();
@@ -856,6 +860,34 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
           </div>
         </section>
       </FadeIn>
+
+      {/* ══════════ TEAM ══════════ */}
+      {team.length > 0 && (
+      <FadeIn>
+        <section id="team" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: 'var(--cream)' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>The Team</p>
+            <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 48 }}>Meet the Trainers</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 32 }}>
+              {team.map((member, i) => (
+                <div key={member.id || i} className="card-hover" style={{ textAlign: 'center', cursor: 'pointer' }}
+                  onClick={() => navigate(`/pt-booking/${barber?.uid}/${member.id}`)}>
+                  {member.profilePic ? (
+                    <img src={member.profilePic} alt={member.name} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 12, display: 'block', marginBottom: 16 }} />
+                  ) : (
+                    <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: 12, background: brandColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: displayFont, fontSize: 40, color: '#fff', marginBottom: 16 }}>
+                      {member.name?.[0]?.toUpperCase()}
+                    </div>
+                  )}
+                  <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{member.name}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-soft)' }}>{member.role || member.specialty || 'Trainer'}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </FadeIn>
+      )}
 
       {/* ══════════ REVIEWS ══════════ */}
       <FadeIn>

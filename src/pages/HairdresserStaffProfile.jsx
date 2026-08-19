@@ -84,7 +84,11 @@ export default function HairdresserStaffProfile({ tenant }) {
   return (
     <>
       <HairdresserStyles />
-      <div className="hs-page" style={{ '--brand': brandColor }}>
+      <style>{`
+        .hsp-hero { display: grid; grid-template-columns: ${member.profilePic ? '260px 1fr' : '1fr'}; }
+        @media (max-width: 640px) { .hsp-hero { grid-template-columns: 1fr !important; } }
+      `}</style>
+      <div className="hs-page" style={{ '--brand': brandColor, overflowX: 'hidden' }}>
 
         <nav className="hs-nav">
           <a href={`/hairdresser/${tenantId}`} className="hs-nav-brand">{shop?.businessName || 'Back to salon'}</a>
@@ -92,7 +96,7 @@ export default function HairdresserStaffProfile({ tenant }) {
         </nav>
 
         {/* ── HERO — single-person, photo + name/role/bio ── */}
-        <section style={{ padding: 'clamp(6rem,14vw,10rem) clamp(1.5rem,6vw,5rem) clamp(3rem,6vw,5rem)', maxWidth: 1000, margin: '0 auto', display: 'grid', gridTemplateColumns: member.profilePic ? '260px 1fr' : '1fr', gap: 'clamp(2rem,5vw,4rem)', alignItems: 'center' }}>
+        <section className="hsp-hero" style={{ padding: 'clamp(6rem,14vw,10rem) clamp(1.5rem,6vw,5rem) clamp(3rem,6vw,5rem)', maxWidth: 1000, margin: '0 auto', gap: 'clamp(2rem,5vw,4rem)', alignItems: 'center' }}>
           {member.profilePic && (
             <img src={member.profilePic} alt={member.name} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 12, boxShadow: '0 32px 80px rgba(26,23,20,0.14)' }} />
           )}

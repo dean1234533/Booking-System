@@ -83,7 +83,11 @@ export default function DecoratorStaffProfile({ tenant }) {
   return (
     <>
       <GlobalStyles />
-      <div className="dt-page" style={{ fontFamily: displayFont }}>
+      <style>{`
+        .dtp-hero { display: grid; grid-template-columns: ${member.profilePic ? '260px 1fr' : '1fr'}; }
+        @media (max-width: 640px) { .dtp-hero { grid-template-columns: 1fr !important; } }
+      `}</style>
+      <div className="dt-page" style={{ fontFamily: displayFont, overflowX: 'hidden' }}>
 
         <nav className="dt-nav">
           <a className="dt-nav-brand" href={`/decorator/${tenantId}`}>
@@ -95,7 +99,7 @@ export default function DecoratorStaffProfile({ tenant }) {
         </nav>
 
         {/* ── HERO ── */}
-        <section style={{ padding: 'clamp(7rem,14vw,10rem) clamp(1.5rem,6vw,5rem) clamp(3rem,6vw,5rem)', background: 'var(--ink)', display: 'grid', gridTemplateColumns: member.profilePic ? '260px 1fr' : '1fr', gap: 'clamp(2rem,5vw,4rem)', alignItems: 'center', maxWidth: 1100, margin: '0 auto' }}>
+        <section className="dtp-hero" style={{ padding: 'clamp(7rem,14vw,10rem) clamp(1.5rem,6vw,5rem) clamp(3rem,6vw,5rem)', background: 'var(--ink)', gap: 'clamp(2rem,5vw,4rem)', alignItems: 'center', maxWidth: 1100, margin: '0 auto' }}>
           {member.profilePic && (
             <img src={member.profilePic} alt={member.name} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 4, boxShadow: '0 32px 80px rgba(0,0,0,0.4)' }} />
           )}

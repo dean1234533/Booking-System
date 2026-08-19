@@ -257,70 +257,6 @@ export default function TenantHome({ tenant: initialTenant }) {
       </Box>
  
  
-      {/* ── 2. FIND US & HOURS ───────────────────────────────────────────── */}
-      <Container id="find-us" sx={{ mt: 10, mb: 15 }}>
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={6}>
-            <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
-              <LocationOnIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
-              <Typography variant="h5" sx={{ fontFamily: displayFont, mb: 2 }}>Visit Us</Typography>
-              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', minHeight: '3em', fontWeight: 300 }}>{address}</Typography>
-             <Button 
-    variant="outlined" 
-    onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)}
-    sx={{ borderColor: 'black', color: 'black', fontWeight: 600, letterSpacing: 2, px: 4, py: 1.5, borderRadius: 0, '&:hover': { bgcolor: 'black', color: 'white' } }}
-  >
-    GET DIRECTIONS
-  </Button>
-            </Paper>
-          </Grid>
- 
-          <Grid item xs={12} md={6}>
-            <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
-              <AccessTimeIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
-              <Typography variant="h5" sx={{ fontFamily: displayFont, mb: 3 }}>Opening Hours</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {freshTenant?.hours ? (
-                  ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day, i) => {
-                    const dayData   = freshTenant?.hours?.[day] || freshTenant?.hours?.[day.toLowerCase()];
-                    const isClosed = !dayData || dayData.isClosed || !dayData.open || !dayData.close;
-                    const hourText = isClosed ? "Closed" : `${dayData.open} – ${dayData.close}`;
-                    return (
-                      <Box key={day}>
-                        <Box display="flex" justifyContent="space-between" alignItems="center">
-                          <Typography fontWeight={500} sx={{ letterSpacing: 1 }}>{day}</Typography>
-                          <Typography variant="body2" fontWeight={300} color={isClosed ? 'error.main' : 'text.secondary'}>
-                            {hourText}
-                          </Typography>
-                        </Box>
-                        {i < 6 && <Divider sx={{ mt: 1.5, opacity: 0.5 }} />}
-                      </Box>
-                    );
-                  })
-                ) : (
-                  <Typography variant="body1" sx={{ color: 'text.secondary', whiteSpace: 'pre-line' }}>
-                    {freshTenant?.openingHours || "Contact us for opening times"}
-                  </Typography>
-                )}
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Container>
- 
-      {/* ── 3. ABOUT ─────────────────────────────────────────────────────── */}
-      <Box id="about" sx={{ py: { xs: 12, md: 20 }, textAlign: 'center', backgroundColor: aboutBgColor, color: aboutTextColor }}>
-        <Container maxWidth="md">
-          <ContentCutIcon sx={{ color: brandColor, fontSize: 40, mb: 3, opacity: 0.6 }} />
-          <Typography variant="h3" sx={{ fontFamily: displayFont, mb: 4, letterSpacing: 2 }}>
-            Our Story
-          </Typography>
-          <Typography variant="h6" sx={{ fontWeight: 300, lineHeight: 2, opacity: 0.8, maxWidth: '750px', mx: 'auto', fontSize: '1.2rem' }}>
-            {freshTenant?.aboutUs || `Welcome to ${businessName}. Share your mission, your craft, and what sets your business apart.`}
-          </Typography>
-        </Container>
-      </Box>
- 
       {/* ── 3b. GALLERY ──────────────────────────────────────────────────── */}
       {freshTenant?.portfolioItems?.length > 0 && (
         <Box sx={{ py: { xs: 10, md: 15 }, bgcolor: "#111" }}>
@@ -376,6 +312,70 @@ export default function TenantHome({ tenant: initialTenant }) {
           </Container>
         </Box>
       )}
+
+      {/* ── 3d. ABOUT ────────────────────────────────────────────────────── */}
+      <Box id="about" sx={{ py: { xs: 12, md: 20 }, textAlign: 'center', backgroundColor: aboutBgColor, color: aboutTextColor }}>
+        <Container maxWidth="md">
+          <ContentCutIcon sx={{ color: brandColor, fontSize: 40, mb: 3, opacity: 0.6 }} />
+          <Typography variant="h3" sx={{ fontFamily: displayFont, mb: 4, letterSpacing: 2 }}>
+            Our Story
+          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 300, lineHeight: 2, opacity: 0.8, maxWidth: '750px', mx: 'auto', fontSize: '1.2rem' }}>
+            {freshTenant?.aboutUs || `Welcome to ${businessName}. Share your mission, your craft, and what sets your business apart.`}
+          </Typography>
+        </Container>
+      </Box>
+
+      {/* ── 3e. FIND US & HOURS ──────────────────────────────────────────── */}
+      <Container id="find-us" sx={{ mt: 10, mb: 15 }}>
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={6}>
+            <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
+              <LocationOnIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
+              <Typography variant="h5" sx={{ fontFamily: displayFont, mb: 2 }}>Visit Us</Typography>
+              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', minHeight: '3em', fontWeight: 300 }}>{address}</Typography>
+             <Button
+    variant="outlined"
+    onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)}
+    sx={{ borderColor: 'black', color: 'black', fontWeight: 600, letterSpacing: 2, px: 4, py: 1.5, borderRadius: 0, '&:hover': { bgcolor: 'black', color: 'white' } }}
+  >
+    GET DIRECTIONS
+  </Button>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
+              <AccessTimeIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
+              <Typography variant="h5" sx={{ fontFamily: displayFont, mb: 3 }}>Opening Hours</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {freshTenant?.hours ? (
+                  ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day, i) => {
+                    const dayData   = freshTenant?.hours?.[day] || freshTenant?.hours?.[day.toLowerCase()];
+                    const isClosed = !dayData || dayData.isClosed || !dayData.open || !dayData.close;
+                    const hourText = isClosed ? "Closed" : `${dayData.open} – ${dayData.close}`;
+                    return (
+                      <Box key={day}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Typography fontWeight={500} sx={{ letterSpacing: 1 }}>{day}</Typography>
+                          <Typography variant="body2" fontWeight={300} color={isClosed ? 'error.main' : 'text.secondary'}>
+                            {hourText}
+                          </Typography>
+                        </Box>
+                        {i < 6 && <Divider sx={{ mt: 1.5, opacity: 0.5 }} />}
+                      </Box>
+                    );
+                  })
+                ) : (
+                  <Typography variant="body1" sx={{ color: 'text.secondary', whiteSpace: 'pre-line' }}>
+                    {freshTenant?.openingHours || "Contact us for opening times"}
+                  </Typography>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Container>
 
       {/* ── 4. TEAM GRID or DIRECT BOOKING ──────────────────────────────── */}
       {/* Solo accounts (no staff) skip the "choose your barber" framing —

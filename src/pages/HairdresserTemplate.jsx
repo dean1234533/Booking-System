@@ -620,9 +620,15 @@ export default function HairdresserTemplate({ tenantData }) {
               {aboutQuote}
             </blockquote>
             <p className="hs-about-body">{aboutBody}</p>
-            <a href="#team" className="hs-btn-primary" style={{ background: '#1a1714' }}>
-              Meet the Team
-            </a>
+            {allTeam.length > 1 ? (
+              <a href="#team" className="hs-btn-primary" style={{ background: '#1a1714' }}>
+                Meet the Team
+              </a>
+            ) : (
+              <a href="#booking" className="hs-btn-primary" style={{ background: '#1a1714' }}>
+                Book Now
+              </a>
+            )}
           </div>
         </section>
 

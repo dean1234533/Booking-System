@@ -249,6 +249,24 @@ export const getShopStaff = async (shopId) => {
   return snap.docs.map(doc => ({ id: doc.id, ...doc.data(), shopId }));
 };
 
+// Owner-added staff member — a profile-only record with no login of its
+// own. The owner can fully manage it (services, gallery, socials) via the
+// dashboard since firestore.rules already lets the shop owner update/delete
+// any doc under their own barbers/{shopId}/staff subcollection. This is
+// separate from signUpBarber's staff path, which is for someone joining a
+// shop under their own account/login.
+export const addStaffMember = async (shopId, data) => {
+  if (!shopId) throw new Error("Missing shopId");
+  const staffRef = doc(collection(db, "barbers", shopId, "staff"));
+  await setDoc(staffRef, { uid: staffRef.id, shopId, role: "staff", ...data });
+  return staffRef.id;
+};
+
+export const removeStaffMember = (shopId, staffId) => {
+  if (!shopId || !staffId) throw new Error("Missing shopId or staffId");
+  return deleteDoc(doc(db, "barbers", shopId, "staff", staffId));
+};
+
 export const uploadBarberImage = async (file, fileName, barberId, isStaff = false, shopId = null) => {
   if (!file || !barberId) return null;
   const options = { maxSizeMB: 0.2, maxWidthOrHeight: 800, useWebWorker: true, fileType: "image/jpeg" };

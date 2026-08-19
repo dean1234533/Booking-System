@@ -59,6 +59,7 @@ import BookingsTab  from "../components/dashboard/tabs/BookingsTab";
 import ProfileTab   from "../components/dashboard/tabs/ProfileTab";
 import EditPageTab  from "../components/dashboard/tabs/EditPageTab";
 import ServicesTab  from "../components/dashboard/tabs/ServicesTab";
+import StaffTab     from "../components/dashboard/tabs/StaffTab";
 import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
 import ReviewsTab   from "../components/dashboard/tabs/ReviewsTab";
 import DesignTab    from "../components/dashboard/tabs/DesignTab";
@@ -670,6 +671,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "bookings",      label: "Bookings", icon: <StoreIcon /> },
     { key: "edit-page",     label: "Profile",  icon: <PersonIcon /> },
     ...(!isTrainer ? [{ key: "services", label: "Services", icon: <ListIcon /> }] : []),
+    ...(userRole.isOwner ? [{ key: "staff", label: "Team", icon: <PeopleIcon /> }] : []),
     { key: "finance",       label: "Finance",  icon: <PaymentsIcon /> },
     ...(userRole.isOwner ? [{ key: "reviews", label: "Reviews", icon: <ReviewsIcon /> }]  : []),
     ...(userRole.isOwner ? [{ key: "design",    label: "Design",    icon: <PaletteIcon /> }]  : []),
@@ -685,6 +687,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const tabIdx = (key) => tabs.some((t) => t.key === key) ? key : null;
 
   const IDX_FINANCE = tabIdx("finance");
+  const IDX_STAFF   = tabIdx("staff");
   const IDX_REVIEWS = tabIdx("reviews");
   const IDX_DESIGN  = tabIdx("design");
   const IDX_DOMAIN  = tabIdx("domain");
@@ -726,6 +729,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       items: filterItems([
         { label: "Profile",  icon: <PersonIcon />,  index: tabIdx("edit-page") },
         ...(!isTrainer ? [{ label: "Services", icon: <ListIcon />, index: tabIdx("services") }] : []),
+        ...(userRole.isOwner ? [{ label: "Team", icon: <PeopleIcon />, index: IDX_STAFF }] : []),
         ...(userRole.isOwner                   ? [{ label: "Design",    icon: <PaletteIcon />,  index: IDX_DESIGN }] : []),
         ...(userRole.isOwner && !initialTenant ? [{ label: "Domain",    icon: <LanguageIcon />, index: IDX_DOMAIN }] : []),
       ]),
@@ -1071,6 +1075,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             businessType={profile.businessType}
           />
         </TabPanel>
+
+        {/* ── Team (owner only, all business types) ── */}
+        {userRole.isOwner && (
+          <TabPanel value={tab} index={IDX_STAFF}>
+            <StaffTab shopId={barber.uid} brandColor={brandColor} />
+          </TabPanel>
+        )}
 
         {/* ── Services (non-trainer only) ── */}
         {!isTrainer && (

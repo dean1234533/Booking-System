@@ -68,8 +68,9 @@ function SocialLink({ href, label, icon, hoverColor }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function BarberProfile({ tenant: initialTenant }) {
-  const { id: barberId } = useParams();
+export default function BarberProfile({ tenant: initialTenant, barberId: barberIdProp }) {
+  const { id: paramId } = useParams();
+  const barberId = barberIdProp || paramId;
   const navigate  = useNavigate();
   const location  = useLocation();
 

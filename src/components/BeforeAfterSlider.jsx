@@ -6,6 +6,8 @@ const FALLBACK_AFTER  = "https://images.unsplash.com/photo-1598928506311-c55ded9
 export default function BeforeAfterSlider({ before, after, aspectRatio = "4/5", radius = 8 }) {
   const [pos, setPos] = useState(50);
   const containerRef = useRef(null);
+  const touchStart = useRef(null);
+  const touchAxis = useRef(null);
 
   const updatePos = (clientX) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -14,12 +16,32 @@ export default function BeforeAfterSlider({ before, after, aspectRatio = "4/5", 
     setPos(Math.max(0, Math.min(100, x)));
   };
 
+  const handleTouchStart = (e) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+    touchAxis.current = null;
+  };
+
+  const handleTouchMove = (e) => {
+    const t = e.touches[0];
+    if (!touchAxis.current && touchStart.current) {
+      const dx = Math.abs(t.clientX - touchStart.current.x);
+      const dy = Math.abs(t.clientY - touchStart.current.y);
+      // Wait for a small, unambiguous movement before locking the gesture
+      // to an axis — this is what lets a vertical swipe fall through to
+      // the page's native scroll instead of getting stuck on the slider.
+      if (dx < 6 && dy < 6) return;
+      touchAxis.current = dx > dy ? "x" : "y";
+    }
+    if (touchAxis.current === "x") updatePos(t.clientX);
+  };
+
   return (
     <div
       ref={containerRef}
       onMouseMove={(e) => updatePos(e.clientX)}
-      onTouchStart={(e) => updatePos(e.touches[0].clientX)}
-      onTouchMove={(e) => updatePos(e.touches[0].clientX)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       style={{
         position: "relative",
         width: "100%",
@@ -27,7 +49,7 @@ export default function BeforeAfterSlider({ before, after, aspectRatio = "4/5", 
         borderRadius: radius,
         overflow: "hidden",
         cursor: "col-resize",
-        touchAction: "none",
+        touchAction: "pan-y",
         userSelect: "none",
         WebkitUserSelect: "none",
         background: "#111",

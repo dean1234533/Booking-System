@@ -12,7 +12,16 @@ export default defineConfig({
       filename: "sw.js",
       registerType: "autoUpdate",
       injectManifest: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,jpg,jpeg}"],
+        // Deliberately excludes html: precaching index.html lets Workbox's
+        // precache route (registered first, matches by exact URL) win over
+        // sw.js's own NavigationRoute(NetworkFirst) for every document
+        // request — freezing returning visitors onto whatever HTML/CSP/
+        // headers existed at their last service-worker install, silently,
+        // forever, regardless of how many times the site is redeployed.
+        // The NavigationRoute already in sw.js is solely responsible for
+        // documents; this only precaches genuinely static, content-hashed
+        // assets where CacheFirst-via-precache is actually correct.
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2,jpg,jpeg}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       includeAssets: ["images/**"],

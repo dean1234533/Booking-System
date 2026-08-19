@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box, Avatar, Button, Grid, TextField, Typography, Divider,
   InputAdornment, Accordion, AccordionSummary, AccordionDetails, IconButton, MenuItem,
+  CircularProgress,
 } from "@mui/material";
 import {
   AccessTime as AccessTimeIcon,
@@ -12,6 +13,7 @@ import {
   AddCircle as AddCircleIcon,
   Image as ImageIcon,
 } from "@mui/icons-material";
+import { uploadBarberImage } from "../../../firebase/firestore";
 
 const TikTokIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
@@ -43,7 +45,30 @@ function Section({ title, defaultExpanded = false, children }) {
   );
 }
 
-function ImageField({ label, value, onChange, hint }) {
+function ImageField({ label, value, onChange, hint, barberId, fieldKey = "image" }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (!barberId) {
+      setError("Can't upload yet — save your profile once first, then try again.");
+      return;
+    }
+    setUploading(true);
+    setError("");
+    try {
+      const name = `${fieldKey}_${Date.now()}`;
+      const url = await uploadBarberImage(file, name, barberId);
+      onChange(url);
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      setError("Upload failed — try again or paste an image URL instead.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <Box>
       <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>{label}</Typography>
@@ -54,17 +79,18 @@ function ImageField({ label, value, onChange, hint }) {
           backgroundSize: "cover", backgroundPosition: "center",
           display: "flex", alignItems: "center", justifyContent: "center", color: "#bbb",
         }}>
-          {!value && <ImageIcon fontSize="small" />}
+          {uploading ? <CircularProgress size={18} /> : !value && <ImageIcon fontSize="small" />}
         </Box>
         <Box flex={1}>
           <TextField size="small" fullWidth placeholder="https://… or paste a URL"
             value={value || ""} onChange={e => onChange(e.target.value)} />
-          <Button size="small" component="label" sx={{ mt: 0.5, fontSize: 11 }}>
-            Upload file
-            <input type="file" accept="image/*" hidden
-              onChange={e => { const f = e.target.files?.[0]; if (f) onChange(URL.createObjectURL(f)); }} />
+          <Button size="small" component="label" disabled={uploading} sx={{ mt: 0.5, fontSize: 11 }}>
+            {uploading ? "Uploading…" : "Upload file"}
+            <input type="file" accept="image/*" hidden disabled={uploading}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
           </Button>
-          {hint && <Typography variant="caption" color="text.secondary" display="block">{hint}</Typography>}
+          {error && <Typography variant="caption" color="error" display="block">{error}</Typography>}
+          {hint && !error && <Typography variant="caption" color="text.secondary" display="block">{hint}</Typography>}
         </Box>
       </Box>
     </Box>
@@ -78,7 +104,7 @@ const safeOpeningHours = (val) => {
 };
 
 /* ── Decorator page sections ─────────────────────────────────────────────── */
-function DecoratorPageSections({ profile, set, brandColor }) {
+function DecoratorPageSections({ profile, set, brandColor, barberId }) {
   const portfolioItems = profile.portfolioItems?.length > 0
     ? profile.portfolioItems
     : [{ before: "", after: "", label: "" }];
@@ -133,7 +159,8 @@ function DecoratorPageSections({ profile, set, brandColor }) {
             <ImageField label="Hero Background Image"
               hint="Full-width background image for the hero section"
               value={profile.heroImage || ""}
-              onChange={v => set("heroImage", v)} />
+              onChange={v => set("heroImage", v)}
+              barberId={barberId} fieldKey="hero_bg" />
           </Grid>
         </Grid>
       </Section>
@@ -172,7 +199,8 @@ function DecoratorPageSections({ profile, set, brandColor }) {
           <Grid item xs={12}>
             <ImageField label="Services section side image"
               value={profile.servicesImage || ""}
-              onChange={v => set("servicesImage", v)} />
+              onChange={v => set("servicesImage", v)}
+              barberId={barberId} fieldKey="services_img" />
           </Grid>
         </Grid>
         {services.map((svc, i) => (
@@ -221,10 +249,12 @@ function DecoratorPageSections({ profile, set, brandColor }) {
             </Box>
             <Grid container spacing={1.5}>
               <Grid item xs={12} sm={6}>
-                <ImageField label="Before image" value={item.before || ""} onChange={v => updatePortfolio(i, "before", v)} />
+                <ImageField label="Before image" value={item.before || ""} onChange={v => updatePortfolio(i, "before", v)}
+                  barberId={barberId} fieldKey={`portfolio_${i}_before`} />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <ImageField label="After image" value={item.after || ""} onChange={v => updatePortfolio(i, "after", v)} />
+                <ImageField label="After image" value={item.after || ""} onChange={v => updatePortfolio(i, "after", v)}
+                  barberId={barberId} fieldKey={`portfolio_${i}_after`} />
               </Grid>
               <Grid item xs={12}>
                 <TextField fullWidth size="small" label="Caption / Location"
@@ -270,7 +300,7 @@ function DecoratorPageSections({ profile, set, brandColor }) {
 }
 
 /* ── Before & After Portfolio (shared by hairdresser / barber) ──────────── */
-function PortfolioSection({ profile, set, brandColor, headingPlaceholder, subtextPlaceholder }) {
+function PortfolioSection({ profile, set, brandColor, barberId, headingPlaceholder, subtextPlaceholder }) {
   const portfolioItems = profile.portfolioItems?.length > 0
     ? profile.portfolioItems
     : [{ before: "", after: "", label: "" }];
@@ -306,10 +336,12 @@ function PortfolioSection({ profile, set, brandColor, headingPlaceholder, subtex
           </Box>
           <Grid container spacing={1.5}>
             <Grid item xs={12} sm={6}>
-              <ImageField label="Before image" value={item.before || ""} onChange={v => updatePortfolio(i, "before", v)} />
+              <ImageField label="Before image" value={item.before || ""} onChange={v => updatePortfolio(i, "before", v)}
+                barberId={barberId} fieldKey={`portfolio_${i}_before`} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <ImageField label="After image" value={item.after || ""} onChange={v => updatePortfolio(i, "after", v)} />
+              <ImageField label="After image" value={item.after || ""} onChange={v => updatePortfolio(i, "after", v)}
+                barberId={barberId} fieldKey={`portfolio_${i}_after`} />
             </Grid>
             <Grid item xs={12}>
               <TextField fullWidth size="small" label="Caption"
@@ -329,7 +361,7 @@ function PortfolioSection({ profile, set, brandColor, headingPlaceholder, subtex
 }
 
 /* ── Hairdresser page sections ───────────────────────────────────────────── */
-function HairdresserPageSections({ profile, set, brandColor }) {
+function HairdresserPageSections({ profile, set, brandColor, barberId }) {
   const services = profile.services?.length > 0 ? profile.services : [
     { name: "Cut & Blow Dry", duration: "60 min", price: 65 },
     { name: "Full Colour",    duration: "2 hrs",  price: 110 },
@@ -376,7 +408,8 @@ function HairdresserPageSections({ profile, set, brandColor }) {
             <ImageField label="Hero Image (split-screen)"
               hint="Left-side image in the hero section. Recommended: portrait crop."
               value={profile.heroImage || ""}
-              onChange={v => set("heroImage", v)} />
+              onChange={v => set("heroImage", v)}
+              barberId={barberId} fieldKey="hero_image" />
           </Grid>
         </Grid>
       </Section>
@@ -405,7 +438,8 @@ function HairdresserPageSections({ profile, set, brandColor }) {
             <ImageField label="About Section Image (portrait)"
               hint="Recommended: 3:4 portrait crop, min 800px wide"
               value={profile.heroImageMobile || ""}
-              onChange={v => set("heroImageMobile", v)} />
+              onChange={v => set("heroImageMobile", v)}
+              barberId={barberId} fieldKey="about_image" />
           </Grid>
         </Grid>
       </Section>
@@ -415,7 +449,8 @@ function HairdresserPageSections({ profile, set, brandColor }) {
           <ImageField label="Services section side image"
             hint="Appears beside your services list"
             value={profile.servicesImage || ""}
-            onChange={v => set("servicesImage", v)} />
+            onChange={v => set("servicesImage", v)}
+            barberId={barberId} fieldKey="services_image" />
         </Box>
         {services.map((svc, i) => (
           <Box key={i} sx={{ border: "1px solid #eee", borderRadius: 2, p: 2, mb: 1.5 }}>
@@ -445,7 +480,7 @@ function HairdresserPageSections({ profile, set, brandColor }) {
         </Button>
       </Section>
 
-      <PortfolioSection profile={profile} set={set} brandColor={brandColor}
+      <PortfolioSection profile={profile} set={set} brandColor={brandColor} barberId={barberId}
         headingPlaceholder="Recent transformations"
         subtextPlaceholder="Drag the slider on each image to reveal the difference a fresh cut and colour makes." />
 
@@ -477,7 +512,7 @@ function HairdresserPageSections({ profile, set, brandColor }) {
 }
 
 /* ── Barber page sections ────────────────────────────────────────────────── */
-function BarberPageSections({ profile, set, brandColor }) {
+function BarberPageSections({ profile, set, brandColor, barberId }) {
   const services = profile.services?.length > 0 ? profile.services : [{ name: "", price: "" }];
   const updateService = (i, field, val) => {
     set("services", services.map((s, idx) => idx === i ? { ...s, [field]: val } : s));
@@ -570,7 +605,7 @@ function BarberPageSections({ profile, set, brandColor }) {
         </Button>
       </Section>
 
-      <PortfolioSection profile={profile} set={set} brandColor={brandColor}
+      <PortfolioSection profile={profile} set={set} brandColor={brandColor} barberId={barberId}
         headingPlaceholder="Recent work"
         subtextPlaceholder="Drag the slider on each image to reveal the difference a professional cut makes." />
     </>
@@ -578,7 +613,7 @@ function BarberPageSections({ profile, set, brandColor }) {
 }
 
 /* ── Trainer page sections ───────────────────────────────────────────────── */
-function TrainerPageSections({ profile, set, brandColor }) {
+function TrainerPageSections({ profile, set, brandColor, barberId }) {
   const specializations = (profile.specializations?.length > 0 ? profile.specializations : null) || [
     { title: "Strength & Conditioning",    description: "Build raw power and muscular endurance through proven compound lifting and progressive overload." },
     { title: "Fat Loss & Transformation",  description: "Science-backed nutrition guidance paired with high-intensity training protocols for real results." },
@@ -625,7 +660,8 @@ function TrainerPageSections({ profile, set, brandColor }) {
             <ImageField label="Hero Background Image"
               hint="Dark overlay applied automatically"
               value={profile.heroBgImage || ""}
-              onChange={v => set("heroBgImage", v)} />
+              onChange={v => set("heroBgImage", v)}
+              barberId={barberId} fieldKey="hero_bg" />
           </Grid>
         </Grid>
       </Section>
@@ -651,7 +687,8 @@ function TrainerPageSections({ profile, set, brandColor }) {
             <ImageField label="Coach / About Section Image"
               hint="Portrait image shown beside your about text"
               value={profile.heroImage || ""}
-              onChange={v => set("heroImage", v)} />
+              onChange={v => set("heroImage", v)}
+              barberId={barberId} fieldKey="about_image" />
           </Grid>
         </Grid>
       </Section>
@@ -688,7 +725,7 @@ function TrainerPageSections({ profile, set, brandColor }) {
           helperText="A full-width video section appears on your page when this is set." />
       </Section>
 
-      <PortfolioSection profile={profile} set={set} brandColor={brandColor}
+      <PortfolioSection profile={profile} set={set} brandColor={brandColor} barberId={barberId}
         headingPlaceholder="Client transformations"
         subtextPlaceholder="Drag the slider on each image to reveal real client results." />
 
@@ -1031,10 +1068,10 @@ export default function EditPageTab({
       )}
 
       {/* ── Business-type specific page content ── */}
-      {type === "barber"      && <BarberPageSections      profile={profile} set={set} brandColor={brandColor} />}
-      {type === "decorator"   && <DecoratorPageSections   profile={profile} set={set} brandColor={brandColor} />}
-      {type === "hairdresser" && <HairdresserPageSections profile={profile} set={set} brandColor={brandColor} />}
-      {type === "trainer"     && <TrainerPageSections      profile={profile} set={set} brandColor={brandColor} />}
+      {type === "barber"      && <BarberPageSections      profile={profile} set={set} brandColor={brandColor} barberId={profile?.uid} />}
+      {type === "decorator"   && <DecoratorPageSections   profile={profile} set={set} brandColor={brandColor} barberId={profile?.uid} />}
+      {type === "hairdresser" && <HairdresserPageSections profile={profile} set={set} brandColor={brandColor} barberId={profile?.uid} />}
+      {type === "trainer"     && <TrainerPageSections      profile={profile} set={set} brandColor={brandColor} barberId={profile?.uid} />}
 
       {/* ── Danger Zone ── */}
       <Divider sx={{ my: 4 }} />

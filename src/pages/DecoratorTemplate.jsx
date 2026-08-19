@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, addDoc, serverTimestamp, query, where } from "firebase/firestore";
+import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { Star, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
-import SlotPicker from '../components/SlotPicker';
 
 /* ─── Global style injection ─────────────────────────────── */
 export const GlobalStyles = () => (
@@ -186,8 +185,7 @@ export const GlobalStyles = () => (
     .dt-team { padding: 6rem clamp(1.5rem, 6vw, 6rem); background: var(--cream); }
     .dt-team-header { text-align: center; max-width: 480px; margin: 0 auto 3.5rem; }
     .dt-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto; }
-    .dt-team-card { text-align: center; cursor: pointer; transition: transform 0.25s ease; }
-    .dt-team-card:hover { transform: translateY(-4px); }
+    .dt-team-card { text-align: center; }
     .dt-team-photo { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 4px; display: block; margin-bottom: 1rem; box-shadow: 0 4px 20px rgba(28,25,23,0.12); }
     .dt-team-avatar { width: 100%; aspect-ratio: 3/4; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 2.5rem; font-weight: 700; color: #fff; margin-bottom: 1rem; }
     .dt-team-name { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 700; color: var(--ink); margin-bottom: 0.25rem; }
@@ -341,8 +339,6 @@ const DecoratorTemplate = ({ tenantData }) => {
   const [enquiryError, setEnquiryError] = useState("");
   const [legalModal, setLegalModal] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [slots, setSlots] = useState([]);
-  const [slotsLoading, setSlotsLoading] = useState(true);
 
   useEffect(() => {
     if (tenantData) localStorage.setItem('active_tenant_branding', JSON.stringify(tenantData));
@@ -375,22 +371,6 @@ const DecoratorTemplate = ({ tenantData }) => {
       }
     }
     fetchTeam();
-  }, [tenantData?.id]);
-
-  useEffect(() => {
-    const shopId = tenantData?.id;
-    if (!shopId) return;
-    setSlotsLoading(true);
-    const today = new Date().toISOString().split('T')[0];
-    getDocs(query(collection(db, 'slots'), where('barberId', '==', shopId), where('isBooked', '==', false)))
-      .then(snap => {
-        const available = snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .filter(s => s.date >= today);
-        setSlots(available);
-      })
-      .catch(() => {})
-      .finally(() => setSlotsLoading(false));
   }, [tenantData?.id]);
 
   const nextReview = () => setCurrentReviewIndex((prev) => (prev + 1) % reviews.length);
@@ -512,7 +492,7 @@ const DecoratorTemplate = ({ tenantData }) => {
           <span className="dt-nav-name">{businessName}</span>
         </a>
         <div className="dt-nav-links">
-          {[['Services','services'],['Portfolio','portfolio'],...(allTeam.length > 0 ? [['Team','team']] : []),['Reviews','reviews'],['Book','booking'],['Contact','contact']].map(([label, id]) => (
+          {[['Services','services'],['Portfolio','portfolio'],...(allTeam.length > 0 ? [['Team','team']] : []),['Reviews','reviews'],['Contact','contact']].map(([label, id]) => (
             <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }}>{label}</a>
           ))}
         </div>
@@ -524,7 +504,7 @@ const DecoratorTemplate = ({ tenantData }) => {
         </button>
       </nav>
       <div className={`dt-mobile-menu${mobileMenuOpen ? ' open' : ''}`}>
-        {[['Services','services'],['Portfolio','portfolio'],...(allTeam.length > 0 ? [['Team','team']] : []),['Reviews','reviews'],['Book','booking'],['Contact','contact']].map(([label, id]) => (
+        {[['Services','services'],['Portfolio','portfolio'],...(allTeam.length > 0 ? [['Team','team']] : []),['Reviews','reviews'],['Contact','contact']].map(([label, id]) => (
           <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); setMobileMenuOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }}>{label}</a>
         ))}
       </div>
@@ -642,8 +622,7 @@ const DecoratorTemplate = ({ tenantData }) => {
           </div>
           <div className="dt-team-grid">
             {allTeam.map((member, i) => (
-              <div key={member.id || i} className="dt-team-card"
-                onClick={() => navigate(`/decorator/${tenantData?.id}/${member.id}`)}>
+              <div key={member.id || i} className="dt-team-card">
                 {member.profilePic ? (
                   <img src={member.profilePic} alt={member.name} className="dt-team-photo" />
                 ) : (
@@ -720,29 +699,6 @@ const DecoratorTemplate = ({ tenantData }) => {
               <p style={{ textAlign: 'center', color: 'var(--ink-soft)' }}>No reviews yet.</p>
             )}
 
-          </div>
-        </section>
-
-        {/* ── BOOKING SLOTS ── */}
-        <section id="booking" style={{ padding: 'clamp(4rem,8vw,8rem) clamp(1.5rem,6vw,5rem)', background: 'var(--sand)' }}>
-          <div style={{ maxWidth: 860, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: brandColor }}>
-                AVAILABILITY
-              </span>
-              <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(1.8rem,4vw,2.6rem)', color: 'var(--ink)', marginTop: '0.5rem', fontWeight: 700 }}>
-                Book a Site Visit
-              </h2>
-              <p style={{ color: 'var(--ink-soft)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
-                Choose a convenient slot and we'll come to you — free of charge, no obligation.
-              </p>
-            </div>
-            <SlotPicker
-              slots={slots}
-              loading={slotsLoading}
-              brandColor={brandColor}
-              onSelect={slot => navigate(`/book/${tenantData?.id}/${slot.id}?isStaff=false&shopId=${tenantData?.id}`)}
-            />
           </div>
         </section>
 

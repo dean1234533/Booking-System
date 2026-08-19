@@ -871,8 +871,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,56px)', letterSpacing: '0.04em', textAlign: 'center', marginBottom: 48 }}>Meet the Trainers</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 32 }}>
               {team.map((member, i) => (
-                <div key={member.id || i} className="card-hover" style={{ textAlign: 'center', cursor: 'pointer' }}
-                  onClick={() => navigate(`/pt-booking/${barber?.uid}/${member.id}`)}>
+                <div key={member.id || i} style={{ textAlign: 'center' }}>
                   {member.profilePic ? (
                     <img src={member.profilePic} alt={member.name} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', borderRadius: 12, display: 'block', marginBottom: 16 }} />
                   ) : (

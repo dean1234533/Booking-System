@@ -24,6 +24,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getShopStaff, getBarber } from "../firebase/firestore";
+import BeforeAfterSlider from "../components/BeforeAfterSlider";
 // ── TikTok SVG ────────────────────────────────────────────────────────────────
 const TikTokIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: "block" }}>
@@ -314,6 +315,35 @@ export default function TenantHome({ tenant: initialTenant }) {
         </Container>
       </Box>
  
+      {/* ── 3b. GALLERY ──────────────────────────────────────────────────── */}
+      {freshTenant?.portfolioItems?.length > 0 && (
+        <Box sx={{ py: { xs: 10, md: 15 }, bgcolor: "#111" }}>
+          <Container maxWidth="lg">
+            <Box sx={{ mb: 8, textAlign: "center" }}>
+              <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>
+                GALLERY
+              </Typography>
+              <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont, color: "#fff" }}>
+                {freshTenant?.portfolioHeading || "Recent work"}
+              </Typography>
+              <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
+            </Box>
+            <Grid container spacing={3}>
+              {freshTenant.portfolioItems.map((item, i) => (
+                <Grid item xs={12} sm={6} md={4} key={i}>
+                  <BeforeAfterSlider before={item.before} after={item.after} />
+                  {item.label && (
+                    <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", textAlign: "center", mt: 1.5 }}>
+                      {item.label}
+                    </Typography>
+                  )}
+                </Grid>
+              ))}
+            </Grid>
+          </Container>
+        </Box>
+      )}
+
       {/* ── 4. TEAM GRID ─────────────────────────────────────────────────── */}
       {/* Solo accounts (no staff) skip the "choose your barber" framing —
           there's nothing to choose, so this reads as a direct booking CTA

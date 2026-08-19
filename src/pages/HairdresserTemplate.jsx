@@ -7,13 +7,13 @@ import SlotPicker from '../components/SlotPicker';
 import TenantFooter from '../components/TenantFooter';
 import BeforeAfterSlider from '../components/BeforeAfterSlider';
 import { formatCurrency } from '../stripe/formatters';
-import { Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography,
 } from '@mui/material';
 
 /* ─── Injected styles ──────────────────────────────────────────────────────── */
-const HairdresserStyles = () => (
+export const HairdresserStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@1,300;1,400&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -379,7 +379,6 @@ export default function HairdresserTemplate({ tenantData }) {
   const [menuOpen,   setMenuOpen]   = useState(false);
   const [modal,      setModal]      = useState(null);
   const [revIdx,     setRevIdx]     = useState(0);
-  const [teamMember, setTeamMember] = useState(null);
 
   const shopId      = tenantData?.id || tenantData?.uid;
   const brandColor  = tenantData?.brandColor  || '#a07850';
@@ -643,6 +642,8 @@ export default function HairdresserTemplate({ tenantData }) {
               <div
                 key={member.id || i}
                 className="hs-team-card"
+                onClick={() => !member.isOwner && navigate(`/hairdresser/${shopId}/${member.id}`)}
+                style={{ cursor: member.isOwner ? 'default' : 'pointer' }}
               >
                 {member.profilePic ? (
                   <img src={member.profilePic} alt={member.name} className="hs-team-photo" />
@@ -752,88 +753,6 @@ export default function HairdresserTemplate({ tenantData }) {
             />
           </div>
         </section>
-
-        {/* ─── TEAM PROFILE MODAL ─── */}
-        {teamMember && (
-          <div
-            onClick={() => setTeamMember(null)}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 9999,
-              background: 'rgba(26,23,20,0.75)', backdropFilter: 'blur(6px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem',
-            }}
-          >
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{
-                background: '#fdfcfa', borderRadius: 6, maxWidth: 460, width: '100%',
-                overflow: 'hidden', boxShadow: '0 40px 100px rgba(0,0,0,0.35)',
-                position: 'relative',
-              }}
-            >
-              {/* Header strip */}
-              <div style={{ height: 5, background: brandColor }} />
-              <button
-                onClick={() => setTeamMember(null)}
-                style={{
-                  position: 'absolute', top: 14, right: 14, background: 'transparent',
-                  border: 'none', cursor: 'pointer', color: '#a8a29e', padding: 4,
-                  display: 'flex', alignItems: 'center',
-                }}
-              >
-                <X size={20} />
-              </button>
-              <div style={{ display: 'flex', gap: '1.5rem', padding: '1.75rem', alignItems: 'flex-start' }}>
-                {teamMember.profilePic ? (
-                  <img
-                    src={teamMember.profilePic}
-                    alt={teamMember.name}
-                    style={{ width: 90, height: 110, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
-                  />
-                ) : (
-                  <div style={{
-                    width: 90, height: 110, borderRadius: 4, flexShrink: 0,
-                    background: brandColor, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: "'Playfair Display', serif", fontSize: '2.5rem', fontWeight: 700, color: '#fff',
-                  }}>
-                    {teamMember.name?.[0]?.toUpperCase()}
-                  </div>
-                )}
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: '0.4rem' }}>
-                    {teamMember.isOwner ? 'The Team' : 'Our Stylist'}
-                  </p>
-                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', fontWeight: 700, color: '#1a1714', marginBottom: '0.3rem', lineHeight: 1.1 }}>
-                    {teamMember.name}
-                  </h3>
-                  <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#a8a29e' }}>
-                    {teamMember.role || teamMember.specialty || 'Stylist'}
-                  </p>
-                </div>
-              </div>
-              {teamMember.bio && (
-                <div style={{ padding: '0 1.75rem 1.75rem' }}>
-                  <p style={{ fontSize: '0.9rem', color: '#5c5449', lineHeight: 1.85, fontWeight: 300 }}>
-                    {teamMember.bio}
-                  </p>
-                </div>
-              )}
-              <div style={{ padding: '0 1.75rem 1.75rem' }}>
-                <a
-                  href="#booking"
-                  onClick={() => setTeamMember(null)}
-                  style={{
-                    display: 'inline-block', padding: '0.85rem 2rem', background: brandColor,
-                    color: '#fff', textDecoration: 'none', borderRadius: 2,
-                    fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-                  }}
-                >
-                  Book with {teamMember.name?.split(' ')[0]}
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>{/* end hs-page */}
 

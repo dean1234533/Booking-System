@@ -113,7 +113,9 @@ function getYouTubeEmbedUrl(url) {
     let id = null;
     if (u.hostname === 'youtu.be') id = u.pathname.slice(1);
     else if (u.hostname.includes('youtube.com'))
-      id = u.searchParams.get('v') || u.pathname.split('/embed/')[1];
+      id = u.searchParams.get('v')
+        || u.pathname.split('/embed/')[1]
+        || u.pathname.split('/shorts/')[1];
     return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
   } catch { return null; }
 }

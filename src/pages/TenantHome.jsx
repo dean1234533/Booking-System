@@ -25,7 +25,8 @@ import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getShopStaff, getBarber } from "../firebase/firestore";
 import BeforeAfterSlider from "../components/BeforeAfterSlider";
-import BarberProfile from "./BarberProfile";
+import SlotPicker from "../components/SlotPicker";
+import { useSlots } from "../hooks/useSlots";
 // ── TikTok SVG ────────────────────────────────────────────────────────────────
 const TikTokIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: "block" }}>
@@ -81,6 +82,8 @@ export default function TenantHome({ tenant: initialTenant }) {
   const [freshTenant, setFreshTenant] = useState(initialTenant || location.state?.tenant);
   const [openPrivacy, setOpenPrivacy] = useState(false);
   const [openTerms, setOpenTerms] = useState(false);
+
+  const { slots, loading: slotsLoading, error: slotsError } = useSlots(freshTenant?.id);
  
   const fontKey     = freshTenant?.siteFont;
   const displayFont = getFontFamily(fontKey, "playfair");
@@ -197,14 +200,7 @@ export default function TenantHome({ tenant: initialTenant }) {
     );
   }
 
-  // Solo account (no staff beyond the owner) — no one to choose between, so
-  // this URL renders the owner's full profile directly (hero, services,
-  // gallery, reviews, booking) instead of a "shop overview" with a single
-  // lonely card the visitor has to click through. Only real shops with a
-  // team get the card-picker layout below.
-  if (team.length <= 1) {
-    return <BarberProfile tenant={freshTenant} barberId={freshTenant?.id} />;
-  }
+  const isSolo = team.length <= 1;
 
   return (
     <Box sx={{ bgcolor: "#FFFFFF", minHeight: "100vh", overflowX: 'hidden' }}>
@@ -354,17 +350,64 @@ export default function TenantHome({ tenant: initialTenant }) {
         </Box>
       )}
 
-      {/* ── 4. TEAM GRID ─────────────────────────────────────────────────── */}
+      {/* ── 3c. SERVICES (solo only — framed around the business, not a name) ── */}
+      {isSolo && freshTenant?.services?.length > 0 && (
+        <Box sx={{ py: { xs: 10, md: 15 }, bgcolor: "#f8f7f4" }}>
+          <Container maxWidth="sm">
+            <Box sx={{ mb: 8, textAlign: "center" }}>
+              <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>
+                SERVICES
+              </Typography>
+              <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>
+                What We Offer
+              </Typography>
+              <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
+            </Box>
+            <Stack spacing={0}>
+              {freshTenant.services.map((svc, i) => (
+                <Box key={i} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 2, borderBottom: i < freshTenant.services.length - 1 ? "1px solid rgba(0,0,0,0.08)" : "none" }}>
+                  <Typography sx={{ fontSize: "1rem", color: "#333" }}>{svc.name}</Typography>
+                  <Typography sx={{ fontSize: "1rem", fontWeight: 700, color: brandColor }}>
+                    {typeof svc.price === "number" ? `£${svc.price}` : svc.price}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          </Container>
+        </Box>
+      )}
+
+      {/* ── 4. TEAM GRID or DIRECT BOOKING ──────────────────────────────── */}
       {/* Solo accounts (no staff) skip the "choose your barber" framing —
-          there's nothing to choose, so this reads as a direct booking CTA
-          instead of a pointless single-option picker. */}
+          there's nothing to choose, so this books directly against the
+          owner's own slots instead of a pointless single-option picker. */}
+      {isSolo ? (
+        <Container id="barber-section" sx={{ py: 15 }}>
+          <Box sx={{ mb: 8, textAlign: "center" }}>
+            <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>
+              AVAILABILITY
+            </Typography>
+            <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>
+              Book Your Appointment
+            </Typography>
+            <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
+          </Box>
+          <SlotPicker
+            slots={slots}
+            loading={slotsLoading}
+            error={slotsError}
+            brandColor={brandColor}
+            onSelect={(slot) => navigate(`/book/${freshTenant.id}/${slot.id}?isStaff=false&shopId=${freshTenant.id}`, { state: { tenant: freshTenant } })}
+          />
+        </Container>
+      ) : (
       <Container id="barber-section" sx={{ py: 15 }}>
         <Box sx={{ mb: 10, textAlign: 'center' }}>
           <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>
-            {team.length > 1 ? "EXPERTS" : "BOOK NOW"}
+            EXPERTS
           </Typography>
           <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>
-            {team.length > 1 ? "Our Master Barbers" : "Ready when you are"}
+            Our Master Barbers
           </Typography>
           <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: 'auto' }} />
         </Box>
@@ -451,7 +494,8 @@ export default function TenantHome({ tenant: initialTenant }) {
           })}
         </Grid>
       </Container>
- 
+      )}
+
       {/* ── 5. REVIEWS ───────────────────────────────────────────────────────── */}
       <Box id="reviews" sx={{
         py: { xs: 10, md: 15 }, bgcolor: "#f8f7f4",

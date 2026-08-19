@@ -10,7 +10,10 @@ import {
   sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth, db } from "./config";
-import { doc, setDoc, deleteDoc, serverTimestamp, getDoc, Timestamp } from "firebase/firestore";
+import {
+  doc, setDoc, deleteDoc, serverTimestamp, getDoc, Timestamp,
+  collection, query, where, getDocs, updateDoc,
+} from "firebase/firestore";
 
 /**
  * Updated to support business types and custom domains instead of Vercel URLs
@@ -69,6 +72,57 @@ export async function signUpBarber(data) {
       photoURL: ""
     });
   }
+
+  return user;
+}
+
+/**
+ * Claims an owner-issued staff invite link (barbers/{shopId}/staff/{staffId})
+ * by turning it into a real login. Carries over whatever the owner already
+ * filled in (name, bio, photo, services, portfolio) onto a new doc keyed by
+ * the fresh auth uid — matching the uid-keyed convention the rest of the
+ * dashboard (handleSaveProfile, loadData) already assumes for staff — then
+ * removes the old placeholder and re-points any slots the owner generated
+ * against it (WeeklyHours writes `barberId: staffId`).
+ */
+export async function claimStaffInvite({ shopId, staffId, email, password }) {
+  const staffSnap = await getDoc(doc(db, "barbers", shopId, "staff", staffId));
+  if (!staffSnap.exists()) throw new Error("This invite link is no longer valid.");
+  const staffData = staffSnap.data();
+  if (staffData.hasLogin) throw new Error("This profile has already been claimed. Try logging in instead.");
+
+  const shopSnap = await getDoc(doc(db, "barbers", shopId));
+  const shopData = shopSnap.exists() ? shopSnap.data() : {};
+
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+
+  await setDoc(doc(db, "barbers", user.uid), {
+    uid: user.uid,
+    displayName: staffData.name || "",
+    name: staffData.name || "",
+    email,
+    phone: staffData.phone || "",
+    specialty: staffData.specialty || "",
+    bio: staffData.bio || "",
+    role: "staff",
+    shopId,
+    businessType: shopData.businessType || "barber",
+    services: staffData.services || [],
+    photoURL: staffData.profilePic || staffData.photoURL || "",
+    brandColor: shopData.brandColor || "#C9A84C",
+    createdAt: serverTimestamp(),
+  });
+
+  await setDoc(doc(db, "barbers", shopId, "staff", user.uid), {
+    ...staffData,
+    uid: user.uid,
+    hasLogin: true,
+  });
+  await deleteDoc(doc(db, "barbers", shopId, "staff", staffId));
+
+  const slotsSnap = await getDocs(query(collection(db, "slots"), where("barberId", "==", staffId)));
+  await Promise.all(slotsSnap.docs.map(d => updateDoc(d.ref, { barberId: user.uid })));
 
   return user;
 }

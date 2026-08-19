@@ -30,6 +30,7 @@ const Confirmation      = lazy(() => import("./pages/Confirmation"));
 const Dashboard         = lazy(() => import("./pages/Dashboard"));
 const Login             = lazy(() => import("./pages/Login"));
 const Signup             = lazy(() => import("./pages/Signup"));
+const StaffSignup       = lazy(() => import("./pages/StaffSignup"));
 const TenantLogin       = lazy(() => import("./pages/TenantLogin"));
 const TenantSignup      = lazy(() => import("./pages/TenantSignup"));
 const CancelBooking     = lazy(() => import("./pages/CancelBooking"));
@@ -406,6 +407,7 @@ function AppShell() {
             <Route path="/review/:shopId" element={<ReviewPage />} />
             <Route path="/login" element={tenantBarber ? <TenantLogin tenant={tenantBarber} /> : <Login />} />
             <Route path="/signup" element={tenantBarber ? <TenantSignup tenant={tenantBarber} /> : <Signup />} />
+            <Route path="/staff-signup/:shopId/:staffId" element={<StaffSignup />} />
             <Route path="/cancel-booking/:bookingId" element={<CancelBooking />} />
             <Route path="/website-design/:industry/:city" element={<SeoLandingPage />} />
             <Route path="/compare"                           element={<ComparePage />} />

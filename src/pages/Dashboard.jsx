@@ -1079,7 +1079,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         {/* ── Team (owner only, all business types) ── */}
         {userRole.isOwner && (
           <TabPanel value={tab} index={IDX_STAFF}>
-            <StaffTab shopId={barber.uid} brandColor={brandColor} />
+            <StaffTab shopId={barber.uid} brandColor={brandColor} businessType={profile.businessType || "barber"} />
           </TabPanel>
         )}
 

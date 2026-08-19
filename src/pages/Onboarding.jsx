@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { CircularProgress, TextField, MenuItem, Select, InputLabel, FormControl, Alert } from "@mui/material";
 import { doc, getDoc } from "firebase/firestore";
@@ -9,6 +9,7 @@ import { getApp } from "firebase/app";
 import { updateBarber, addSlot, uploadBarberImage } from "../firebase/firestore";
 import { sanitizeSlug, isValidSlugFormat, isReservedSlug } from "../utils/bookingSlug";
 import BookingLinkCard from "../components/dashboard/BookingLinkCard";
+import { logFunnelEvent } from "../utils/funnelTracking";
 
 /* ── Inline styles ── */
 const css = `
@@ -529,7 +530,17 @@ export default function Onboarding({ brandColor: brandColorProp }) {
     Object.fromEntries(DAYS.map(d => [d.key, { enabled: false, start: "09:00", end: "17:00" }]))
   );
 
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  const completedLoggedRef = useRef(false);
+
+  useEffect(() => { window.scrollTo(0, 0); logFunnelEvent("onboarding_view"); }, []);
+
+  useEffect(() => {
+    if (step >= steps.length && !completedLoggedRef.current) {
+      completedLoggedRef.current = true;
+      logFunnelEvent("onboarding_completed", { claimedSlug });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   // Load existing profile to pre-fill (business name, type, brand colour)
   useEffect(() => {
@@ -591,9 +602,13 @@ export default function Onboarding({ brandColor: brandColorProp }) {
     return () => clearTimeout(t);
   }, [slug, step, claimedSlug]);
 
-  function skipToDashboard() { navigate("/dashboard"); }
+  function skipToDashboard() {
+    logFunnelEvent("onboarding_skipped", { atStep: step, stepLabel: STEP_LABELS[step] });
+    navigate("/dashboard");
+  }
 
-  function goNext() {
+  function goNext(meta = {}) {
+    logFunnelEvent("onboarding_step_completed", { step, stepLabel: STEP_LABELS[step], ...meta });
     setStep(s => s + 1);
     setKey(k => k + 1);
     setError("");
@@ -607,6 +622,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       await updateBarber(authUser.uid, { accountType: type });
       goNext();
     } catch (e) {
+      logFunnelEvent("onboarding_step_error", { step, message: e.message || "unknown" });
       setError("Couldn't save that — please try again.");
     } finally {
       setSaving(false);
@@ -630,6 +646,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       });
       goNext();
     } catch (e) {
+      logFunnelEvent("onboarding_step_error", { step, message: e.message || "unknown" });
       setError("Couldn't save your profile — please try again.");
     } finally {
       setSaving(false);
@@ -651,6 +668,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       setClaimedSlug(res.data.slug);
       goNext();
     } catch (e) {
+      logFunnelEvent("onboarding_step_error", { step, message: e.message || "unknown" });
       setError(e.message?.replace(/^.*claimBookingSlug:\s*/, "") || "Couldn't claim that link — please try a different one.");
     } finally {
       setSaving(false);
@@ -676,6 +694,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       }
       goNext();
     } catch (e) {
+      logFunnelEvent("onboarding_step_error", { step, message: e.message || "unknown" });
       setError("Couldn't save that service — please try again.");
     } finally {
       setSaving(false);
@@ -704,6 +723,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       }
       goNext();
     } catch (e) {
+      logFunnelEvent("onboarding_step_error", { step, message: e.message || "unknown" });
       setError("Couldn't save your availability — you can add it later from the Schedule tab.");
       goNext();
     } finally {
@@ -959,7 +979,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
                   {!saving && <span className="ob-cta-arrow">→</span>}
                 </button>
                 {current.skipLabel && (
-                  <button className="ob-cta-secondary" onClick={goNext} disabled={saving}>
+                  <button className="ob-cta-secondary" onClick={() => goNext({ skipped: true })} disabled={saving}>
                     {current.skipLabel}
                   </button>
                 )}

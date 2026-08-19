@@ -283,7 +283,7 @@ export default function TenantHome({ tenant: initialTenant }) {
               <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
             </Box>
             <Grid container spacing={3}>
-              {freshTenant.portfolioItems.map((item, i) => (
+              {(isMobileOrTablet ? freshTenant.portfolioItems.slice(0, 2) : freshTenant.portfolioItems).map((item, i) => (
                 <Grid item xs={isMobileOrTablet ? 12 : 4} key={i}>
                   <BeforeAfterSlider before={item.before} after={item.after} />
                   {item.label && (

@@ -9,7 +9,34 @@ import BeforeAfterSlider from '../components/BeforeAfterSlider';
 import { formatCurrency } from '../stripe/formatters';
 import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CircularProgress } from '@mui/material';
+import InstagramIcon from '@mui/icons-material/Instagram';
+import FacebookIcon from '@mui/icons-material/Facebook';
 import { HairdresserStyles } from './HairdresserTemplate';
+
+const TikTokIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5
+      2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27
+      0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0
+      6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z" />
+  </svg>
+);
+
+function SocialLink({ href, brandColor, children }) {
+  if (!href) return null;
+  const url = href.startsWith('http') ? href : `https://${href}`;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" style={{
+      width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      border: '1.5px solid rgba(26,23,20,0.15)', color: '#1a1714', transition: 'all 0.2s',
+    }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = brandColor; e.currentTarget.style.color = brandColor; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(26,23,20,0.15)'; e.currentTarget.style.color = '#1a1714'; }}
+    >
+      {children}
+    </a>
+  );
+}
 
 // A single stylist's own page, linked from the salon's "Meet the Team"
 // grid — same .hs-* visual language as HairdresserTemplate, trimmed to
@@ -108,7 +135,14 @@ export default function HairdresserStaffProfile({ tenant }) {
             <p style={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#a8a29e', marginBottom: '1.25rem' }}>
               {member.role || member.specialty || 'Stylist'}
             </p>
-            {member.bio && <p style={{ fontSize: '0.95rem', color: '#5c5449', lineHeight: 1.85, fontWeight: 300, maxWidth: 480 }}>{member.bio}</p>}
+            {member.bio && <p style={{ fontSize: '0.95rem', color: '#5c5449', lineHeight: 1.85, fontWeight: 300, maxWidth: 480, marginBottom: '1.25rem' }}>{member.bio}</p>}
+            {(member.staffInstagram || member.staffFacebook || member.staffTiktok) && (
+              <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <SocialLink href={member.staffInstagram} brandColor={brandColor}><InstagramIcon sx={{ fontSize: 18 }} /></SocialLink>
+                <SocialLink href={member.staffFacebook} brandColor={brandColor}><FacebookIcon sx={{ fontSize: 18 }} /></SocialLink>
+                <SocialLink href={member.staffTiktok} brandColor={brandColor}><TikTokIcon size={16} /></SocialLink>
+              </div>
+            )}
           </div>
         </section>
 

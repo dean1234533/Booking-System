@@ -37,6 +37,7 @@ const ReviewPage        = lazy(() => import("./pages/ReviewPage"));
 const PTBookingSite       = lazy(() => import("./pages/PTBookingSite"));
 const DecoratorTemplate   = lazy(() => import("./pages/DecoratorTemplate"));
 const HairdresserTemplate = lazy(() => import("./pages/HairdresserTemplate"));
+const HairdresserStaffProfile = lazy(() => import("./pages/HairdresserStaffProfile"));
 const OfflinePage         = lazy(() => import("./pages/OfflinePage"));
 const Onboarding        = lazy(() => import("./pages/Onboarding"));
 const WorkoutPlanView      = lazy(() => import("./pages/WorkoutPlanView"));
@@ -393,6 +394,7 @@ function AppShell() {
             <Route path="/pt-booking/:tenantId" element={isTenantOffline ? <OfflinePage /> : <PTBookingSite barber={tenantBarber} profile={tenantBarber} />} />
             <Route path="/decorator/:tenantId" element={isTenantOffline ? <OfflinePage /> : <DecoratorTemplate tenantData={tenantBarber} />} />
             <Route path="/hairdresser/:tenantId" element={isTenantOffline ? <OfflinePage /> : <HairdresserTemplate tenantData={tenantBarber} />} />
+            <Route path="/hairdresser/:tenantId/:staffId" element={isTenantOffline ? <OfflinePage /> : <HairdresserStaffProfile tenant={tenantBarber} />} />
             <Route path="/barber/:id" element={<BarberProfile tenant={tenantBarber} />} />
             <Route path="/book/:barberId/:slotId" element={<BookingForm tenant={tenantBarber} />} />
             <Route path="/confirmation/:bookingId?" element={<Confirmation />} />

@@ -7,7 +7,7 @@ import { Star, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import SlotPicker from '../components/SlotPicker';
 
 /* ─── Global style injection ─────────────────────────────── */
-const GlobalStyles = () => (
+export const GlobalStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -183,6 +183,15 @@ const GlobalStyles = () => (
     .dt-portfolio-item { transition: transform 0.25s ease; }
     .dt-portfolio-item:hover { transform: translateY(-4px); }
     .dt-portfolio-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.45); text-align: center; margin-top: 0.75rem; }
+    .dt-team { padding: 6rem clamp(1.5rem, 6vw, 6rem); background: var(--cream); }
+    .dt-team-header { text-align: center; max-width: 480px; margin: 0 auto 3.5rem; }
+    .dt-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto; }
+    .dt-team-card { text-align: center; cursor: pointer; transition: transform 0.25s ease; }
+    .dt-team-card:hover { transform: translateY(-4px); }
+    .dt-team-photo { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 4px; display: block; margin-bottom: 1rem; box-shadow: 0 4px 20px rgba(28,25,23,0.12); }
+    .dt-team-avatar { width: 100%; aspect-ratio: 3/4; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 2.5rem; font-weight: 700; color: #fff; margin-bottom: 1rem; }
+    .dt-team-name { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 700; color: var(--ink); margin-bottom: 0.25rem; }
+    .dt-team-role { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--stone-dark, #8a8378); }
     .dt-reviews { padding: 6rem clamp(1.5rem, 6vw, 6rem); background: var(--cream); }
     .dt-reviews-header { text-align: center; margin-bottom: 4rem; }
     .dt-review-card {
@@ -325,6 +334,7 @@ const BeforeAfterSlider = ({ before, after }) => {
 const DecoratorTemplate = ({ tenantData }) => {
   const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
+  const [team, setTeam] = useState([]);
   const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
   const [enquiry, setEnquiry] = useState({ name: "", phone: "", message: "" });
   const [enquiryStatus, setEnquiryStatus] = useState("idle");
@@ -354,6 +364,20 @@ const DecoratorTemplate = ({ tenantData }) => {
   }, [tenantData?.id]);
 
   useEffect(() => {
+    async function fetchTeam() {
+      const shopId = tenantData?.id;
+      if (!shopId) return;
+      try {
+        const snap = await getDocs(collection(db, "barbers", shopId, "staff"));
+        setTeam(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.name));
+      } catch (err) {
+        console.error("Error fetching team:", err);
+      }
+    }
+    fetchTeam();
+  }, [tenantData?.id]);
+
+  useEffect(() => {
     const shopId = tenantData?.id;
     if (!shopId) return;
     setSlotsLoading(true);
@@ -380,6 +404,7 @@ const DecoratorTemplate = ({ tenantData }) => {
   const brandColor    = tenantData?.brandColor  || "#2563eb";
   const businessName  = tenantData?.businessName || tenantData?.name || "Your Business";
   const logo          = tenantData?.businessLogo || tenantData?.logoUrl || tenantData?.logo || null;
+  const allTeam        = team;
 
   // Hero
   const heroImage     = tenantData?.heroImage    || "/images/photo-output-13.jpg";
@@ -606,6 +631,33 @@ const DecoratorTemplate = ({ tenantData }) => {
             ))}
           </div>
         </section>
+
+        {/* ── TEAM ── */}
+        {allTeam.length > 0 && (
+        <section id="team" className="dt-team">
+          <div className="dt-team-header">
+            <span className="dt-section-label">The Team</span>
+            <h2 className="dt-section-title">Meet the decorators</h2>
+            <div className="dt-underline" style={{ backgroundColor: brandColor, margin: '1.25rem auto 0' }}></div>
+          </div>
+          <div className="dt-team-grid">
+            {allTeam.map((member, i) => (
+              <div key={member.id || i} className="dt-team-card"
+                onClick={() => navigate(`/decorator/${tenantData?.id}/${member.id}`)}>
+                {member.profilePic ? (
+                  <img src={member.profilePic} alt={member.name} className="dt-team-photo" />
+                ) : (
+                  <div className="dt-team-avatar" style={{ background: brandColor }}>
+                    {member.name?.[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div className="dt-team-name">{member.name}</div>
+                <div className="dt-team-role">{member.role || member.specialty || 'Decorator'}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+        )}
 
         {/* ── REVIEWS ── */}
         <section id="reviews" className="dt-reviews">

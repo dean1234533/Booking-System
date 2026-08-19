@@ -1952,11 +1952,9 @@ async function handleFetch(request, env, ctx) {
 //  - the sha256 hash: index.html's one inline <script> (captures the PWA
 //    install prompt before React mounts) — allowed by exact hash rather
 //    than 'unsafe-inline' so this stays real XSS protection, not theatre
-//  - www.youtube-nocookie.com: PT booking page's optional embedded training
-//    video (getYouTubeEmbedUrl() in PTBookingSite.jsx builds a
-//    youtube-nocookie.com/embed/... URL — the privacy-enhanced domain,
-//    used instead of youtube.com so third-party cookies aren't set until
-//    the visitor actually presses play)
+//  - i.ytimg.com: PT booking page's YouTube video thumbnail (a plain
+//    <img>, not an iframe embed — no frame-src entry needed; img-src
+//    already allows any https: host)
 const CSP =
   "default-src 'self'; " +
   "script-src 'self' https://js.stripe.com 'sha256-/l4ajQ/L5o91xPlHq4mEOMH1ogoGzmHPkFKthjI+yCE='; " +
@@ -1964,7 +1962,7 @@ const CSP =
   "font-src 'self' https://fonts.bunny.net data:; " +
   "img-src 'self' data: https:; " +
   "connect-src 'self' https://*.googleapis.com https://firebasestorage.googleapis.com https://api.stripe.com https://m.stripe.network https://q.stripe.com; " +
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://*.firebaseapp.com https://www.youtube-nocookie.com; " +
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://*.firebaseapp.com; " +
   "object-src 'none'; " +
   "base-uri 'self'; " +
   "form-action 'self'";

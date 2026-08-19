@@ -1952,6 +1952,9 @@ async function handleFetch(request, env, ctx) {
 //  - the sha256 hash: index.html's one inline <script> (captures the PWA
 //    install prompt before React mounts) — allowed by exact hash rather
 //    than 'unsafe-inline' so this stays real XSS protection, not theatre
+//  - www.youtube.com: PT booking page's optional embedded training video
+//    (getYouTubeEmbedUrl() in PTBookingSite.jsx always builds a
+//    youtube.com/embed/... URL, never youtube-nocookie.com)
 const CSP =
   "default-src 'self'; " +
   "script-src 'self' https://js.stripe.com 'sha256-/l4ajQ/L5o91xPlHq4mEOMH1ogoGzmHPkFKthjI+yCE='; " +
@@ -1959,7 +1962,7 @@ const CSP =
   "font-src 'self' https://fonts.bunny.net data:; " +
   "img-src 'self' data: https:; " +
   "connect-src 'self' https://*.googleapis.com https://firebasestorage.googleapis.com https://api.stripe.com https://m.stripe.network https://q.stripe.com; " +
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://*.firebaseapp.com; " +
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://*.firebaseapp.com https://www.youtube.com; " +
   "object-src 'none'; " +
   "base-uri 'self'; " +
   "form-action 'self'";

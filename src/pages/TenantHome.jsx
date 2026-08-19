@@ -25,6 +25,7 @@ import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getShopStaff, getBarber } from "../firebase/firestore";
 import BeforeAfterSlider from "../components/BeforeAfterSlider";
+import BarberProfile from "./BarberProfile";
 // ── TikTok SVG ────────────────────────────────────────────────────────────────
 const TikTokIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: "block" }}>
@@ -195,7 +196,16 @@ export default function TenantHome({ tenant: initialTenant }) {
       </Box>
     );
   }
- 
+
+  // Solo account (no staff beyond the owner) — no one to choose between, so
+  // this URL renders the owner's full profile directly (hero, services,
+  // gallery, reviews, booking) instead of a "shop overview" with a single
+  // lonely card the visitor has to click through. Only real shops with a
+  // team get the card-picker layout below.
+  if (team.length <= 1) {
+    return <BarberProfile tenant={freshTenant} barberId={freshTenant?.id} />;
+  }
+
   return (
     <Box sx={{ bgcolor: "#FFFFFF", minHeight: "100vh", overflowX: 'hidden' }}>
       

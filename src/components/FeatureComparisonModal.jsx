@@ -43,6 +43,7 @@ const BUSINESS_FEATURES = {
           { name: "Custom branded website", included: true, benefit: "Your own booking site with logo and brand colours" },
           { name: "Staff profile pages", included: true, benefit: "Individual pages per barber with personal social links" },
           { name: "Service & price showcase", included: true, benefit: "Display all services with descriptions and prices" },
+          { name: "Before & after gallery", included: true, benefit: "Showcase your best cuts and transformations" },
           { name: "Reviews page", included: true, benefit: "Collect and display client reviews publicly" },
         ],
       },
@@ -183,6 +184,7 @@ const BUSINESS_FEATURES = {
         items: [
           { name: "Custom PT booking site", included: true, benefit: "Your own site where clients book sessions directly" },
           { name: "Online payments (Stripe)", included: true, benefit: "Accept session payments online at point of booking" },
+          { name: "Client transformation gallery", included: true, benefit: "Showcase real client before & after results" },
           { name: "Reviews page", included: true, benefit: "Collect and display verified client testimonials" },
           { name: "WhatsApp support button", included: true, benefit: "One-tap WhatsApp contact from your dashboard" },
         ],

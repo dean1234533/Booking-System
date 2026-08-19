@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { getFontFamily, loadGoogleFont } from '../utils/fontOptions';
 import SlotPicker from '../components/SlotPicker';
 import TenantFooter from '../components/TenantFooter';
+import BeforeAfterSlider from '../components/BeforeAfterSlider';
 import { formatCurrency } from '../stripe/formatters';
 import { Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import {
@@ -233,6 +234,20 @@ const HairdresserStyles = () => (
       text-transform: uppercase; color: #a8a29e;
     }
 
+    /* ── PORTFOLIO ── */
+    .hs-portfolio { padding: clamp(4rem, 8vw, 8rem) clamp(1.5rem, 6vw, 5rem); background: #fdfcfa; }
+    .hs-portfolio-header { text-align: center; max-width: 480px; margin: 0 auto 3.5rem; }
+    .hs-portfolio-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 2rem; max-width: 1100px; margin: 0 auto;
+    }
+    .hs-portfolio-item { transition: transform 0.25s ease; }
+    .hs-portfolio-item:hover { transform: translateY(-4px); }
+    .hs-portfolio-label {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: #a8a29e; text-align: center; margin-top: 0.85rem;
+    }
+
     /* ── REVIEWS ── */
     .hs-reviews {
       padding: clamp(4rem, 8vw, 8rem) clamp(1.5rem, 6vw, 5rem);
@@ -332,8 +347,9 @@ const HairdresserStyles = () => (
       .hs-hero-actions { flex-direction: column; }
       .hs-btn-primary, .hs-btn-outline { text-align: center; width: 100%; display: block; }
       .hs-team-grid { grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+      .hs-portfolio-grid { grid-template-columns: 1fr; gap: 1.5rem; }
       /* Section padding */
-      .hs-services, .hs-about, .hs-team, .hs-reviews, .hs-booking {
+      .hs-services, .hs-about, .hs-team, .hs-portfolio, .hs-reviews, .hs-booking {
         padding: 3rem 1.25rem;
       }
       /* Stats bar — stack to single column */
@@ -411,6 +427,9 @@ export default function HairdresserTemplate({ tenantData }) {
   const aboutBody    = tenantData?.aboutBody || tenantData?.aboutUs || 'Founded on the belief that every person deserves hair they love, our salon brings together award-winning stylists dedicated to the craft. From precision cuts to transformative colour, every visit is tailored to you.';
   const servicesImg  = tenantData?.servicesImage || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1974&auto=format&fit=crop';
   const aboutImg     = tenantData?.heroImageMobile || 'https://images.unsplash.com/photo-1600948836101-f9ffda59d250?q=80&w=2036&auto=format&fit=crop';
+  const portfolioHeading = tenantData?.portfolioHeading || 'Recent transformations';
+  const portfolioSubtext = tenantData?.portfolioSubtext || 'Drag the slider on each image to reveal the difference a fresh cut and colour makes.';
+  const portfolioItems   = tenantData?.portfolioItems || [];
 
   const stats = [
     { num: tenantData?.stat1Value || '12+',  label: tenantData?.stat1Label || 'Years of expertise' },
@@ -439,7 +458,7 @@ export default function HairdresserTemplate({ tenantData }) {
   };
   const allTeam = [ownerMember, ...team];
   // "Our Team" nav link only makes sense once the #team section actually renders (>1 person)
-  const navLinkList = [['about','About'],['services','Services'], ...(allTeam.length > 1 ? [['team','Our Team']] : []), ['reviews','Reviews']];
+  const navLinkList = [['about','About'],['services','Services'], ...(allTeam.length > 1 ? [['team','Our Team']] : []), ...(portfolioItems.length > 0 ? [['portfolio','Gallery']] : []), ['reviews','Reviews']];
 
   const privacyText = tenantData?.privacyPolicy   || `At ${businessName}, we take your privacy seriously. We collect only the information needed to manage your appointments and never share your data with third parties.`;
   const termsText   = tenantData?.termsConditions || `By booking with ${businessName}, you agree to our cancellation policy. We require 24 hours notice for cancellations. Late cancellations or no-shows may incur a charge.`;
@@ -639,6 +658,25 @@ export default function HairdresserTemplate({ tenantData }) {
                     {member.bio}
                   </div>
                 )}
+              </div>
+            ))}
+          </div>
+        </section>
+        )}
+
+        {/* ─── PORTFOLIO ─── */}
+        {portfolioItems.length > 0 && (
+        <section id="portfolio" className="hs-portfolio">
+          <div className="hs-portfolio-header">
+            <span className="hs-section-label" style={{ color: brandColor }}>Our Work</span>
+            <h2 className="hs-section-title" style={{ textAlign: 'center' }}>{portfolioHeading}</h2>
+            <p className="hs-section-sub" style={{ margin: '0 auto', textAlign: 'center' }}>{portfolioSubtext}</p>
+          </div>
+          <div className="hs-portfolio-grid">
+            {portfolioItems.map((item, i) => (
+              <div key={i} className="hs-portfolio-item">
+                <BeforeAfterSlider before={item.before} after={item.after} />
+                {item.label && <p className="hs-portfolio-label">{item.label}</p>}
               </div>
             ))}
           </div>

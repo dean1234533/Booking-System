@@ -8,12 +8,16 @@ import { alpha } from "@mui/material/styles";
 import InstagramIcon    from "@mui/icons-material/Instagram";
 import FacebookIcon     from "@mui/icons-material/Facebook";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import ArrowBackIosNewIcon   from "@mui/icons-material/ArrowBackIosNew";
+import ArrowForwardIosIcon   from "@mui/icons-material/ArrowForwardIos";
+import StarIcon              from "@mui/icons-material/Star";
 
 import SlotPicker from "../components/SlotPicker";
 import SEOConfig  from "../components/SEOConfig";
+import BeforeAfterSlider from "../components/BeforeAfterSlider";
 
 import { db } from "../firebase/config";
-import { doc, getDoc, collectionGroup, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, collectionGroup, query, where, getDocs } from "firebase/firestore";
 import { formatCurrency } from "../stripe/formatters";
 import { useSlots }       from "../hooks/useSlots";
 
@@ -74,12 +78,28 @@ export default function BarberProfile({ tenant: initialTenant }) {
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(null);
   const [showAllServices, setShowAllServices] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [reviewIdx, setReviewIdx] = useState(0);
 
   const { slots, loading: slotsLoading, error: slotsError } = useSlots(
     barberId,
     barber?.isStaff || false,
     barber?.shopId
   );
+
+  useEffect(() => {
+    async function loadReviews() {
+      const shopId = barber?.shopId || barber?.id;
+      if (!shopId) return;
+      try {
+        const snap = await getDocs(collection(db, "barbers", shopId, "reviews"));
+        setReviews(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (err) {
+        console.error("Error fetching reviews:", err);
+      }
+    }
+    loadReviews();
+  }, [barber?.shopId, barber?.id]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -167,6 +187,14 @@ export default function BarberProfile({ tenant: initialTenant }) {
     { num: barber.statBar2Num, label: barber.statBar2Label || "" },
     { num: barber.statBar3Num, label: barber.statBar3Label || "" },
   ] : null;
+
+  const portfolioItems  = barber?.portfolioItems || [];
+  const portfolioHeading = barber?.portfolioHeading || "Recent work";
+  const portfolioSubtext = barber?.portfolioSubtext || "";
+
+  const currentReview = reviews[reviewIdx];
+  const prevReview = () => setReviewIdx((i) => (i - 1 + reviews.length) % reviews.length);
+  const nextReview = () => setReviewIdx((i) => (i + 1) % reviews.length);
 
   const scrollToBooking = () =>
     document.getElementById("booking-section")?.scrollIntoView({ behavior: "smooth" });
@@ -360,6 +388,87 @@ export default function BarberProfile({ tenant: initialTenant }) {
         </Box>
       )}
 
+
+      {/* ── Gallery ── */}
+      {portfolioItems.length > 0 && (
+        <Box sx={{ bgcolor: "#111", py: { xs: 8, md: 10 }, px: { xs: 2.5, md: 6 } }}>
+          <Box sx={{ maxWidth: 1100, mx: "auto" }}>
+            <Box sx={{ textAlign: "center", mb: 5 }}>
+              <Typography sx={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.22em", textTransform: "uppercase", color: brandColor, display: "block", mb: 2 }}>
+                GALLERY
+              </Typography>
+              <Typography variant="h4" sx={{ fontFamily: "'Playfair Display', serif", color: "#fff", fontWeight: 700, fontSize: { xs: "1.8rem", md: "2.4rem" } }}>
+                {portfolioHeading}
+              </Typography>
+              {portfolioSubtext && (
+                <Typography sx={{ color: "rgba(255,255,255,0.45)", fontSize: "0.85rem", mt: 1.5, maxWidth: 480, mx: "auto" }}>
+                  {portfolioSubtext}
+                </Typography>
+              )}
+            </Box>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(3, 1fr)" }, gap: 2.5 }}>
+              {portfolioItems.map((item, i) => (
+                <Box key={i}>
+                  <BeforeAfterSlider before={item.before} after={item.after} />
+                  {item.label && (
+                    <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", textAlign: "center", mt: 1 }}>
+                      {item.label}
+                    </Typography>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      {/* ── Reviews ── */}
+      <Box sx={{ bgcolor: "#f8f7f4", borderTop: "1px solid rgba(0,0,0,0.06)", py: { xs: 8, md: 10 }, px: { xs: 2.5, md: 6 } }}>
+        <Box sx={{ maxWidth: 640, mx: "auto", textAlign: "center" }}>
+          <Typography sx={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.22em", textTransform: "uppercase", color: brandColor, display: "block", mb: 2 }}>
+            TESTIMONIALS
+          </Typography>
+          <Typography variant="h4" sx={{ fontFamily: "'Playfair Display', serif", color: "#111", fontWeight: 700, fontSize: { xs: "1.8rem", md: "2.4rem" }, mb: 5 }}>
+            What clients say
+          </Typography>
+
+          {currentReview ? (
+            <Box>
+              <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5, mb: 2 }}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <StarIcon key={i} sx={{ fontSize: 18, color: i < (currentReview.rating || 5) ? brandColor : "rgba(0,0,0,0.15)" }} />
+                ))}
+              </Box>
+              <Typography sx={{ fontSize: "1.05rem", color: "#333", lineHeight: 1.8, fontWeight: 300, fontStyle: "italic", mb: 3 }}>
+                &ldquo;{currentReview.comment}&rdquo;
+              </Typography>
+              <Typography sx={{ fontSize: "0.85rem", fontWeight: 700, color: "#111" }}>
+                {currentReview.customerName || "Verified client"}
+              </Typography>
+
+              {reviews.length > 1 && (
+                <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 2, mt: 4 }}>
+                  <IconButton size="small" onClick={prevReview} sx={{ border: "1px solid rgba(0,0,0,0.15)" }}>
+                    <ArrowBackIosNewIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                  <Box sx={{ display: "flex", gap: 0.75 }}>
+                    {reviews.map((_, i) => (
+                      <Box key={i} sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: i === reviewIdx ? brandColor : "rgba(0,0,0,0.15)" }} />
+                    ))}
+                  </Box>
+                  <IconButton size="small" onClick={nextReview} sx={{ border: "1px solid rgba(0,0,0,0.15)" }}>
+                    <ArrowForwardIosIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Typography sx={{ color: "rgba(0,0,0,0.35)", fontSize: "0.9rem", fontStyle: "italic" }}>
+              No reviews yet — be the first to share your experience.
+            </Typography>
+          )}
+        </Box>
+      </Box>
 
       {/* ── Booking section ── */}
       <Box id="booking-section" sx={{

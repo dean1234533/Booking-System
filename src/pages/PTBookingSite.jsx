@@ -4,6 +4,7 @@ import { collection, getDocs, query, where, addDoc, serverTimestamp } from "fire
 import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import SlotPicker from "../components/SlotPicker";
+import BeforeAfterSlider from "../components/BeforeAfterSlider";
 import { Box, Container, Typography, Paper, Stack, Avatar, Divider, Button, useMediaQuery } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import RateReviewIcon from '@mui/icons-material/RateReview';
@@ -603,9 +604,14 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
     { name: '10-Block', price: '£350', period: 'block',     features: ['10 × 60-min sessions', 'Flexible scheduling', 'Priority booking'], highlight: false },
   ];
 
+  const portfolioHeading = profile?.portfolioHeading || 'Client transformations';
+  const portfolioSubtext = profile?.portfolioSubtext || 'Drag the slider on each image to reveal real client results.';
+  const portfolioItems   = profile?.portfolioItems || [];
+
   const navLinks = [
     { label: 'About',    href: '#about' },
     { label: 'Services', href: '#specializations' },
+    ...(portfolioItems.length > 0 ? [{ label: 'Results', href: '#gallery' }] : []),
     { label: 'Pricing',  href: '#pricing' },
     { label: 'Reviews',  href: '#reviews' },
   ];
@@ -770,6 +776,29 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
           </div>
         </section>
       </FadeIn>
+
+      {/* ══════════ GALLERY ══════════ */}
+      {portfolioItems.length > 0 && (
+      <FadeIn>
+        <section id="gallery" style={{ padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', background: 'var(--charcoal)' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, textAlign: 'center', marginBottom: 8 }}>Results</p>
+            <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(28px,5vw,48px)', color: '#fff', textAlign: 'center', marginBottom: 12, letterSpacing: '0.04em' }}>{portfolioHeading}</h2>
+            <p style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', maxWidth: 480, margin: '0 auto 48px', fontSize: 14, fontWeight: 300, lineHeight: 1.7 }}>{portfolioSubtext}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 24 }}>
+              {portfolioItems.map((item, i) => (
+                <div key={i}>
+                  <BeforeAfterSlider before={item.before} after={item.after} />
+                  {item.label && (
+                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', textAlign: 'center', marginTop: 10 }}>{item.label}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </FadeIn>
+      )}
 
       {/* ══════════ SERVICES ══════════ */}
       <FadeIn>

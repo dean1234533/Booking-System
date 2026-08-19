@@ -269,6 +269,65 @@ function DecoratorPageSections({ profile, set, brandColor }) {
   );
 }
 
+/* ── Before & After Portfolio (shared by hairdresser / barber) ──────────── */
+function PortfolioSection({ profile, set, brandColor, headingPlaceholder, subtextPlaceholder }) {
+  const portfolioItems = profile.portfolioItems?.length > 0
+    ? profile.portfolioItems
+    : [{ before: "", after: "", label: "" }];
+
+  const updatePortfolio = (i, field, val) => {
+    set("portfolioItems", portfolioItems.map((p, idx) => idx === i ? { ...p, [field]: val } : p));
+  };
+
+  return (
+    <Section title="🖼️ Before &amp; After Gallery">
+      <Grid container spacing={2} mb={2}>
+        <Grid item xs={12} sm={6}>
+          <TextField fullWidth size="small" label="Gallery Heading"
+            placeholder={headingPlaceholder}
+            value={profile.portfolioHeading || ""}
+            onChange={e => set("portfolioHeading", e.target.value)} />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField fullWidth size="small" label="Gallery Sub-text"
+            placeholder={subtextPlaceholder}
+            value={profile.portfolioSubtext || ""}
+            onChange={e => set("portfolioSubtext", e.target.value)} />
+        </Grid>
+      </Grid>
+      {portfolioItems.map((item, i) => (
+        <Box key={i} sx={{ border: "1px solid #eee", borderRadius: 2, p: 2, mb: 2 }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+            <Typography variant="caption" fontWeight={700} color="text.secondary">Gallery Item {i + 1}</Typography>
+            <IconButton size="small" color="error"
+              onClick={() => set("portfolioItems", portfolioItems.filter((_, idx) => idx !== i))}>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Box>
+          <Grid container spacing={1.5}>
+            <Grid item xs={12} sm={6}>
+              <ImageField label="Before image" value={item.before || ""} onChange={v => updatePortfolio(i, "before", v)} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <ImageField label="After image" value={item.after || ""} onChange={v => updatePortfolio(i, "after", v)} />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField fullWidth size="small" label="Caption"
+                placeholder="Balayage transformation"
+                value={item.label || ""}
+                onChange={e => updatePortfolio(i, "label", e.target.value)} />
+            </Grid>
+          </Grid>
+        </Box>
+      ))}
+      <Button startIcon={<AddCircleIcon />} sx={{ color: brandColor }}
+        onClick={() => set("portfolioItems", [...portfolioItems, { before: "", after: "", label: "" }])}>
+        Add Gallery Item
+      </Button>
+    </Section>
+  );
+}
+
 /* ── Hairdresser page sections ───────────────────────────────────────────── */
 function HairdresserPageSections({ profile, set, brandColor }) {
   const services = profile.services?.length > 0 ? profile.services : [
@@ -385,6 +444,10 @@ function HairdresserPageSections({ profile, set, brandColor }) {
           Add Service
         </Button>
       </Section>
+
+      <PortfolioSection profile={profile} set={set} brandColor={brandColor}
+        headingPlaceholder="Recent transformations"
+        subtextPlaceholder="Drag the slider on each image to reveal the difference a fresh cut and colour makes." />
 
       <Section title="📊 Stats Bar">
         <Typography variant="body2" color="text.secondary" mb={2}>
@@ -506,6 +569,10 @@ function BarberPageSections({ profile, set, brandColor }) {
           Add Service
         </Button>
       </Section>
+
+      <PortfolioSection profile={profile} set={set} brandColor={brandColor}
+        headingPlaceholder="Recent work"
+        subtextPlaceholder="Drag the slider on each image to reveal the difference a professional cut makes." />
     </>
   );
 }
@@ -620,6 +687,10 @@ function TrainerPageSections({ profile, set, brandColor }) {
           onChange={e => set("youtubeUrl", e.target.value)}
           helperText="A full-width video section appears on your page when this is set." />
       </Section>
+
+      <PortfolioSection profile={profile} set={set} brandColor={brandColor}
+        headingPlaceholder="Client transformations"
+        subtextPlaceholder="Drag the slider on each image to reveal real client results." />
 
       <Section title="💪 Areas of Expertise">
         {specializations.map((spec, i) => (

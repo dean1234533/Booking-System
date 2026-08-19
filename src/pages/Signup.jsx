@@ -14,6 +14,7 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import AuthShell, { AUTH_GOLD } from "../components/auth/AuthShell";
 import { db } from "../firebase/config";
 import { signUpBarber } from "../firebase/auth";
+import { logFunnelEvent } from "../utils/funnelTracking";
 
 const BUSINESS_TYPES = [
   { value: "barber", label: "Barbershop", detail: "Appointments, queue and cut history", icon: <ContentCutIcon /> },
@@ -63,7 +64,7 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => { window.scrollTo(0, 0); logFunnelEvent("signup_view"); }, []);
 
   useEffect(() => {
     if (isOwner) return;
@@ -119,8 +120,12 @@ export default function Signup() {
 
   function handleNext() {
     const validationError = validateCurrentStep();
-    if (validationError) return setError(validationError);
+    if (validationError) {
+      logFunnelEvent("signup_step_error", { step, message: validationError });
+      return setError(validationError);
+    }
     setError(null);
+    logFunnelEvent("signup_step_completed", { step, nextStep: Math.min(2, step + 1), businessType: form.businessType });
     setStep(current => Math.min(2, current + 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -160,8 +165,10 @@ export default function Signup() {
       });
       await waitForBarberDoc(user.uid, role);
       if (isOwner) fetch("/api/ping-google", { method: "POST" }).catch(() => {});
+      logFunnelEvent("signup_completed", { businessType: resolvedBusinessType, role });
       navigate(isOwner ? "/onboarding" : "/dashboard");
     } catch (signupError) {
+      logFunnelEvent("signup_error", { step, message: signupError.message || "unknown" });
       setError(signupError.message || "We couldn’t create your account. Please try again.");
     } finally {
       setLoading(false);

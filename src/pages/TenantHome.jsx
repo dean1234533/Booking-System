@@ -284,7 +284,7 @@ export default function TenantHome({ tenant: initialTenant }) {
             </Box>
             <Grid container spacing={3}>
               {freshTenant.portfolioItems.map((item, i) => (
-                <Grid item xs={12} sm={6} md={4} key={i}>
+                <Grid item xs={isMobileOrTablet ? 12 : 4} key={i}>
                   <BeforeAfterSlider before={item.before} after={item.after} />
                   {item.label && (
                     <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", textAlign: "center", mt: 1.5 }}>

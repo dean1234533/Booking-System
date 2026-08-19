@@ -33,6 +33,7 @@ import { useBarbers }         from "../hooks/useBarbers";
 import { useNavigate, Link }  from "react-router-dom";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
+import { logFunnelEvent } from "../utils/funnelTracking";
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
 const G = {
@@ -137,6 +138,8 @@ export default function Home({ tenant }) {
   const [feedbackMessage, setFeedbackMessage] = useState(null);
 
   useEffect(() => { window.scrollTo(0, 0); }, [tenant]);
+
+  useEffect(() => { if (!tenant) logFunnelEvent("home_view"); }, [tenant]);
 
   useEffect(() => {
     const tag = document.querySelector('meta[name="theme-color"]');
@@ -378,7 +381,7 @@ export default function Home({ tenant }) {
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
               <Button
                 variant="contained"
-                onClick={() => navigate("/signup")}
+                onClick={() => { logFunnelEvent("home_cta_clicked", { location: "hero" }); navigate("/signup"); }}
                 sx={{
                   bgcolor: G.gold, color: G.dark,
                   fontFamily: SANS, fontWeight: 700, fontSize: "0.85rem",
@@ -559,7 +562,7 @@ export default function Home({ tenant }) {
               </Typography>
               <Button
                 variant="contained"
-                onClick={() => navigate("/signup")}
+                onClick={() => { logFunnelEvent("home_cta_clicked", { location: "empty_listings" }); navigate("/signup"); }}
                 sx={{
                   bgcolor: G.gold, color: G.dark,
                   fontFamily: SANS, fontWeight: 700, fontSize: "0.82rem",
@@ -673,7 +676,7 @@ export default function Home({ tenant }) {
           </Grid>
 
           <Box sx={{ textAlign: "center", mt: { xs: 6, md: 9 } }}>
-            <Button variant="contained" onClick={() => navigate("/signup")}
+            <Button variant="contained" onClick={() => { logFunnelEvent("home_cta_clicked", { location: "how_it_works" }); navigate("/signup"); }}
               sx={{ bgcolor: G.dark, color: "#fff", fontFamily: SANS, fontWeight: 700, fontSize: "0.82rem", letterSpacing: "0.08em", textTransform: "uppercase", px: 5, py: 1.8, borderRadius: "2px", boxShadow: "none", "&:hover": { bgcolor: G.gold, color: G.dark, boxShadow: "none" } }}>
               Create your free account
             </Button>
@@ -722,7 +725,7 @@ export default function Home({ tenant }) {
 
           <Box sx={{ textAlign: "center", mt: { xs: 8, md: 11 } }}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="center" alignItems="center">
-              <Button variant="contained" onClick={() => navigate("/signup")}
+              <Button variant="contained" onClick={() => { logFunnelEvent("home_cta_clicked", { location: "pricing" }); navigate("/signup"); }}
                 sx={{ bgcolor: G.gold, color: G.dark, fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase", px: 5, py: 1.8, borderRadius: "2px", boxShadow: "none", "&:hover": { bgcolor: G.goldLight, boxShadow: "none" } }}>
                 Start free — 90 days on us
               </Button>
@@ -1060,7 +1063,7 @@ export default function Home({ tenant }) {
                   <Button
                     size="small"
                     variant="contained"
-                    onClick={() => navigate("/signup")}
+                    onClick={() => { logFunnelEvent("home_cta_clicked", { location: "final_cta" }); navigate("/signup"); }}
                     sx={{
                       bgcolor: G.gold, color: G.dark,
                       fontFamily: SANS, fontWeight: 700, fontSize: "0.75rem",

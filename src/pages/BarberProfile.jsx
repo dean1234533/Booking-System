@@ -7,6 +7,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import InstagramIcon    from "@mui/icons-material/Instagram";
 import FacebookIcon     from "@mui/icons-material/Facebook";
+import WhatsAppIcon     from "@mui/icons-material/WhatsApp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import ArrowBackIosNewIcon   from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon   from "@mui/icons-material/ArrowForwardIos";
@@ -20,6 +21,7 @@ import { db } from "../firebase/config";
 import { doc, getDoc, collection, collectionGroup, query, where, getDocs } from "firebase/firestore";
 import { formatCurrency } from "../stripe/formatters";
 import { useSlots }       from "../hooks/useSlots";
+import { getWhatsAppBookingUrl } from "../utils/whatsapp";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -169,6 +171,13 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
   const tiktokUrl    = barber?.tiktokUrl    || "";
   const facebookUrl  = barber?.facebookUrl  || "";
   const hasSocial    = instagramUrl || tiktokUrl || facebookUrl;
+
+  // Only offered when deposits aren't already being collected — shop-level,
+  // since staff don't have their own Stripe connection.
+  const shopContext = barber?.isStaff ? effectiveTenant : barber;
+  const whatsappUrl = !shopContext?.stripeConnected
+    ? getWhatsAppBookingUrl(shopContext?.whatsappNumber, effectiveTenant?.businessName || shopContext?.businessName)
+    : null;
 
   // Personal staff social links (barber-only, separate from business links)
   const staffInstagram = barber?.staffInstagram || "";
@@ -498,6 +507,15 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
               width: 40, height: 3, bgcolor: brandColor, borderRadius: 2,
               mx: "auto", mt: 2.5,
             }} />
+            {whatsappUrl && (
+              <Button
+                component="a" href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                variant="outlined" size="small" startIcon={<WhatsAppIcon />}
+                sx={{ mt: 3, color: "#25D366", borderColor: "#25D36680", "&:hover": { borderColor: "#25D366", bgcolor: "#25D36610" } }}
+              >
+                Or enquire via WhatsApp
+              </Button>
+            )}
           </Box>
 
           <SlotPicker

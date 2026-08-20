@@ -189,7 +189,7 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
   const visibleSvcs = showAllServices ? services : services.slice(0, 5);
 
   // Editable page fields
-  const heroTagline  = barber?.heroTagline  || "Professional Barber";
+  const heroTagline  = barber?.heroTagline  || (barber?.isStaff ? "Professional Barber" : "Owner & Barber");
   const heroCtaText  = barber?.heroCtaText  || "BOOK APPOINTMENT";
   const aboutBody    = barber?.aboutBody    || barber?.aboutUs || "";
   const statBar = barber?.statBar1Num ? [
@@ -243,7 +243,7 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
 
       {/* ── Hero ── */}
       <Box sx={{
-        pt: { xs: 8, md: 10 },
+        pt: { xs: 12, md: 10 },
         pb: { xs: 6, md: 8 },
         px: { xs: 2.5, sm: 4, md: 6 },
         bgcolor: "#fff",

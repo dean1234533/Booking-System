@@ -25,6 +25,17 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── Staff collection-group read ─────────────────────────────────────────
+    // BarberProfile.jsx falls back to collectionGroup(db,"staff").where("uid","==",id)
+    // when a staff member's page is opened directly (their id isn't a top-level
+    // barbers doc). The nested `match /barbers/{barberId}/staff/{staffId}` rule
+    // below only authorizes direct get()s / same-collection queries — Firestore
+    // requires this separate {path=**} wildcard rule to also cover collection-
+    // group queries across every shop's staff subcollection.
+    match /{path=**}/staff/{staffId} {
+      allow read: if true;
+    }
+
     // ── Barbers ───────────────────────────────────────────────────────────────
     match /barbers/{barberId} {
       // Public read — needed for all tenant pages, booking, search

@@ -44,6 +44,8 @@ export default function BookingForm({ tenant }) {
     haircutStyle: "",
   });
 
+  useEffect(() => { window.scrollTo(0, 0); }, [slotId]);
+
   useEffect(() => {
     if (!barberId) return;
     async function loadData() {
@@ -178,10 +180,10 @@ export default function BookingForm({ tenant }) {
     setFormReady(true);
   };
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress sx={{ color: ui.brandColor }} /></Box>;
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', pt: { xs: 14, md: 10 }, pb: 10 }}><CircularProgress sx={{ color: ui.brandColor }} /></Box>;
 
   return (
-    <Container maxWidth="sm" sx={{ py: 5 }}>
+    <Container maxWidth="sm" sx={{ pt: { xs: 12, md: 5 }, pb: 5 }}>
       <Paper 
         variant="outlined" 
         sx={{ 

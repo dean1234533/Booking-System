@@ -10,7 +10,8 @@ import {
   Language as WebsiteIcon, LocationOn as LocationIcon, MyLocation as LocateIcon,
   Payments as PaymentsIcon, People as PeopleIcon, Search as SearchIcon,
   Star as StarIcon, Storefront as StoreIcon, TrendingUp as GrowthIcon,
-  Verified as VerifiedIcon,
+  Verified as VerifiedIcon, PhotoLibrary as GalleryIcon, WhatsApp as WhatsAppIcon,
+  Groups as TeamIcon,
 } from "@mui/icons-material";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
@@ -41,6 +42,12 @@ const TRADES = [
   { key: "hairdresser", label: "Hair salons", icon: <CutIcon />, title: "A calmer salon starts here.", copy: "Keep services, deposits, bookings and client conversations together without losing the personal touch.", features: ["Service menus", "Deposits", "Team diaries"] },
   { key: "decorator", label: "Decorators", icon: <BrushIcon />, title: "Move every job from quote to paid.", copy: "Share professional quotes, capture colour approvals and keep the week organised from one screen.", features: ["Digital quotes", "Colour approvals", "Job invoices"] },
   { key: "trainer", label: "Personal trainers", icon: <FitnessIcon />, title: "Run the admin. Keep the coaching human.", copy: "Sessions, client records, plans, check-ins and food diaries—all connected around each client.", features: ["Client portal", "Workout plans", "Check-ins"] },
+];
+
+const UPDATES = [
+  { icon: <TeamIcon />, title: "Every team member gets their own page", copy: "Add staff from your dashboard and each person gets a branded page with their own gallery, reviews and socials — promoting your team, not just your business." },
+  { icon: <GalleryIcon />, title: "Before & after galleries", copy: "Show off real results with a drag-to-reveal gallery on every trade's page, plus your own upload tools in the dashboard." },
+  { icon: <WhatsAppIcon />, title: "Book via WhatsApp", copy: "Give clients who'd rather message than fill out a form a quick way to enquire, right next to your normal booking flow." },
 ];
 
 const BENEFITS = [
@@ -226,6 +233,26 @@ function HomeRebuild({ tenant }) {
 
       <Box sx={{ bgcolor: P.ink, color: "#fff", py: 2.3, overflow: "hidden" }}>
         <Stack direction="row" justifyContent="space-around" spacing={4} sx={{ minWidth: 700, px: 2 }}>{[["90 days", "free"], ["4 trades", "purpose-built"], ["£0", "setup"], ["24/7", "booking"]].map(item => <Stack key={item[0]} direction="row" spacing={1} alignItems="baseline"><Typography sx={{ color: P.acid, fontSize: "1.3rem", fontWeight: 950 }}>{item[0]}</Typography><Typography sx={{ color: "rgba(255,255,255,.45)", fontSize: ".68rem", textTransform: "uppercase", letterSpacing: ".08em" }}>{item[1]}</Typography></Stack>)}</Stack>
+      </Box>
+
+      <Box sx={{ bgcolor: "#fff", py: { xs: 7, md: 10 } }}>
+        <Container maxWidth="lg">
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 3 }}>
+            <Chip label="Just shipped" size="small" sx={{ bgcolor: P.mist, color: P.blue, fontWeight: 950, fontSize: ".66rem" }} />
+            <Typography sx={{ color: P.muted, fontSize: ".78rem" }}>Recently added to Bookrightly</Typography>
+          </Stack>
+          <Grid container spacing={2.5}>
+            {UPDATES.map(item => (
+              <Grid item xs={12} sm={4} key={item.title}>
+                <Paper sx={{ height: "100%", p: 3, borderRadius: 4, border: "1px solid " + P.line, boxShadow: "none" }}>
+                  <Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: P.mist, color: P.blue, display: "grid", placeItems: "center" }}>{item.icon}</Box>
+                  <Typography sx={{ mt: 2, fontSize: "1.02rem", fontWeight: 950, letterSpacing: "-.02em" }}>{item.title}</Typography>
+                  <Typography sx={{ mt: 1, color: P.muted, fontSize: ".82rem", lineHeight: 1.65 }}>{item.copy}</Typography>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
       </Box>
 
       <Box sx={{ bgcolor: "#fff", py: { xs: 8, md: 13 } }}>

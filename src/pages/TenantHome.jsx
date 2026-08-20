@@ -506,7 +506,7 @@ export default function TenantHome({ tenant: initialTenant }) {
                       {displayName}
                     </Typography>
                     <Typography sx={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: cardColor, mb: barber.bio ? 2 : 0 }}>
-                      {barber.isOwner ? "Owner & Barber" : (barber.specialty || "Professional Barber")}
+                      {barber.isOwner ? "Owner & Barber" : "Professional Barber"}
                     </Typography>
                     {barber.bio && (
                       <Typography sx={{

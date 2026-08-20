@@ -9,6 +9,7 @@ import {
   Instagram as InstagramIcon,
   Facebook as FacebookIcon,
   AddCircle as AddCircleIcon,
+  WhatsApp as WhatsAppIcon,
 } from "@mui/icons-material";
 import { TikTokIcon, Section, ImageField, safeOpeningHours, PortfolioSection } from "./sharedFormComponents";
 
@@ -868,6 +869,25 @@ export default function EditPageTab({
                   startAdornment: (
                     <InputAdornment position="start">
                       <FacebookIcon fontSize="small" sx={{ color: "#1877F2" }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+          )}
+          {userRole.isOwner && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="WhatsApp Number"
+                placeholder="e.g. 07123 456789 or +447123456789"
+                fullWidth
+                value={profile.whatsappNumber || ""}
+                onChange={e => set("whatsappNumber", e.target.value)}
+                helperText="Shows a 'Book via WhatsApp' button on your page. Leave blank to hide it."
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <WhatsAppIcon fontSize="small" sx={{ color: "#25D366" }} />
                     </InputAdornment>
                   ),
                 }}

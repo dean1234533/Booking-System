@@ -7,10 +7,12 @@ import SlotPicker from '../components/SlotPicker';
 import TenantFooter from '../components/TenantFooter';
 import BeforeAfterSlider from '../components/BeforeAfterSlider';
 import { formatCurrency } from '../stripe/formatters';
+import { getWhatsAppBookingUrl } from '../utils/whatsapp';
 import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography,
 } from '@mui/material';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 
 /* ─── Injected styles ──────────────────────────────────────────────────────── */
 export const HairdresserStyles = () => (
@@ -383,6 +385,9 @@ export default function HairdresserTemplate({ tenantData }) {
   const shopId      = tenantData?.id || tenantData?.uid;
   const brandColor  = tenantData?.brandColor  || '#a07850';
   const businessName = tenantData?.businessName || tenantData?.name || 'The Salon';
+  const whatsappUrl = !tenantData?.stripeConnected
+    ? getWhatsAppBookingUrl(tenantData?.whatsappNumber, businessName)
+    : null;
   const logo        = tenantData?.logoUrl || tenantData?.logo || null;
   const fontKey     = tenantData?.siteFont;
   const displayFont = getFontFamily(fontKey, 'playfair');
@@ -750,6 +755,15 @@ export default function HairdresserTemplate({ tenantData }) {
                   <p style={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: brandColor, marginBottom: '0.4rem' }}>Opening Hours</p>
                   <p style={{ fontSize: '0.85rem', color: '#5c5449', lineHeight: 1.8, whiteSpace: 'pre-line', margin: 0 }}>{tenantData.openingHours}</p>
                 </div>
+              )}
+              {whatsappUrl && (
+                <Button
+                  component="a" href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                  variant="outlined" size="small" startIcon={<WhatsAppIcon />}
+                  sx={{ mt: 2.5, color: "#25D366", borderColor: "#25D36680", "&:hover": { borderColor: "#25D366", bgcolor: "#25D36610" } }}
+                >
+                  Or enquire via WhatsApp
+                </Button>
               )}
             </div>
             <SlotPicker

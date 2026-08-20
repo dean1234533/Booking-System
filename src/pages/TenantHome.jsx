@@ -19,6 +19,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import FacebookIcon from "@mui/icons-material/Facebook";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
@@ -27,6 +28,7 @@ import { getShopStaff, getBarber } from "../firebase/firestore";
 import BeforeAfterSlider from "../components/BeforeAfterSlider";
 import SlotPicker from "../components/SlotPicker";
 import { useSlots } from "../hooks/useSlots";
+import { getWhatsAppBookingUrl } from "../utils/whatsapp";
 // ── TikTok SVG ────────────────────────────────────────────────────────────────
 const TikTokIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ display: "block" }}>
@@ -201,6 +203,13 @@ export default function TenantHome({ tenant: initialTenant }) {
   }
 
   const isSolo = team.length <= 1;
+
+  // Only offered when deposits aren't already being collected — Stripe not
+  // connected means in-app booking is disabled anyway (see BookingForm.jsx),
+  // so WhatsApp fills a real gap instead of letting people dodge the deposit.
+  const whatsappUrl = !freshTenant?.stripeConnected
+    ? getWhatsAppBookingUrl(freshTenant?.whatsappNumber, freshTenant?.businessName)
+    : null;
 
   return (
     <Box sx={{ bgcolor: "#FFFFFF", minHeight: "100vh", overflowX: 'hidden' }}>
@@ -403,6 +412,15 @@ export default function TenantHome({ tenant: initialTenant }) {
               Book Your Appointment
             </Typography>
             <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
+            {whatsappUrl && (
+              <Button
+                component="a" href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                variant="outlined" size="small" startIcon={<WhatsAppIcon />}
+                sx={{ mt: 3, color: "#25D366", borderColor: "#25D36680", "&:hover": { borderColor: "#25D366", bgcolor: "#25D36610" } }}
+              >
+                Or enquire via WhatsApp
+              </Button>
+            )}
           </Box>
           <SlotPicker
             slots={slots}
@@ -422,6 +440,15 @@ export default function TenantHome({ tenant: initialTenant }) {
             Our Master Barbers
           </Typography>
           <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: 'auto' }} />
+          {whatsappUrl && (
+            <Button
+              component="a" href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+              variant="outlined" size="small" startIcon={<WhatsAppIcon />}
+              sx={{ mt: 3, color: "#25D366", borderColor: "#25D36680", "&:hover": { borderColor: "#25D366", bgcolor: "#25D36610" } }}
+            >
+              Or enquire via WhatsApp
+            </Button>
+          )}
         </Box>
 
         <Grid container spacing={4}>

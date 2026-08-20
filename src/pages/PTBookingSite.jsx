@@ -8,6 +8,8 @@ import BeforeAfterSlider from "../components/BeforeAfterSlider";
 import { Box, Container, Typography, Paper, Stack, Avatar, Divider, Button, useMediaQuery } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import RateReviewIcon from '@mui/icons-material/RateReview';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import { getWhatsAppBookingUrl } from '../utils/whatsapp';
 
 /* ─── Google Fonts ─────────────────────────────────────────── */
 const fontLink = document.createElement('link');
@@ -582,6 +584,9 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   /* ── Resolved values ── */
   const businessName = barber?.businessName || barber?.shopName || barber?.name || 'DB FITNESS';
   const brandColor   = profile?.brandColor || '#dc2626';
+  const whatsappUrl = !profile?.stripeConnected
+    ? getWhatsAppBookingUrl(profile?.whatsappNumber, businessName)
+    : null;
   const logo         = profile?.logoUrl    || null;
   const heroTitle    = profile?.heroTitle  || 'Stronger.\nLeaner.\nUnstoppable.';
   const heroSubtitle = profile?.heroSubtitle || 'Tailored high-performance outdoor functional resistance training.';
@@ -908,6 +913,15 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 8 }}>Ready to Start?</p>
             <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,52px)', letterSpacing: '0.04em', marginBottom: 8 }}>Claim Your Slot</h2>
             <p style={{ color: 'var(--ink-soft)', fontWeight: 300, marginBottom: 40, fontSize: 15 }}>Choose a time that works for you and let's get to work.</p>
+            {whatsappUrl && (
+              <Button
+                component="a" href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                variant="outlined" size="small" startIcon={<WhatsAppIcon />}
+                sx={{ mb: 4, color: "#25D366", borderColor: "#25D36680", "&:hover": { borderColor: "#25D366", bgcolor: "#25D36610" } }}
+              >
+                Or enquire via WhatsApp
+              </Button>
+            )}
             <SlotPicker slots={slots} brandColor={brandColor} onSelect={slot => setConsultationSlot(slot)} />
           </div>
         </section>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
+import { getWhatsAppBookingUrl } from "../utils/whatsapp";
 import { Star, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /* ─── Global style injection ─────────────────────────────── */
@@ -383,6 +384,9 @@ const DecoratorTemplate = ({ tenantData }) => {
   /* ── All content resolved from tenantData with fallbacks ── */
   const brandColor    = tenantData?.brandColor  || "#2563eb";
   const businessName  = tenantData?.businessName || tenantData?.name || "Your Business";
+  // Decorator has no deposit-gated booking on this page at all — just a
+  // quote form — so WhatsApp is always offered here, not gated on Stripe.
+  const whatsappUrl = getWhatsAppBookingUrl(tenantData?.whatsappNumber, businessName);
   const logo          = tenantData?.businessLogo || tenantData?.logoUrl || tenantData?.logo || null;
   const allTeam        = team;
 
@@ -717,6 +721,18 @@ const DecoratorTemplate = ({ tenantData }) => {
                   </div>
                 ))}
               </div>
+              {whatsappUrl && (
+                <a
+                  href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem',
+                    padding: '0.75rem 1.5rem', border: '1px solid #25D36680', borderRadius: 4,
+                    color: '#25D366', fontSize: '0.85rem', fontWeight: 700, textDecoration: 'none',
+                  }}
+                >
+                  Or enquire via WhatsApp
+                </a>
+              )}
             </div>
             {enquiryStatus === "success" ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '3rem 2rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, textAlign: 'center' }}>

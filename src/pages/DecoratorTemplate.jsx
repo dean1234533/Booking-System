@@ -392,7 +392,7 @@ const DecoratorTemplate = ({ tenantData }) => {
   const allTeam        = team;
 
   // Hero
-  const heroImage     = heroForProfile(tenantData, tenantData?.heroImage || "/images/photo-output-13.jpg");
+  const heroImage     = heroForProfile(tenantData, tenantData?.heroImage) || "/images/photo-output-13.jpg";
   const heroEyebrow   = tenantData?.heroTagline  || "London's Trusted Decorators";
   const heroLine1     = tenantData?.heroHeadingLine1 || "Home Painting,";
   const heroLine2     = tenantData?.heroHeadingLine2 || "Done Right.";
@@ -415,11 +415,8 @@ const DecoratorTemplate = ({ tenantData }) => {
 
   // Services
   const servicesHeading = tenantData?.servicesHeading || "Everything your home needs";
-  const servicesImage   = heroForProfile(
-    tenantData,
-    tenantData?.servicesImage || "https://images.unsplash.com/photo-1562619425-c307bb83bc42?q=80&w=1935&auto=format&fit=crop",
-    'servicesImage',
-  );
+  const servicesImage   = heroForProfile(tenantData, tenantData?.servicesImage, 'servicesImage')
+    || "https://images.unsplash.com/photo-1562619425-c307bb83bc42?q=80&w=1935&auto=format&fit=crop";
   const serviceItems    = (tenantData?.services || []).length > 0
     ? tenantData.services
     : [

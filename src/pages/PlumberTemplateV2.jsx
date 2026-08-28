@@ -225,11 +225,8 @@ export default function PlumberTemplateV2({ tenantData = {} }) {
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${businessName} ${location}`.trim())}`;
   const heroImage = heroForProfile(
     tenantData,
-    upgradedImage(
-      tenantData.heroImage || tenantData.heroImageDesktop,
-      "/images/plumber/plumber-hero-v2.jpg",
-    ),
-  );
+    LEGACY_IMAGE_UPGRADES[tenantData.heroImage || tenantData.heroImageDesktop] || tenantData.heroImage || tenantData.heroImageDesktop,
+  ) || "/images/plumber/plumber-hero-v2.jpg";
   const whatsappUrl = getWhatsAppBookingUrl(
     tenantData.whatsappNumber,
     businessName,

@@ -657,8 +657,10 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   const portfolioHeading = profile?.portfolioHeading || 'Client transformations';
   const portfolioSubtext = profile?.portfolioSubtext || 'Drag the slider on each image to reveal real client results.';
   const portfolioItems   = portfolioForProfile(profile, profile?.portfolioItems || []);
-  const heroBackground   = heroForProfile(profile, profile?.heroBgImage || 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920', 'heroBgImage');
-  const coachHeroImage   = heroForProfile(profile, profile?.heroImage || 'https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800');
+  const heroBackground   = heroForProfile(profile, profile?.heroBgImage, 'heroBgImage')
+    || 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920';
+  const coachHeroImage   = heroForProfile(profile, profile?.heroImage)
+    || 'https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800';
 
   const navLinks = [
     { label: 'About',    href: '#about' },

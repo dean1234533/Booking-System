@@ -135,9 +135,9 @@ export default function TenantHome({ tenant: initialTenant }) {
     ? "/images/demo/barber/home-hero-mobile.jpg"
     : heroForProfile(
         freshTenant,
-        savedHeroImage || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1",
+        savedHeroImage,
         isMobileOrTablet ? "mobileHomeHeroImage" : "homeHeroImage",
-      );
+      ) || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1";
   const portfolioItems = portfolioForProfile(freshTenant, freshTenant?.portfolioItems || []);
  
   useEffect(() => { window.scrollTo(0, 0); }, [tenantId, initialTenant?.id]);

@@ -69,13 +69,13 @@ const DEMO_PORTFOLIOS = {
   ],
   plumber: [
     {
-      before: "/images/demo/plumber/pipe-repair-before.jpg",
-      after: "/images/demo/plumber/pipe-repair-after.jpg",
+      before: "/images/demo/plumber/pipe-repair-after.jpg",
+      after: "/images/demo/plumber/pipe-repair-before.jpg",
       label: "Leaking Waste Pipe Repair",
     },
     {
-      before: "/images/demo/plumber/shower-reseal-before.jpg",
-      after: "/images/demo/plumber/shower-reseal-after.jpg",
+      before: "/images/demo/plumber/shower-reseal-after.jpg",
+      after: "/images/demo/plumber/shower-reseal-before.jpg",
       label: "Shower Reseal & Grout Refresh",
     },
   ],

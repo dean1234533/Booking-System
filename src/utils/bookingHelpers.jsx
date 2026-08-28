@@ -24,7 +24,12 @@
 // /api/create-intent handler can't import this directly (Workers runtime,
 // not Vite), so it mirrors these three values verbatim with a comment
 // pointing back here — keep both in sync if this ever changes.
-export const PLATFORM_FEE_PERCENT = 0.05;
+// Set to 0: marketing promises "no commission, ever" against Fresha/Treatwell
+// taking 20-30% — a platform fee on top of that was quietly contradicting our
+// own pitch, and was hitting small barber deposits (£3-5) hardest (up to 16%
+// markup) right where it costs the most in client friction. Customers now
+// only ever pay the deposit plus Stripe's own real processing cost.
+export const PLATFORM_FEE_PERCENT = 0;
 export const STRIPE_PERCENT       = 0.0175;
 export const STRIPE_FIXED_PENCE   = 45;
 

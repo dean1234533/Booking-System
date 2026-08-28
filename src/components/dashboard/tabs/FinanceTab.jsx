@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { getAuth } from "firebase/auth";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../../firebase/config";
 import {
   Grid, Paper, Typography, Alert, Button, Divider, TextField,
   CircularProgress, Box, LinearProgress, Chip,
@@ -13,15 +16,16 @@ import {
 // ── Get pricing based on business type ──────────────────────────────────────
 function getPricingLabel(businessType) {
   if (businessType === "trainer") {
-    return "£20/month (plus £1.50 per 3 extra clients)";
+    return "£15/month";
   }
   return "£10/month";
 }
 
 // ── Fee calculator (mirrors src/utils/bookingHelpers.jsx / worker.js's handleCreateIntent) ──
+// Platform fee is 0 — see the comment on PLATFORM_FEE_PERCENT in bookingHelpers.jsx.
 function calcFees(depositGbp) {
   const depositPence      = Math.round(Number(depositGbp) * 100);
-  const platformFee       = Math.round(depositPence * 0.05);           // 5%
+  const platformFee       = Math.round(depositPence * 0);
   const stripeTotalPct    = 0.0175;                                      // 1.5% + 0.25% connect
   const stripeFixed       = 45;                                          // 20p + 25p connect
   const customerPays      = Math.ceil(
@@ -49,25 +53,36 @@ function toDate(val) {
 function SubscriptionSection({ profile, barber, brandColor }) {
   const [loading, setLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [subscribeError, setSubscribeError] = useState("");
+  const [portalError, setPortalError] = useState("");
 
   const status    = profile.subscriptionStatus || "trialing";
   const trialEnd  = toDate(profile.trialEndsAt);
   const now       = new Date();
 
+  // Trial is actually 90 days (see src/firebase/auth.jsx's signup flow) —
+  // this was hardcoded to 30, showing e.g. "Day 60/30" and a maxed-out
+  // progress bar for most of a real trial.
+  const TRIAL_LENGTH_DAYS = 90;
   const daysLeft = trialEnd
     ? Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)))
     : 0;
-  const daysUsed     = 30 - daysLeft;
-  const trialPct     = Math.min(100, Math.round((daysUsed / 30) * 100));
+  const daysUsed     = TRIAL_LENGTH_DAYS - daysLeft;
+  const trialPct     = Math.min(100, Math.round((daysUsed / TRIAL_LENGTH_DAYS) * 100));
   const trialUrgent  = daysLeft <= 5;
 
   async function handleSubscribe() {
     if (!barber?.uid || !barber?.email) return;
     setLoading(true);
+    setSubscribeError("");
     try {
+      const idToken = await getAuth().currentUser?.getIdToken();
       const res  = await fetch("/api/create-subscription", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
         body:    JSON.stringify({
           barberId: barber.uid,
           email: barber.email,
@@ -75,9 +90,13 @@ function SubscriptionSection({ profile, barber, brandColor }) {
         }),
       });
       const data = await res.json();
+      // Previously any non-{url} response (a 4xx/5xx with {error:"..."})
+      // just fell through silently — the button would spin, then nothing
+      // would happen with no explanation. Surface it instead.
       if (data.url) window.location.href = data.url;
+      else setSubscribeError(data.error || `Checkout failed (HTTP ${res.status}).`);
     } catch (err) {
-      console.error("Subscription checkout failed:", err.message);
+      setSubscribeError(err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -86,16 +105,22 @@ function SubscriptionSection({ profile, barber, brandColor }) {
   async function handleBillingPortal() {
     if (!barber?.uid) return;
     setPortalLoading(true);
+    setPortalError("");
     try {
+      const idToken = await getAuth().currentUser?.getIdToken();
       const res  = await fetch("/api/billing-portal", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
         body:    JSON.stringify({ barberId: barber.uid }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
+      else setPortalError(data.error || `Failed to open billing portal (HTTP ${res.status}).`);
     } catch (err) {
-      console.error("Billing portal failed:", err.message);
+      setPortalError(err.message || "Something went wrong. Please try again.");
     } finally {
       setPortalLoading(false);
     }
@@ -125,7 +150,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
               Free trial progress
             </Typography>
             <Typography sx={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>
-              Day {daysUsed} / 30
+              Day {daysUsed} / {TRIAL_LENGTH_DAYS}
             </Typography>
           </Box>
           <LinearProgress
@@ -149,7 +174,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
           </Alert>
         ) : (
           <Typography sx={{ fontSize: "0.82rem", color: "#6b7280", mb: 2, lineHeight: 1.7 }}>
-            Your site and dashboard are fully active during your 30-day free trial. No card required yet —
+            Your site and dashboard are fully active during your {TRIAL_LENGTH_DAYS}-day free trial. No card required yet —
             you'll be prompted to subscribe before your trial ends.
           </Typography>
         )}
@@ -170,6 +195,11 @@ function SubscriptionSection({ profile, barber, brandColor }) {
         >
           {loading ? "Redirecting…" : `Subscribe early — ${getPricingLabel(profile.businessType || "barber")}`}
         </Button>
+        {subscribeError && (
+          <Alert severity="error" sx={{ mt: 1.5, fontSize: "0.78rem" }} onClose={() => setSubscribeError("")}>
+            {subscribeError}
+          </Alert>
+        )}
       </Box>
     );
   }
@@ -199,6 +229,11 @@ function SubscriptionSection({ profile, barber, brandColor }) {
         >
           {portalLoading ? "Opening…" : "Manage billing"}
         </Button>
+        {portalError && (
+          <Alert severity="error" sx={{ mt: 1.5, fontSize: "0.78rem" }} onClose={() => setPortalError("")}>
+            {portalError}
+          </Alert>
+        )}
       </Box>
     );
   }
@@ -237,6 +272,11 @@ function SubscriptionSection({ profile, barber, brandColor }) {
       >
         {loading ? "Redirecting…" : `Reactivate — ${getPricingLabel(profile.businessType || "barber")}`}
       </Button>
+      {subscribeError && (
+        <Alert severity="error" sx={{ mt: 1.5, fontSize: "0.78rem" }} onClose={() => setSubscribeError("")}>
+          {subscribeError}
+        </Alert>
+      )}
     </Box>
   );
 }
@@ -263,7 +303,7 @@ function FeeBreakdown({ depositAmount, brandColor }) {
       </Box>
       {[
         { label: "Client pays (grossed up)", value: `£${fees.clientPays}`, bold: true, color: "#1e293b" },
-        { label: "Platform fee (5%)",         value: `−£${fees.platformFee}`, color: "#6b7280" },
+        { label: "Platform fee",              value: `£0.00 — we don't take one`, color: "#6b7280" },
         { label: "Stripe fees (~1.75% + 45p)", value: `−£${fees.stripeFees}`, color: "#6b7280" },
         { label: "You receive",               value: `£${fees.youReceive}`, bold: true, color: brandColor },
       ].map(row => (
@@ -289,6 +329,31 @@ export default function FinanceTab({
   hideDeposit = false,
 }) {
   const brandColor = profile.brandColor || "#2563EB";
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+
+  // The owner is authenticated here, so this write satisfies firestore.rules'
+  // barbers/{id} owner-write rule directly — no server round-trip needed.
+  // Without any way to do this, a deleted/invalid Stripe account (e.g. the
+  // owner removed it on Stripe's side) leaves stripeConnected stuck at
+  // true forever, with "Connect with Stripe" never showing again since the
+  // UI only offers that button when disconnected.
+  async function handleDisconnectStripe() {
+    if (!barber?.uid) return;
+    setDisconnecting(true);
+    try {
+      await updateDoc(doc(db, "barbers", barber.uid), {
+        stripeConnected: false,
+        stripeAccountId: "",
+      });
+      setProfile(prev => ({ ...prev, stripeConnected: false, stripeAccountId: "" }));
+      setConfirmDisconnect(false);
+    } catch {
+      // best-effort — button stays visible to retry
+    } finally {
+      setDisconnecting(false);
+    }
+  }
 
   return (
     <Grid container spacing={3}>
@@ -308,11 +373,34 @@ export default function FinanceTab({
           <Typography variant="h6" fontWeight={800} mb={2}>Stripe Connect</Typography>
           <Typography sx={{ fontSize: "0.82rem", color: "#6b7280", mb: 2, lineHeight: 1.7 }}>
             Connect your own Stripe account to receive online booking payments and deposits
-            directly. The 5% platform fee is added to what your client pays — you always receive your full deposit amount.
+            directly. We don't take a platform fee — the only thing added to what your client pays is Stripe's own real processing cost, and you always receive your full deposit amount.
           </Typography>
 
           {profile.stripeConnected ? (
-            <Alert severity="success" sx={{ mb: 1 }}>✅ Stripe Connected</Alert>
+            <Box sx={{ mb: 1 }}>
+              <Alert severity="success" sx={{ mb: 1.5 }}>Stripe Connected</Alert>
+              {confirmDisconnect ? (
+                <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+                  <Typography sx={{ fontSize: "0.8rem", color: "#6b7280" }}>
+                    Disconnect this Stripe account? You'll need to connect again before taking payments.
+                  </Typography>
+                  <Button
+                    size="small" variant="contained" color="error"
+                    onClick={handleDisconnectStripe} disabled={disconnecting}
+                    startIcon={disconnecting ? <CircularProgress size={14} color="inherit" /> : null}
+                  >
+                    {disconnecting ? "Disconnecting…" : "Confirm disconnect"}
+                  </Button>
+                  <Button size="small" onClick={() => setConfirmDisconnect(false)} disabled={disconnecting}>
+                    Cancel
+                  </Button>
+                </Box>
+              ) : (
+                <Button size="small" color="error" variant="outlined" onClick={() => setConfirmDisconnect(true)}>
+                  Disconnect Stripe
+                </Button>
+              )}
+            </Box>
           ) : (
             <Button
               variant="contained"

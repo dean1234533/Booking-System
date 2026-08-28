@@ -32,7 +32,7 @@ const PORKBUN_SECRET_KEY = defineSecret("PORKBUN_SECRET_KEY");
 
 const CF_API = "https://api.cloudflare.com/client/v4";
 const PORKBUN_API = "https://api.porkbun.com/api/json/v3";
-const APP_ORIGIN = "https://bookehtrim.co.uk";
+const APP_ORIGIN = "https://bookrightly.co.uk";
 // Cloudflare account that owns the zones + the booking Worker.
 const CF_ACCOUNT_ID = "74303e7cc790df1d034459f9cb1faf1e";
 const WORKER_SERVICE = "booking-system";
@@ -71,6 +71,28 @@ function toGbp(priceUsd) {
   return Math.round((priceUsd * USD_TO_GBP + PLATFORM_MARKUP) * 100) / 100;
 }
 
+// Looks up the real per-TLD registration price from Porkbun, falling back to
+// FALLBACK_PRICES_USD on error. This is the ONLY trustworthy source for a
+// domain's price — createDomainCheckout used to take priceUsd straight from
+// the client and pass it directly into the Stripe checkout's unit_amount,
+// which let anyone set an arbitrary price (e.g. £0.01) for a domain the
+// platform then actually pays Porkbun to register regardless of what Stripe
+// collected. Always call this server-side instead of trusting client input.
+async function fetchDomainPriceUsd(tld) {
+  let priceUsd = FALLBACK_PRICES_USD[tld] ?? 12.00;
+  try {
+    const pricingRes = await axios.get("https://porkbun.com/api/json/v3/pricing/get");
+    const pricing = pricingRes.data.pricing ?? {};
+    const normalizedTld = tld.replace(/^\./, "");
+    if (pricing[normalizedTld]?.registration) {
+      priceUsd = parseFloat(pricing[normalizedTld].registration);
+    }
+  } catch (pricingErr) {
+    console.warn("fetchDomainPriceUsd: pricing fetch failed, using fallback:", pricingErr.message);
+  }
+  return priceUsd;
+}
+
 exports.checkDomain = onCall(
     {secrets: [], invoker: "public"},
     async (request) => {
@@ -96,18 +118,7 @@ exports.checkDomain = onCall(
         );
         const available = dnsRes.data.Status === 3;
 
-        let priceUsd = FALLBACK_PRICES_USD[tld] ?? 12.00;
-        try {
-          const pricingRes = await axios.get("https://porkbun.com/api/json/v3/pricing/get");
-          const pricing = pricingRes.data.pricing ?? {};
-          const normalizedTld = tld.replace(/^\./, "");
-          if (pricing[normalizedTld]?.registration) {
-            priceUsd = parseFloat(pricing[normalizedTld].registration);
-          }
-        } catch (pricingErr) {
-          console.warn("checkDomain: pricing fetch failed, using fallback:", pricingErr.message);
-        }
-
+        const priceUsd = await fetchDomainPriceUsd(tld);
         const priceGbp = toGbp(priceUsd);
 
         return {
@@ -130,11 +141,28 @@ exports.createDomainCheckout = onCall(
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
-      const {domain, barberId, priceUsd} = request.data;
-      if (!domain || !barberId || !priceUsd) {
-        throw new HttpsError("invalid-argument", "domain, barberId and priceUsd are required");
+      // barberId and priceUsd used to come straight from request.data — any
+      // authenticated caller could set an arbitrary price (Stripe would
+      // charge £0.01 while the platform still pays Porkbun full price to
+      // register the domain) and an arbitrary barberId (attaching the
+      // purchase, and overwriting customDomain, on a DIFFERENT user's
+      // account entirely). barberId must always be the caller's own uid;
+      // price must always be re-derived server-side, never trusted from the
+      // client that's about to pay it.
+      const barberId = request.auth.uid;
+      const {domain} = request.data;
+      if (!domain) throw new HttpsError("invalid-argument", "domain is required");
+
+      const clean = cleanDomain(domain);
+      if (!isValidDomain(clean)) {
+        throw new HttpsError("invalid-argument", "Invalid domain format");
+      }
+      const tld = extractTLD(clean);
+      if (!SUPPORTED_TLDS.includes(tld)) {
+        throw new HttpsError("invalid-argument", `Unsupported TLD: .${tld}`);
       }
 
+      const priceUsd = await fetchDomainPriceUsd(tld);
       const stripe = new (require("stripe"))(STRIPE_SECRET.value());
       const pricePence = Math.round(toGbp(priceUsd) * 100);
 
@@ -147,19 +175,19 @@ exports.createDomainCheckout = onCall(
               currency: "gbp",
               unit_amount: pricePence,
               product_data: {
-                name: `Custom Domain: ${domain}`,
-                description: `1-year registration for ${domain}`,
+                name: `Custom Domain: ${clean}`,
+                description: `1-year registration for ${clean}`,
               },
             },
             quantity: 1,
           }],
           metadata: {
             type: "domain_purchase",
-            domain,
+            domain: clean,
             barberId,
             priceUsd: String(priceUsd),
           },
-          success_url: `${APP_ORIGIN}/dashboard?domainSuccess=true&domain=${encodeURIComponent(domain)}`,
+          success_url: `${APP_ORIGIN}/dashboard?domainSuccess=true&domain=${encodeURIComponent(clean)}`,
           cancel_url: `${APP_ORIGIN}/dashboard?domainCancelled=true`,
         });
 
@@ -307,7 +335,7 @@ exports.checkDomainStatus = onCall(
 // automatically — no manual DNS records to copy.
 
 exports.connectDomainAuto = onCall(
-    {secrets: [CF_API_TOKEN], invoker: "public"},
+    {secrets: [CF_API_TOKEN, CF_ZONE_ID], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
 
@@ -317,6 +345,33 @@ exports.connectDomainAuto = onCall(
       const clean = cleanDomain(domain).replace(/^www\./, "");
       if (!isValidDomain(clean)) {
         throw new HttpsError("invalid-argument", "Invalid domain format");
+      }
+
+      // Clean up any leftover custom_hostname record on the PLATFORM's shared
+      // zone from a previous addCustomDomain (CNAME method) attempt at this
+      // exact domain. The two connection methods are mutually exclusive, and
+      // a record left behind by the other one doesn't just sit inert — it
+      // does something: Cloudflare keeps retrying its HTTP validation
+      // forever (it will never succeed once the domain's own nameservers
+      // point elsewhere), and those retries land on THIS domain's own Worker
+      // once its nameservers are delegated, hitting an unrelated code path
+      // and timing out. Found + fixed 2026-08-21 after exactly this left a
+      // customer's domain generating repeated 522s post-connection.
+      for (const host of [clean, `www.${clean}`]) {
+        try {
+          const existing = await axios.get(
+              `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames?hostname=${encodeURIComponent(host)}`,
+              {headers: cfAuthHeaders()},
+          );
+          for (const h of (existing.data.result || [])) {
+            await axios.delete(
+                `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames/${h.id}`,
+                {headers: cfAuthHeaders()},
+            ).catch(() => {});
+          }
+        } catch (e) {
+          // nothing to clean up
+        }
       }
 
       try {
@@ -417,7 +472,7 @@ exports.checkDomainAuto = onCall(
 // Mirrors src/utils/bookingSlug.js — Cloud Functions can't import Vite src/
 // modules directly. Keep both in sync if this list/logic ever changes.
 const RESERVED_SLUGS = new Set([
-  "shop", "pt-booking", "decorator", "hairdresser", "barber", "book",
+  "shop", "pt-booking", "decorator", "hairdresser", "plumber", "barber", "book",
   "confirmation", "auth", "review", "login", "signup", "cancel-booking",
   "website-design", "compare", "fresha-alternative", "treatwell-alternative",
   "booking-software", "pricing", "how-it-works", "blog", "tools", "terms",
@@ -441,6 +496,111 @@ function sanitizeSlug(raw) {
 function isValidSlugFormat(slug) {
   return /^[a-z0-9]([a-z0-9-]{1,28}[a-z0-9])?$/.test(slug) && slug.length >= 3 && slug.length <= 30;
 }
+
+// Releases whatever Cloudflare resources are tied to the caller's own custom
+// domain, called by deleteBarberAccountData before it wipes the account.
+// Without this, deleting an account left its domain connection dangling
+// forever: a full-delegation zone (connectDomainAuto) keeps its Worker
+// routing and DNS alive indefinitely with nothing in Firestore pointing to
+// it anymore, and a CNAME-method custom_hostname record on the platform's
+// own zone sits there unused. Neither is a security problem (the domain just
+// falls back to showing the generic marketplace once unclaimed), but it's a
+// real resource leak an owner has no way to clean up themselves. Read
+// server-side via the caller's own uid rather than trusting anything from
+// the client, matching every other domain-touching function here.
+exports.releaseCustomDomain = onCall(
+    {secrets: [CF_API_TOKEN, CF_ZONE_ID], invoker: "public"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+      const uid = request.auth.uid;
+
+      const snap = await admin.firestore().collection("barbers").doc(uid).get();
+      if (!snap.exists) return {released: false};
+      const data = snap.data();
+      const domain = data.customDomain;
+      if (!domain) return {released: false};
+
+      try {
+        if (data.connectMethod === "delegation" && data.cfZoneId) {
+          // Deleting the zone takes its DNS, Worker custom domain
+          // attachment and certificates with it in one step.
+          await axios.delete(
+              `${CF_API}/zones/${data.cfZoneId}`,
+              {headers: cfAuthHeaders()},
+          ).catch(() => {});
+        } else {
+          // CNAME method — a custom_hostname record on the platform's own
+          // shared zone, not a dedicated zone of its own.
+          for (const host of [domain, `www.${domain}`]) {
+            const existing = await axios.get(
+                `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames?hostname=${encodeURIComponent(host)}`,
+                {headers: cfAuthHeaders()},
+            ).catch(() => null);
+            for (const h of (existing?.data?.result || [])) {
+              await axios.delete(
+                  `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames/${h.id}`,
+                  {headers: cfAuthHeaders()},
+              ).catch(() => {});
+            }
+          }
+        }
+      } catch (e) {
+        console.error("releaseCustomDomain error:", e.message);
+      }
+      return {released: true};
+    },
+);
+
+// Finishes claiming an owner-issued staff invite link. The client already
+// created its own auth account and its own barbers/{shopId}/staff/{uid} doc
+// by this point (both self-writes, fine under firestore.rules). What's left —
+// deleting the OLD placeholder doc (barbers/{shopId}/staff/{staffId}, a
+// DIFFERENT id than the caller's own uid) and re-pointing any slots the owner
+// pre-generated against that placeholder id — can't be expressed as a plain
+// per-document ownership rule, since it's one user's auth deleting another
+// document's id. Firestore rules used to just allow any authenticated user to
+// create/delete ANY staff doc under ANY shop to make this possible client-
+// side, which let anyone sabotage another business's team listing. Doing the
+// cross-id part here instead (Admin SDK bypasses rules) lets firestore.rules
+// go back to a normal ownership check for staff create/delete.
+exports.finalizeStaffInviteClaim = onCall({invoker: "public"}, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+  const uid = request.auth.uid;
+
+  const {shopId, staffId} = request.data || {};
+  if (!shopId || !staffId) {
+    throw new HttpsError("invalid-argument", "shopId and staffId are required");
+  }
+
+  const db = admin.firestore();
+  const placeholderRef = db.doc(`barbers/${shopId}/staff/${staffId}`);
+  const ownRef = db.doc(`barbers/${shopId}/staff/${uid}`);
+
+  const [placeholderSnap, ownSnap] = await Promise.all([placeholderRef.get(), ownRef.get()]);
+
+  // Only ever deletes a doc the CALLER already has a matching, freshly-created
+  // claim for — not an arbitrary staff id — so this can't be used to remove
+  // someone else's staff member.
+  if (!ownSnap.exists) {
+    throw new HttpsError("failed-precondition", "Your staff profile hasn't been created yet.");
+  }
+  if (placeholderSnap.exists && placeholderSnap.data().hasLogin) {
+    throw new HttpsError("already-exists", "This invite has already been claimed.");
+  }
+
+  if (placeholderSnap.exists && staffId !== uid) {
+    await placeholderRef.delete();
+  }
+
+  const slotsSnap = await db.collection("slots").where("barberId", "==", staffId).get();
+  if (!slotsSnap.empty) {
+    const batch = db.batch();
+    slotsSnap.docs.forEach((d) => batch.update(d.ref, {barberId: uid}));
+    await batch.commit();
+  }
+
+  return {success: true};
+});
 
 // Claims (or changes) the caller's booking-link slug. This is the ONLY place
 // bookingSlug is ever written — never directly from client updateDoc calls,
@@ -521,12 +681,61 @@ exports.stripeWebhook = onRequest(
         return res.status(400).send(`Webhook Error: ${err.message}`);
       }
 
+      // Subscription lifecycle — this is the actual registered webhook
+      // endpoint (Stripe dashboard config), so the equivalent logic already
+      // sitting in src/worker.js's own handleStripeWebhook was never being
+      // called for any of this; ported here instead of relying on it.
+      if (event.type === "customer.subscription.updated") {
+        const sub = event.data.object;
+        const barberId = sub.metadata?.barberId;
+        if (barberId) {
+          try {
+            await admin.firestore().collection("barbers").doc(barberId).update({
+              subscriptionStatus: sub.status,
+            });
+            console.log(`stripeWebhook: subscription status -> ${sub.status} for ${barberId}`);
+          } catch (err) {
+            console.error("stripeWebhook: failed to sync subscription status:", err.message);
+          }
+        }
+        return res.json({received: true});
+      }
+
+      if (event.type === "customer.subscription.deleted") {
+        const sub = event.data.object;
+        const barberId = sub.metadata?.barberId;
+        if (barberId) {
+          try {
+            await admin.firestore().collection("barbers").doc(barberId).update({
+              subscriptionStatus: "canceled",
+            });
+            console.log(`stripeWebhook: subscription canceled for ${barberId}`);
+          } catch (err) {
+            console.error("stripeWebhook: failed to mark canceled:", err.message);
+          }
+        }
+        return res.json({received: true});
+      }
+
       if (event.type !== "checkout.session.completed") {
         return res.json({received: true});
       }
 
       const session = event.data.object;
       const meta = session.metadata ?? {};
+
+      if (meta.type === "platform_subscription" && meta.barberId) {
+        try {
+          await admin.firestore().collection("barbers").doc(meta.barberId).update({
+            subscriptionStatus: "active",
+            stripeCustomerId: session.customer,
+          });
+          console.log(`stripeWebhook: subscription activated for ${meta.barberId}`);
+        } catch (err) {
+          console.error("stripeWebhook: failed to activate subscription:", err.message);
+        }
+        return res.json({received: true});
+      }
 
       if (meta.type !== "domain_purchase") {
         return res.json({received: true});
@@ -690,9 +899,10 @@ exports.createStripeInvoice = onCall(
       const stripe = new (require("stripe"))(STRIPE_SECRET.value());
 
       // Route the invoice through the barber's own Stripe Connect account so
-      // the money lands in their account. The platform takes 5% as an
-      // application fee, consistent with online booking payments (mirrors
-      // src/utils/bookingHelpers.jsx's PLATFORM_FEE_PERCENT — keep in sync).
+      // the money lands in their account. No platform fee — mirrors
+      // src/utils/bookingHelpers.jsx's PLATFORM_FEE_PERCENT (set to 0, keep
+      // in sync): "no commission, ever" is the actual pricing model now, not
+      // just marketing copy.
       const barberSnap = await admin.firestore()
           .collection("barbers").doc(request.auth.uid).get();
       const stripeAccountId = barberSnap.data()?.stripeAccountId;
@@ -706,7 +916,7 @@ exports.createStripeInvoice = onCall(
 
       const connectOpts = {stripeAccount: stripeAccountId};
       const amountPence = Math.round(amount * 100);
-      const platformFee = Math.round(amountPence * 0.05); // 5%
+      const platformFee = 0;
 
       try {
         // Customer must exist on the connected account, not the platform account

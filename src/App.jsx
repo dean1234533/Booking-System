@@ -23,7 +23,6 @@ import { RESERVED_SLUGS } from "./utils/bookingSlug";
 // (and the render delay that goes with it) before anything paints.
 const LegalPage         = lazy(() => import("./pages/LegalPage"));
 const ContactPage       = lazy(() => import("./pages/ContactPage"));
-const TenantHome        = lazy(() => import("./pages/TenantHome"));
 const BarberProfile     = lazy(() => import("./pages/BarberProfile"));
 const BookingForm       = lazy(() => import("./pages/BookingForm"));
 const Confirmation      = lazy(() => import("./pages/Confirmation"));
@@ -41,6 +40,7 @@ const DecoratorTemplate   = lazy(() => import("./pages/DecoratorTemplate"));
 const DecoratorStaffProfile = lazy(() => import("./pages/DecoratorStaffProfile"));
 const HairdresserTemplate = lazy(() => import("./pages/HairdresserTemplate"));
 const HairdresserStaffProfile = lazy(() => import("./pages/HairdresserStaffProfile"));
+const PlumberTemplate     = lazy(() => import("./pages/PlumberTemplateV2"));
 const OfflinePage         = lazy(() => import("./pages/OfflinePage"));
 const Onboarding        = lazy(() => import("./pages/Onboarding"));
 const WorkoutPlanView      = lazy(() => import("./pages/WorkoutPlanView"));
@@ -71,6 +71,7 @@ const PTRateCalculator         = lazy(() => import("./pages/tools/PTRateCalculat
 const ServicePricingCalculator = lazy(() => import("./pages/tools/ServicePricingCalculator"));
 const ToolsHub               = lazy(() => import("./pages/tools/ToolsHub"));
 const OutlookCallback        = lazy(() => import("./pages/auth/OutlookCallback"));
+const AuthAction             = lazy(() => import("./pages/auth/AuthAction"));
 
 // Split Nav & Footer imports
 import Nav               from "./components/Nav";
@@ -98,10 +99,6 @@ function AppShell() {
   const platformDomains = [
     'bookrightly.co.uk',
     'www.bookrightly.co.uk',
-    'bookehtrim.co.uk',
-    'www.bookehtrim.co.uk',
-    'bookehtrim.pages.dev',
-    'bookehtrim.vercel.app',
     'localhost',
     '127.0.0.1',
   ];
@@ -129,10 +126,16 @@ function AppShell() {
       return;
     }
 
+    // Client-side navigation from the marketplace happens before the tenant
+    // lookup resolves. Mark the transition immediately so tenant templates are
+    // never asked to render with a null profile.
+    setIsFetchingTenant(true);
+
     const shopMatch        = matchPath("/shop/:tenantId", path);
     const ptMatch          = matchPath("/pt-booking/:tenantId", path);
     const hairdresserMatch = matchPath("/hairdresser/:tenantId", path);
     const decoratorMatch   = matchPath("/decorator/:tenantId", path);
+    const plumberMatch     = matchPath("/plumber/:tenantId", path);
     const barberMatch      = matchPath("/barber/:id", path);
     const bookingMatch     = matchPath("/book/:barberId/*", path);
 
@@ -143,6 +146,7 @@ function AppShell() {
       ptMatch?.params.tenantId ||
       hairdresserMatch?.params.tenantId ||
       decoratorMatch?.params.tenantId ||
+      plumberMatch?.params.tenantId ||
       barberMatch?.params.id ||
       bookingMatch?.params.barberId;
 
@@ -170,7 +174,21 @@ function AppShell() {
         return;
       }
 
-      if (targetId && targetId === lastIdentifiedId.current && tenantBarber) {
+      // Covers all three ways a tenant gets resolved below (id, slug, custom
+      // domain) with one key, not just the id case. Without this, slug and
+      // custom-domain routes had no guard at all: this effect depends on
+      // tenantBarber, and every resolution below calls setTenantBarber with a
+      // brand-new object — so with no guard, each render's "already resolved"
+      // check never fires, the effect reruns, refetches, sets a new object,
+      // and reruns again forever. That infinite loop was hammering Firestore
+      // with hundreds of reconnects a second and leaving the page stuck on
+      // its loading spinner permanently (found 2026-08-21 investigating "no
+      // card loads").
+      const identifyKey = targetId
+        || (slugMatch ? `slug:${slugMatch.params.bookingSlug}` : null)
+        || (!isPlatformDomain ? `domain:${hostname}` : null);
+
+      if (identifyKey && identifyKey === lastIdentifiedId.current && tenantBarber) {
         setIsFetchingTenant(false);
         return;
       }
@@ -229,7 +247,7 @@ function AppShell() {
             tiktokUrl:     data.tiktokUrl     || null,
           });
         }
-        lastIdentifiedId.current = targetId || hostname;
+        lastIdentifiedId.current = identifyKey || hostname;
       } else if (!isAuthPath) {
         setTenantBarber(null);
         lastIdentifiedId.current = null;
@@ -244,6 +262,27 @@ function AppShell() {
   useEffect(() => {
     identifyTenant();
   }, [identifyTenant]);
+
+  // Custom-domain business pages (e.g. mpowerelectrics.co.uk) are proxied
+  // straight through to Firebase Hosting's index.html by the Worker with no
+  // per-business SEO injection (only /barber/:id-style routes and vanity
+  // slugs get that server-side) — so the generic Bookrightly favicon baked
+  // into index.html never gets swapped for those. Mutate the existing
+  // <link> tags directly (rather than via Helmet, which would just append a
+  // second, differently-attributed icon tag alongside the static one and
+  // leave the browser free to keep using either) so there's only ever one
+  // favicon in the document at a time.
+  useEffect(() => {
+    const logo = tenantBarber?.logoUrl;
+    if (!logo) return;
+    document.querySelectorAll('link[rel="icon"]').forEach(el => {
+      el.setAttribute("href", logo);
+      el.removeAttribute("type");
+    });
+    document.querySelectorAll('link[rel="apple-touch-icon"]').forEach(el => {
+      el.setAttribute("href", logo);
+    });
+  }, [tenantBarber?.logoUrl]);
 
   const dynamicTheme = useMemo(() => {
     const selectedColor = tenantBarber?.brandColor || "#FF735C";
@@ -344,6 +383,7 @@ function AppShell() {
     location.pathname.includes("/pt-booking/") ||
     location.pathname.includes("/decorator/") ||
     location.pathname.includes("/hairdresser/") ||
+    location.pathname.includes("/plumber/") ||
     // Non-barber tenant templates (PT/decorator/hairdresser) render their own
     // nav + footer, so hide the global shell whenever one is shown — including
     // the platform-domain /shop/:id view (where tenantBarber is the tenant).
@@ -352,8 +392,10 @@ function AppShell() {
 
   // A lapsed subscription takes the public site offline (not the dashboard)
   const isTenantOffline = Boolean(
-    tenantBarber?.subscriptionStatus === "past_due" ||
-    tenantBarber?.subscriptionStatus === "canceled"
+    !tenantBarber?.freeForever && (
+      tenantBarber?.subscriptionStatus === "past_due" ||
+      tenantBarber?.subscriptionStatus === "canceled"
+    )
   );
 
   // Choose the right landing component based on business type
@@ -361,7 +403,26 @@ function AppShell() {
     if (tenant.businessType === "trainer")     return <PTBookingSite barber={tenant} profile={tenant} />;
     if (tenant.businessType === "decorator")   return <DecoratorTemplate tenantData={tenant} />;
     if (tenant.businessType === "hairdresser") return <HairdresserTemplate tenantData={tenant} />;
-    return <TenantHome tenant={tenant} />;
+    if (tenant.businessType === "plumber")     return <PlumberTemplate tenantData={tenant} />;
+    return <BarberProfile tenant={tenant} barberId={tenant.id} />;
+  };
+
+  const tenantLoading = (
+    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", bgcolor: "#F5F3ED" }}>
+      <CircularProgress sx={{ color: tenantBarber?.brandColor || "#2563EB" }} />
+    </Box>
+  );
+
+  // ID-based tenant routes are retained for old bookmarks, but the public
+  // address is the claimed booking slug. Wait for the tenant record before
+  // rendering or redirecting so client-side card clicks cannot white-screen.
+  const renderLegacyTenantRoute = (renderer) => {
+    if (!tenantBarber) return tenantLoading;
+    if (isTenantOffline) return <OfflinePage />;
+    if (isPlatformDomain && tenantBarber.bookingSlug) {
+      return <Navigate to={`/${tenantBarber.bookingSlug}`} replace />;
+    }
+    return renderer(tenantBarber);
   };
 
   return (
@@ -393,17 +454,19 @@ function AppShell() {
           }>
           <Routes>
             <Route path="/" element={(!isPlatformDomain && tenantBarber) ? (isTenantOffline ? <OfflinePage /> : renderTenantHome(tenantBarber)) : <Home />} />
-            <Route path="/shop/:tenantId" element={isTenantOffline ? <OfflinePage /> : (tenantBarber ? renderTenantHome(tenantBarber) : <TenantHome tenant={tenantBarber} />)} />
-            <Route path="/pt-booking/:tenantId" element={isTenantOffline ? <OfflinePage /> : <PTBookingSite barber={tenantBarber} profile={tenantBarber} />} />
+            <Route path="/shop/:tenantId" element={renderLegacyTenantRoute(renderTenantHome)} />
+            <Route path="/pt-booking/:tenantId" element={renderLegacyTenantRoute(tenant => <PTBookingSite barber={tenant} profile={tenant} />)} />
             <Route path="/pt-booking/:tenantId/:staffId" element={isTenantOffline ? <OfflinePage /> : <PTStaffProfile tenant={tenantBarber} />} />
-            <Route path="/decorator/:tenantId" element={isTenantOffline ? <OfflinePage /> : <DecoratorTemplate tenantData={tenantBarber} />} />
+            <Route path="/decorator/:tenantId" element={renderLegacyTenantRoute(tenant => <DecoratorTemplate tenantData={tenant} />)} />
             <Route path="/decorator/:tenantId/:staffId" element={isTenantOffline ? <OfflinePage /> : <DecoratorStaffProfile tenant={tenantBarber} />} />
-            <Route path="/hairdresser/:tenantId" element={isTenantOffline ? <OfflinePage /> : <HairdresserTemplate tenantData={tenantBarber} />} />
+            <Route path="/hairdresser/:tenantId" element={renderLegacyTenantRoute(tenant => <HairdresserTemplate tenantData={tenant} />)} />
             <Route path="/hairdresser/:tenantId/:staffId" element={isTenantOffline ? <OfflinePage /> : <HairdresserStaffProfile tenant={tenantBarber} />} />
+            <Route path="/plumber/:tenantId" element={renderLegacyTenantRoute(tenant => <PlumberTemplate tenantData={tenant} />)} />
             <Route path="/barber/:id" element={<BarberProfile tenant={tenantBarber} />} />
             <Route path="/book/:barberId/:slotId" element={<BookingForm tenant={tenantBarber} />} />
             <Route path="/confirmation/:bookingId?" element={<Confirmation />} />
             <Route path="/auth/outlook/callback" element={<OutlookCallback />} />
+            <Route path="/auth/action" element={<AuthAction />} />
             <Route path="/review/:shopId" element={<ReviewPage />} />
             <Route path="/login" element={tenantBarber ? <TenantLogin tenant={tenantBarber} /> : <Login />} />
             <Route path="/signup" element={tenantBarber ? <TenantSignup tenant={tenantBarber} /> : <Signup />} />
@@ -465,7 +528,7 @@ function AppShell() {
               businessType={tenantBarber.businessType} 
             />
           ) : (
-            <Footer isMainSite={true} />
+            <Footer isMainSite={true} isHomePage={isHomePage} />
           )
         )}
       </Box>

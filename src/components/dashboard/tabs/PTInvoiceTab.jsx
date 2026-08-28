@@ -9,9 +9,12 @@ import DeleteIcon     from "@mui/icons-material/Delete";
 import SendIcon       from "@mui/icons-material/Send";
 import OpenInNewIcon  from "@mui/icons-material/OpenInNew";
 import ReceiptIcon    from "@mui/icons-material/Receipt";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { db } from "../../../firebase/config";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { getClientsList } from "../../../firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 function statusColor(status) {
   if (status === "paid")   return { bgcolor: "#e8f5e9", color: "#2e7d32" };
@@ -32,11 +35,11 @@ export default function PTInvoiceTab({ barber, profile, brandColor = "#2563EB" }
 
   // Form state
   const [selectedClient, setSelectedClient] = useState("");
-  const [customEmail,    setCustomEmail]    = useState("");
   const [customName,     setCustomName]     = useState("");
   const [useCustom,      setUseCustom]      = useState(false);
   const [lineItems, setLineItems] = useState([{ description: "", amount: "" }]);
-  const [dueDate,   setDueDate]   = useState("");
+  const [createdLink, setCreatedLink] = useState(null); // { url, email } — shown right after creation
+  const [linkCopied,  setLinkCopied]  = useState(false);
 
   useEffect(() => {
     if (!trainerId) return;
@@ -58,11 +61,15 @@ export default function PTInvoiceTab({ barber, profile, brandColor = "#2563EB" }
   const total = lineItems.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
 
   const selectedClientObj = clients.find(c => c.id === selectedClient);
-  const recipientEmail = useCustom ? customEmail : selectedClientObj?.customerEmail || "";
+  const recipientEmail = useCustom ? "" : selectedClientObj?.customerEmail || "";
   const recipientName  = useCustom ? customName  : selectedClientObj?.customerName  || "";
 
   async function handleSend() {
-    if (!recipientEmail) { setToast({ type: "error", msg: "Enter a client email." }); return; }
+    // Email used to be required so Stripe could email the invoice — now
+    // the trainer sends the link themselves, so a name alone (e.g. for a
+    // walk-in client with no email on file) is enough to identify who it's
+    // for.
+    if (!recipientEmail && !recipientName) { setToast({ type: "error", msg: "Enter a client name or email." }); return; }
     if (lineItems.some(l => !l.description || !l.amount)) {
       setToast({ type: "error", msg: "Fill in all line items." }); return;
     }
@@ -73,28 +80,33 @@ export default function PTInvoiceTab({ barber, profile, brandColor = "#2563EB" }
     setSending(true);
     setToast(null);
     try {
+      const idToken = await getAuth().currentUser?.getIdToken();
       const res = await fetch("/api/create-invoice", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
         body: JSON.stringify({
           barberId:   trainerId,
           clientName: recipientName,
           clientEmail: recipientEmail,
           lineItems:  lineItems.map(l => ({ description: l.description, amount: parseFloat(l.amount) })),
-          dueDate:    dueDate || undefined,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create invoice");
+      if (!res.ok) throw new Error(data.error || "Failed to create payment link");
 
-      setToast({ type: "success", msg: `Invoice sent to ${recipientEmail}` });
+      // A toast that auto-dismisses plus a silent clipboard copy was easy
+      // to miss entirely — show the link itself, front and centre, until
+      // the trainer explicitly moves on.
+      setCreatedLink({ url: data.invoiceUrl, email: recipientEmail, name: recipientName });
       // Reload invoices
       const snap = await getDocs(query(collection(db, "barbers", trainerId, "ptInvoices"), orderBy("createdAt", "desc"))).catch(() => ({ docs: [] }));
       setInvoices(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       // Reset form
       setLineItems([{ description: "", amount: "" }]);
-      setSelectedClient(""); setCustomEmail(""); setCustomName(""); setDueDate(""); setUseCustom(false);
-      setView("list");
+      setSelectedClient(""); setCustomName(""); setUseCustom(false);
     } catch (err) {
       setToast({ type: "error", msg: err.message });
     } finally {
@@ -109,18 +121,18 @@ export default function PTInvoiceTab({ barber, profile, brandColor = "#2563EB" }
       {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Box>
-          <Typography variant="h6" fontWeight={700}>Invoices</Typography>
-          <Typography variant="body2" color="text.secondary">Create and send Stripe invoices to your clients</Typography>
+          <Typography variant="h6" fontWeight={700}>Payment Requests</Typography>
+          <Typography variant="body2" color="text.secondary">Create a Stripe payment link and send it to your clients yourself</Typography>
         </Box>
         <Button
           variant={view === "new" ? "outlined" : "contained"}
           startIcon={view === "new" ? null : <AddIcon />}
-          onClick={() => setView(view === "new" ? "list" : "new")}
+          onClick={() => { setCreatedLink(null); setView(view === "new" ? "list" : "new"); }}
           sx={{ borderRadius: "8px", fontWeight: 700, boxShadow: "none",
             bgcolor: view === "new" ? undefined : brandColor,
             "&:hover": { bgcolor: view === "new" ? undefined : brandColor, filter: "brightness(0.9)" } }}
         >
-          {view === "new" ? "Cancel" : "New Invoice"}
+          {view === "new" ? "Cancel" : "New Payment Request"}
         </Button>
       </Box>
 
@@ -136,8 +148,44 @@ export default function PTInvoiceTab({ barber, profile, brandColor = "#2563EB" }
         </Alert>
       )}
 
+      {/* Link ready — shown front and centre right after creation, since a
+          toast plus a silent clipboard copy was too easy to miss entirely. */}
+      {view === "new" && createdLink && (
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: "12px", mb: 3, bgcolor: `${brandColor}08`, borderColor: `${brandColor}44` }}>
+          <Stack direction="row" spacing={1} alignItems="center" mb={1.5}>
+            <CheckCircleIcon sx={{ color: "#2e7d32" }} />
+            <Typography variant="subtitle1" fontWeight={700}>Payment link ready</Typography>
+          </Stack>
+          <Typography variant="body2" color="text.secondary" mb={1.5}>
+            Send this to {createdLink.email || createdLink.name} — it's not emailed automatically.
+          </Typography>
+          <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: "8px", bgcolor: "#fff", wordBreak: "break-all", fontFamily: "monospace", fontSize: "0.82rem" }}>
+            {createdLink.url}
+          </Paper>
+          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+            <Button
+              variant="contained"
+              startIcon={linkCopied ? <CheckCircleIcon /> : <ContentCopyIcon />}
+              onClick={async () => {
+                try { await navigator.clipboard.writeText(createdLink.url); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2200); }
+                catch { /* clipboard may be unavailable */ }
+              }}
+              sx={{ bgcolor: linkCopied ? "#2e7d32" : brandColor, "&:hover": { bgcolor: linkCopied ? "#2e7d32" : brandColor, filter: "brightness(0.9)" } }}
+            >
+              {linkCopied ? "Copied!" : "Copy Link"}
+            </Button>
+            <Button variant="outlined" startIcon={<OpenInNewIcon />} href={createdLink.url} target="_blank" rel="noopener">
+              Open
+            </Button>
+            <Button onClick={() => { setCreatedLink(null); setView("list"); }} sx={{ color: "text.secondary" }}>
+              Done
+            </Button>
+          </Stack>
+        </Paper>
+      )}
+
       {/* New invoice form */}
-      {view === "new" && (
+      {view === "new" && !createdLink && (
         <Paper variant="outlined" sx={{ p: 3, borderRadius: "12px", mb: 3 }}>
           <Typography variant="subtitle1" fontWeight={700} mb={2}>Invoice Details</Typography>
 
@@ -165,11 +213,8 @@ export default function PTInvoiceTab({ barber, profile, brandColor = "#2563EB" }
               </Stack>
             ) : (
               <Stack spacing={1.5}>
-                <Stack direction="row" spacing={1}>
-                  <TextField size="small" fullWidth label="Name" value={customName} onChange={e => setCustomName(e.target.value)} />
-                  <TextField size="small" fullWidth label="Email" type="email" value={customEmail} onChange={e => setCustomEmail(e.target.value)} />
-                </Stack>
-                <Button size="small" sx={{ alignSelf: "flex-start" }} onClick={() => { setUseCustom(false); setCustomName(""); setCustomEmail(""); }}>
+                <TextField size="small" fullWidth label="Full name" value={customName} onChange={e => setCustomName(e.target.value)} autoFocus />
+                <Button size="small" sx={{ alignSelf: "flex-start" }} onClick={() => { setUseCustom(false); setCustomName(""); }}>
                   ← Use client list
                 </Button>
               </Stack>
@@ -211,15 +256,8 @@ export default function PTInvoiceTab({ barber, profile, brandColor = "#2563EB" }
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* Total + due date */}
-          <Stack direction="row" spacing={2} alignItems="flex-end" justifyContent="space-between" mb={3}>
-            <TextField
-              size="small" label="Due Date (optional)" type="date"
-              value={dueDate} onChange={e => setDueDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{ width: 200 }}
-              helperText="Defaults to 7 days if not set"
-            />
+          {/* Total */}
+          <Stack direction="row" alignItems="flex-end" justifyContent="flex-end" mb={3}>
             <Box textAlign="right">
               <Typography variant="caption" color="text.secondary">Total</Typography>
               <Typography variant="h5" fontWeight={800}>£{total.toFixed(2)}</Typography>
@@ -228,12 +266,15 @@ export default function PTInvoiceTab({ barber, profile, brandColor = "#2563EB" }
 
           <Button
             fullWidth variant="contained" size="large" startIcon={sending ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : <SendIcon />}
-            onClick={handleSend} disabled={sending || !recipientEmail || lineItems.some(l => !l.description || !l.amount)}
+            onClick={handleSend} disabled={sending || (!recipientEmail && !recipientName) || lineItems.some(l => !l.description || !l.amount)}
             sx={{ borderRadius: "10px", fontWeight: 700, height: 50, boxShadow: "none",
               bgcolor: brandColor, "&:hover": { bgcolor: brandColor, filter: "brightness(0.9)" } }}
           >
-            {sending ? "Sending…" : `Send Invoice to ${recipientEmail || "client"}`}
+            {sending ? "Creating…" : `Create Payment Link for ${recipientName || recipientEmail || "client"}`}
           </Button>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1, textAlign: "center" }}>
+            You'll get a link to copy and send them yourself — it doesn't email automatically.
+          </Typography>
         </Paper>
       )}
 

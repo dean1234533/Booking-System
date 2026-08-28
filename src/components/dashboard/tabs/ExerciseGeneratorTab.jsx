@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
   Box, TextField, Button, Grid, Paper, Typography, Chip,
-  Dialog, DialogTitle, DialogContent, Stack, Alert, CircularProgress,
+  Dialog, DialogTitle, DialogContent, Stack, Alert, CircularProgress, Tabs, Tab,
 } from "@mui/material";
 import { Favorite as FavoriteIcon, FavoriteBorder as FavoriteBorderIcon } from "@mui/icons-material";
 import exercisesData from "../../../data/exercises.json";
@@ -17,6 +17,7 @@ const CATEGORIES = [
 ];
 
 export default function ExerciseGeneratorTab({ barber, brandColor, profile }) {
+  const [viewMode, setViewMode] = useState("search"); // "search" | "favorites"
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategories, setSelectedCategories] = useState(null); // null = all, or set of category keys
   const [selectedExercise, setSelectedExercise] = useState(null);
@@ -128,6 +129,96 @@ export default function ExerciseGeneratorTab({ barber, brandColor, profile }) {
 
   const svgMarkup = selectedExercise ? generateStickFigureSVG(selectedExercise.svgType) : null;
 
+  const renderExerciseCard = (exercise) => (
+    <Grid item xs={12} sm={6} md={4} key={exercise.id}>
+      <Paper
+        sx={{
+          p: 2,
+          borderRadius: 2,
+          border: `1px solid #e0e0e0`,
+          cursor: "pointer",
+          transition: "all 0.2s",
+          "&:hover": {
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            transform: "translateY(-2px)",
+          },
+        }}
+        onClick={() => setSelectedExercise(exercise)}
+      >
+        {/* Category Badge */}
+        <Chip
+          label={exercise.category.charAt(0).toUpperCase() + exercise.category.slice(1)}
+          size="small"
+          sx={{
+            bgcolor: getCategoryColor(exercise.category),
+            color: "#fff",
+            fontWeight: 600,
+            fontSize: "0.7rem",
+            mb: 1,
+          }}
+        />
+
+        {/* Exercise Name */}
+        <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+          {exercise.name}
+        </Typography>
+
+        {/* Difficulty & Sets/Reps */}
+        <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+          <Chip
+            label={exercise.difficulty}
+            size="small"
+            variant="outlined"
+            sx={{
+              height: "24px",
+              fontSize: "0.75rem",
+              borderColor:
+                exercise.difficulty === "beginner"
+                  ? "#4CAF50"
+                  : exercise.difficulty === "intermediate"
+                  ? "#FF9800"
+                  : "#F44336",
+            }}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ pt: 0.5 }}>
+            {exercise.setsReps}
+          </Typography>
+        </Stack>
+
+        {/* Description */}
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, minHeight: "40px" }}>
+          {exercise.description}
+        </Typography>
+
+        {/* Favorite Button */}
+        <Button
+          fullWidth
+          size="small"
+          variant="outlined"
+          startIcon={
+            isFavorite(exercise) ? (
+              <FavoriteIcon sx={{ color: brandColor }} />
+            ) : (
+              <FavoriteBorderIcon />
+            )
+          }
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSaveFavorite(exercise);
+          }}
+          disabled={savingFavorite}
+          sx={{
+            borderColor: isFavorite(exercise) ? brandColor : "#ddd",
+            color: isFavorite(exercise) ? brandColor : "text.secondary",
+            fontWeight: 600,
+          }}
+        >
+          {isFavorite(exercise) ? "Saved" : "Add to Favorites"}
+        </Button>
+      </Paper>
+    </Grid>
+  );
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
@@ -139,34 +230,48 @@ export default function ExerciseGeneratorTab({ barber, brandColor, profile }) {
           Search for a body part to discover exercises, warm-ups, stretches, and cool-downs.
         </Typography>
 
-        {/* Search Input */}
-        <TextField
-          fullWidth
-          placeholder="Search body part (legs, arms, back, chest, etc.)"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          variant="outlined"
-          size="small"
-          sx={{ mb: 2 }}
-        />
+        {/* Search / Favorites switcher */}
+        <Tabs
+          value={viewMode}
+          onChange={(e, v) => setViewMode(v)}
+          sx={{ mb: 2, minHeight: 36, "& .MuiTab-root": { minHeight: 36, textTransform: "none", fontWeight: 700 } }}
+        >
+          <Tab value="search" label="Search" />
+          <Tab value="favorites" label={`Favorites${favorites.length ? ` (${favorites.length})` : ""}`} />
+        </Tabs>
 
-        {/* Category Filters */}
-        <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
-          {CATEGORIES.map((category) => (
-            <Chip
-              key={category.key}
-              label={category.label}
-              onClick={() => handleToggleCategory(category.key)}
-              variant={selectedCategories?.has(category.key) ? "filled" : "outlined"}
-              sx={{
-                bgcolor: selectedCategories?.has(category.key) ? category.color : "transparent",
-                color: selectedCategories?.has(category.key) ? "#fff" : "text.primary",
-                borderColor: category.color,
-                cursor: "pointer",
-              }}
+        {viewMode === "search" && (
+          <>
+            {/* Search Input */}
+            <TextField
+              fullWidth
+              placeholder="Search body part (legs, arms, back, chest, etc.)"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              variant="outlined"
+              size="small"
+              sx={{ mb: 2 }}
             />
-          ))}
-        </Box>
+
+            {/* Category Filters */}
+            <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
+              {CATEGORIES.map((category) => (
+                <Chip
+                  key={category.key}
+                  label={category.label}
+                  onClick={() => handleToggleCategory(category.key)}
+                  variant={selectedCategories?.has(category.key) ? "filled" : "outlined"}
+                  sx={{
+                    bgcolor: selectedCategories?.has(category.key) ? category.color : "transparent",
+                    color: selectedCategories?.has(category.key) ? "#fff" : "text.primary",
+                    borderColor: category.color,
+                    cursor: "pointer",
+                  }}
+                />
+              ))}
+            </Box>
+          </>
+        )}
       </Box>
 
       {/* Save Message */}
@@ -177,98 +282,26 @@ export default function ExerciseGeneratorTab({ barber, brandColor, profile }) {
       )}
 
       {/* Results Grid */}
-      {searchTerm.trim() ? (
+      {viewMode === "favorites" ? (
+        loadingFavorites ? (
+          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : favorites.length > 0 ? (
+          <Grid container spacing={2}>
+            {favorites.map(renderExerciseCard)}
+          </Grid>
+        ) : (
+          <Paper sx={{ p: 4, textAlign: "center", bgcolor: "rgba(255,255,255,0.04)" }}>
+            <Typography color="text.secondary">
+              No favorites yet — save exercises from Search and they'll show up here.
+            </Typography>
+          </Paper>
+        )
+      ) : searchTerm.trim() ? (
         filteredExercises.length > 0 ? (
           <Grid container spacing={2}>
-            {filteredExercises.map((exercise) => (
-              <Grid item xs={12} sm={6} md={4} key={exercise.id}>
-                <Paper
-                  sx={{
-                    p: 2,
-                    borderRadius: 2,
-                    border: `1px solid #e0e0e0`,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    "&:hover": {
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      transform: "translateY(-2px)",
-                    },
-                  }}
-                  onClick={() => setSelectedExercise(exercise)}
-                >
-                  {/* Category Badge */}
-                  <Chip
-                    label={exercise.category.charAt(0).toUpperCase() + exercise.category.slice(1)}
-                    size="small"
-                    sx={{
-                      bgcolor: getCategoryColor(exercise.category),
-                      color: "#fff",
-                      fontWeight: 600,
-                      fontSize: "0.7rem",
-                      mb: 1,
-                    }}
-                  />
-
-                  {/* Exercise Name */}
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
-                    {exercise.name}
-                  </Typography>
-
-                  {/* Difficulty & Sets/Reps */}
-                  <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                    <Chip
-                      label={exercise.difficulty}
-                      size="small"
-                      variant="outlined"
-                      sx={{
-                        height: "24px",
-                        fontSize: "0.75rem",
-                        borderColor:
-                          exercise.difficulty === "beginner"
-                            ? "#4CAF50"
-                            : exercise.difficulty === "intermediate"
-                            ? "#FF9800"
-                            : "#F44336",
-                      }}
-                    />
-                    <Typography variant="caption" color="text.secondary" sx={{ pt: 0.5 }}>
-                      {exercise.setsReps}
-                    </Typography>
-                  </Stack>
-
-                  {/* Description */}
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, minHeight: "40px" }}>
-                    {exercise.description}
-                  </Typography>
-
-                  {/* Favorite Button */}
-                  <Button
-                    fullWidth
-                    size="small"
-                    variant="outlined"
-                    startIcon={
-                      isFavorite(exercise) ? (
-                        <FavoriteIcon sx={{ color: brandColor }} />
-                      ) : (
-                        <FavoriteBorderIcon />
-                      )
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSaveFavorite(exercise);
-                    }}
-                    disabled={savingFavorite}
-                    sx={{
-                      borderColor: isFavorite(exercise) ? brandColor : "#ddd",
-                      color: isFavorite(exercise) ? brandColor : "text.secondary",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {isFavorite(exercise) ? "Saved" : "Add to Favorites"}
-                  </Button>
-                </Paper>
-              </Grid>
-            ))}
+            {filteredExercises.map(renderExerciseCard)}
           </Grid>
         ) : (
           <Paper sx={{ p: 4, textAlign: "center", bgcolor: "rgba(255,255,255,0.04)" }}>

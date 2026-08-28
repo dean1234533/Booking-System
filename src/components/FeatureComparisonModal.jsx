@@ -11,11 +11,12 @@ import {
   useTheme,
 } from "@mui/material";
 import { ArrowForward, Check, Close } from "@mui/icons-material";
+import AppIcon from "./AppIcon";
 
 const BUSINESS_FEATURES = {
   barber: {
     name: "Barbers",
-    icon: "✂️",
+    icon: "barber",
     color: "#2563EB",
     bgColor: "#EAF2FF",
     features: [
@@ -60,7 +61,7 @@ const BUSINESS_FEATURES = {
   },
   hairdresser: {
     name: "Hairdressers",
-    icon: "💇",
+    icon: "hairdresser",
     color: "#7c4e8a",
     bgColor: "#f5e8f5",
     features: [
@@ -104,7 +105,7 @@ const BUSINESS_FEATURES = {
   },
   decorator: {
     name: "Decorators",
-    icon: "🎨",
+    icon: "paint",
     color: "#7a3520",
     bgColor: "#f5e8e3",
     features: [
@@ -148,7 +149,7 @@ const BUSINESS_FEATURES = {
   },
   trainer: {
     name: "Personal Trainers",
-    icon: "💪",
+    icon: "fitness",
     color: "#3d2c0e",
     bgColor: "#EAF2FF",
     features: [
@@ -191,13 +192,57 @@ const BUSINESS_FEATURES = {
       },
     ],
   },
+  plumber: {
+    name: "Plumbing & Heating",
+    icon: "plumber",
+    color: "#B91C1C",
+    bgColor: "#FEE2E2",
+    features: [
+      {
+        category: "Enquiries & Jobs",
+        items: [
+          { name: "Service enquiry forms", included: true, benefit: "Customers describe the job and add photos before you respond" },
+          { name: "Job request management", included: true, benefit: "Keep new requests, active jobs and completed work organised" },
+          { name: "Emergency call-out details", included: true, benefit: "Capture urgent faults and the information needed for a quick reply" },
+          { name: "Day planner", included: true, benefit: "Plan call-outs, site visits and scheduled jobs in one timeline" },
+        ],
+      },
+      {
+        category: "Quotes & Payments",
+        items: [
+          { name: "Professional quote builder", included: true, benefit: "Create itemised quotes and share them with customers online" },
+          { name: "Quote approval links", included: true, benefit: "Customers can review and approve work without printing paperwork" },
+          { name: "Online payments (Stripe)", included: true, benefit: "Take deposits and payments securely by card" },
+          { name: "Invoices & payment tracking", included: true, benefit: "Send invoices and see what has been paid or is still due" },
+        ],
+      },
+      {
+        category: "Website & Service Area",
+        items: [
+          { name: "Custom branded trade website", included: true, benefit: "Your services, branding and contact options on one professional site" },
+          { name: "Service and price guide", included: true, benefit: "Explain the work you offer with clear starting prices" },
+          { name: "Service area & postcode checker", included: true, benefit: "Show where you work and help customers check coverage" },
+          { name: "Google review link", included: true, benefit: "Send visitors to your verified Google Business reviews" },
+        ],
+      },
+      {
+        category: "Customer & Business Tools",
+        items: [
+          { name: "Customer and property history", included: true, benefit: "Keep previous jobs, notes and contact details together" },
+          { name: "Photo attachments", included: true, benefit: "Store fault, progress and completed-work photos with each request" },
+          { name: "WhatsApp and call actions", included: true, benefit: "Let customers reach you quickly using the contact method they prefer" },
+          { name: "Automated email notifications", included: true, benefit: "Send request confirmations and job updates automatically" },
+        ],
+      },
+    ],
+  },
 };
 
 export default function FeatureComparisonModal({ open, onClose }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [selectedType, setSelectedType] = React.useState("barber");
-  const businessTypes = ["barber", "hairdresser", "decorator", "trainer"];
+  const businessTypes = ["barber", "hairdresser", "decorator", "trainer", "plumber"];
   const currentBusiness = BUSINESS_FEATURES[selectedType];
 
   return (
@@ -213,39 +258,40 @@ export default function FeatureComparisonModal({ open, onClose }) {
           bgcolor: "#f4f1e9",
           overflow: "hidden",
           minHeight: isMobile ? "100%" : "min(820px, 90vh)",
+          height: isMobile ? "100dvh" : "auto",
         },
       }}
     >
-      <DialogContent sx={{ p: 0, display: "grid", gridTemplateColumns: { xs: "1fr", md: "300px 1fr" } }}>
-        <Box sx={{ bgcolor: "#101116", color: "#fff", p: { xs: 2.5, md: 4 }, position: "relative" }}>
-          <IconButton onClick={onClose} sx={{ position: "absolute", right: 18, top: 18, color: "#fff", border: "1px solid #ffffff33" }}><Close /></IconButton>
+      <DialogContent sx={{ p: 0, display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "300px minmax(0, 1fr)" }, gridTemplateRows: { xs: "auto minmax(0, 1fr)", md: "1fr" }, overflow: "hidden" }}>
+        <Box sx={{ bgcolor: "#101116", color: "#fff", p: { xs: 2, sm: 2.5, md: 4 }, position: "relative", minWidth: 0, zIndex: 1 }}>
+          <IconButton aria-label="Close feature comparison" onClick={onClose} sx={{ position: "absolute", right: { xs: 12, md: 18 }, top: { xs: 12, md: 18 }, width: 40, height: 40, color: "#fff", border: "1px solid #ffffff33" }}><Close /></IconButton>
           <Typography sx={{ color: "#9da6ff", fontSize: ".68rem", fontWeight: 900, letterSpacing: ".16em", textTransform: "uppercase" }}>Compare by trade</Typography>
-          <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: { xs: "2rem", md: "2.8rem" }, lineHeight: 1.02, mt: 2, maxWidth: 230 }}>Built around how you work.</Typography>
-          <Typography sx={{ color: "#ffffff99", fontSize: ".8rem", lineHeight: 1.7, mt: 2, mb: 4 }}>Choose your business to see the tools shaped for your day—not a generic software checklist.</Typography>
-          <Stack spacing={1} direction={{ xs: "row", md: "column" }} sx={{ overflowX: "auto", pb: 1 }}>
+          <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: { xs: "1.7rem", md: "2.8rem" }, lineHeight: 1.02, mt: { xs: 1, md: 2 }, maxWidth: { xs: "calc(100% - 52px)", md: 230 } }}>Built around how you work.</Typography>
+          <Typography sx={{ display: { xs: "none", sm: "block" }, color: "#ffffff99", fontSize: ".8rem", lineHeight: 1.7, mt: 2, mb: { sm: 2, md: 4 } }}>Choose your business to see the tools shaped for your day—not a generic software checklist.</Typography>
+          <Stack spacing={1} direction={{ xs: "row", md: "column" }} sx={{ mt: { xs: 1.5, sm: 2, md: 0 }, mx: { xs: -2, sm: -2.5, md: 0 }, px: { xs: 2, sm: 2.5, md: 0 }, overflowX: "auto", pb: 1, scrollSnapType: { xs: "x mandatory", md: "none" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
             {businessTypes.map((type, index) => {
               const item = BUSINESS_FEATURES[type];
               const active = selectedType === type;
-              return <Button key={type} onClick={() => setSelectedType(type)} sx={{ minWidth: { xs: 170, md: 0 }, justifyContent: "space-between", px: 2, py: 1.5, borderRadius: 3, color: active ? "#101116" : "#fff", bgcolor: active ? "#93C5FD" : "#ffffff0b", border: "1px solid", borderColor: active ? "#93C5FD" : "#ffffff18", "&:hover": { bgcolor: active ? "#93C5FD" : "#ffffff16" } }}>
-                <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 1.25 }}><Box component="span" sx={{ fontSize: 20 }}>{item.icon}</Box><Box component="span" sx={{ fontWeight: 850, textTransform: "none" }}>{item.name}</Box></Box>
-                <Typography component="span" sx={{ fontSize: ".65rem", opacity: .6 }}>0{index + 1}</Typography>
+              return <Button key={type} onClick={() => setSelectedType(type)} sx={{ minWidth: { xs: "max-content", md: 0 }, scrollSnapAlign: "start", justifyContent: "space-between", gap: 1.5, px: { xs: 1.5, md: 2 }, py: { xs: 1, md: 1.5 }, borderRadius: 3, color: active ? "#101116" : "#fff", bgcolor: active ? "#93C5FD" : "#ffffff0b", border: "1px solid", borderColor: active ? "#93C5FD" : "#ffffff18", "&:hover": { bgcolor: active ? "#93C5FD" : "#ffffff16" } }}>
+                <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 1 }}><AppIcon name={item.icon} sx={{ fontSize: { xs: 18, md: 20 } }} /><Box component="span" sx={{ fontWeight: 850, fontSize: { xs: ".75rem", md: ".875rem" }, textTransform: "none" }}>{item.name}</Box></Box>
+                <Typography component="span" sx={{ display: { xs: "none", md: "block" }, fontSize: ".65rem", opacity: .6 }}>0{index + 1}</Typography>
               </Button>;
             })}
           </Stack>
         </Box>
 
-        <Box sx={{ p: { xs: 2.5, sm: 4, md: 5 }, overflowY: "auto" }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "flex-start", mb: 4 }}>
+        <Box sx={{ p: { xs: 2, sm: 3, md: 5 }, minWidth: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "flex-start", mb: { xs: 2.5, md: 4 } }}>
             <Box>
               <Typography sx={{ color: currentBusiness.color, fontWeight: 900, fontSize: ".7rem", letterSpacing: ".13em", textTransform: "uppercase" }}>16 purpose-built tools</Typography>
-              <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: { xs: "2rem", md: "3.1rem" }, lineHeight: 1.05, mt: 1 }}>{currentBusiness.name}, covered.</Typography>
+              <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: { xs: "1.75rem", sm: "2rem", md: "3.1rem" }, lineHeight: 1.05, mt: .75 }}>{currentBusiness.name}, covered.</Typography>
             </Box>
-            <Box sx={{ width: 64, height: 64, borderRadius: "20px 20px 20px 4px", bgcolor: currentBusiness.bgColor, display: { xs: "none", sm: "grid" }, placeItems: "center", fontSize: 30 }}>{currentBusiness.icon}</Box>
+            <Box sx={{ width: 64, height: 64, borderRadius: "20px 20px 20px 4px", bgcolor: currentBusiness.bgColor, color: currentBusiness.color, display: { xs: "none", sm: "grid" }, placeItems: "center" }}><AppIcon name={currentBusiness.icon} sx={{ fontSize: 30 }} /></Box>
           </Box>
 
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" }, gap: 2 }}>
             {currentBusiness.features.map((section, idx) => (
-              <Box key={section.category} sx={{ bgcolor: idx === 0 ? "#2563EB" : idx === 3 ? "#101116" : "#fff", color: idx === 0 || idx === 3 ? "#fff" : "#15161b", borderRadius: idx % 2 ? "28px 8px 28px 28px" : "8px 28px 28px 28px", p: 2.5, border: "1px solid #dad7ce", minHeight: 260 }}>
+              <Box key={section.category} sx={{ bgcolor: idx === 0 ? "#2563EB" : idx === 3 ? "#101116" : "#fff", color: idx === 0 || idx === 3 ? "#fff" : "#15161b", borderRadius: idx % 2 ? "28px 8px 28px 28px" : "8px 28px 28px 28px", p: { xs: 2, sm: 2.5 }, border: "1px solid #dad7ce", minHeight: { xs: 0, sm: 260 } }}>
                 <Typography sx={{ opacity: .55, fontSize: ".65rem", fontWeight: 900, letterSpacing: ".12em" }}>0{idx + 1}</Typography>
                 <Typography sx={{ fontFamily: "'Playfair Display', serif", fontSize: "1.35rem", mt: .75, mb: 2 }}>{section.category}</Typography>
                 <Stack spacing={1.45}>
@@ -258,9 +304,9 @@ export default function FeatureComparisonModal({ open, onClose }) {
             ))}
           </Box>
 
-          <Box sx={{ mt: 3, px: 3, py: 2.25, borderRadius: 99, bgcolor: "#93C5FD", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+          <Box sx={{ mt: 3, px: { xs: 2, sm: 3 }, py: { xs: 1.75, sm: 2.25 }, borderRadius: { xs: 4, sm: 99 }, bgcolor: "#93C5FD", display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { xs: "stretch", sm: "center" }, justifyContent: "space-between", gap: { xs: 1, sm: 2 } }}>
             <Typography sx={{ fontWeight: 900, fontSize: { xs: ".82rem", sm: "1rem" } }}>Every plan includes your branded site, payments and client history.</Typography>
-            <Button onClick={onClose} endIcon={<ArrowForward />} sx={{ flexShrink: 0, color: "#101116", fontWeight: 900 }}>Done</Button>
+            <Button onClick={onClose} endIcon={<ArrowForward />} sx={{ alignSelf: { xs: "flex-start", sm: "auto" }, p: 0, minWidth: 0, flexShrink: 0, color: "#101116", fontWeight: 900 }}>Done</Button>
           </Box>
         </Box>
       </DialogContent>

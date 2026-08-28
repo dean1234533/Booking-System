@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
   Box, Typography, TextField, Button, IconButton, Paper, Grid,
-  Stack, Chip, Tooltip, CircularProgress, Dialog, DialogContent,
+  Stack, Chip, Tooltip, CircularProgress,
 } from "@mui/material";
 import AddIcon            from "@mui/icons-material/Add";
 import DeleteIcon         from "@mui/icons-material/Delete";
-import PlayCircleIcon     from "@mui/icons-material/PlayCircle";
+import OpenInNewIcon      from "@mui/icons-material/OpenInNew";
 import ShareIcon          from "@mui/icons-material/Share";
 import ArrowBackIcon      from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon    from "@mui/icons-material/ContentCopy";
@@ -44,7 +44,6 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
   const [planName,    setPlanName]    = useState("");
   const [exercises,   setExercises]   = useState([newExercise()]);
   const [saving,      setSaving]      = useState(false);
-  const [videoUrl,    setVideoUrl]    = useState(null);
   const [copiedId,    setCopiedId]    = useState(null);
 
   const trainerId = barber?.uid || barber?.id;
@@ -222,9 +221,6 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
     );
   }
 
-  // ── Builder ──────────────────────────────────────────────────────────────────
-  const activeVideoId = videoUrl ? extractYouTubeId(videoUrl) : null;
-
   return (
     <Box>
       {/* Builder header */}
@@ -303,20 +299,27 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
                     onChange={e => updateEx(ex.id, "youtubeUrl", e.target.value)}
                     size="small"
                   />
-                  <Tooltip title={ytId ? "Watch video" : "Paste a YouTube URL first"} placement="top">
+                  <Tooltip title={ytId ? "Open on YouTube" : "Paste a YouTube URL first"} placement="top">
                     <span>
                       <IconButton
-                        onClick={() => ytId && setVideoUrl(ex.youtubeUrl)}
+                        onClick={() => ytId && window.open(ex.youtubeUrl, "_blank", "noopener,noreferrer")}
                         disabled={!ytId}
                         sx={{
                           bgcolor: ytId ? brandColor : "#f5f5f5",
                           color:   ytId ? "#fff" : "#bdbdbd",
                           borderRadius: 1.5, p: 1, mt: 0.25, flexShrink: 0,
-                          "&:hover":    { filter: ytId ? "brightness(0.92)" : undefined },
+                          // A hover block that only sets `filter` (no bgcolor)
+                          // lets MUI's own default hover overlay blend over
+                          // the custom colour, washing the icon out to near
+                          // invisible — always repeat bgcolor here too.
+                          "&:hover": {
+                            bgcolor: ytId ? brandColor : "#f5f5f5",
+                            filter: ytId ? "brightness(0.92)" : undefined,
+                          },
                           "&:disabled": { opacity: 0.5 },
                         }}
                       >
-                        <PlayCircleIcon sx={{ fontSize: 22 }} />
+                        <OpenInNewIcon sx={{ fontSize: 20 }} />
                       </IconButton>
                     </span>
                   </Tooltip>
@@ -362,27 +365,6 @@ export default function WorkoutPlansTab({ barber, brandColor }) {
       >
         Add Exercise
       </Button>
-
-      {/* YouTube player dialog */}
-      <Dialog
-        open={Boolean(activeVideoId)}
-        onClose={() => setVideoUrl(null)}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: 2, overflow: "hidden", m: { xs: 1, sm: 3 } } }}
-      >
-        <DialogContent sx={{ p: 0, lineHeight: 0 }}>
-          {activeVideoId && (
-            <Box
-              component="iframe"
-              src={`https://www.youtube.com/embed/${activeVideoId}?autoplay=1`}
-              allow="autoplay; encrypted-media; fullscreen"
-              allowFullScreen
-              sx={{ width: "100%", aspectRatio: "16/9", border: "none", display: "block", minHeight: { xs: 220, sm: 340 } }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </Box>
   );
 }

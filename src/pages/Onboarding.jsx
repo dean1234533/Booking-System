@@ -7,13 +7,14 @@ import { useAuth } from "../context/AuthContext";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getApp } from "firebase/app";
 import { updateBarber, addSlot, uploadBarberImage } from "../firebase/firestore";
-import { sanitizeSlug, isValidSlugFormat, isReservedSlug } from "../utils/bookingSlug";
+import { sanitizeSlug, isValidSlugFormat, isReservedSlug, validateSlug } from "../utils/bookingSlug";
 import BookingLinkCard from "../components/dashboard/BookingLinkCard";
 import { logFunnelEvent } from "../utils/funnelTracking";
+import AppIcon from "../components/AppIcon";
 
 /* ── Inline styles ── */
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.bunny.net/css?family=syne:700,800|dm-sans:300,400,500,600&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -242,6 +243,7 @@ const css = `
   .ob-slug-hint { font-size: 12.5px; margin-top: 8px; min-height: 18px; }
   .ob-slug-hint.available { color: #4ade80; }
   .ob-slug-hint.taken { color: #f87171; }
+  .ob-slug-hint.invalid, .ob-slug-hint.error { color: #f87171; }
   .ob-slug-hint.checking { color: rgba(255,255,255,0.35); }
 
   /* ── Availability day rows ── */
@@ -417,6 +419,9 @@ const css = `
     flex-direction: column;
     align-items: center;
     text-align: center;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
     padding: 40px 0;
     animation: cardFadeIn 0.6s ease both;
   }
@@ -444,9 +449,11 @@ const css = `
     font-size: 14px;
     color: rgba(255,255,255,0.45);
     line-height: 1.7;
-    max-width: 360px;
+    max-width: 560px;
     margin-bottom: 32px;
   }
+
+  .ob-done-wrap > .ob-cta-row { justify-content: center; }
 
   /* ── Responsive ── */
   @media (max-width: 768px) {
@@ -488,6 +495,7 @@ const BUSINESS_TYPES = [
   { value: "hairdresser", label: "Hair Salon" },
   { value: "decorator",   label: "Painting & Decorating" },
   { value: "trainer",     label: "Personal Trainer" },
+  { value: "plumber",     label: "Plumbing, Heating & Electrical" },
 ];
 
 const DAYS = [
@@ -515,7 +523,14 @@ export default function Onboarding({ brandColor: brandColorProp }) {
   const [brandColor, setBrandColor] = useState(brandColorProp || "#2563EB");
   const [accountType, setAccountType] = useState(null);
   const [businessName, setBusinessName] = useState("");
-  const [businessType, setBusinessType] = useState("barber");
+  // Starts unset (not "barber") so handleProfileSubmit below can tell "the
+  // real value hasn't loaded yet" apart from "genuinely a barber" — signup
+  // already saved the correct businessType, and this step only needs to
+  // touch it when the user actually changes the dropdown. A hardcoded
+  // default here previously meant any save landing before the async load
+  // below finished silently overwrote a correct value (e.g. "plumber") with
+  // "barber". Found 2026-08-21 after it happened to a real account.
+  const [businessType, setBusinessType] = useState(null);
   const [location, setLocation] = useState("");
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
@@ -533,6 +548,11 @@ export default function Onboarding({ brandColor: brandColorProp }) {
   const completedLoggedRef = useRef(false);
 
   useEffect(() => { window.scrollTo(0, 0); logFunnelEvent("onboarding_view"); }, []);
+
+  // Each onboarding panel replaces the previous one in place. Reset the
+  // document scroll so the next heading, especially the final success screen,
+  // can never appear clipped above the viewport.
+  useEffect(() => { window.scrollTo(0, 0); }, [step]);
 
   useEffect(() => {
     if (step >= steps.length && !completedLoggedRef.current) {
@@ -596,7 +616,9 @@ export default function Onboarding({ brandColor: brandColorProp }) {
           setSlugStatus({ state: "available", message: `✓ bookrightly.co.uk/${clean} is available` });
         }
       } catch {
-        setSlugStatus({ state: "idle", message: "" });
+        // The claim function is the authoritative uniqueness check. A failed
+        // preview request must not trap the user on this step.
+        setSlugStatus({ state: "error", message: "Couldn't check availability. You can still try to claim this link." });
       }
     }, 400);
     return () => clearTimeout(t);
@@ -640,7 +662,9 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       }
       await updateBarber(authUser.uid, {
         businessName: businessName.trim(),
-        businessType,
+        // Only ever include this if the real value has actually loaded (or
+        // the user picked one) — never overwrite with a still-unset default.
+        ...(businessType ? { businessType } : {}),
         location: location.trim(),
         ...(businessLogo ? { businessLogo, logoUrl: businessLogo } : {}),
       });
@@ -654,9 +678,18 @@ export default function Onboarding({ brandColor: brandColorProp }) {
   }
 
   async function handleSlugSubmit() {
-    const clean = sanitizeSlug(slug);
-    if (slugStatus.state !== "available" && clean !== claimedSlug) {
-      setError("Please choose an available link first.");
+    const validation = validateSlug(slug);
+    if (!validation.valid) {
+      setError(validation.error);
+      return;
+    }
+    const clean = validation.slug;
+    if (slugStatus.state === "taken") {
+      setError("That booking link is already taken. Try a different one.");
+      return;
+    }
+    if (clean === claimedSlug) {
+      goNext();
       return;
     }
     setSaving(true);
@@ -757,7 +790,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
         </div>
       ),
       cardEyebrow: "Getting started",
-      cardIcon: "👋",
+      cardIcon: "success",
       cardTitle: "Welcome to Bookrightly",
       cardBody: "In the next few minutes you'll have your own booking page live — no website or domain needed.",
     },
@@ -773,7 +806,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
               variant="filled" fullWidth InputProps={{ disableUnderline: true }} sx={fieldSx} />
             <FormControl variant="filled" fullWidth sx={fieldSx}>
               <InputLabel sx={{ color: "rgba(255,255,255,0.5)" }}>Trade</InputLabel>
-              <Select value={businessType} onChange={e => setBusinessType(e.target.value)} disableUnderline sx={{ color: "#fff" }}>
+              <Select value={businessType || "barber"} onChange={e => setBusinessType(e.target.value)} disableUnderline sx={{ color: "#fff" }}>
                 {BUSINESS_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
               </Select>
             </FormControl>
@@ -792,7 +825,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       onNext: handleProfileSubmit,
       ctaLabel: "Continue",
       cardEyebrow: "Your profile",
-      cardIcon: "🏷️",
+      cardIcon: "tag",
       cardTitle: "How clients find you",
       cardBody: "Your business name, trade and location help clients recognise your page immediately.",
     },
@@ -807,20 +840,32 @@ export default function Onboarding({ brandColor: brandColorProp }) {
             <span className="ob-slug-prefix">bookrightly.co.uk/</span>
             <input
               value={slug}
-              onChange={e => setSlug(e.target.value.toLowerCase())}
+              onChange={e => {
+                setSlug(e.target.value.toLowerCase());
+                setError("");
+              }}
+              onKeyDown={e => {
+                if (e.key === "Enter" && !saving) handleSlugSubmit();
+              }}
               placeholder="yourbusiness"
               autoComplete="off"
               spellCheck={false}
+              aria-label="Choose your booking link"
+              aria-describedby="booking-link-hint"
             />
           </div>
-          <div className={`ob-slug-hint ${slugStatus.state}`}>{slugStatus.message}</div>
+          <div id="booking-link-hint" className={`ob-slug-hint ${slugStatus.state}`} aria-live="polite">
+            {slugStatus.message || "Use 3–30 lowercase letters, numbers, or hyphens."}
+          </div>
         </>
       ),
       onNext: handleSlugSubmit,
-      nextDisabled: !(slugStatus.state === "available" || sanitizeSlug(slug) === claimedSlug),
+      // Keep the button actionable so validation or a transient availability
+      // error is explained on click instead of looking permanently broken.
+      nextDisabled: false,
       ctaLabel: "Claim link",
       cardEyebrow: "Your address",
-      cardIcon: "🔗",
+      cardIcon: "link",
       cardTitle: "One link, everywhere",
       cardBody: "Put it in your Instagram, TikTok, Facebook or WhatsApp bio so clients can book you anytime.",
     },
@@ -846,7 +891,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       onNext: handleServiceSubmit,
       ctaLabel: "Continue",
       cardEyebrow: "Services",
-      cardIcon: "💈",
+      cardIcon: "barber",
       cardTitle: "What you offer",
       cardBody: "A deposit here cuts no-shows — clients pay upfront to secure the slot.",
     },
@@ -874,7 +919,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       ctaLabel: "Continue",
       skipLabel: "Skip for now",
       cardEyebrow: "Availability",
-      cardIcon: "🗓️",
+      cardIcon: "calendar",
       cardTitle: "When you're free",
       cardBody: "Clients can only book the times you open — no double bookings, ever.",
     },
@@ -902,10 +947,15 @@ export default function Onboarding({ brandColor: brandColorProp }) {
           </div>
           <div className="ob-body" style={{ gridTemplateColumns: "1fr" }}>
             <div className="ob-done-wrap">
-              <div className="ob-done-ring">🎉</div>
+              <div className="ob-done-ring"><AppIcon name="success" sx={{ fontSize: 42 }} /></div>
               <h1 className="ob-done-title">You're ready to take bookings</h1>
               <p className="ob-done-sub">Your booking page is live at bookrightly.co.uk/{claimedSlug}. Share it anywhere — no website or domain needed.</p>
-              <BookingLinkCard bookingSlug={claimedSlug} brandColor={brandColor} showQrButton={false} sx={{ maxWidth: 420, mb: 3, textAlign: "left" }} />
+              <BookingLinkCard
+                bookingSlug={claimedSlug}
+                brandColor={brandColor}
+                showQrButton={false}
+                sx={{ width: "100%", maxWidth: 720, mb: 4, textAlign: "left" }}
+              />
               <div className="ob-cta-row">
                 <a className="ob-cta" href={`/${claimedSlug}`} target="_blank" rel="noopener noreferrer">
                   View my booking page
@@ -990,7 +1040,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
           {/* Right */}
           <div className="ob-card">
             <div className="ob-card-eyebrow">{current.cardEyebrow}</div>
-            <div className="ob-card-icon">{current.cardIcon}</div>
+            <div className="ob-card-icon"><AppIcon name={current.cardIcon} sx={{ fontSize: 28 }} /></div>
             <div className="ob-card-title">{current.cardTitle}</div>
             <p className="ob-card-body">{current.cardBody}</p>
           </div>

@@ -18,25 +18,30 @@ const benefits = [
 
 export default function AuthShell({ eyebrow, title, description, children, compact = false }) {
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#F5F3ED", display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(360px, 46%) minmax(0, 54%)" } }}>
+    <Box sx={{
+      width: "100%", maxWidth: "100%", minHeight: "100vh", bgcolor: "#F5F3ED",
+      display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(360px, 46%) minmax(0, 54%)" },
+      overflowX: "hidden",
+    }}>
       <Box sx={{
-        position: { md: "sticky" }, top: 0, height: { md: "100vh" },
+        position: { xs: "relative", md: "sticky" }, top: 0, height: { md: "100vh" },
         bgcolor: "#2563EB", color: "#fff", overflow: "hidden",
         display: "flex", flexDirection: "column", p: { xs: 2.5, sm: 4, md: 6 },
-        minHeight: { xs: compact ? 170 : 220, md: "100vh" },
+        minWidth: 0, maxWidth: "100%", minHeight: { xs: compact ? 170 : 220, md: "100vh" },
+        isolation: "isolate",
       }}>
-        <Box sx={{ position: "absolute", width: 520, height: 520, borderRadius: "50%", bgcolor: "rgba(147,197,253,.14)", right: -250, top: -220 }} />
-        <Box sx={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", border: "1px solid rgba(255,255,255,.18)", left: -160, bottom: -130 }} />
-        <Box sx={{ position: "absolute", width: 110, height: 110, borderRadius: 4, bgcolor: "#FF735C", right: 45, bottom: 65, transform: "rotate(12deg)", opacity: .9 }} />
+        <Box aria-hidden="true" sx={{ position: "absolute", zIndex: 0, width: 520, height: 520, borderRadius: "50%", bgcolor: "rgba(147,197,253,.14)", right: -250, top: -220, pointerEvents: "none" }} />
+        <Box aria-hidden="true" sx={{ position: "absolute", zIndex: 0, width: 300, height: 300, borderRadius: "50%", border: "1px solid rgba(255,255,255,.18)", left: -160, bottom: -130, pointerEvents: "none" }} />
+        <Box aria-hidden="true" sx={{ position: "absolute", zIndex: 0, display: { xs: "none", md: "block" }, width: 110, height: 110, borderRadius: 4, bgcolor: "#FF735C", right: 45, bottom: 65, transform: "rotate(12deg)", opacity: .72, pointerEvents: "none" }} />
 
-        <Box component={Link} to="/" aria-label="Bookrightly home" sx={{ position: "relative", display: "inline-flex", textDecoration: "none", width: "fit-content" }}>
+        <Box component={Link} to="/" aria-label="Bookrightly home" sx={{ position: "relative", zIndex: 1, display: "inline-flex", textDecoration: "none", width: "fit-content" }}>
           <BrandMark inverse />
         </Box>
 
-        <Box sx={{ position: "relative", my: { xs: 3, md: "auto" }, maxWidth: 470 }}>
+        <Box sx={{ position: "relative", zIndex: 1, my: { xs: 3, md: "auto" }, maxWidth: 470 }}>
           <Typography sx={{ color: ACCENT, fontWeight: 950, fontSize: ".69rem", letterSpacing: ".14em", textTransform: "uppercase" }}>{eyebrow}</Typography>
           <Typography component="h1" sx={{ mt: 1.25, fontWeight: 950, fontSize: { xs: "1.8rem", sm: "2.35rem", md: "3.35rem" }, lineHeight: .98, letterSpacing: "-.065em" }}>{title}</Typography>
-          <Typography sx={{ mt: 1.5, color: "rgba(255,255,255,.58)", fontSize: { xs: ".83rem", md: ".95rem" }, lineHeight: 1.7, maxWidth: 410 }}>{description}</Typography>
+          <Typography sx={{ mt: 1.5, color: "rgba(255,255,255,.78)", fontSize: { xs: ".83rem", md: ".95rem" }, lineHeight: 1.7, maxWidth: 410 }}>{description}</Typography>
 
           {!compact && (
             <Stack spacing={2.2} sx={{ mt: 4, display: { xs: "none", md: "flex" } }}>
@@ -53,13 +58,13 @@ export default function AuthShell({ eyebrow, title, description, children, compa
           )}
         </Box>
 
-        <Typography sx={{ position: "relative", display: { xs: "none", md: "block" }, color: "rgba(255,255,255,.25)", fontSize: ".66rem" }}>
+        <Typography sx={{ position: "relative", zIndex: 1, display: { xs: "none", md: "block" }, color: "rgba(255,255,255,.25)", fontSize: ".66rem" }}>
           Built for independent UK service professionals.
         </Typography>
       </Box>
 
-      <Box sx={{ display: "flex", alignItems: compact ? "center" : "flex-start", py: { xs: 3, sm: 5, md: 7 }, minWidth: 0, background: "radial-gradient(circle at 90% 5%, rgba(37,99,235,.09), transparent 28%)" }}>
-        <Container maxWidth="sm" sx={{ px: { xs: 2, sm: 4 } }}>
+      <Box sx={{ width: "100%", maxWidth: "100%", display: "flex", alignItems: compact ? "center" : "flex-start", py: { xs: 3, sm: 5, md: 7 }, minWidth: 0, overflow: "hidden", background: "radial-gradient(circle at 90% 5%, rgba(37,99,235,.09), transparent 28%)" }}>
+        <Container maxWidth="sm" sx={{ width: "100%", minWidth: 0, px: { xs: 2, sm: 4 } }}>
           {children}
         </Container>
       </Box>

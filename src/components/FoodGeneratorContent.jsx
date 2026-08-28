@@ -5,6 +5,7 @@ import {
   AccordionDetails,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import AppIcon from "./AppIcon";
 import {
   GOALS, MEAL_TYPES, FOOD_DATA,
   NUTRITION_GUIDE, BMI_CATEGORIES, BODY_TYPES,
@@ -47,7 +48,7 @@ function GuideSection({ section }) {
   return (
     <Box sx={{ mb: 1 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-        <Typography variant="h3" sx={{ lineHeight: 1 }}>{section.icon}</Typography>
+        <AppIcon name={section.icon} sx={{ color: "#5b9bd5", fontSize: 32 }} />
         <Typography variant="h6" fontWeight={800} sx={{ color: "#fff" }}>{section.title}</Typography>
       </Box>
       <Typography variant="body2" sx={{ color: "#bbb", mb: 3, lineHeight: 1.7 }}>{section.intro}</Typography>
@@ -123,9 +124,16 @@ export default function FoodGeneratorContent({ brandColor = "#2563EB" }) {
     "& .MuiInputLabel-root.Mui-focused": { color: brandColor },
     "& .MuiOutlinedInput-root": {
       color: "#fff",
+      backgroundColor: "rgba(255,255,255,0.03)",
+      colorScheme: "dark",
       "& fieldset":             { borderColor: "#333" },
       "&:hover fieldset":       { borderColor: "#555" },
       "&.Mui-focused fieldset": { borderColor: brandColor },
+      "& input:-webkit-autofill": {
+        WebkitBoxShadow: "0 0 0 1000px #1a1a1a inset",
+        WebkitTextFillColor: "#fff",
+        caretColor: "#fff",
+      },
     },
     "& .MuiSelect-icon": { color: "#666" },
   };
@@ -153,7 +161,7 @@ export default function FoodGeneratorContent({ brandColor = "#2563EB" }) {
                 }}
               >
                 <CardContent sx={{ p: 2.5 }}>
-                  <Typography variant="h4" sx={{ mb: 0.5 }}>{g.emoji}</Typography>
+                  <AppIcon name={g.icon} sx={{ color: g.color, fontSize: 32, mb: 0.5 }} />
                   <Typography variant="subtitle1" fontWeight={800} sx={{ color: goal === g.id ? g.color : "#fff" }}>{g.label}</Typography>
                   <Typography variant="caption" sx={{ color: "#777", lineHeight: 1.5, display: "block", mt: 0.5 }}>{g.tagline}</Typography>
                   {goal === g.id && (
@@ -294,7 +302,7 @@ export default function FoodGeneratorContent({ brandColor = "#2563EB" }) {
       {/* Food Menu */}
       <Box sx={{ mb: 5 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.5, flexWrap: "wrap" }}>
-          <Typography variant="h5" fontWeight={900}>{selectedGoal.emoji} {selectedGoal.label} — Food Guide</Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><AppIcon name={selectedGoal.icon} sx={{ color: selectedGoal.color }} /><Typography variant="h5" fontWeight={900}>{selectedGoal.label} — Food Guide</Typography></Box>
           <Chip label={`${foods.length} options`} size="small" sx={{ bgcolor: selectedGoal.color, color: "#fff", fontWeight: 700 }} />
         </Box>
         <Typography variant="body2" sx={{ color: "#777", mb: 3 }}>25 realistic, easy-to-make options per meal category.</Typography>
@@ -308,14 +316,14 @@ export default function FoodGeneratorContent({ brandColor = "#2563EB" }) {
             "& .MuiTabs-indicator": { bgcolor: selectedGoal.color },
           }}
         >
-          {MEAL_TYPES.map(mt => <Tab key={mt.id} label={`${mt.emoji} ${mt.label}`} />)}
+          {MEAL_TYPES.map(mt => <Tab key={mt.id} icon={<AppIcon name={mt.icon} sx={{ fontSize: 18 }} />} iconPosition="start" label={mt.label} />)}
         </Tabs>
         <Grid container spacing={1.5}>
           {foods.map((food, i) => <Grid item xs={12} sm={6} md={4} lg={3} key={i}><FoodCard food={food} color={selectedGoal.color} /></Grid>)}
         </Grid>
         <Box sx={{ mt: 2, p: 1.5, bgcolor: "#0d0d0d", borderRadius: 2, border: "1px solid #1e1e1e" }}>
           <Typography variant="caption" sx={{ color: "#555" }}>
-            🔵 Protein &nbsp;·&nbsp; 🟡 Carbs &nbsp;·&nbsp; 🔴 Fat &nbsp;·&nbsp; Macros are per typical serving.
+            <Box component="span" sx={{ color: "#5b9bd5" }}>●</Box> Protein &nbsp;·&nbsp; <Box component="span" sx={{ color: "#f5a623" }}>●</Box> Carbs &nbsp;·&nbsp; <Box component="span" sx={{ color: "#e05c5c" }}>●</Box> Fat &nbsp;·&nbsp; Macros are per typical serving.
           </Typography>
         </Box>
       </Box>
@@ -326,7 +334,7 @@ export default function FoodGeneratorContent({ brandColor = "#2563EB" }) {
         <Typography variant="body2" sx={{ color: "#777", mb: 3 }}>Evidence-based advice on timing, hydration, late-night eating, and more.</Typography>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 3 }}>
           {guideSections.map((s, i) => (
-            <Chip key={i} label={`${s.icon} ${s.title}`} onClick={() => setGuideSection(i)}
+            <Chip key={i} icon={<AppIcon name={s.icon} sx={{ fontSize: "18px !important" }} />} label={s.title} onClick={() => setGuideSection(i)}
               sx={{ bgcolor: guideSection === i ? brandColor : "#1a1a1a", color: guideSection === i ? "#fff" : "#888", fontWeight: 700, cursor: "pointer", border: "1px solid", borderColor: guideSection === i ? brandColor : "#2a2a2a", transition: "all .2s" }} />
           ))}
         </Box>
@@ -337,7 +345,7 @@ export default function FoodGeneratorContent({ brandColor = "#2563EB" }) {
 
       {/* Drinks Guide */}
       <Box sx={{ mb: 5 }}>
-        <Typography variant="h5" fontWeight={900} sx={{ mb: 0.5 }}>☕ What to Drink — Complete Guide</Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}><AppIcon name="drink" sx={{ color: brandColor }} /><Typography variant="h5" fontWeight={900}>What to Drink — Complete Guide</Typography></Box>
         <Typography variant="body2" sx={{ color: "#777", mb: 3 }}>The pros, cons, and honest verdicts on every drink you might reach for.</Typography>
         <Grid container spacing={2}>
           {NUTRITION_GUIDE.drinksGuide.map((drink, i) => (

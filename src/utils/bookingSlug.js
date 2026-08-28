@@ -18,7 +18,7 @@
 
 export const RESERVED_SLUGS = new Set([
   // Static/system routes (first path segment of every route in App.jsx)
-  "shop", "pt-booking", "decorator", "hairdresser", "barber", "book",
+  "shop", "pt-booking", "decorator", "hairdresser", "plumber", "barber", "book",
   "confirmation", "auth", "review", "login", "signup", "cancel-booking",
   "website-design", "compare", "fresha-alternative", "treatwell-alternative",
   "booking-software", "pricing", "how-it-works", "blog", "tools", "terms",

@@ -61,7 +61,7 @@ function StatsSection({ profile, set, count = 3 }) {
   ].slice(0, count);
 
   return (
-    <Section title="📊 Stats Bar">
+    <Section title="Stats Bar">
       <Typography variant="body2" color="text.secondary" mb={2}>
         Numbers shown in the brand-colour strip beneath the hero.
       </Typography>
@@ -95,7 +95,7 @@ function HairdresserServicesSection({ profile, set, brandColor }) {
     set("services", updated);
   };
   return (
-    <Section title="✂️ Services List">
+    <Section title="Services List">
       {services.map((svc, i) => (
         <Box key={i} sx={{ border: "1px solid #eee", borderRadius: 2, p: 2, mb: 1.5 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
@@ -121,7 +121,7 @@ function HairdresserServicesSection({ profile, set, brandColor }) {
 }
 
 /* ── Services list (decorator / barber: name only) ───────────────────────── */
-function SimpleServicesSection({ profile, set, brandColor, title = "🛠️ Services List" }) {
+function SimpleServicesSection({ profile, set, brandColor, title = "Services List" }) {
   const services = profile.services?.length > 0 ? profile.services : [{ name: "" }];
   const update = (i, val) => {
     const updated = services.map((s, idx) => idx === i ? { ...s, name: val } : s);
@@ -154,7 +154,7 @@ function SimpleServicesSection({ profile, set, brandColor, title = "🛠️ Serv
 function BarberContent({ profile, set, brandColor }) {
   return (
     <>
-      <Section title="🦸 Hero Section" defaultExpanded>
+      <Section title="Hero Section" defaultExpanded>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <TextField fullWidth size="small" label="Eyebrow / Tagline"
@@ -189,7 +189,7 @@ function BarberContent({ profile, set, brandColor }) {
         </Grid>
       </Section>
 
-      <SimpleServicesSection profile={profile} set={set} brandColor={brandColor} title="✂️ Services / Price List" />
+      <SimpleServicesSection profile={profile} set={set} brandColor={brandColor} title="Services / Price List" />
       <StatsSection profile={profile} set={set} count={3} />
     </>
   );
@@ -201,7 +201,7 @@ function BarberContent({ profile, set, brandColor }) {
 function HairdresserContent({ profile, set, brandColor }) {
   return (
     <>
-      <Section title="🦸 Hero Section" defaultExpanded>
+      <Section title="Hero Section" defaultExpanded>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <TextField fullWidth size="small" label="Eyebrow / Tagline"
@@ -236,7 +236,7 @@ function HairdresserContent({ profile, set, brandColor }) {
         </Grid>
       </Section>
 
-      <Section title="📖 About / Our Story">
+      <Section title="About / Our Story">
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <TextField fullWidth size="small" label="Section Heading"
@@ -265,7 +265,7 @@ function HairdresserContent({ profile, set, brandColor }) {
         </Grid>
       </Section>
 
-      <Section title="🖼️ Services Section Image">
+      <Section title="Services Section Image">
         <ImageField label="Services section side image"
           hint="Appears beside your services list"
           value={profile.servicesImage || ""}
@@ -293,7 +293,7 @@ function DecoratorContent({ profile, set, brandColor }) {
 
   return (
     <>
-      <Section title="🦸 Hero Section" defaultExpanded>
+      <Section title="Hero Section" defaultExpanded>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <TextField fullWidth size="small" label="Eyebrow / Tagline"
@@ -334,7 +334,7 @@ function DecoratorContent({ profile, set, brandColor }) {
         </Grid>
       </Section>
 
-      <Section title="📖 About Section">
+      <Section title="About Section">
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <TextField fullWidth size="small" label="Section Label"
@@ -357,7 +357,7 @@ function DecoratorContent({ profile, set, brandColor }) {
         </Grid>
       </Section>
 
-      <Section title="🛠️ Services Section">
+      <Section title="Services Section">
         <Grid container spacing={2} mb={2}>
           <Grid item xs={12}>
             <TextField fullWidth size="small" label="Services Heading"
@@ -374,7 +374,7 @@ function DecoratorContent({ profile, set, brandColor }) {
         <SimpleServicesSection profile={profile} set={set} brandColor={brandColor} title="Service Items" />
       </Section>
 
-      <Section title="🖼️ Before &amp; After Portfolio">
+      <Section title="Before &amp; After Portfolio">
         <Grid container spacing={2} mb={2}>
           <Grid item xs={12} sm={6}>
             <TextField fullWidth size="small" label="Portfolio Heading"
@@ -457,7 +457,7 @@ function TrainerContent({ profile, set, brandColor }) {
 
   return (
     <>
-      <Section title="🦸 Hero Section" defaultExpanded>
+      <Section title="Hero Section" defaultExpanded>
         <Grid container spacing={2.5}>
           <Grid item xs={12}>
             <TextField fullWidth label="Main Heading"
@@ -483,7 +483,7 @@ function TrainerContent({ profile, set, brandColor }) {
         </Grid>
       </Section>
 
-      <Section title="👤 About / Coach Section">
+      <Section title="About / Coach Section">
         <Grid container spacing={2.5}>
           <Grid item xs={12} sm={6}>
             <TextField fullWidth label="Coach / Trainer Name" placeholder="Your Name"
@@ -503,7 +503,7 @@ function TrainerContent({ profile, set, brandColor }) {
         </Grid>
       </Section>
 
-      <Section title="📊 Stats Bar">
+      <Section title="Stats Bar">
         <Typography variant="body2" color="text.secondary" mb={2}>
           Three stats shown in the brand-colour strip beneath the hero.
         </Typography>
@@ -535,7 +535,7 @@ function TrainerContent({ profile, set, brandColor }) {
           helperText="A full-width video section appears on your page when this is set." />
       </Section>
 
-      <Section title="💪 Services / Areas of Expertise">
+      <Section title="Services / Areas of Expertise">
         {specializations.map((spec, i) => (
           <Box key={i} sx={{ border: "1px solid #eee", borderRadius: 2, p: 2.5, mb: 2 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
@@ -561,11 +561,11 @@ function TrainerContent({ profile, set, brandColor }) {
         </Button>
       </Section>
 
-      <Section title="💰 Pricing Plans">
+      <Section title="Pricing Plans">
         {pricingPlans.map((plan, i) => (
           <Box key={i} sx={{ border: "1px solid #eee", borderRadius: 2, p: 2.5, mb: 2 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
-              <Typography fontWeight={600} fontSize={14}>Plan {i+1}{plan.highlight?" ⭐ Most Popular":""}</Typography>
+              <Typography fontWeight={600} fontSize={14}>Plan {i+1}{plan.highlight?" — Most Popular":""}</Typography>
               <Box display="flex" gap={1}>
                 <Button size="small" variant={plan.highlight?"contained":"outlined"}
                   sx={{ fontSize:11, ...(plan.highlight?{bgcolor:brandColor}:{}) }}

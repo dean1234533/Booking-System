@@ -35,12 +35,12 @@ export default function BarberSoftwarePage() {
         />
         <Grid container spacing={3}>
           {[
-            ["💈", "Your own branded shop page", "A full public profile with your shop name, logo, hero image, service menu with prices, reviews, and a Book Now button. Looks professional on every device."],
-            ["📅", "Real-time slot availability", "Set your working hours, block off days off, and let clients see exactly when you're free — without calling or messaging."],
-            ["💳", "Deposit collection at booking", "Connected via Stripe. Clients pay a deposit when they book, which goes straight to your account minus the standard Stripe fee. No-shows become rare."],
-            ["⭐", "Reviews on your page", "Happy clients can leave a review directly on your Bookrightly page, building social proof for every new visitor who lands on your profile."],
-            ["🔔", "Booking notifications", "Get notified the moment a new booking comes in — push notification, no app required on the client side."],
-            ["📱", "Installs like an app", "Clients can add your Bookrightly page to their iPhone or Android home screen. It opens instantly, works offline, and feels like a native app."],
+            ["barber", "Your own branded shop page", "A full public profile with your shop name, logo, hero image, service menu with prices, reviews, and a Book Now button. Looks professional on every device."],
+            ["calendar", "Real-time slot availability", "Set your working hours, block off days off, and let clients see exactly when you're free — without calling or messaging."],
+            ["payment", "Deposit collection at booking", "Connected via Stripe. Clients pay a deposit when they book, which goes straight to your account minus the standard Stripe fee. No-shows become rare."],
+            ["star", "Reviews on your page", "Happy clients can leave a review directly on your Bookrightly page, building social proof for every new visitor who lands on your profile."],
+            ["notification", "Booking notifications", "Get notified the moment a new booking comes in — push notification, no app required on the client side."],
+            ["phone", "Installs like an app", "Clients can add your Bookrightly page to their iPhone or Android home screen. It opens instantly, works offline, and feels like a native app."],
           ].map(([icon, title, body]) => (
             <Grid item xs={12} sm={6} md={4} key={title}>
               <FeatureCard icon={icon} title={title} body={body} />
@@ -50,10 +50,10 @@ export default function BarberSoftwarePage() {
       </Section>
 
       <Section>
-        <SectionHead eyebrow="How it works" title="Set up your barbershop in under an hour" />
+        <SectionHead eyebrow="How it works" title="Set up your barbershop in under 15 minutes" />
         <Grid container spacing={3}>
           {[
-            ["1", "Create your profile", "Add your shop name, logo, hero image, brand colour, services with prices, and a bio. Takes 20 minutes."],
+            ["1", "Create your profile", "Add your shop name, logo, hero image, brand colour, services with prices, and a bio. Takes 10 minutes."],
             ["2", "Set your availability", "Block out your working hours and days off. Clients only see slots when you're actually available."],
             ["3", "Share your booking link", "Drop your bookrightly.co.uk/your-shop link in your Instagram bio, WhatsApp status, and Google profile. Clients book 24/7."],
             ["4", "Get paid at booking", "Clients pay a deposit through Stripe. You receive it directly, minus standard processing fees. No chasing payments."],
@@ -95,7 +95,7 @@ export default function BarberSoftwarePage() {
       <InternalLinks current="/booking-software/barbers" />
       <BottomCTA
         title="Your barbershop, bookable online today"
-        sub="90 days free. No card needed. Set up in under an hour and start taking bookings tonight."
+        sub="90 days free. No card needed. Set up in under 15 minutes and start taking bookings tonight."
       />
     </Box>
   );

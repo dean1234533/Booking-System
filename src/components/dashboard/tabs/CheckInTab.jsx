@@ -296,7 +296,7 @@ export default function CheckInTab({ barber, brandColor }) {
                 startIcon={linkCopied ? <CheckCircleIcon sx={{ fontSize: 15 }} /> : <ContentCopyIcon sx={{ fontSize: 15 }} />}
                 onClick={copyPortalLink}
                 variant="contained"
-                sx={{ bgcolor: linkCopied ? "#4caf50" : brandColor, color: "#fff", fontWeight: 700, fontSize: "0.78rem", borderRadius: "8px", boxShadow: "none", px: 2.5, py: 1, "&:hover": { filter: "brightness(0.92)", boxShadow: "none" } }}
+                sx={{ bgcolor: linkCopied ? "#4caf50" : brandColor, color: "#fff", fontWeight: 700, fontSize: "0.78rem", borderRadius: "8px", boxShadow: "none", px: 2.5, py: 1, "&:hover": { bgcolor: linkCopied ? "#4caf50" : brandColor, filter: "brightness(0.92)", boxShadow: "none" } }}
               >
                 {linkCopied ? "Copied!" : "Copy Link"}
               </Button>

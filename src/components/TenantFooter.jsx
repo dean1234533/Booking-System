@@ -22,6 +22,7 @@ const LOGIN_LABEL = {
   hairdresser: 'STYLIST LOGIN',
   decorator:   'PRO LOGIN',
   trainer:     'TRAINER LOGIN',
+  plumber:     'PRO LOGIN',
 };
 
 export default function TenantFooter({ tenant, businessType }) {

@@ -9,18 +9,21 @@ import {
   Brush as BrushIcon, Check as CheckIcon, ContentCut as ContentCutIcon,
   FitnessCenter as FitnessCenterIcon, Person as PersonIcon,
   Visibility as VisibilityIcon, VisibilityOff as VisibilityOffIcon,
+  Plumbing as PlumbingIcon,
 } from "@mui/icons-material";
 import { doc, getDoc } from "firebase/firestore";
 import AuthShell, { AUTH_GOLD } from "../components/auth/AuthShell";
 import { db } from "../firebase/config";
 import { signUpBarber } from "../firebase/auth";
 import { logFunnelEvent } from "../utils/funnelTracking";
+import { validatePassword, PASSWORD_HELP_TEXT } from "../utils/passwordValidation";
 
 const BUSINESS_TYPES = [
   { value: "barber", label: "Barbershop", detail: "Appointments, queue and cut history", icon: <ContentCutIcon /> },
   { value: "hairdresser", label: "Hair salon", detail: "Services, bookings and client payments", icon: <ContentCutIcon /> },
   { value: "decorator", label: "Decorator", detail: "Quotes, projects and colour approval", icon: <BrushIcon /> },
   { value: "trainer", label: "Personal trainer", detail: "Clients, plans and session scheduling", icon: <FitnessCenterIcon /> },
+  { value: "plumber", label: "Plumbing, Heating & Electrical", detail: "Enquiries, quotes, job planning and invoices", icon: <PlumbingIcon /> },
 ];
 const STEP_LABELS = ["Business", "Your details", "Secure account"];
 
@@ -82,7 +85,8 @@ export default function Signup() {
       if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) return "Enter a valid email address.";
     }
     if (step === 2) {
-      if (form.password.length < 6) return "Use at least 6 characters for your password.";
+      const passwordError = validatePassword(form.password);
+      if (passwordError) return passwordError;
       if (form.password !== form.confirm) return "Passwords do not match.";
     }
     return null;
@@ -128,7 +132,10 @@ export default function Signup() {
       navigate("/onboarding");
     } catch (signupError) {
       logFunnelEvent("signup_error", { step, message: signupError.message || "unknown" });
-      setError(signupError.message || "We couldn’t create your account. Please try again.");
+      const message = signupError.code === "auth/password-does-not-meet-requirements"
+        ? PASSWORD_HELP_TEXT
+        : signupError.message || "We couldn’t create your account. Please try again.";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -205,7 +212,7 @@ export default function Signup() {
               <Grid item xs={12}>
                 <TextField
                   label="Speciality (optional)" name="specialty" fullWidth
-                  placeholder={form.businessType === "trainer" ? "e.g. Strength and conditioning" : form.businessType === "decorator" ? "e.g. Residential interiors" : "e.g. Fades, colour or extensions"}
+                  placeholder={form.businessType === "trainer" ? "e.g. Strength and conditioning" : form.businessType === "decorator" ? "e.g. Residential interiors" : form.businessType === "plumber" ? "e.g. Boiler repairs, bathroom fits" : "e.g. Fades, colour or extensions"}
                   value={form.specialty} onChange={handleChange}
                 />
               </Grid>
@@ -217,7 +224,7 @@ export default function Signup() {
               <TextField
                 label="Create password" name="password" fullWidth required autoFocus
                 type={showPassword ? "text" : "password"} value={form.password} onChange={handleChange}
-                autoComplete="new-password" helperText="Use at least 6 characters."
+                autoComplete="new-password" helperText={PASSWORD_HELP_TEXT}
                 InputProps={{ endAdornment: <InputAdornment position="end"><IconButton aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(value => !value)}>{showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}</IconButton></InputAdornment> }}
               />
               <TextField

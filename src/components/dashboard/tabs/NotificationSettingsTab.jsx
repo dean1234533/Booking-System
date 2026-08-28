@@ -172,7 +172,7 @@ export default function NotificationSettingsTab({ barber, brandColor = "#2563EB"
         },
         body: JSON.stringify({
           barberId: uid,
-          payload: { title: "Bookrightly Test 🎉", body: "Push notifications are working!", sound, vibrate, url: "/dashboard" },
+          payload: { title: "Bookrightly Test", body: "Push notifications are working!", sound, vibrate, url: "/dashboard" },
         }),
       });
       const data = await res.json();

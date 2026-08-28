@@ -142,7 +142,7 @@ export default function SessionPrepTab({ barber, brandColor, profile }) {
                       />
                       {isUrgent && (
                         <Typography variant="caption" sx={{ color: "#f57c00", fontWeight: 700 }}>
-                          ⚠️ URGENT
+                          URGENT
                         </Typography>
                       )}
                     </Box>
@@ -231,7 +231,7 @@ export default function SessionPrepTab({ barber, brandColor, profile }) {
                     Session Details
                   </Typography>
                   <Typography variant="body2">
-                    📅 {formatSessionDate(sessionDetails.session.date)} at {formatSessionTime(sessionDetails.session.date, sessionDetails.session.time)}
+                    {formatSessionDate(sessionDetails.session.date)} at {formatSessionTime(sessionDetails.session.date, sessionDetails.session.time)}
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.5 }}>
                     ⏱️ {getTimeUntilSession(sessionDetails.session.date, sessionDetails.session.time).text}
@@ -246,17 +246,17 @@ export default function SessionPrepTab({ barber, brandColor, profile }) {
                     </Typography>
                     {sessionDetails.session.customerPhone && (
                       <Typography variant="body2">
-                        📞 {sessionDetails.session.customerPhone}
+                        {sessionDetails.session.customerPhone}
                       </Typography>
                     )}
                     {sessionDetails.session.customerEmail && (
                       <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
-                        ✉️ {sessionDetails.session.customerEmail}
+                        {sessionDetails.session.customerEmail}
                       </Typography>
                     )}
                     {sessionDetails.session.address && (
                       <Box>
-                        <Typography variant="body2">📍 {sessionDetails.session.address}</Typography>
+                        <Typography variant="body2">{sessionDetails.session.address}</Typography>
                         <Button
                           size="small"
                           href={getGoogleMapsUrl(sessionDetails.session.address)}
@@ -311,7 +311,7 @@ export default function SessionPrepTab({ barber, brandColor, profile }) {
                       Health Check-in (Today)
                     </Typography>
                     <Typography variant="body2" sx={{ p: 1, bgcolor: "rgba(76,175,80,0.12)", borderRadius: 1 }}>
-                      ✅ Check-in completed at {new Date(sessionDetails.checkin.submittedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      Check-in completed at {new Date(sessionDetails.checkin.submittedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </Typography>
                   </Box>
                 )}

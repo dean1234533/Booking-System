@@ -32,6 +32,7 @@ export default function TenantNav({ tenant }) {
   const businessName = (tenant?.businessName || "PREMIUM BARBER SHOP").toUpperCase();
   const logo         = tenant?.businessLogo || tenant?.logoUrl;
   const shopRouteId  = tenant?.shopId || tenant?.id || tenant?.uid;
+  const homeHref     = tenant?.bookingSlug ? `/${tenant.bookingSlug}` : `/shop/${shopRouteId}`;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -56,7 +57,7 @@ export default function TenantNav({ tenant }) {
       if (section) {
         section.scrollIntoView({ behavior: "smooth", block: "start" });
       } else {
-        navigate(`/shop/${shopRouteId}`);
+        navigate(homeHref);
       }
     }, drawerOpen ? 300 : 0);
   };
@@ -79,7 +80,7 @@ export default function TenantNav({ tenant }) {
             {/* Logo / name */}
             <Box
               component={Link}
-              to={`/shop/${shopRouteId}`}
+              to={homeHref}
               sx={{ display: "flex", alignItems: "center", gap: 1.5, textDecoration: "none", color: "inherit", "&:hover": { opacity: 0.8 } }}
             >
               {logo ? (

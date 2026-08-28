@@ -28,9 +28,9 @@ export async function onRequestPost(context) {
     let lineItems;
 
     if (businessType === "trainer") {
-      // PT Booking System: £20/month + £1.50 per 3 extra clients (usage-based)
+      // PT Booking System: £15/month flat, unlimited clients — no usage metering.
       lineItems = [{
-        price: env.STRIPE_PT_BASE_PRICE_ID, // Must be created in Stripe: £20/month
+        price: env.STRIPE_PT_BASE_PRICE_ID, // Must be created in Stripe: £15/month
         quantity: 1,
       }];
     } else {

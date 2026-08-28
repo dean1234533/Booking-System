@@ -128,16 +128,16 @@ export default function FoodGeneratorTab({ barber, brandColor }) {
           </Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
             {[
-              "🎯 Goal selection (Weight Loss / Bulking / Trim & Tone)",
-              "📊 Personal calorie & macro calculator",
-              "⚖️ BMI calculator & body type guide",
-              "💧 Daily hydration target",
-              "🍽️ 25 foods per meal type per goal",
-              "⚡ Pre & post workout nutrition guide",
-              "🌅 Breakfast importance guide",
-              "🌙 Late night eating advice",
-              "☕ Complete drinks guide (pros & cons)",
-              "🥤 Shakes for busy schedules",
+              "Goal selection (Weight Loss / Bulking / Trim & Tone)",
+              "Personal calorie & macro calculator",
+              "BMI calculator & body type guide",
+              "Daily hydration target",
+              "25 foods per meal type per goal",
+              "Pre & post workout nutrition guide",
+              "Breakfast importance guide",
+              "Late night eating advice",
+              "Complete drinks guide (pros & cons)",
+              "Shakes for busy schedules",
             ].map(item => (
               <Chip key={item} label={item} size="small" sx={{ bgcolor: "#1a1a1a", color: "#888", fontSize: "0.7rem", height: 24, borderRadius: 1 }} />
             ))}

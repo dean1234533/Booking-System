@@ -4,12 +4,7 @@ import {
   Accordion, AccordionSummary, AccordionDetails, IconButton,
   CircularProgress,
 } from "@mui/material";
-import {
-  Delete as DeleteIcon,
-  ExpandMore as ExpandMoreIcon,
-  AddCircle as AddCircleIcon,
-  Image as ImageIcon,
-} from "@mui/icons-material";
+import { ChevronDown, Image as ImageIcon, Plus, Trash2, Upload } from "lucide-react";
 import { uploadBarberImage } from "../../../firebase/firestore";
 
 export const TikTokIcon = ({ size = 20 }) => (
@@ -28,21 +23,21 @@ export function Section({ title, defaultExpanded = false, children }) {
       disableGutters
       elevation={0}
       sx={{
-        border: "1px solid #eee",
+        border: "1px solid #E4E7EC",
         borderRadius: "12px !important",
         mb: 2,
         "&:before": { display: "none" },
       }}
     >
-      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 3, py: 1.5 }}>
-        <Typography fontWeight={700}>{title}</Typography>
+      <AccordionSummary expandIcon={<ChevronDown size={18} strokeWidth={1.8} />} sx={{ px: { xs: 2, sm: 2.5 }, py: 1 }}>
+        <Typography fontWeight={750} fontSize=".92rem">{title}</Typography>
       </AccordionSummary>
-      <AccordionDetails sx={{ px: 3, pb: 3 }}>{children}</AccordionDetails>
+      <AccordionDetails sx={{ px: { xs: 2, sm: 2.5 }, pb: 2.5 }}>{children}</AccordionDetails>
     </Accordion>
   );
 }
 
-export function ImageField({ label, value, onChange, hint, barberId, fieldKey = "image", isStaff = false, shopId = null }) {
+export function ImageField({ label, value, onChange, hint, barberId, fieldKey = "image", isStaff = false, shopId = null, preview = null }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
@@ -68,21 +63,55 @@ export function ImageField({ label, value, onChange, hint, barberId, fieldKey = 
 
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>{label}</Typography>
+      <Typography sx={{ fontSize: ".8rem", fontWeight: 700, color: "#344054", mb: 1 }}>{label}</Typography>
+
+      {preview && (
+        <Box sx={{ mb: 1.5 }}>
+          <Typography sx={{ fontSize: ".7rem", color: "#667085", mb: .75 }}>Preview on your public page</Typography>
+          <Box sx={{
+            minHeight: { xs: 180, sm: 220 }, borderRadius: 2.5, overflow: "hidden", position: "relative",
+            border: "1px solid #D0D5DD", bgcolor: "#1D2939",
+            backgroundImage: value ? `linear-gradient(90deg, rgba(16,24,40,.82), rgba(16,24,40,.25)), url(${value})` : "linear-gradient(135deg, #344054, #101828)",
+            backgroundSize: "cover", backgroundPosition: preview.position || "center",
+          }}>
+            {!value && (
+              <Box sx={{
+                position: "absolute", top: 10, right: 12, zIndex: 2,
+                display: "flex", alignItems: "center", gap: .6,
+                px: 1, py: .5, borderRadius: 999,
+                bgcolor: "rgba(16,24,40,.55)", color: "rgba(255,255,255,.7)",
+              }}>
+                <ImageIcon size={13} strokeWidth={1.8} />
+                <Typography sx={{ fontSize: ".62rem", whiteSpace: "nowrap" }}>No image yet</Typography>
+              </Box>
+            )}
+            <Box sx={{ position: "relative", zIndex: 1, p: { xs: 2.25, sm: 3 }, width: { xs: "88%", sm: "68%" }, color: "#fff" }}>
+              {preview.eyebrow && <Typography sx={{ fontSize: ".63rem", fontWeight: 700, opacity: .75, mb: .75 }}>{preview.eyebrow}</Typography>}
+              <Typography sx={{ fontSize: { xs: "1.25rem", sm: "1.7rem" }, fontWeight: 800, lineHeight: 1.05, letterSpacing: "-.035em" }}>
+                {preview.heading || "Your main heading"}
+                {preview.accent && <Box component="span" sx={{ display: "block", color: preview.brandColor || "#93C5FD" }}>{preview.accent}</Box>}
+              </Typography>
+              {preview.body && <Typography sx={{ fontSize: ".68rem", lineHeight: 1.45, opacity: .78, mt: 1, maxWidth: 360 }}>{preview.body}</Typography>}
+              {preview.button && <Box sx={{ display: "inline-flex", mt: 1.4, px: 1.4, py: .7, borderRadius: 1.5, bgcolor: preview.brandColor || "#2563EB", fontSize: ".65rem", fontWeight: 750 }}>{preview.button}</Box>}
+            </Box>
+          </Box>
+        </Box>
+      )}
+
       <Box display="flex" alignItems="center" gap={1.5}>
         <Box sx={{
-          width: 80, height: 56, borderRadius: 1, border: "1.5px dashed #ccc", flexShrink: 0,
+          width: 80, height: 56, borderRadius: 1.5, border: "1px solid #D0D5DD", flexShrink: 0,
           backgroundImage: value ? `url(${value})` : "none",
           backgroundSize: "cover", backgroundPosition: "center",
-          display: "flex", alignItems: "center", justifyContent: "center", color: "#bbb",
+          display: "flex", alignItems: "center", justifyContent: "center", color: "#98A2B3", bgcolor: "#F9FAFB",
         }}>
-          {uploading ? <CircularProgress size={18} /> : !value && <ImageIcon fontSize="small" />}
+          {uploading ? <CircularProgress size={18} /> : !value && <ImageIcon size={19} strokeWidth={1.6} />}
         </Box>
         <Box flex={1}>
-          <TextField size="small" fullWidth placeholder="https://… or paste a URL"
+          <TextField size="small" fullWidth placeholder="Paste an image link"
             value={value || ""} onChange={e => onChange(e.target.value)} />
-          <Button size="small" component="label" disabled={uploading} sx={{ mt: 0.5, fontSize: 11 }}>
-            {uploading ? "Uploading…" : "Upload file"}
+          <Button size="small" component="label" disabled={uploading} startIcon={<Upload size={15} strokeWidth={1.8} />} sx={{ mt: 0.5, px: 1, fontSize: ".72rem" }}>
+            {uploading ? "Uploading…" : value ? "Replace image" : "Choose image"}
             <input type="file" accept="image/*" hidden disabled={uploading}
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
           </Button>
@@ -111,7 +140,7 @@ export function PortfolioSection({ profile, set, brandColor, barberId, isStaff =
   };
 
   return (
-    <Section title="🖼️ Before &amp; After Gallery">
+    <Section title="Before and after gallery">
       <Grid container spacing={2} mb={2}>
         <Grid item xs={12} sm={6}>
           <TextField fullWidth size="small" label="Gallery Heading"
@@ -120,7 +149,7 @@ export function PortfolioSection({ profile, set, brandColor, barberId, isStaff =
             onChange={e => set("portfolioHeading", e.target.value)} />
         </Grid>
         <Grid item xs={12}>
-          <TextField fullWidth size="small" label="Gallery Sub-text"
+          <TextField fullWidth size="small" label="Gallery introduction"
             placeholder={subtextPlaceholder}
             value={profile.portfolioSubtext || ""}
             onChange={e => set("portfolioSubtext", e.target.value)} />
@@ -132,7 +161,7 @@ export function PortfolioSection({ profile, set, brandColor, barberId, isStaff =
             <Typography variant="caption" fontWeight={700} color="text.secondary">Gallery Item {i + 1}</Typography>
             <IconButton size="small" color="error"
               onClick={() => set("portfolioItems", portfolioItems.filter((_, idx) => idx !== i))}>
-              <DeleteIcon fontSize="small" />
+              <Trash2 size={17} strokeWidth={1.8} />
             </IconButton>
           </Box>
           <Grid container spacing={1.5}>
@@ -153,7 +182,7 @@ export function PortfolioSection({ profile, set, brandColor, barberId, isStaff =
           </Grid>
         </Box>
       ))}
-      <Button startIcon={<AddCircleIcon />} sx={{ color: brandColor }}
+      <Button startIcon={<Plus size={17} strokeWidth={1.8} />} sx={{ color: brandColor }}
         onClick={() => set("portfolioItems", [...portfolioItems, { before: "", after: "", label: "" }])}>
         Add Gallery Item
       </Button>

@@ -4,7 +4,7 @@ import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore
 import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { getWhatsAppBookingUrl } from "../utils/whatsapp";
-import { Star, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, CheckCircle2, ChevronLeft, ChevronRight, Mail, MapPin, Phone } from 'lucide-react';
 
 /* ─── Global style injection ─────────────────────────────── */
 export const GlobalStyles = () => (
@@ -802,7 +802,7 @@ const DecoratorTemplate = ({ tenantData }) => {
               </p>
               {address && (
                 <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, fontWeight: 300, maxWidth: 220, lineHeight: 1.6, marginBottom: 12 }}>
-                  📍 {address}
+                  <MapPin size={15} style={{ verticalAlign: 'middle', marginRight: 8 }} aria-hidden="true" />{address}
                 </p>
               )}
               {phone && (
@@ -810,7 +810,7 @@ const DecoratorTemplate = ({ tenantData }) => {
                   onMouseEnter={e => e.currentTarget.style.color = brandColor}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
                 >
-                  <span style={{ fontSize: 14 }}>📞</span> {phone}
+                  <Phone size={15} aria-hidden="true" /> {phone}
                 </a>
               )}
               {ownerEmail && (
@@ -818,7 +818,7 @@ const DecoratorTemplate = ({ tenantData }) => {
                   onMouseEnter={e => e.currentTarget.style.color = brandColor}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
                 >
-                  <span style={{ fontSize: 14 }}>✉</span> {ownerEmail}
+                  <Mail size={15} aria-hidden="true" /> {ownerEmail}
                 </a>
               )}
               {tenantData?.openingHours && (

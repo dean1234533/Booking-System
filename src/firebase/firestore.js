@@ -82,8 +82,20 @@ export const getBarberBySlug = async (rawSlug) => {
   return null;
 };
 
+// Capped so the homepage's read cost stays bounded as the businesses
+// collection grows — without this it read every single business document on
+// every homepage view, which scales linearly with both business count and
+// traffic (Firestore bills per document read). The homepage only ever
+// displays ~16 cards at once, so this comfortably covers browsing; it's
+// HomeRebuild.jsx's client-side search (substring match across several free-
+// text fields, not something Firestore's `where()` can express directly)
+// that would start missing results once the real business count grows past
+// this cap — that's a real tradeoff, not a bug, and the fix at that point is
+// a dedicated search index (Algolia/Typesense), not a bigger limit.
+const MAX_MARKETPLACE_BUSINESSES = 300;
+
 export const getAllBarbers = async () => {
-  const snap = await getDocs(collection(db, "barbers"));
+  const snap = await getDocs(query(collection(db, "barbers"), limit(MAX_MARKETPLACE_BUSINESSES)));
   const rawData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
   return rawData.filter(barber => {
@@ -108,13 +120,7 @@ export const updateBarber = async (uid, data, isStaff = false, shopId = null) =>
     ? doc(db, "barbers", shopId, "staff", uid)
     : doc(db, "barbers", uid);
     
-  // Ensure businessType field updates are safely processed 
-  const mergedData = {
-    ...data,
-    businessType: data?.businessType || "barber"
-  };
-  
-  return await setDoc(docRef, mergedData, { merge: true });
+  return await setDoc(docRef, data, { merge: true });
 };
 
 // ─── SLOT MANAGEMENT (TYPE-AGNOSTIC) ──────────────────────────────
@@ -282,6 +288,21 @@ export const uploadBarberImage = async (file, fileName, barberId, isStaff = fals
     console.error("Upload failed:", error);
     throw error;
   }
+};
+
+// Public job-request photo upload (e.g. PlumberTemplate's enquiry form) — the
+// submitter has no account, so this writes to a dedicated enquiryPhotos path
+// storage.rules opens up specifically for this (public write, image-only,
+// size-capped), separate from the owner-only barbers/{barberId}/** path
+// uploadBarberImage uses.
+export const uploadEnquiryPhoto = async (file, tenantId, enquiryId) => {
+  if (!file || !tenantId || !enquiryId) return null;
+  const options = { maxSizeMB: 1.5, maxWidthOrHeight: 1600, useWebWorker: true, fileType: "image/jpeg" };
+  const compressedFile = await imageCompression(file, options);
+  const path = `barbers/${tenantId}/enquiryPhotos/${enquiryId}/${Date.now()}_${file.name}`;
+  const storageRef = ref(storage, path);
+  const snapshot = await uploadBytes(storageRef, compressedFile);
+  return await getDownloadURL(snapshot.ref);
 };
 
 // ─── FAVORITE EXERCISES (Exercise Generator) ───────────────────

@@ -5,6 +5,7 @@ import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import FoodGeneratorContent from "../components/FoodGeneratorContent";
+import AppIcon from "../components/AppIcon";
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function FoodGenerator() {
@@ -40,7 +41,7 @@ export default function FoodGenerator() {
     return (
       <Box sx={{ minHeight: "100vh", bgcolor: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", p: 3 }}>
         <Box sx={{ textAlign: "center", maxWidth: 400 }}>
-          <Typography variant="h3" sx={{ mb: 2 }}>{status === "inactive" ? "🔒" : "⚠️"}</Typography>
+          <AppIcon name={status === "inactive" ? "lock" : "warning"} sx={{ color: brandColor, fontSize: 48, mb: 2 }} />
           <Typography variant="h5" fontWeight={800} sx={{ color: "#fff", mb: 1 }}>
             {status === "inactive" ? "Link Not Active" : "Something Went Wrong"}
           </Typography>

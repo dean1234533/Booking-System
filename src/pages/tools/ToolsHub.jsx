@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Typography, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import AppIcon from "../../components/AppIcon";
 
 const GOLD = "#2563EB";
 const DARK = "#0d0d0d";
@@ -15,28 +16,28 @@ const TOOLS = [
     desc: "See exactly how much no-shows are costing your business per year — and how much a deposit system would recover.",
     path: "/tools/no-show-calculator",
     tag: "Barbers · Salons · PTs",
-    icon: "📉",
+    icon: "pricingDown",
   },
   {
     title: "Revenue Calculator",
     desc: "Calculate your monthly and yearly revenue potential based on clients per day, service price, and working days.",
     path: "/tools/revenue-calculator",
     tag: "Barbers · Hairdressers",
-    icon: "💷",
+    icon: "pound",
   },
   {
     title: "PT Session Rate Calculator",
     desc: "Work out exactly what to charge per session to hit your income target after overheads, holidays, and slow weeks.",
     path: "/tools/pt-rate-calculator",
     tag: "Personal Trainers",
-    icon: "🏋️",
+    icon: "fitness",
   },
   {
     title: "Service Pricing Calculator",
     desc: "Price any service correctly — factoring in materials, overheads, time, and your target profit margin.",
     path: "/tools/service-pricing-calculator",
     tag: "All industries",
-    icon: "🧮",
+    icon: "calculator",
   },
 ];
 
@@ -77,7 +78,7 @@ export default function ToolsHub() {
                     "&:hover": { borderColor: "rgba(37,99,235,0.35)" },
                   }}
                 >
-                  <Typography sx={{ fontSize: "2rem", mb: 2 }}>{tool.icon}</Typography>
+                  <Box sx={{ width: 48, height: 48, borderRadius: "50%", bgcolor: "rgba(37,99,235,.16)", color: "#93C5FD", display: "grid", placeItems: "center", mb: 2 }}><AppIcon name={tool.icon} sx={{ fontSize: 25 }} /></Box>
                   <Typography sx={{ fontFamily: SERIF, fontSize: "1.15rem", mb: 1.5, color: "#fff" }}>
                     {tool.title}
                   </Typography>

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Box, Container, Typography, Button, Stack } from "@mui/material";
+import { Box, Container, Typography, Button } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +14,7 @@ const G = {
 const SERIF = "'Playfair Display', serif";
 const SANS  = "'DM Sans', sans-serif";
 
-const SUPPORT_EMAIL = "support@bookrightly.com";
+const SUPPORT_EMAIL = "info@bookrightly.co.uk";
 
 export default function ContactPage() {
   const navigate = useNavigate();
@@ -54,7 +54,9 @@ export default function ContactPage() {
           <EmailOutlinedIcon sx={{ color: G.gold }} />
           <Typography
             component="a"
-            href={`mailto:${SUPPORT_EMAIL}`}
+            href={`https://mail.google.com/mail/?view=cm&fs=1&to=${SUPPORT_EMAIL}`}
+            target="_blank"
+            rel="noopener noreferrer"
             sx={{ fontFamily: SERIF, color: G.dark2, fontSize: "1.15rem", textDecoration: "none", "&:hover": { color: G.gold } }}
           >
             {SUPPORT_EMAIL}
@@ -65,26 +67,13 @@ export default function ContactPage() {
           <Typography sx={{ fontFamily: SERIF, color: G.dark2, fontSize: "1.1rem", fontWeight: 600, mb: 1.5 }}>
             Already have an account?
           </Typography>
-          <Typography sx={{ color: "#4a443d", fontSize: "0.92rem", lineHeight: 1.85, mb: 2 }}>
-            You can also send us a message directly from the homepage feedback form, or from your dashboard
-            once you're logged in.
-          </Typography>
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="outlined"
-              onClick={() => navigate("/#feedback-section")}
-              sx={{ borderColor: G.gold, color: G.dark2, textTransform: "none", "&:hover": { borderColor: G.gold, bgcolor: "rgba(37,99,235,0.06)" } }}
-            >
-              Homepage feedback form
-            </Button>
-            <Button
-              variant="text"
-              onClick={() => navigate("/login")}
-              sx={{ color: G.dark2, textTransform: "none" }}
-            >
-              Log in
-            </Button>
-          </Stack>
+          <Button
+            variant="text"
+            onClick={() => navigate("/login")}
+            sx={{ color: G.dark2, textTransform: "none", pl: 0 }}
+          >
+            Log in →
+          </Button>
         </Box>
 
         <Box sx={{ borderTop: "1px solid #e8e2d8", pt: 3, mt: 2 }}>

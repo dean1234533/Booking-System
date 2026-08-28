@@ -22,7 +22,7 @@ import FacebookIcon from "@mui/icons-material/Facebook";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
-import { collection, getDocs, query, where, limit } from "firebase/firestore";
+import { collection, getDocs, query, where, limit, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getShopStaff, getBarber } from "../firebase/firestore";
 import BeforeAfterSlider from "../components/BeforeAfterSlider";
@@ -97,6 +97,10 @@ export default function TenantHome({ tenant: initialTenant }) {
   const address         = freshTenant?.address          || "Location TBD";
   const aboutBgColor    = freshTenant?.aboutSectionColor || "#f8f7f4";
   const trustBarBgColor = freshTenant?.trustBarColor    || brandColor;
+  const heroEyebrow     = freshTenant?.heroTagline || "WELCOME TO";
+  const heroHeading     = freshTenant?.heroHeadingLine1 || businessName;
+  const heroSubtext     = freshTenant?.heroSubtext || "";
+  const heroCtaText     = freshTenant?.heroCtaText || "Book Now";
  
   // ── Owner social links ────────────────────────────────────────────────────
   const ownerInstagram = freshTenant?.instagramUrl || "";
@@ -193,6 +197,23 @@ export default function TenantHome({ tenant: initialTenant }) {
  
     fetchTenantData();
   }, [initialTenant?.id, tenantId, location.state]);
+
+  // Reviews may arrive from another device while this page is open.
+  useEffect(() => {
+    const activeTenantId = freshTenant?.id || initialTenant?.id || tenantId;
+    if (!activeTenantId) return;
+    return onSnapshot(
+      collection(db, "barbers", activeTenantId, "reviews"),
+      snap => {
+        const liveReviews = snap.docs
+          .map(reviewDoc => ({ id: reviewDoc.id, ...reviewDoc.data() }))
+          .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        setFreshTenant(current => current ? { ...current, reviews: liveReviews } : current);
+        setActiveReviewIndex(current => Math.min(current, Math.max(liveReviews.length - 1, 0)));
+      },
+      err => console.error("Error listening for reviews:", err),
+    );
+  }, [freshTenant?.id, initialTenant?.id, tenantId]);
  
   if (loading) {
     return (
@@ -215,8 +236,6 @@ export default function TenantHome({ tenant: initialTenant }) {
     <Box sx={{ bgcolor: "#FFFFFF", minHeight: "100vh", overflowX: 'hidden' }}>
       
       {/* ── 1. HERO ──────────────────────────────────────────────────────── */}
-      {/* 100dvh = the real visible viewport on every device (handles mobile
-          browser chrome), so the hero always fully covers the screen. */}
       <Box sx={{
         height: "100vh",
         minHeight: "100dvh",
@@ -227,53 +246,36 @@ export default function TenantHome({ tenant: initialTenant }) {
         color: "white", textAlign: "center"
       }}>
         <Container maxWidth="lg">
-          <Box sx={{ 
-            display: 'inline-block', 
-            border: '1px solid rgba(255,255,255,0.3)', 
-            px: 4, py: 1, mb: 4 
-          }}>
+          <Box sx={{ display: 'inline-block', border: '1px solid rgba(255,255,255,0.3)', px: 4, py: 1, mb: 4 }}>
             <Typography variant="overline" sx={{ letterSpacing: 6, color: "#fff", fontWeight: 400, fontSize: '0.8rem' }}>
-              WELCOME TO
+              {heroEyebrow}
             </Typography>
           </Box>
-          
-          <Typography variant="h1" sx={{ 
-            fontWeight: 400, 
-            fontSize: { xs: '3.5rem', sm: '5rem', md: '7rem', lg: '8.5rem' }, 
-            fontFamily: displayFont, 
-            lineHeight: 1,
-            mb: 2, 
-            textTransform: 'uppercase',
-            letterSpacing: { xs: -1, md: -2 }
-          }}>
-            {businessName}
+          <Typography variant="h1" sx={{ fontWeight: 400, fontSize: { xs: '3.5rem', sm: '5rem', md: '7rem', lg: '8.5rem' }, fontFamily: displayFont, lineHeight: 1, mb: 2, textTransform: 'uppercase', letterSpacing: { xs: -1, md: -2 } }}>
+            {heroHeading}
           </Typography>
- 
+          {heroSubtext && <Typography sx={{ maxWidth: 680, mx: "auto", mt: 2, color: "rgba(255,255,255,0.82)", fontSize: { xs: "1rem", md: "1.16rem" }, lineHeight: 1.75 }}>{heroSubtext}</Typography>}
           <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
             <Box sx={{ display: 'flex', gap: 0.5 }}>
               {[1,2,3,4,5].map(i => <StarIcon key={i} sx={{ color: brandColor, fontSize: 24, opacity: 0.8 }} />)}
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
               <Box sx={{ width: 40, height: '1px', bgcolor: 'rgba(255,255,255,0.4)' }} />
-              <Typography sx={{ letterSpacing: { xs: 4, md: 8 }, fontWeight: 300, fontSize: '0.9rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)' }}>
-                5.0/5.0 Top Rated Excellence
-              </Typography>
+              <Typography sx={{ letterSpacing: { xs: 4, md: 8 }, fontWeight: 300, fontSize: '0.9rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)' }}>5.0/5.0 Top Rated Excellence</Typography>
               <Box sx={{ width: 40, height: '1px', bgcolor: 'rgba(255,255,255,0.4)' }} />
             </Box>
-            <Button
-              variant="contained"
-              onClick={() => document.getElementById('barber-section')?.scrollIntoView({ behavior: 'smooth' })}
-              sx={{
-                mt: 2, bgcolor: brandColor, color: getContrastText(brandColor),
-                fontWeight: 700, letterSpacing: 2, px: 5, py: 1.75, borderRadius: 0,
-                fontSize: '0.85rem',
-                '&:hover': { bgcolor: brandColor, filter: 'brightness(1.1)' },
-              }}
-            >
-              Book Now
-            </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 2 }}>
+              <Button variant="contained" onClick={() => document.getElementById('barber-section')?.scrollIntoView({ behavior: 'smooth' })}
+                sx={{ bgcolor: brandColor, color: getContrastText(brandColor), fontWeight: 700, letterSpacing: 2, px: 5, py: 1.75, borderRadius: 0, fontSize: '0.85rem', '&:hover': { bgcolor: brandColor, filter: 'brightness(1.1)' } }}>
+                {heroCtaText}
+              </Button>
+              {isBarberShop && freshTenant?.id && (
+                <Button variant="outlined" onClick={() => navigate(`/queue/${freshTenant.id}`)} sx={{ color: "#fff", borderColor: "rgba(255,255,255,0.55)", fontWeight: 700, letterSpacing: 1.5, px: 4, py: 1.75, borderRadius: 0, fontSize: '0.82rem', '&:hover': { borderColor: "#fff", bgcolor: "rgba(255,255,255,0.08)" } }}>
+                  View Live Queue
+                </Button>
+              )}
+            </Stack>
           </Box>
- 
         </Container>
       </Box>
  
@@ -295,11 +297,7 @@ export default function TenantHome({ tenant: initialTenant }) {
               {(isMobileOrTablet ? freshTenant.portfolioItems.slice(0, 2) : freshTenant.portfolioItems).map((item, i) => (
                 <Grid item xs={isMobileOrTablet ? 12 : 4} key={i}>
                   <BeforeAfterSlider before={item.before} after={item.after} />
-                  {item.label && (
-                    <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", textAlign: "center", mt: 1.5 }}>
-                      {item.label}
-                    </Typography>
-                  )}
+                  {item.label && <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", textAlign: "center", mt: 1.5 }}>{item.label}</Typography>}
                 </Grid>
               ))}
             </Grid>
@@ -318,7 +316,6 @@ export default function TenantHome({ tenant: initialTenant }) {
               <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>
                 What We Offer
               </Typography>
-              <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
             </Box>
             <Stack spacing={0}>
               {freshTenant.services.map((svc, i) => (
@@ -342,7 +339,7 @@ export default function TenantHome({ tenant: initialTenant }) {
             Our Story
           </Typography>
           <Typography variant="h6" sx={{ fontWeight: 300, lineHeight: 2, opacity: 0.8, maxWidth: '750px', mx: 'auto', fontSize: '1.2rem' }}>
-            {freshTenant?.aboutUs || `Welcome to ${businessName}. Share your mission, your craft, and what sets your business apart.`}
+            {freshTenant?.aboutBody || freshTenant?.aboutUs || `Welcome to ${businessName}. Share your mission, your craft, and what sets your business apart.`}
           </Typography>
         </Container>
       </Box>
@@ -432,14 +429,14 @@ export default function TenantHome({ tenant: initialTenant }) {
         </Container>
       ) : (
       <Container id="barber-section" sx={{ py: 15 }}>
-        <Box sx={{ mb: 10, textAlign: 'center' }}>
+        <Box sx={{ mb: 10, textAlign: "center" }}>
           <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>
             EXPERTS
           </Typography>
           <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>
             Our Master Barbers
           </Typography>
-          <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: 'auto' }} />
+          <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
           {whatsappUrl && (
             <Button
               component="a" href={whatsappUrl} target="_blank" rel="noopener noreferrer"
@@ -468,9 +465,9 @@ export default function TenantHome({ tenant: initialTenant }) {
                   sx={{
                     cursor: "pointer", bgcolor: "#fff", overflow: "hidden",
                     border: "1px solid #eee", borderRadius: "8px",
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+                    boxShadow: "0 4px 20px rgba(0,0,0,.06)", position: "relative",
                     transition: "box-shadow 0.3s ease, transform 0.2s ease",
-                    "&:hover": { boxShadow: "0 16px 40px rgba(0,0,0,0.12)", transform: "translateY(-4px)" },
+                    "&:hover": { boxShadow: "0 12px 36px rgba(0,0,0,.12)", transform: "translateY(-5px)" },
                     "&:hover .staff-zoom": { transform: "scale(1.05)" },
                   }}
                 >
@@ -496,16 +493,15 @@ export default function TenantHome({ tenant: initialTenant }) {
                         </Typography>
                       </Box>
                     )}
-                    {/* Brand colour bar at bottom of image */}
-                    <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 4, bgcolor: cardColor }} />
+                    <Box sx={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 4, bgcolor: cardColor }} />
                   </Box>
 
                   {/* Content */}
                   <Box sx={{ p: 3 }}>
-                    <Typography sx={{ fontFamily: displayFont, fontSize: "1.25rem", fontWeight: 400, color: "#111", lineHeight: 1.2, mb: 0.5 }}>
+                    <Typography sx={{ fontFamily: displayFont, fontSize: "1.45rem", fontWeight: 500, color: "#111", lineHeight: 1.2, mb: 0.5 }}>
                       {displayName}
                     </Typography>
-                    <Typography sx={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: cardColor, mb: barber.bio ? 2 : 0 }}>
+                    <Typography sx={{ fontSize: "0.66rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: cardColor, mb: barber.bio ? 2 : 0 }}>
                       {barber.isOwner ? "Owner & Barber" : "Professional Barber"}
                     </Typography>
                     {barber.bio && (
@@ -517,12 +513,12 @@ export default function TenantHome({ tenant: initialTenant }) {
                         {barber.bio}
                       </Typography>
                     )}
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2.5, pt: 2.5, borderTop: "1px solid #f0ece4" }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2.5, pt: 2, borderTop: "1px solid #f0ece4" }}>
                       <Box>
-                        <Typography sx={{ fontSize: "0.55rem", fontWeight: 700, color: "#bbb", letterSpacing: "0.12em", textTransform: "uppercase" }}>Deposit</Typography>
-                        <Typography sx={{ fontSize: "0.92rem", fontWeight: 800, color: "#111" }}>£{depositValue}</Typography>
+                        <Typography sx={{ fontSize: "0.55rem", fontWeight: 700, color: "#bbb", letterSpacing: "0.1em", textTransform: "uppercase" }}>Deposit</Typography>
+                        <Typography sx={{ fontSize: "0.92rem", fontWeight: 700, color: "#111" }}>£{depositValue}</Typography>
                       </Box>
-                      <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: cardColor, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                      <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: cardColor, letterSpacing: "0.08em", textTransform: "uppercase" }}>
                         BOOK NOW →
                       </Typography>
                     </Box>
@@ -552,10 +548,10 @@ export default function TenantHome({ tenant: initialTenant }) {
             <Typography sx={{ color: brandColor, fontWeight: 700, letterSpacing: "0.3em", fontSize: "0.62rem", textTransform: "uppercase", mb: 1.5 }}>
               Testimonials
             </Typography>
-            <Typography sx={{ fontFamily: displayFont, fontSize: { xs: "2rem", md: "2.6rem" }, fontWeight: 400, color: "#111", lineHeight: 1.15 }}>
+            <Typography sx={{ fontFamily: displayFont, fontSize: { xs: "2.3rem", md: "3rem" }, fontWeight: 400, color: "#111", lineHeight: 1.15 }}>
               What Our Clients Say
             </Typography>
-            <Box sx={{ width: 36, height: 2, bgcolor: brandColor, mx: "auto", mt: 2.5 }} />
+            <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto", mt: 2.5 }} />
           </Box>
 
           {/* Review slider */}
@@ -577,19 +573,19 @@ export default function TenantHome({ tenant: initialTenant }) {
                         {/* Stars */}
                         <Box sx={{ display: "flex", justifyContent: "center", gap: 0.3, mb: 3 }}>
                           {[...Array(5)].map((_, i) => (
-                            <StarIcon key={i} sx={{ fontSize: 16, color: i < stars ? brandColor : "rgba(37,99,235,0.2)" }} />
+                            <StarIcon key={i} sx={{ fontSize: 16, color: i < stars ? brandColor : "#ddd" }} />
                           ))}
                         </Box>
                         {/* Review text */}
                         <Typography sx={{
-                          fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic",
-                          fontSize: { xs: "1.1rem", md: "1.22rem" }, color: "#1a1a1a",
+                          fontFamily: displayFont, fontStyle: "italic", fontWeight: 400,
+                          fontSize: { xs: "1.15rem", md: "1.3rem" }, color: "#1a1a1a",
                           lineHeight: 1.85, textAlign: "center", mb: 4, px: { xs: 0, md: 1 },
                         }}>
                           "{rev.comment || rev.text || "Great experience!"}"
                         </Typography>
                         {/* Separator */}
-                        <Box sx={{ width: 28, height: "1px", bgcolor: brandColor, mx: "auto", mb: 4, opacity: 0.5 }} />
+                        <Box sx={{ width: 28, height: "1px", bgcolor: brandColor, opacity: 0.5, mx: "auto", mb: 4 }} />
                         {/* Reviewer */}
                         <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
                           <Avatar sx={{ width: 44, height: 44, bgcolor: brandColor, color: "#0d0d0d", fontWeight: 700, fontSize: "1rem", fontFamily: displayFont }}>

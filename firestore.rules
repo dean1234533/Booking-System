@@ -77,10 +77,23 @@ service cloud.firestore {
         allow write: if request.auth != null && request.auth.uid == barberId;
       }
 
-      // ── Staff — public read (for team pages), auth create ────────────────
+      // ── Staff — public read (for team pages) ──────────────────────────────
+      // create/delete used to allow ANY authenticated user — not just this
+      // shop's owner or the staff member themselves — to create or delete a
+      // staff doc under ANY shop, which let anyone plant a fake staff entry
+      // on, or remove a real one from, a business they have nothing to do
+      // with. Every legitimate write always has staffId == request.auth.uid
+      // (self-signup and invite-claim both create their OWN doc) or
+      // request.auth.uid == barberId (owner adding/removing via dashboard) —
+      // the one exception, an invite-claim deleting its OLD placeholder doc
+      // (a different id than the new user's own uid), now happens server-side
+      // in finalizeStaffInviteClaim instead, which can safely verify it only
+      // ever touches a placeholder the caller has already legitimately
+      // claimed. Found + fixed 2026-08-21 during a security review.
       match /staff/{staffId} {
         allow read: if true;
-        allow create, delete: if request.auth != null;
+        allow create, delete: if request.auth != null
+          && (request.auth.uid == barberId || request.auth.uid == staffId);
         allow update: if request.auth != null
           && (request.auth.uid == barberId || request.auth.uid == staffId);
       }
@@ -132,13 +145,28 @@ service cloud.firestore {
       }
 
       // ── Day planner — owner only ──────────────────────────────────────────
+      // Two separate rules needed: a `match` on the nested jobs subcollection
+      // does NOT implicitly cover the dayPlan/{dayKey} parent document itself
+      // (deleteBarberAccountData deletes that parent doc directly, which was
+      // hitting the deny-all catch-all with no rule for this exact path).
+      match /dayPlan/{dayKey} {
+        allow read, write: if request.auth != null && request.auth.uid == barberId;
+      }
       match /dayPlan/{dayKey}/jobs/{jobId} {
         allow read, write: if request.auth != null && request.auth.uid == barberId;
       }
 
-      // ── Quotes — owner only ───────────────────────────────────────────────
+      // ── Quotes ── /quote-view/ is an unauthenticated share link that gets
+      // ONE quote by its (unguessable) id, same trust model as staff invite
+      // links — so `get` is public. `list` (the owner's own quotes tab,
+      // which enumerates the whole collection) stays owner-only, otherwise
+      // a public `read: true` would let anyone list every client's name,
+      // email and address across every quote, not just one they hold the
+      // link to.
       match /quotes/{quoteId} {
-        allow read, write: if request.auth != null && request.auth.uid == barberId;
+        allow get: if true;
+        allow list: if request.auth != null && request.auth.uid == barberId;
+        allow write: if request.auth != null && request.auth.uid == barberId;
       }
 
       // ── Food generator links — public read (clients validate token), owner writes ──
@@ -259,6 +287,15 @@ service cloud.firestore {
     match /funnelEvents/{eventId} {
       allow create: if true;
       allow read, update, delete: if false;
+    }
+
+    // ── Short payment-link redirects — public read, server-only write ────────
+    // Maps a short bookrightly.co.uk/pay/{id} to the real (very long) Stripe
+    // Checkout URL, purely so the link handed to a client is short and
+    // presentable. Only the Worker (via its admin token) ever writes these.
+    match /paymentLinks/{linkId} {
+      allow read: if true;
+      allow write: if false;
     }
 
     // ── Deny everything else ──────────────────────────────────────────────────

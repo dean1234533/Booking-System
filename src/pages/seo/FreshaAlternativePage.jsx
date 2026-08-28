@@ -20,8 +20,8 @@ const COMPARE = [
 
 const FAQS = [
   { q: "Is Bookrightly really free for 90 days?", a: "Yes. No credit card required. You get full access to every feature for 90 days before you pay anything." },
-  { q: "Does Bookrightly take a cut of my bookings?", a: "No. Bookrightly charges a flat monthly subscription of £10–20. The only transaction fee is the standard Stripe processing fee (which your client pays on top at checkout)." },
-  { q: "Can I migrate from Fresha to Bookrightly?", a: "Yes. You can set up your Bookrightly profile in under an hour. Your existing clients can rebook directly through your new branded page." },
+  { q: "Does Bookrightly take a cut of my bookings?", a: "No. Bookrightly charges a flat monthly subscription of £10–15. The only transaction fee is the standard Stripe processing fee (which your client pays on top at checkout)." },
+  { q: "Can I migrate from Fresha to Bookrightly?", a: "Yes. You can set up your Bookrightly profile in under 15 minutes. Your existing clients can rebook directly through your new branded page." },
   { q: "Does Bookrightly work for beauty businesses?", a: "Yes — hairdressers and barbers are fully supported with service menus, slot availability, deposit booking, and a public profile page." },
   { q: "What industries does Bookrightly support?", a: "Barbers, hairdressers, personal trainers, and decorators — all with industry-specific pages and features." },
 ];
@@ -32,7 +32,7 @@ export default function FreshaAlternativePage() {
       <SEOHero
         eyebrow="Fresha Alternative UK"
         title="The Fresha alternative that keeps your earnings yours"
-        subtitle="Fresha's 'free' plan charges a commission on every online payment. Bookrightly charges £10–20/month flat — no cuts, no surprises, no race to the bottom on price."
+        subtitle="Fresha's 'free' plan charges a commission on every online payment. Bookrightly charges £10–15/month flat — no cuts, no surprises, no race to the bottom on price."
       />
 
       <Section dark>
@@ -43,10 +43,10 @@ export default function FreshaAlternativePage() {
         />
         <Grid container spacing={3}>
           {[
-            ["💸", "Hidden transaction fees", "Fresha's 'free' model only works if you never take online payments. The moment a customer pays through Fresha, they take a percentage. At £500/week that quickly adds up to thousands per year."],
-            ["🏪", "You're inside their marketplace", "Your Bookrightly page is yours — bookrightly.co.uk/your-name. On Fresha, customers book 'via Fresha'. You build their platform, not your brand."],
-            ["💇", "Beauty-only platform", "Fresha was built for salons and beauty. If you're a personal trainer, decorator, or barber looking for more than a cut-and-colour service menu, Fresha doesn't serve you properly."],
-            ["📉", "Marketplace pricing pressure", "Being on Fresha means competing against every other salon on the platform. Customers compare prices side-by-side. That race to the bottom hurts your margins."],
+            ["money", "Hidden transaction fees", "Fresha's 'free' model only works if you never take online payments. The moment a customer pays through Fresha, they take a percentage. At £500/week that quickly adds up to thousands per year."],
+            ["marketplace", "You're inside their marketplace", "Your Bookrightly page is yours — bookrightly.co.uk/your-name. On Fresha, customers book 'via Fresha'. You build their platform, not your brand."],
+            ["hairdresser", "Beauty-only platform", "Fresha was built for salons and beauty. If you're a personal trainer, decorator, or barber looking for more than a cut-and-colour service menu, Fresha doesn't serve you properly."],
+            ["pricingDown", "Marketplace pricing pressure", "Being on Fresha means competing against every other salon on the platform. Customers compare prices side-by-side. That race to the bottom hurts your margins."],
           ].map(([icon, title, body]) => (
             <Grid item xs={12} sm={6} key={title}>
               <FeatureCard icon={icon} title={title} body={body} />
@@ -81,10 +81,10 @@ export default function FreshaAlternativePage() {
         <SectionHead eyebrow="Why switch" title="What Bookrightly does differently" />
         <Grid container spacing={3}>
           {[
-            ["🏷️", "Your brand, your page", "bookrightly.co.uk/fade-factory is yours. Not Fresha's. Customers bookmark you, not the marketplace."],
-            ["💰", "£10–20/month, nothing more", "That's the whole fee. Whether you take 5 bookings or 50 in a week, you pay the same. No percentage, no surcharges."],
-            ["📱", "Installs like a real app", "Customers can add Bookrightly to their home screen — it works offline, sends push notifications, and feels like a native app."],
-            ["📋", "Client management built in", "PAR-Q forms, food diaries, check-ins, colour approvals — features no other platform at this price includes."],
+            ["tag", "Your brand, your page", "bookrightly.co.uk/fade-factory is yours. Not Fresha's. Customers bookmark you, not the marketplace."],
+            ["money", "£10–15/month, nothing more", "That's the whole fee. Whether you take 5 bookings or 50 in a week, you pay the same. No percentage, no surcharges."],
+            ["phone", "Installs like a real app", "Customers can add Bookrightly to their home screen — it works offline, sends push notifications, and feels like a native app."],
+            ["assignment", "Client management built in", "PAR-Q forms, food diaries, check-ins, colour approvals — features no other platform at this price includes."],
           ].map(([icon, title, body]) => (
             <Grid item xs={12} sm={6} key={title}>
               <FeatureCard icon={icon} title={title} body={body} />
@@ -102,7 +102,7 @@ export default function FreshaAlternativePage() {
 
       <InternalLinks current="/fresha-alternative" />
       <BottomCTA
-        title="Switch from Fresha in under an hour"
+        title="Switch from Fresha in under 15 minutes"
         sub="Set up your Bookrightly profile, share your new booking link with clients, and stop losing a cut of every payment."
       />
     </Box>

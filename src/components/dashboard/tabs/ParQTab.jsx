@@ -85,7 +85,7 @@ function printPDF(sub) {
       </div>
     </div>
     <p class="meta"><strong>${esc(sub.clientName)}</strong> &nbsp;·&nbsp; DOB: ${esc(sub.dob || "—")} &nbsp;·&nbsp; Date: ${esc(sub.date || "—")} &nbsp;·&nbsp; Submitted ${submitted}</p>
-    ${hasFlags ? '<div class="flag-banner">⚠ One or more health concerns flagged — please review before training.</div>' : ""}
+    ${hasFlags ? '<div class="flag-banner">Warning: One or more health concerns flagged — please review before training.</div>' : ""}
     ${qaRows}
     ${sigHtml}
   </body></html>`;

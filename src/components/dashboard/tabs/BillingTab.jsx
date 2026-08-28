@@ -10,7 +10,6 @@ import {
   Divider,
   Grid,
   Paper,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -18,16 +17,15 @@ import {
 } from "@mui/material";
 import { CreditCard, CheckCircle, WarningAmber } from "@mui/icons-material";
 import { useAuth } from "../../../context/AuthContext";
-import { getBillingInfo, reportUsageToStripe, calculateTrainerCost } from "../../../utils/billingUtils";
+import { getBillingInfo } from "../../../utils/billingUtils";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../../firebase/config";
 
 export default function BillingTab({ barber: passedBarber, profile, brandColor }) {
-  const { barber: authBarber, user } = useAuth();
+  const { barber: authBarber } = useAuth();
   const barber = passedBarber || authBarber;
   const [billing, setBilling] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [reporting, setReporting] = useState(false);
   const [message, setMessage] = useState(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoices, setInvoices] = useState([]);
@@ -52,37 +50,6 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
       loadBilling();
     }
   }, [barber?.uid, barber?.id]);
-
-  const handleReportUsage = async () => {
-    const userId = barber?.uid || barber?.id;
-    if (!userId || !user?.email || !billing) return;
-
-    setReporting(true);
-    setMessage(null);
-
-    try {
-      const result = await reportUsageToStripe(userId, user.email, billing.clientCount);
-
-      if (result?.success) {
-        setMessage({
-          type: "success",
-          text: `Usage reported: ${billing.clientCount} clients (${result.data.billingUnits} billing units)`,
-        });
-      } else {
-        setMessage({
-          type: "info",
-          text: "Usage reporting completed",
-        });
-      }
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: "Failed to report usage",
-      });
-    } finally {
-      setReporting(false);
-    }
-  };
 
   const handleBillingPortal = async () => {
     const userId = barber?.uid || barber?.id;
@@ -202,27 +169,10 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
                   {billing.baseCost}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {isTrainer ? "Includes 10 clients" : "All services included"}
+                  {isTrainer ? "Unlimited clients" : "All services included"}
                 </Typography>
               </Paper>
             </Grid>
-
-            {/* Overage Cost */}
-            {isTrainer && (
-              <Grid item xs={12} sm={6}>
-                <Paper sx={{ p: 2, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 2 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Extra Clients
-                  </Typography>
-                  <Typography variant="h5" fontWeight={700}>
-                    {billing.overageCost}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {billing.overageClients} extra × £1.50 per 3
-                  </Typography>
-                </Paper>
-              </Grid>
-            )}
 
             {/* Total Cost */}
             <Grid item xs={12}>
@@ -242,53 +192,6 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: 2 }} />
-
-          {/* Client Info (Trainers Only) */}
-          {isTrainer && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2 }}>
-                Client Count Breakdown
-              </Typography>
-
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
-                <Chip
-                  label={`Total: ${billing.clientCount}`}
-                  color="primary"
-                  variant="filled"
-                />
-                <Chip
-                  label={`Free: ${billing.freeClients}`}
-                  color="success"
-                  variant="outlined"
-                />
-                <Chip
-                  label={`Extra: ${billing.overageClients}`}
-                  color="warning"
-                  variant="outlined"
-                />
-              </Box>
-
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {billing.message}
-              </Typography>
-
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleReportUsage}
-                disabled={reporting}
-                sx={{ mb: 2 }}
-              >
-                {reporting ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
-                {reporting ? "Reporting..." : "Report Usage to Stripe"}
-              </Button>
-
-              <Typography variant="caption" color="text.secondary" display="block">
-                Usage is typically reported automatically daily. Use this button to manually report your current client count.
-              </Typography>
-            </Box>
-          )}
         </CardContent>
       </Card>
 
@@ -302,24 +205,13 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
           {isTrainer ? (
             <Box>
               <Typography variant="body2" sx={{ mb: 2 }}>
-                <strong>Base Fee:</strong> £20/month (includes 10 clients)
+                <strong>Monthly Fee:</strong> £15/month
               </Typography>
               <Typography variant="body2" sx={{ mb: 2 }}>
-                <strong>Extra Clients:</strong> £1.50 per 3 clients/month
+                <strong>Includes:</strong> Unlimited clients, all PT features
               </Typography>
               <Typography variant="body2" sx={{ mb: 2 }}>
                 <strong>Your Cost:</strong> {billing.totalCost}/month
-              </Typography>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                Calculation Example:
-              </Typography>
-              <Typography variant="caption" display="block" sx={{ mb: 2, fontFamily: "monospace", bgcolor: "rgba(255,255,255,0.04)", p: 1, borderRadius: 1 }}>
-                {billing.overageClients > 0
-                  ? `£20 (base) + (${billing.overageClients} extra clients ÷ 3 = ${billing.overageUnits} units) × £1.50 = ${billing.totalCost}`
-                  : `£20 (base, all 10 clients included) = ${billing.totalCost}`}
               </Typography>
             </Box>
           ) : (
@@ -345,7 +237,7 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
                 Next Billing Date
               </Typography>
               <Typography variant="body2">
-                Your next invoice will be generated on the 1st of next month, based on your current client count.
+                Your next invoice will be generated on the 1st of next month.
               </Typography>
             </Box>
           </Box>
@@ -378,7 +270,7 @@ export default function BillingTab({ barber: passedBarber, profile, brandColor }
           </Button>
 
           <Typography variant="caption" color="text.secondary" display="block">
-            Need help with billing? Contact support at support@yourdomain.com
+            Need help with billing? Contact support at info@bookrightly.co.uk
           </Typography>
         </CardContent>
       </Card>

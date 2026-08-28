@@ -10,16 +10,18 @@ import {
   Print as PrintIcon,
   Save as SaveIcon,
   ContentCopy as ContentCopyIcon,
+  Engineering as EngineeringIcon,
+  ReceiptLong as ReceiptLongIcon,
 } from "@mui/icons-material";
 import {
-  collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp,
+  collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp, updateDoc,
 } from "firebase/firestore";
 import { db } from "../../../firebase/config";
 import { SITE_URL } from "../../../utils/siteUrl";
+import { calcLineTotals, getQuoteLabels } from "../../../utils/tradeJobs";
 
 const SANS  = "'DM Sans', sans-serif";
 const SERIF = "'Playfair Display', serif";
-const UNITS = ["m²", "m", "hrs", "days", "item", "room", "coat", "door", "window"];
 
 function fieldSx(brand) {
   return {
@@ -36,17 +38,13 @@ function fieldSx(brand) {
   };
 }
 
-const blankItem = () => ({ id: `i-${Date.now()}-${Math.random()}`, desc: "", qty: "1", unit: "item", price: "" });
+const blankItem = (unit = "item") => ({ id: `i-${Date.now()}-${Math.random()}`, desc: "", qty: "1", unit, price: "" });
 
-function calcTotals(items, vatRate) {
-  const subtotal = (items || []).reduce((s, i) => s + (Number(i.qty || 0) * Number(i.price || 0)), 0);
-  const vat      = subtotal * (Number(vatRate || 0) / 100);
-  return { subtotal, vat, total: subtotal + vat };
-}
+const calcTotals = calcLineTotals;
 
 function fmt(n) { return `£${Number(n || 0).toFixed(2)}`; }
 
-function printQuote(q, businessName, brandColor, logoUrl) {
+function printQuote(q, businessName, brandColor, logoUrl, defaultJobTitle) {
   const { subtotal, vat, total } = calcTotals(q.items, q.vatRate);
   const w = window.open("", "_blank");
   w.document.write(`<!DOCTYPE html><html><head>
@@ -88,7 +86,7 @@ function printQuote(q, businessName, brandColor, logoUrl) {
       <div class="meta-val">${esc(q.quoteDate || new Date().toLocaleDateString("en-GB"))}</div>
     </div>
   </div>
-  <div class="quote-title">Quotation for ${esc(q.jobTitle || "Decorating Works")}</div>
+  <div class="quote-title">Quotation for ${esc(q.jobTitle || defaultJobTitle)}</div>
   <div class="meta-row">
     <div><div class="label">Prepared For</div><div class="meta-val">${esc(q.clientName)}</div>${q.clientEmail ? `<div style="font-size:0.78rem;color:#a8a29e;margin-top:2px">${esc(q.clientEmail)}</div>` : ""}</div>
     <div><div class="label">Property Address</div><div class="meta-val">${esc(q.address || "—")}</div></div>
@@ -121,18 +119,25 @@ function printQuote(q, businessName, brandColor, logoUrl) {
 
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
-export default function QuoteTab({ barber, profile, brandColor }) {
+export default function QuoteTab({
+  barber, profile, brandColor, businessType,
+  prefill, onPrefillConsumed,
+  enableConversions = false, onConvertToJob, onCreateInvoice,
+}) {
+  const labels = getQuoteLabels(businessType);
+  const blankForm = () => ({
+    clientName: "", clientEmail: "", address: "",
+    quoteDate:  new Date().toISOString().split("T")[0],
+    jobTitle:   "", validDays: "30", vatRate: "20",
+    items: [blankItem(labels.units[0])], notes: "",
+  });
+
   const [quotes,  setQuotes]  = useState([]);
   const [loading, setLoading] = useState(true);
   const [view,    setView]    = useState("list");
   const [saving,  setSaving]  = useState(false);
   const [toast,   setToast]   = useState("");
-  const [form,    setForm]    = useState({
-    clientName: "", clientEmail: "", address: "",
-    quoteDate:  new Date().toISOString().split("T")[0],
-    jobTitle:   "", validDays: "30", vatRate: "20",
-    items: [blankItem()], notes: "",
-  });
+  const [form,    setForm]    = useState(blankForm());
 
   const fx           = fieldSx(brandColor);
   const tid          = barber?.uid;
@@ -140,6 +145,24 @@ export default function QuoteTab({ barber, profile, brandColor }) {
   const logoUrl      = profile?.logoUrl || "";
 
   useEffect(() => { load(); }, [tid]);
+
+  // Seeds the create form from an enquiry/job handed over by another tab
+  // (e.g. EnquiriesTab's "Convert to Quote") so details aren't re-typed.
+  useEffect(() => {
+    if (!prefill) return;
+    setForm(f => ({
+      ...blankForm(),
+      clientName: prefill.name || prefill.clientName || "",
+      clientEmail: prefill.email || prefill.clientEmail || "",
+      address: prefill.address || "",
+      jobTitle: prefill.jobTitle || prefill.problemDescription || "",
+      notes: prefill.notes || "",
+      sourceEnquiryId: prefill.sourceEnquiryId || null,
+    }));
+    setView("create");
+    onPrefillConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   async function load() {
     if (!tid) return;
@@ -162,16 +185,22 @@ export default function QuoteTab({ barber, profile, brandColor }) {
     if (!form.clientName.trim()) return;
     setSaving(true);
     try {
+      const { sourceEnquiryId, ...rest } = form;
       const data = {
-        ...form,
+        ...rest,
+        ...(sourceEnquiryId ? { sourceEnquiryId } : {}),
         reference: Date.now() % 100000,
-        items: form.items.map(({ id, ...rest }) => rest),
+        items: form.items.map(({ id, ...r }) => r),
         createdAt: serverTimestamp(),
       };
       const ref = await addDoc(collection(db, "barbers", tid, "quotes"), data);
       setQuotes(p => [{ id: ref.id, ...data }, ...p]);
+      if (sourceEnquiryId) {
+        // Marks the source enquiry as converted so it can't be double-converted.
+        updateDoc(doc(db, "barbers", tid, "enquiries", sourceEnquiryId), { convertedToQuoteId: ref.id }).catch(() => {});
+      }
       setView("list");
-      setForm({ clientName: "", clientEmail: "", address: "", quoteDate: new Date().toISOString().split("T")[0], jobTitle: "", validDays: "30", vatRate: "20", items: [blankItem()], notes: "" });
+      setForm(blankForm());
     } catch (e) { console.error(e); }
     finally { setSaving(false); }
   }
@@ -243,13 +272,31 @@ export default function QuoteTab({ barber, profile, brandColor }) {
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography sx={{ fontFamily: SANS, fontWeight: 700, color: "#111", fontSize: "0.88rem" }}>{q.clientName}</Typography>
                   <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(0,0,0,0.45)" }}>
-                    {q.jobTitle || "Decorating Works"} · {q.quoteDate}
+                    {q.jobTitle || labels.defaultJobTitle} · {q.quoteDate}
                   </Typography>
                 </Box>
                 <Typography sx={{ fontFamily: SERIF, fontSize: "1.1rem", color: brandColor, fontWeight: 700, flexShrink: 0 }}>
                   {fmt(t.total)}
                 </Typography>
                 <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                  {enableConversions && onConvertToJob && (
+                    <Tooltip title={q.convertedToJobId ? "Already converted to a job" : "Convert to job"}>
+                      <span>
+                        <IconButton size="small" disabled={Boolean(q.convertedToJobId)} onClick={() => onConvertToJob(q)}
+                          sx={{ color: "rgba(0,0,0,0.4)", "&:hover": { color: brandColor } }}>
+                          <EngineeringIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  )}
+                  {enableConversions && onCreateInvoice && (
+                    <Tooltip title="Create invoice from this quote">
+                      <IconButton size="small" onClick={() => onCreateInvoice(q)}
+                        sx={{ color: "rgba(0,0,0,0.4)", "&:hover": { color: brandColor } }}>
+                        <ReceiptLongIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   <Tooltip title="Copy client link">
                     <IconButton size="small" onClick={() => copyLink(q)}
                       sx={{ color: "rgba(0,0,0,0.4)", "&:hover": { color: brandColor } }}>
@@ -257,7 +304,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Print / Save PDF">
-                    <IconButton size="small" onClick={() => printQuote(q, businessName, brandColor, logoUrl)}
+                    <IconButton size="small" onClick={() => printQuote(q, businessName, brandColor, logoUrl, labels.defaultJobTitle)}
                       sx={{ color: "rgba(0,0,0,0.4)", "&:hover": { color: brandColor } }}>
                       <PrintIcon sx={{ fontSize: 17 }} />
                     </IconButton>
@@ -310,7 +357,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
                   </Grid>
                 </Grid>
                 <TextField fullWidth size="small" label="Property Address" value={form.address} onChange={e => set("address", e.target.value)} sx={fx} />
-                <TextField fullWidth size="small" label="Job Title" placeholder="e.g. Full interior decoration — 3-bed semi" value={form.jobTitle} onChange={e => set("jobTitle", e.target.value)} sx={fx} />
+                <TextField fullWidth size="small" label="Job Title" placeholder={labels.jobTitlePlaceholder} value={form.jobTitle} onChange={e => set("jobTitle", e.target.value)} sx={fx} />
               </Stack>
             </Box>
 
@@ -349,7 +396,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
                       <InputLabel>Unit</InputLabel>
                       <Select value={item.unit} label="Unit" onChange={e => updateItem(item.id, "unit", e.target.value)}
                         MenuProps={{ PaperProps: { sx: { bgcolor: "#fff", color: "#111", borderRadius: "8px", border: "1px solid #e5e7eb" } } }}>
-                        {UNITS.map(u => (
+                        {labels.units.map(u => (
                           <MenuItem key={u} value={u} sx={{ fontSize: "0.8rem", "&:hover": { bgcolor: `${brandColor}20` } }}>{u}</MenuItem>
                         ))}
                       </Select>
@@ -363,7 +410,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
                 ))}
               </Stack>
               <Button startIcon={<AddIcon sx={{ fontSize: 15 }} />}
-                onClick={() => setForm(p => ({ ...p, items: [...p.items, blankItem()] }))}
+                onClick={() => setForm(p => ({ ...p, items: [...p.items, blankItem(labels.units[0])] }))}
                 sx={{ color: brandColor, fontWeight: 700, fontSize: "0.72rem", mt: 2, "&:hover": { bgcolor: `${brandColor}10` } }}>
                 Add Line Item
               </Button>
@@ -385,7 +432,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
               </Button>
               <Button
                 startIcon={<PrintIcon sx={{ fontSize: 16 }} />}
-                onClick={() => printQuote({ ...form, items: form.items }, businessName, brandColor, logoUrl)}
+                onClick={() => printQuote({ ...form, items: form.items }, businessName, brandColor, logoUrl, labels.defaultJobTitle)}
                 sx={{ color: brandColor, fontWeight: 700, fontSize: "0.74rem", "&:hover": { bgcolor: `${brandColor}10` } }}
               >
                 Print Preview
@@ -418,7 +465,7 @@ export default function QuoteTab({ barber, profile, brandColor }) {
             </Box>
             <Box sx={{ p: 3 }}>
               <Typography sx={{ fontFamily: SERIF, fontSize: "1.3rem", color: "#111", mb: 0.5, lineHeight: 1.2 }}>
-                {form.jobTitle || "Decorating Works"}
+                {form.jobTitle || labels.defaultJobTitle}
               </Typography>
               <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(0,0,0,0.45)", mb: 2.5 }}>
                 {form.clientName || "Client name"} · {form.quoteDate}

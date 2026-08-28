@@ -62,7 +62,7 @@ const BENEFITS = [
 
 const STEPS = [
   ["01", "Choose your trade", "Your workspace is shaped around how your kind of business actually operates."],
-  ["02", "Make it yours", "Add your brand, services, prices and working hours in a few focused steps."],
+  ["02", "Make it yours", "Every page is fully customisable from your dashboard — brand, photos, services, prices and working hours, no code needed."],
   ["03", "Share one link", "Your booking page goes live and new appointments arrive in your dashboard."],
 ];
 

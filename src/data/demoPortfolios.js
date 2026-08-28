@@ -91,6 +91,7 @@ const DEMO_HERO_IMAGES = {
   trainer: {
     heroImage: "/images/demo/trainer/hero.jpg",
     heroBgImage: "/images/demo/trainer/hero-bg.jpg",
+    heroBgImageMobile: "/images/demo/trainer/hero-bg-mobile.jpg",
   },
   decorator: {
     heroImage: "/images/demo/decorator/hero.jpg",

@@ -80,6 +80,7 @@ export default function TenantHome({ tenant: initialTenant }) {
   const [slideDir, setSlideDir] = useState("right");
   
   const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md"));
+  const usePortraitHero   = useMediaQuery(theme.breakpoints.down("lg"));
   const [team, setTeam] = useState([]);
   const [loading, setLoading] = useState(true);
   const [freshTenant, setFreshTenant] = useState(initialTenant || location.state?.tenant);
@@ -126,17 +127,17 @@ export default function TenantHome({ tenant: initialTenant }) {
   // baked in at this point as the fallback, which meant heroForProfile below
   // always received a truthy value and could never substitute the curated
   // placeholder for an account with nothing saved yet.
-  const savedHeroImage = isMobileOrTablet
+  const savedHeroImage = usePortraitHero
     ? (freshTenant?.heroImageMobile || freshTenant?.heroImage || "")
     : (freshTenant?.heroImage || "");
   const isDemoTenant = isDemoProfile(freshTenant);
   const usesDemoHomeHero = savedHeroImage === "/images/demo/barber/home-hero.jpg";
-  const heroImageUrl = isMobileOrTablet && usesDemoHomeHero
+  const heroImageUrl = usePortraitHero && usesDemoHomeHero
     ? "/images/demo/barber/home-hero-mobile.jpg"
     : heroForProfile(
         freshTenant,
         savedHeroImage,
-        isMobileOrTablet ? "mobileHomeHeroImage" : "homeHeroImage",
+        usePortraitHero ? "mobileHomeHeroImage" : "homeHeroImage",
       ) || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1";
   const portfolioItems = portfolioForProfile(freshTenant, freshTenant?.portfolioItems || []);
  

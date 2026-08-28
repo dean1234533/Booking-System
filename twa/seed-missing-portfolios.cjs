@@ -37,6 +37,7 @@ const PATCHES = [
     items: [
       item('/images/demo/barber/skin-fade-before.jpg', '/images/demo/barber/skin-fade-after.jpg', 'Skin Fade & Beard Sculpt'),
       item('/images/demo/barber/curly-taper-before.jpg', '/images/demo/barber/curly-taper-after.jpg', 'Curly Taper & Line-Up'),
+      item('/images/demo/barber/textured-crop-before.jpg', '/images/demo/barber/textured-crop-after.jpg', 'Textured Crop & Beard Shape'),
     ],
   },
   {
@@ -58,6 +59,7 @@ const PATCHES = [
     items: [
       item('/images/demo/trainer/male-strength-before.jpg', '/images/demo/trainer/male-strength-after.jpg', '12-Month Strength Transformation'),
       item('/images/demo/trainer/female-strength-before.jpg', '/images/demo/trainer/female-strength-after.jpg', '9-Month Strength Transformation'),
+      item('/images/demo/trainer/six-month-strength-before.jpg', '/images/demo/trainer/six-month-strength-after.jpg', '6-Month Strength Transformation'),
     ],
   },
 ];

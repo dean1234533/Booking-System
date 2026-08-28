@@ -13,7 +13,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography,
 } from '@mui/material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
-import { heroForProfile, portfolioForProfile } from '../data/demoPortfolios';
+import { heroForProfile, isDemoProfile, portfolioForProfile } from '../data/demoPortfolios';
 
 /* ─── Injected styles ──────────────────────────────────────────────────────── */
 export const HairdresserStyles = () => (
@@ -435,6 +435,7 @@ export default function HairdresserTemplate({ tenantData }) {
   const portfolioHeading = tenantData?.portfolioHeading || 'Recent transformations';
   const portfolioSubtext = tenantData?.portfolioSubtext || 'Drag the slider on each image to reveal the difference a fresh cut and colour makes.';
   const portfolioItems   = portfolioForProfile(tenantData, tenantData?.portfolioItems || []);
+  const isDemoTenant     = isDemoProfile(tenantData);
 
   const stats = [
     { num: tenantData?.stat1Value || '12+',  label: tenantData?.stat1Label || 'Years of expertise' },
@@ -650,15 +651,20 @@ export default function HairdresserTemplate({ tenantData }) {
             <h2 className="hs-section-title" style={{ textAlign: 'center' }}>Meet Our Team</h2>
           </div>
           <div className="hs-team-grid">
-            {allTeam.map((member, i) => (
+            {allTeam.map((member, i) => {
+              const memberImage = isDemoTenant
+                ? `/images/demo/hairdresser/${member.isOwner ? 'owner-card' : 'staff-card'}.jpg`
+                : member.profilePic;
+
+              return (
               <div
                 key={member.id || i}
                 className="hs-team-card"
                 onClick={() => !member.isOwner && navigate(`/hairdresser/${shopId}/${member.id}`)}
                 style={{ cursor: member.isOwner ? 'default' : 'pointer' }}
               >
-                {member.profilePic ? (
-                  <img src={member.profilePic} alt={member.name} className="hs-team-photo" />
+                {memberImage ? (
+                  <img src={memberImage} alt={member.name} className="hs-team-photo" />
                 ) : (
                   <div className="hs-team-avatar" style={{ background: brandColor }}>
                     {member.name?.[0]?.toUpperCase()}
@@ -672,7 +678,8 @@ export default function HairdresserTemplate({ tenantData }) {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
         )}

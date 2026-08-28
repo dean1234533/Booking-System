@@ -10,6 +10,11 @@ const DEMO_PORTFOLIOS = {
       after: "/images/demo/barber/curly-taper-after.jpg",
       label: "Curly Taper & Line-Up",
     },
+    {
+      before: "/images/demo/barber/textured-crop-before.jpg",
+      after: "/images/demo/barber/textured-crop-after.jpg",
+      label: "Textured Crop & Beard Shape",
+    },
   ],
   hairdresser: [
     {
@@ -39,6 +44,11 @@ const DEMO_PORTFOLIOS = {
       after: "/images/demo/trainer/female-strength-after.jpg",
       label: "9-Month Strength Transformation",
     },
+    {
+      before: "/images/demo/trainer/six-month-strength-before.jpg",
+      after: "/images/demo/trainer/six-month-strength-after.jpg",
+      label: "6-Month Strength Transformation",
+    },
   ],
   decorator: [
     {
@@ -50,6 +60,11 @@ const DEMO_PORTFOLIOS = {
       before: "/images/demo/decorator/kitchen-before.jpg",
       after: "/images/demo/decorator/kitchen-after.jpg",
       label: "Kitchen Preparation & Paint",
+    },
+    {
+      before: "/images/demo/decorator/hallway-before.jpg",
+      after: "/images/demo/decorator/hallway-after.jpg",
+      label: "Hallway & Woodwork Refresh",
     },
   ],
   plumber: [

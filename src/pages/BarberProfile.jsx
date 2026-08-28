@@ -383,10 +383,13 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
               </Box>
             )}
 
-            {/* Social links */}
-            {(hasSocial || hasStaffSocial) && (
+            {/* Social links — the shop's business row only makes sense on the
+                owner's own page. Staff already have their own "Follow me"
+                personal section below; showing the shop's Instagram there
+                too, right next to their own, just reads as a duplicate. */}
+            {((hasSocial && !barber?.isStaff) || hasStaffSocial) && (
               <Box sx={{ mb: 3.5 }}>
-                {hasSocial && (
+                {hasSocial && !barber?.isStaff && (
                   <Box sx={{ display: "flex", gap: 1, mb: hasStaffSocial ? 1.5 : 0 }}>
                     <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
                     <SocialLink href={facebookUrl}  label="Facebook"  icon={<FacebookIcon  sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />

@@ -657,7 +657,11 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   const portfolioHeading = profile?.portfolioHeading || 'Client transformations';
   const portfolioSubtext = profile?.portfolioSubtext || 'Drag the slider on each image to reveal real client results.';
   const portfolioItems   = portfolioForProfile(profile, profile?.portfolioItems || []);
-  const heroBackground   = heroForProfile(profile, profile?.heroBgImage, 'heroBgImage')
+  const heroBackground   = heroForProfile(
+    profile,
+    (isMobile && profile?.heroBgImageMobile) || profile?.heroBgImage,
+    isMobile ? 'heroBgImageMobile' : 'heroBgImage',
+  )
     || 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920';
   const coachHeroImage   = heroForProfile(profile, profile?.heroImage)
     || 'https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800';
@@ -724,7 +728,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: `url('${heroBackground}')`,
-          backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.25,
+          backgroundSize: 'cover', backgroundPosition: 'center', opacity: isMobile ? 0.5 : 0.25,
         }} />
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(105deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 60%, ${brandColor}22 100%)` }} />
         <div style={{ position: 'absolute', left: 0, top: '15%', bottom: '15%', width: 4, background: brandColor, borderRadius: '0 4px 4px 0' }} />

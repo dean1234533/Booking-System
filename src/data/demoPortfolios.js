@@ -52,18 +52,18 @@ const DEMO_PORTFOLIOS = {
   ],
   decorator: [
     {
-      before: "/images/demo/decorator/living-room-before.jpg",
-      after: "/images/demo/decorator/living-room-after.jpg",
+      before: "/images/demo/decorator/living-room-after.jpg",
+      after: "/images/demo/decorator/living-room-before.jpg",
       label: "Living Room Refinish",
     },
     {
-      before: "/images/demo/decorator/kitchen-before.jpg",
-      after: "/images/demo/decorator/kitchen-after.jpg",
+      before: "/images/demo/decorator/kitchen-after.jpg",
+      after: "/images/demo/decorator/kitchen-before.jpg",
       label: "Kitchen Preparation & Paint",
     },
     {
-      before: "/images/demo/decorator/hallway-before.jpg",
-      after: "/images/demo/decorator/hallway-after.jpg",
+      before: "/images/demo/decorator/hallway-after.jpg",
+      after: "/images/demo/decorator/hallway-before.jpg",
       label: "Hallway & Woodwork Refresh",
     },
   ],

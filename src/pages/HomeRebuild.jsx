@@ -93,7 +93,7 @@ function WorkspaceVisual() {
   return (
     <Box sx={{ position: "relative", minHeight: { xs: "auto", md: 560 }, display: { xs: "flex", md: "grid" }, flexDirection: { xs: "column", md: "initial" }, placeItems: { md: "center" }, gap: { xs: 1.4, md: 0 }, pt: { xs: 1, md: 0 } }}>
       <Box sx={{ display: { xs: "none", md: "block" }, position: "absolute", width: "78%", height: "75%", borderRadius: "50%", bgcolor: P.mist, filter: "blur(2px)" }} />
-      <Paper sx={{ order: { xs: 2, md: "initial" }, position: "relative", width: { xs: "100%", sm: "82%" }, bgcolor: P.ink, color: "#fff", p: { xs: 2, sm: 2.5 }, borderRadius: { xs: 4, md: 5 }, transform: { xs: "none", md: "rotate(-3deg)" }, boxShadow: { xs: "0 22px 55px rgba(17,17,22,.2)", md: "0 38px 80px rgba(17,17,22,.28)" }, border: "1px solid rgba(255,255,255,.12)" }}>
+      <Paper sx={{ order: { xs: 2, md: "initial" }, position: "relative", width: { xs: "100%", md: "82%" }, bgcolor: P.ink, color: "#fff", p: { xs: 2, sm: 2.5 }, borderRadius: { xs: 4, md: 5 }, transform: { xs: "none", md: "rotate(-3deg)" }, boxShadow: { xs: "0 22px 55px rgba(17,17,22,.2)", md: "0 38px 80px rgba(17,17,22,.28)" }, border: "1px solid rgba(255,255,255,.12)" }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
           <Typography sx={{ fontWeight: 950, fontSize: ".82rem" }}>Today</Typography>
           <Chip label="4 bookings" size="small" sx={{ bgcolor: P.acid, color: P.ink, fontWeight: 900 }} />

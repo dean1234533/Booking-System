@@ -200,6 +200,11 @@ const DECORATOR_PROFILE = {
       after:  '/images/demo/decorator/kitchen-after.jpg',
       title:  'Kitchen Refresh',
     }),
+    portfolioItem({
+      before: '/images/demo/decorator/hallway-before.jpg',
+      after:  '/images/demo/decorator/hallway-after.jpg',
+      title:  'Hallway & Woodwork Refresh',
+    }),
   ]),
 };
 

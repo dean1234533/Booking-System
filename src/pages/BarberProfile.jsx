@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Box, Container, Typography, Avatar,
-  IconButton, Tooltip, Button, CircularProgress, Alert
+  IconButton, Tooltip, Button, CircularProgress, Alert,
+  useMediaQuery, useTheme,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import InstagramIcon    from "@mui/icons-material/Instagram";
@@ -76,6 +77,8 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
   const barberId = barberIdProp || paramId;
   const navigate  = useNavigate();
   const location  = useLocation();
+  const theme = useTheme();
+  const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md"));
 
   const [barber,     setBarber]     = useState(null);
   const [footerData, setFooterData] = useState(initialTenant || null);
@@ -473,7 +476,7 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
               )}
             </Box>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(3, 1fr)" }, gap: 2.5 }}>
-              {portfolioItems.map((item, i) => (
+              {(isMobileOrTablet ? portfolioItems.slice(0, 2) : portfolioItems).map((item, i) => (
                 <Box key={i}>
                   <BeforeAfterSlider before={item.before} after={item.after} />
                   {item.label && (

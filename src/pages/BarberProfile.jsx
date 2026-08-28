@@ -22,6 +22,7 @@ import { doc, getDoc, collection, collectionGroup, query, where, getDocs, onSnap
 import { formatCurrency } from "../stripe/formatters";
 import { useSlots }       from "../hooks/useSlots";
 import { getWhatsAppBookingUrl } from "../utils/whatsapp";
+import { heroForProfile, portfolioForProfile } from "../data/demoPortfolios";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -164,14 +165,28 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
     loadBarberData();
   }, [barberId, initialTenant]);
 
-  // Navigation state (from BarberCard) takes priority for branding
-  const effectiveTenant = location.state?.tenant || initialTenant || footerData;
+  // Navigation state (from clicking a team card) takes priority for instant
+  // branding on arrival — but it's built from the clicked staff member's OWN
+  // record, which never carries the shop's instagramUrl/facebookUrl/gallery/
+  // etc. A plain `||` chain let that partial object win outright and fully
+  // block the shop-level fallback below for every field it doesn't have, even
+  // though footerData (fetched from the actual shop doc) has the real values.
+  // Merging instead means nav-state only overrides the specific fields it
+  // actually carries (mainly branding), and everything else still falls
+  // through to the shop doc. Found 2026-08-28: reproduced only by clicking a
+  // team card, never by loading a /barber/:id link directly, since only the
+  // click path ever populates location.state.
+  const effectiveTenant = { ...footerData, ...initialTenant, ...location.state?.tenant };
   const brandColor  = effectiveTenant?.brandColor || barber?.brandColor || "#2563EB";
   const btnText     = contrastColor(brandColor);
 
-  const instagramUrl = barber?.instagramUrl || "";
-  const tiktokUrl    = barber?.tiktokUrl    || "";
-  const facebookUrl  = barber?.facebookUrl  || "";
+  // Business social links live on the shop's own account — a staff member's
+  // individual doc has no instagramUrl/facebookUrl/tiktokUrl of its own, so
+  // without this fallback only the owner's page (which IS the shop doc)
+  // ever showed them.
+  const instagramUrl = barber?.instagramUrl || effectiveTenant?.instagramUrl || "";
+  const tiktokUrl    = barber?.tiktokUrl    || effectiveTenant?.tiktokUrl    || "";
+  const facebookUrl  = barber?.facebookUrl  || effectiveTenant?.facebookUrl  || "";
   const hasSocial    = instagramUrl || tiktokUrl || facebookUrl;
 
   // Only offered when deposits aren't already being collected — shop-level,
@@ -193,6 +208,9 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
   // Editable page fields
   const heroTagline  = barber?.heroTagline  || (barber?.isStaff ? "Professional Barber" : "Owner & Barber");
   const heroCtaText  = barber?.heroCtaText  || "BOOK APPOINTMENT";
+  const heroProfile  = barber?.isDemo ? barber : effectiveTenant;
+  const savedHero    = barber?.heroImage || effectiveTenant?.heroImage || "";
+  const heroImage    = heroForProfile(heroProfile, savedHero);
   const aboutBody    = barber?.aboutBody    || barber?.aboutUs || "";
   const statBar = barber?.statBar1Num ? [
     { num: barber.statBar1Num, label: barber.statBar1Label || "" },
@@ -200,9 +218,13 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
     { num: barber.statBar3Num, label: barber.statBar3Label || "" },
   ] : null;
 
-  const portfolioItems  = barber?.portfolioItems || [];
-  const portfolioHeading = barber?.portfolioHeading || "Recent work";
-  const portfolioSubtext = barber?.portfolioSubtext || "";
+  // Gallery photos live on the shop's own account too — same reason as the
+  // social links above, a staff member's individual doc has no portfolio of
+  // its own, so without this fallback only the owner's page ever showed one.
+  const savedPortfolio   = barber?.portfolioItems?.length ? barber.portfolioItems : (effectiveTenant?.portfolioItems || []);
+  const portfolioItems   = portfolioForProfile(barber?.isDemo ? barber : effectiveTenant, savedPortfolio);
+  const portfolioHeading = barber?.portfolioHeading || effectiveTenant?.portfolioHeading || "Recent work";
+  const portfolioSubtext = barber?.portfolioSubtext || effectiveTenant?.portfolioSubtext || "";
 
   const currentReview = reviews[reviewIdx];
   const prevReview = () => setReviewIdx((i) => (i - 1 + reviews.length) % reviews.length);
@@ -250,8 +272,38 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
         px: { xs: 2.5, sm: 4, md: 6 },
         bgcolor: "#fff",
       }}>
-        <Box sx={{ width: "100%", maxWidth: 680, mx: "auto" }}>
-          <Box sx={{ textAlign: "left", display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+        <Box sx={{
+          width: "100%", maxWidth: 1120, mx: "auto",
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: heroImage ? "minmax(0, 1fr) minmax(0, 1fr)" : "minmax(0, 680px)" },
+          justifyContent: "center",
+          alignItems: "start",
+          gap: { xs: 5, md: 7 },
+        }}>
+
+          {heroImage && (
+            <Box
+              component="img"
+              src={heroImage}
+              alt={`${effectiveTenant?.businessName || barber?.businessName || barber?.name} barber at work`}
+              sx={{
+                width: "100%",
+                height: { xs: 360, sm: 460, md: 620 },
+                objectFit: "cover",
+                objectPosition: "center",
+                borderRadius: 2,
+                boxShadow: "0 24px 60px rgba(0,0,0,0.16)",
+              }}
+            />
+          )}
+
+          {/* ── Info ── */}
+          <Box sx={{
+            textAlign: "left",
+            display: "flex", flexDirection: "column",
+            alignItems: "flex-start",
+          }}>
+            {/* Eyebrow */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
               <Box sx={{ width: 28, height: 2, bgcolor: brandColor }} />
               <Typography sx={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.22em", textTransform: "uppercase", color: brandColor }}>
@@ -259,19 +311,29 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
               </Typography>
             </Box>
 
-            <Typography sx={{ fontFamily: "'Playfair Display', serif", fontWeight: 900, lineHeight: 1, fontSize: { xs: "2.6rem", sm: "3.2rem", md: "3.6rem" }, color: "#111", mb: 2.5 }}>
+            {/* Name */}
+            <Typography sx={{
+              fontFamily: "'Playfair Display', serif",
+              fontWeight: 900, lineHeight: 1,
+              fontSize: { xs: "2.6rem", sm: "3.2rem", md: "3.6rem" },
+              color: "#111", mb: 2.5,
+            }}>
               {barber.name}
             </Typography>
 
+            {/* Bio / specialty */}
             <Typography sx={{
               color: (barber.specialty || aboutBody) ? "#666" : "rgba(0,0,0,0.25)",
               lineHeight: 1.85, fontSize: "0.95rem", fontWeight: 300,
-              mb: 3, maxWidth: 440, borderLeft: `2px solid ${brandColor}`, pl: 2,
+              mb: 3, maxWidth: 440,
+              borderLeft: `2px solid ${brandColor}`,
+              pl: 2,
               fontStyle: (barber.specialty || aboutBody) ? "normal" : "italic",
             }}>
               {barber.specialty || aboutBody || "No bio added yet."}
             </Typography>
 
+            {/* Services */}
             <Box sx={{ mb: 3.5, width: "100%", maxWidth: { xs: 400, md: "100%" } }}>
               <Typography sx={{ fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.2em", textTransform: "uppercase", color: brandColor, display: "block", mb: 1.5 }}>
                 Services &amp; Prices
@@ -303,45 +365,61 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
               )}
             </Box>
 
+            {/* Opening hours */}
             {barber?.openingHours && (
               <Box sx={{ mb: 3, p: 2, bgcolor: "rgba(0,0,0,0.03)", borderRadius: 1, borderLeft: `3px solid ${brandColor}` }}>
-                <Typography sx={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: brandColor, mb: 0.75 }}>Opening Hours</Typography>
-                <Typography sx={{ fontSize: "0.82rem", color: "#555", lineHeight: 1.8, whiteSpace: "pre-line" }}>{barber.openingHours}</Typography>
+                <Typography sx={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: brandColor, mb: 0.75 }}>
+                  Opening Hours
+                </Typography>
+                <Typography sx={{ fontSize: "0.82rem", color: "#555", lineHeight: 1.8, whiteSpace: "pre-line" }}>
+                  {barber.openingHours}
+                </Typography>
               </Box>
             )}
 
+            {/* Social links */}
             {(hasSocial || hasStaffSocial) && (
               <Box sx={{ mb: 3.5 }}>
                 {hasSocial && (
                   <Box sx={{ display: "flex", gap: 1, mb: hasStaffSocial ? 1.5 : 0 }}>
                     <SocialLink href={instagramUrl} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />
-                    <SocialLink href={facebookUrl} label="Facebook" icon={<FacebookIcon sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />
-                    <SocialLink href={tiktokUrl} label="TikTok" icon={<TikTokIcon size={20} />} hoverColor="#111" />
+                    <SocialLink href={facebookUrl}  label="Facebook"  icon={<FacebookIcon  sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />
+                    <SocialLink href={tiktokUrl}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#111" />
                   </Box>
                 )}
                 {hasStaffSocial && (
                   <Box>
-                    <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(0,0,0,0.3)", mb: 1 }}>Follow me</Typography>
+                    <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(0,0,0,0.3)", mb: 1 }}>
+                      Follow me
+                    </Typography>
                     <Box sx={{ display: "flex", gap: 1 }}>
                       {staffInstagram && <SocialLink href={staffInstagram} label="Instagram" icon={<InstagramIcon sx={{ fontSize: 20 }} />} hoverColor="#E1306C" />}
-                      {staffFacebook && <SocialLink href={staffFacebook} label="Facebook" icon={<FacebookIcon sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />}
-                      {staffTiktok && <SocialLink href={staffTiktok} label="TikTok" icon={<TikTokIcon size={20} />} hoverColor="#111" />}
+                      {staffFacebook  && <SocialLink href={staffFacebook}  label="Facebook"  icon={<FacebookIcon  sx={{ fontSize: 20 }} />} hoverColor="#1877F2" />}
+                      {staffTiktok    && <SocialLink href={staffTiktok}    label="TikTok"    icon={<TikTokIcon size={20} />}                 hoverColor="#111" />}
                     </Box>
                   </Box>
                 )}
               </Box>
             )}
 
-            <Button variant="contained" size="large" onClick={scrollToBooking} sx={{
-              bgcolor: brandColor, color: btnText, px: { xs: 6, md: 5 }, py: 1.6,
-              borderRadius: "4px", fontSize: "0.78rem", fontWeight: 900, letterSpacing: "0.18em",
-              width: { xs: "100%", sm: "auto" }, maxWidth: { xs: 380, sm: "none" },
-              boxShadow: `0 8px 24px ${alpha(brandColor, 0.3)}`,
-              "&:hover": { bgcolor: brandColor, filter: "brightness(1.08)", boxShadow: `0 12px 32px ${alpha(brandColor, 0.4)}` },
-            }}>
+            {/* CTA */}
+            <Button
+              variant="contained"
+              size="large"
+              onClick={scrollToBooking}
+              sx={{
+                bgcolor: brandColor, color: btnText,
+                px: { xs: 6, md: 5 }, py: 1.6,
+                borderRadius: "4px", fontSize: "0.78rem", fontWeight: 900, letterSpacing: "0.18em",
+                width: { xs: "100%", sm: "auto" }, maxWidth: { xs: 380, sm: "none" },
+                boxShadow: `0 8px 24px ${alpha(brandColor, 0.3)}`,
+                "&:hover": { bgcolor: brandColor, filter: "brightness(1.08)", boxShadow: `0 12px 32px ${alpha(brandColor, 0.4)}` },
+              }}
+            >
               {heroCtaText}
             </Button>
           </Box>
+
         </Box>
       </Box>
 

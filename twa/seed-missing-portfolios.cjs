@@ -1,7 +1,6 @@
 // Seeds portfolioItems for the barber, hairdresser and PT demo accounts —
-// only the decorator had gallery images. Reuses each account's own
-// already-verified logo/hero/services images (proven to load on their
-// live public pages today) rather than introducing unverified new URLs.
+// only the decorator had gallery images. Uses matched local before/after
+// pairs so each slider keeps the same subject, framing and lighting.
 const { GoogleAuth } = require('google-auth-library');
 const fetch = require('node-fetch');
 const fs = require('fs');
@@ -29,16 +28,6 @@ const BARBER_UID      = 'S5s1FWMaz1XuAEo8gDSTTIqlqgL2';
 const HAIRDRESSER_UID = 'xyPHCqfFgoYympmcqUAzNS37URG3';
 const PT_UID          = 'Ih8OFcRzvuS3QbwtsYPeUFCnUEo1';
 
-const BARBER_LOGO  = 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&h=600&fit=crop';
-const BARBER_HERO  = 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=800&h=600&fit=crop';
-
-const HAIR_LOGO     = 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&h=600&fit=crop';
-const HAIR_HERO     = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&h=600&fit=crop';
-const HAIR_SERVICES = 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=800&h=600&fit=crop';
-
-const PT_LOGO = 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&h=600&fit=crop';
-const PT_HERO = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=600&fit=crop';
-
 const PATCHES = [
   {
     label: 'Barber — Fade Factory',
@@ -46,8 +35,8 @@ const PATCHES = [
     portfolioHeading: 'Recent work',
     portfolioSubtext: 'Drag the slider to see the finish.',
     items: [
-      item(BARBER_LOGO, BARBER_HERO, 'Skin Fade & Beard Sculpt'),
-      item(BARBER_HERO, BARBER_LOGO, 'Precision Cut Finish'),
+      item('/images/demo/barber/skin-fade-before.jpg', '/images/demo/barber/skin-fade-after.jpg', 'Skin Fade & Beard Sculpt'),
+      item('/images/demo/barber/curly-taper-before.jpg', '/images/demo/barber/curly-taper-after.jpg', 'Curly Taper & Line-Up'),
     ],
   },
   {
@@ -56,9 +45,9 @@ const PATCHES = [
     portfolioHeading: 'Recent transformations',
     portfolioSubtext: 'Drag the slider on each image to reveal the difference a fresh cut and colour makes.',
     items: [
-      item(HAIR_LOGO, HAIR_HERO, 'Colour & Cut Transformation'),
-      item(HAIR_SERVICES, HAIR_HERO, 'Balayage Result'),
-      item(HAIR_LOGO, HAIR_SERVICES, 'Precision Styling'),
+      item('/images/demo/hairdresser/balayage-before.jpg', '/images/demo/hairdresser/balayage-after.jpg', 'Honey Balayage & Long Layers'),
+      item('/images/demo/hairdresser/brunette-lob-before.jpg', '/images/demo/hairdresser/brunette-lob-after.jpg', 'Glossy Brunette Lob'),
+      item('/images/demo/hairdresser/curly-cut-before.jpg', '/images/demo/hairdresser/curly-cut-after.jpg', 'Curl Definition & Shape'),
     ],
   },
   {
@@ -67,8 +56,8 @@ const PATCHES = [
     portfolioHeading: 'Client transformations',
     portfolioSubtext: 'Drag the slider on each image to reveal real client results.',
     items: [
-      item(PT_LOGO, PT_HERO, '8-Week Transformation'),
-      item(PT_HERO, PT_LOGO, 'Strength & Conditioning Progress'),
+      item('/images/demo/trainer/male-strength-before.jpg', '/images/demo/trainer/male-strength-after.jpg', '12-Month Strength Transformation'),
+      item('/images/demo/trainer/female-strength-before.jpg', '/images/demo/trainer/female-strength-after.jpg', '9-Month Strength Transformation'),
     ],
   },
 ];

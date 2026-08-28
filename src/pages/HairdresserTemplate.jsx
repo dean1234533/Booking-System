@@ -13,6 +13,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography,
 } from '@mui/material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import { heroForProfile, portfolioForProfile } from '../data/demoPortfolios';
 
 /* ─── Injected styles ──────────────────────────────────────────────────────── */
 export const HairdresserStyles = () => (
@@ -420,7 +421,7 @@ export default function HairdresserTemplate({ tenantData }) {
   }, [shopId]);
 
   /* ── Content with fallbacks ── */
-  const heroImage    = tenantData?.heroImage || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=2069&auto=format&fit=crop';
+  const heroImage    = heroForProfile(tenantData, tenantData?.heroImage || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=2069&auto=format&fit=crop');
   const heroEyebrow  = tenantData?.heroTagline || 'London\'s Premier Hair Salon';
   const heroLine1    = tenantData?.heroHeadingLine1 || 'Where Every';
   const heroLine2    = tenantData?.heroHeadingLine2 || 'Strand Shines';
@@ -433,7 +434,7 @@ export default function HairdresserTemplate({ tenantData }) {
   const aboutImg     = tenantData?.heroImageMobile || 'https://images.unsplash.com/photo-1600948836101-f9ffda59d250?q=80&w=2036&auto=format&fit=crop';
   const portfolioHeading = tenantData?.portfolioHeading || 'Recent transformations';
   const portfolioSubtext = tenantData?.portfolioSubtext || 'Drag the slider on each image to reveal the difference a fresh cut and colour makes.';
-  const portfolioItems   = tenantData?.portfolioItems || [];
+  const portfolioItems   = portfolioForProfile(tenantData, tenantData?.portfolioItems || []);
 
   const stats = [
     { num: tenantData?.stat1Value || '12+',  label: tenantData?.stat1Label || 'Years of expertise' },

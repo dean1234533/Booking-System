@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 
-const FALLBACK_BEFORE = "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2069";
-const FALLBACK_AFTER  = "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=2070";
+const FALLBACK_BEFORE = "/images/demo/decorator/living-room-before.jpg";
+const FALLBACK_AFTER  = "/images/demo/decorator/living-room-after.jpg";
 
 export default function BeforeAfterSlider({ before, after, aspectRatio = "4/5", radius = 8 }) {
   const [pos, setPos] = useState(50);
@@ -58,8 +58,8 @@ export default function BeforeAfterSlider({ before, after, aspectRatio = "4/5", 
       <div style={{ position: "absolute", inset: 0 }}>
         <img src={after || FALLBACK_AFTER} alt="After" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
       </div>
-      <div style={{ position: "absolute", inset: 0, overflow: "hidden", width: `${pos}%` }}>
-        <img src={before || FALLBACK_BEFORE} alt="Before" style={{ width: "100vw", height: "100%", maxWidth: "none", objectFit: "cover", display: "block" }} />
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
+        <img src={before || FALLBACK_BEFORE} alt="Before" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
       </div>
       <span style={{ position: "absolute", bottom: 12, left: 14, fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#fff", background: "rgba(0,0,0,0.45)", padding: "4px 10px", borderRadius: 2, zIndex: 10 }}>
         Before

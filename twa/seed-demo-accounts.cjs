@@ -111,7 +111,8 @@ const BARBER_PROFILE = {
   instagramUrl:    str('https://instagram.com/fadefactorylondon'),
   facebookUrl:     str('https://facebook.com/fadefactorylondon'),
   logoUrl:         str('https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=400&fit=crop'),
-  heroImage:       str('https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=1200&h=800&fit=crop'),
+  heroImage:       str('/images/demo/barber/hero.jpg'),
+  homeHeroImage:   str('/images/demo/barber/home-hero.jpg'),
   services: arr([
     serviceItem({ name: 'Skin Fade',             price: '£25', duration: 30 }),
     serviceItem({ name: 'Haircut & Style',        price: '£20', duration: 30 }),
@@ -142,7 +143,7 @@ const HAIRDRESSER_PROFILE = {
   instagramUrl:       str('https://instagram.com/luxehairstudiolondon'),
   facebookUrl:        str('https://facebook.com/luxehairstudiolondon'),
   logoUrl:            str('https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=400&fit=crop'),
-  heroImage:          str('https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1200&h=800&fit=crop'),
+  heroImage:          str('/images/demo/hairdresser/hero.jpg'),
   servicesImage:      str('https://images.unsplash.com/photo-1562322140-8baeececf3df?w=800&h=600&fit=crop'),
   services: arr([
     serviceItem({ name: "Women's Cut & Blow Dry",  price: '£55', duration: 60 }),
@@ -176,7 +177,7 @@ const DECORATOR_PROFILE = {
   instagramUrl:       str('https://instagram.com/premierpainterslondon'),
   facebookUrl:        str('https://facebook.com/premierpainterslondon'),
   logoUrl:            str('https://images.unsplash.com/photo-1562619425-c307bb83bc42?w=400&h=400&fit=crop'),
-  heroImage:          str('https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=1200&h=800&fit=crop'),
+  heroImage:          str('/images/demo/decorator/hero.jpg'),
   servicesImage:      str('https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop'),
   portfolioHeading:   str('Recent transformations'),
   portfolioSubtext:   str('See the difference a professional finish makes.'),
@@ -190,13 +191,13 @@ const DECORATOR_PROFILE = {
   ]),
   portfolioItems: arr([
     portfolioItem({
-      before: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop',
-      after:  'https://images.unsplash.com/photo-1562619425-c307bb83bc42?w=600&h=400&fit=crop',
+      before: '/images/demo/decorator/living-room-before.jpg',
+      after:  '/images/demo/decorator/living-room-after.jpg',
       title:  'Living Room Transformation',
     }),
     portfolioItem({
-      before: 'https://images.unsplash.com/photo-1504615755583-2916b52192a3?w=600&h=400&fit=crop',
-      after:  'https://images.unsplash.com/photo-1560440021-33f9b867899d?w=600&h=400&fit=crop',
+      before: '/images/demo/decorator/kitchen-before.jpg',
+      after:  '/images/demo/decorator/kitchen-after.jpg',
       title:  'Kitchen Refresh',
     }),
   ]),
@@ -217,7 +218,8 @@ const PT_PROFILE = {
   instagramUrl:    str('https://instagram.com/dbfitnesslondon'),
   facebookUrl:     str('https://facebook.com/dbfitnesslondon'),
   logoUrl:         str('https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=400&fit=crop'),
-  heroImage:       str('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&h=800&fit=crop'),
+  heroImage:       str('/images/demo/trainer/hero.jpg'),
+  heroBgImage:     str('/images/demo/trainer/hero-bg.jpg'),
   services: arr([
     serviceItem({ name: '1-on-1 PT Session (60 min)',         price: '£65',        duration: 60 }),
     serviceItem({ name: 'Small Group Training (up to 4)',     price: '£25 pp',     duration: 60 }),

@@ -38,6 +38,8 @@ import { createNotification, uploadEnquiryPhoto } from "../firebase/firestore";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { getWhatsAppBookingUrl } from "../utils/whatsapp";
 import { PLUMBER_SERVICE_CATEGORIES, URGENCY_LEVELS } from "../utils/tradeJobs";
+import BeforeAfterSlider from "../components/BeforeAfterSlider";
+import { heroForProfile, portfolioForProfile } from "../data/demoPortfolios";
 import "../styles/plumber-v2.css";
 
 const CATEGORY_ICONS = {
@@ -221,9 +223,12 @@ export default function PlumberTemplateV2({ tenantData = {} }) {
         tenantData.googleBusinessProfileUrl,
     ) ||
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${businessName} ${location}`.trim())}`;
-  const heroImage = upgradedImage(
-    tenantData.heroImage || tenantData.heroImageDesktop,
-    "/images/plumber/plumber-hero-v2.jpg",
+  const heroImage = heroForProfile(
+    tenantData,
+    upgradedImage(
+      tenantData.heroImage || tenantData.heroImageDesktop,
+      "/images/plumber/plumber-hero-v2.jpg",
+    ),
   );
   const whatsappUrl = getWhatsAppBookingUrl(
     tenantData.whatsappNumber,
@@ -300,6 +305,10 @@ export default function PlumberTemplateV2({ tenantData = {} }) {
           category,
           items: [],
         }));
+  const portfolioItems = portfolioForProfile(
+    tenantData,
+    Array.isArray(tenantData.portfolioItems) ? tenantData.portfolioItems : [],
+  );
   const charges = tenantData.standardCharges || {};
   const chargeRows = [
     ["Call-out fee", charges.calloutFee],
@@ -517,6 +526,7 @@ export default function PlumberTemplateV2({ tenantData = {} }) {
 
   const navLinks = [
     ["services", "Services"],
+    ...(portfolioItems.length ? [["portfolio", "Before & after"]] : []),
     ["about", "About"],
     ...(chargeRows.length ? [["charges", "Charges"]] : []),
     ...(serviceAreas.length ? [["areas", "Areas"]] : []),
@@ -782,6 +792,33 @@ export default function PlumberTemplateV2({ tenantData = {} }) {
             </div>
           </div>
         </section>
+
+        {portfolioItems.length > 0 && (
+          <section className="trade-section trade-portfolio" id="portfolio">
+            <div className="trade-shell">
+              <div className="trade-section-head">
+                <div>
+                  <span className="trade-kicker">Recent work</span>
+                  <h2 className="trade-title">
+                    {tenantData.portfolioHeading || "Repairs you can see."}
+                  </h2>
+                </div>
+                <p className="trade-copy">
+                  {tenantData.portfolioSubtext ||
+                    "Drag each slider to compare the condition before and after professional repair."}
+                </p>
+              </div>
+              <div className="trade-portfolio-grid">
+                {portfolioItems.map((item, index) => (
+                  <article className="trade-portfolio-item" key={`${item.label || "job"}-${index}`}>
+                    <BeforeAfterSlider before={item.before} after={item.after} aspectRatio="4/5" radius={3} />
+                    {item.label && <h3>{item.label}</h3>}
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         <section className="trade-section trade-about" id="about">
           <div className="trade-shell trade-about-grid">

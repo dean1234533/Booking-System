@@ -147,6 +147,13 @@
 .trade-service-badge:focus-visible { outline: 2px solid var(--trade); outline-offset: 3px; }
 .trade-service-empty { padding-top: 8px; color: var(--muted); font-size: .78rem; line-height: 1.6; }
 
+.trade-portfolio { background: var(--navy); color: #fff; }
+.trade-portfolio .trade-title { color: #fff; }
+.trade-portfolio .trade-copy { color: rgba(255,255,255,.58); }
+.trade-portfolio-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.trade-portfolio-item { min-width: 0; }
+.trade-portfolio-item h3 { margin: 14px 0 0; color: #fff; font-size: .82rem; letter-spacing: .02em; }
+
 @keyframes trade-service-reveal {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -285,6 +292,7 @@ textarea.trade-input { min-height: 118px; resize: vertical; }
   .trade-trust-grid { grid-template-columns: 1fr 1fr; }
   .trade-trust-item { min-height: 112px; padding: 18px 14px; grid-template-columns: 40px minmax(0, 1fr); gap: 11px; border-bottom: 1px solid rgba(255,255,255,.1); }
   .trade-section-head { align-items: start; flex-direction: column; }
+  .trade-portfolio-grid { grid-template-columns: 1fr; }
   .trade-review-wrap { grid-template-columns: 1fr; }
   .trade-review-score { min-height: 170px; }
   .trade-form { padding: 22px 17px; }

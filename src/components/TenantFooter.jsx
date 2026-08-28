@@ -9,6 +9,7 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
 import { Link as RouterLink } from "react-router-dom";
+import { isDemoProfile } from "../data/demoPortfolios";
 
 function contrastColor(hex) {
   if (!hex || !hex.startsWith("#")) return "#ffffff";
@@ -31,7 +32,7 @@ export default function TenantFooter({ tenant, businessType }) {
   if (!tenant) return null;
 
   // --- DATA MAPPING (Synced with TenantNav) ---
-  const logo = tenant?.businessLogo || tenant?.logoUrl;
+  const logo = isDemoProfile(tenant) ? "" : (tenant?.businessLogo || tenant?.logoUrl);
   const businessName = (tenant?.businessName || "PREMIUM BARBER SHOP").toUpperCase();
   const brandColor  = tenant?.brandColor    || "#2563EB";
   const footerBg    = tenant?.footerBgColor || "#0a0a0a";

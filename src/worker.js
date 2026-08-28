@@ -634,6 +634,59 @@ async function handleSendPush(request, env) {
   }
 }
 
+// POST /api/send-queue-push
+// Sends a push notification to one anonymous walk-in queue entry (e.g. "you've
+// been called") using the subscription they stored on their own liveQueue doc
+// when they joined. Only the shop owner can trigger this, same trust model as
+// /api/send-push.
+async function handleSendQueuePush(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON" }, 400); }
+
+  const { shopId, entryId, payload } = body ?? {};
+  if (!shopId || !entryId || !payload) return json({ error: "Missing shopId, entryId or payload" }, 400);
+
+  const callerUid = await verifyFirebaseUid(request, env);
+  if (!callerUid || callerUid !== shopId) {
+    return json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!env.VAPID_PRIVATE_JWK) return json({ error: "VAPID not configured" }, 500);
+
+  try {
+    const base  = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+    const fbRes = await fetch(`${base}/barbers/${shopId}/liveQueue/${entryId}`);
+    if (!fbRes.ok) return json({ error: "Queue entry not found" }, 404);
+
+    const fbData   = await fbRes.json();
+    const subField = fbData.fields?.pushSubscription;
+    if (!subField) return json({ error: "No push subscription for this queue entry" }, 404);
+
+    const subFields  = subField.mapValue?.fields ?? {};
+    const keysFields = subFields.keys?.mapValue?.fields ?? {};
+    const subscription = {
+      endpoint: subFields.endpoint?.stringValue,
+      keys: {
+        p256dh: keysFields.p256dh?.stringValue,
+        auth:   keysFields.auth?.stringValue,
+      },
+    };
+
+    if (!subscription.endpoint || !subscription.keys.p256dh) {
+      return json({ error: "Invalid subscription data in Firestore" }, 400);
+    }
+
+    await sendWebPush(subscription, payload, env);
+    return json({ ok: true });
+  } catch (err) {
+    console.error("[send-queue-push]", err);
+    return json({ error: err.message }, 500);
+  }
+}
+
 // ── Route handlers ────────────────────────────────────────────────────────────
 
 // POST /api/connect
@@ -2040,6 +2093,8 @@ async function handleFetch(request, env, ctx) {
         return handleStripeWebhook(request, env);
       case "/api/send-push":
         return handleSendPush(request, env);
+      case "/api/send-queue-push":
+        return handleSendQueuePush(request, env);
       case "/api/billing-portal":
         return handleBillingPortal(request, env);
       case "/api/create-subscription":

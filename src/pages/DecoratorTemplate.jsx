@@ -5,6 +5,7 @@ import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { getWhatsAppBookingUrl } from "../utils/whatsapp";
 import { Star, CheckCircle2, ChevronLeft, ChevronRight, Mail, MapPin, Phone } from 'lucide-react';
+import { heroForProfile, portfolioForProfile } from '../data/demoPortfolios';
 
 /* ─── Global style injection ─────────────────────────────── */
 export const GlobalStyles = () => (
@@ -311,10 +312,10 @@ const BeforeAfterSlider = ({ before, after }) => {
       onTouchMove={e => updatePos(e.touches[0].clientX)}
     >
       <div style={{ position: 'absolute', inset: 0 }}>
-        <img src={after || 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=2070'} alt="After" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img src={after || '/images/demo/decorator/living-room-after.jpg'} alt="After" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </div>
-      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', width: `${sliderPos}%` }}>
-        <img src={before || 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2069'} alt="Before" style={{ width: '100vw', height: '100%', maxWidth: 'none', objectFit: 'cover' }} />
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}>
+        <img src={before || '/images/demo/decorator/living-room-before.jpg'} alt="Before" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </div>
       <span className="ba-label ba-label-before">Before</span>
       <span className="ba-label ba-label-after">After</span>
@@ -391,7 +392,7 @@ const DecoratorTemplate = ({ tenantData }) => {
   const allTeam        = team;
 
   // Hero
-  const heroImage     = tenantData?.heroImage    || "/images/photo-output-13.jpg";
+  const heroImage     = heroForProfile(tenantData, tenantData?.heroImage || "/images/photo-output-13.jpg");
   const heroEyebrow   = tenantData?.heroTagline  || "London's Trusted Decorators";
   const heroLine1     = tenantData?.heroHeadingLine1 || "Home Painting,";
   const heroLine2     = tenantData?.heroHeadingLine2 || "Done Right.";
@@ -427,13 +428,13 @@ const DecoratorTemplate = ({ tenantData }) => {
   // Portfolio
   const portfolioHeading = tenantData?.portfolioHeading || "Recent transformations";
   const portfolioSubtext = tenantData?.portfolioSubtext || "Drag the slider on each image to reveal the difference a professional finish makes.";
-  const portfolioItems   = (tenantData?.portfolioItems || []).length > 0
+  const savedPortfolio   = (tenantData?.portfolioItems || []).length > 0
     ? tenantData.portfolioItems
     : [
-        { before: "https://images.unsplash.com/photo-1564078516393-cf04bd966897?q=80&w=2070", after: "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?q=80&w=2070", label: "Living Room — SW London" },
-        { before: "https://images.unsplash.com/photo-1600489000022-c2086d79f9d4?q=80&w=2070", after: "https://images.unsplash.com/photo-1560440021-33f9b867899d?q=80&w=2070", label: "Kitchen — North London" },
-        { before: "https://images.unsplash.com/photo-1617806118233-18e1de247200?q=80&w=2070", after: "https://images.unsplash.com/photo-1602872030219-ad2b9a54315c?q=80&w=2070", label: "Dining Room — East London" },
+        { before: "/images/demo/decorator/living-room-before.jpg", after: "/images/demo/decorator/living-room-after.jpg", label: "Living Room Refinish" },
+        { before: "/images/demo/decorator/kitchen-before.jpg", after: "/images/demo/decorator/kitchen-after.jpg", label: "Kitchen Preparation & Paint" },
       ];
+  const portfolioItems   = portfolioForProfile(tenantData, savedPortfolio);
 
   // Legal
   const privacyText = tenantData?.privacyPolicy   || `At ${businessName}, we value your privacy. We collect only information necessary to provide our services and never sell your data.`;

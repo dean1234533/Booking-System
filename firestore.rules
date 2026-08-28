@@ -99,10 +99,18 @@ service cloud.firestore {
       }
 
       // ── Live queue — anyone can join, owner manages ───────────────────────
+      // Queue joiners have no account — sessionId (handed back to them on
+      // join, never exposed elsewhere) stands in for auth so a client can
+      // attach their own push subscription after joining, without letting
+      // them touch anything else on the doc (status, position, etc.) or
+      // anyone else's entry.
       match /liveQueue/{entryId} {
         allow read: if true;
         allow create: if true;
-        allow update, delete: if request.auth != null && request.auth.uid == barberId;
+        allow update: if (request.auth != null && request.auth.uid == barberId)
+          || (resource.data.sessionId == request.resource.data.sessionId
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["pushSubscription"]));
+        allow delete: if request.auth != null && request.auth.uid == barberId;
       }
 
       // ── Queue config — public read (open/closed banner) ──────────────────

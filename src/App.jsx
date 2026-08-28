@@ -23,6 +23,7 @@ import { RESERVED_SLUGS } from "./utils/bookingSlug";
 // (and the render delay that goes with it) before anything paints.
 const LegalPage         = lazy(() => import("./pages/LegalPage"));
 const ContactPage       = lazy(() => import("./pages/ContactPage"));
+const TenantHome        = lazy(() => import("./pages/TenantHome"));
 const BarberProfile     = lazy(() => import("./pages/BarberProfile"));
 const BookingForm       = lazy(() => import("./pages/BookingForm"));
 const Confirmation      = lazy(() => import("./pages/Confirmation"));
@@ -404,7 +405,7 @@ function AppShell() {
     if (tenant.businessType === "decorator")   return <DecoratorTemplate tenantData={tenant} />;
     if (tenant.businessType === "hairdresser") return <HairdresserTemplate tenantData={tenant} />;
     if (tenant.businessType === "plumber")     return <PlumberTemplate tenantData={tenant} />;
-    return <BarberProfile tenant={tenant} barberId={tenant.id} />;
+    return <TenantHome tenant={tenant} />;
   };
 
   const tenantLoading = (

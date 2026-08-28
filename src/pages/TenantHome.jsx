@@ -26,6 +26,7 @@ import { collection, getDocs, query, where, limit, onSnapshot } from "firebase/f
 import { db } from "../firebase/config";
 import { getShopStaff, getBarber } from "../firebase/firestore";
 import BeforeAfterSlider from "../components/BeforeAfterSlider";
+import { heroForProfile, isDemoProfile, portfolioForProfile } from "../data/demoPortfolios";
 import SlotPicker from "../components/SlotPicker";
 import { useSlots } from "../hooks/useSlots";
 import { getWhatsAppBookingUrl } from "../utils/whatsapp";
@@ -121,9 +122,12 @@ export default function TenantHome({ tenant: initialTenant }) {
   const aboutTextColor    = getContrastText(aboutBgColor);
   const trustBarTextColor = getContrastText(trustBarBgColor);
  
-  const heroImageUrl = isMobileOrTablet 
+  const savedHeroImage = isMobileOrTablet
     ? (freshTenant?.heroImageMobile || freshTenant?.heroImage || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1")
     : (freshTenant?.heroImage || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1");
+  const heroImageUrl = heroForProfile(freshTenant, savedHeroImage, "homeHeroImage");
+  const isDemoTenant = isDemoProfile(freshTenant);
+  const portfolioItems = portfolioForProfile(freshTenant, freshTenant?.portfolioItems || []);
  
   useEffect(() => { window.scrollTo(0, 0); }, [tenantId, initialTenant?.id]);
  
@@ -281,7 +285,7 @@ export default function TenantHome({ tenant: initialTenant }) {
  
  
       {/* ── 3b. GALLERY ──────────────────────────────────────────────────── */}
-      {freshTenant?.portfolioItems?.length > 0 && (
+      {portfolioItems.length > 0 && (
         <Box sx={{ py: { xs: 10, md: 15 }, bgcolor: "#111" }}>
           <Container maxWidth="lg">
             <Box sx={{ mb: 8, textAlign: "center" }}>
@@ -294,7 +298,7 @@ export default function TenantHome({ tenant: initialTenant }) {
               <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
             </Box>
             <Grid container spacing={3}>
-              {(isMobileOrTablet ? freshTenant.portfolioItems.slice(0, 2) : freshTenant.portfolioItems).map((item, i) => (
+              {(isMobileOrTablet ? portfolioItems.slice(0, 2) : portfolioItems).map((item, i) => (
                 <Grid item xs={isMobileOrTablet ? 12 : 4} key={i}>
                   <BeforeAfterSlider before={item.before} after={item.after} />
                   {item.label && <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", textAlign: "center", mt: 1.5 }}>{item.label}</Typography>}
@@ -453,7 +457,11 @@ export default function TenantHome({ tenant: initialTenant }) {
             const depositValue   = Number(barber?.depositAmount) || 10;
             const cardColor      = barber?.brandColor || brandColor;
             const displayName    = barber?.name?.split(" ")[0] || "Professional";
-            const cardImage      = barber?.profilePic || barber?.heroImage;
+            const cardImage = isDemoTenant
+              ? (barber.isOwner
+                  ? "/images/demo/barber/owner-card.jpg"
+                  : "/images/demo/barber/professional-card.jpg")
+              : (barber?.profilePic || barber?.heroImage);
             const handleBooking  = () => navigate(
               `/barber/${barber.id || barber.uid}`,
               { state: { tenant: { ...barber, businessName: barber.name, businessLogo: barber.profilePic, brandColor } } }

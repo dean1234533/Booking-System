@@ -13,6 +13,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useAuth } from "../context/AuthContext";
 import { auth } from "../firebase/config";
 import { signOut } from "firebase/auth";
+import { isDemoProfile } from "../data/demoPortfolios";
 
 const NAV_LINKS = [
   { label: "Our Team", id: "barber-section" },
@@ -30,7 +31,7 @@ export default function TenantNav({ tenant }) {
 
   const brandColor   = tenant?.brandColor  || "#2563EB";
   const businessName = (tenant?.businessName || "PREMIUM BARBER SHOP").toUpperCase();
-  const logo         = tenant?.businessLogo || tenant?.logoUrl;
+  const logo         = isDemoProfile(tenant) ? "" : (tenant?.businessLogo || tenant?.logoUrl);
   const shopRouteId  = tenant?.shopId || tenant?.id || tenant?.uid;
   const homeHref     = tenant?.bookingSlug ? `/${tenant.bookingSlug}` : `/shop/${shopRouteId}`;
 

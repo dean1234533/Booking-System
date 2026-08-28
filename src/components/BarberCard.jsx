@@ -5,6 +5,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import { formatCurrency } from "../stripe/formatters";
 import { getPlumberTradeLabel } from "../utils/tradeJobs";
+import { heroForProfile } from "../data/demoPortfolios";
 
 const SERIF = "'Playfair Display', serif";
 const SANS  = "'DM Sans', sans-serif";
@@ -69,9 +70,10 @@ export default function BarberCard({ barber, isMarketplace }) {
     : (barber?.name?.split(" ")[0] || "Professional");
 
   const shopLogo  = isMarketplace ? (barber?.businessLogo || barber?.logoUrl) : null;
-  const cardImage = isMarketplace
+  const savedCardImage = isMarketplace
     ? (barber?.heroImage || barber?.logoUrl || barber?.profilePic)
     : (barber?.profilePic || barber?.heroImage || barber?.logoUrl);
+  const cardImage = heroForProfile(barber, savedCardImage);
 
   const handleNavigation = () => {
     const id = barber.id || barber.uid;
@@ -97,14 +99,17 @@ export default function BarberCard({ barber, isMarketplace }) {
     // slug lookup is async, and a client-side route change to /:bookingSlug
     // renders before it resolves, so the route's "not found yet" fallback
     // immediately bounces back to "/". A full load has no such race.
-    // Absolute URL, not relative: the marketplace grid can be viewed from a
-    // domain other than bookrightly.co.uk itself (e.g. an old/unclaimed
-    // custom domain that now falls back to showing the generic marketplace)
-    // — a relative "/slug" would stay on THAT origin, hit an unrecognized
-    // route there, and bounce back to that domain's own home instead of ever
-    // reaching the actual business page.
+    // Keep local previews on the local origin so card clicks show the build
+    // currently being reviewed. On a custom domain, continue sending visitors
+    // to Bookrightly's canonical host so the slug always resolves correctly.
     if (isMarketplace && barber.bookingSlug) {
-      window.location.href = `https://bookrightly.co.uk/${barber.bookingSlug}`;
+      const host = window.location.hostname.toLowerCase();
+      const isLocalPreview = host === "localhost" || host === "127.0.0.1" || host === "::1";
+      const isBookrightlyHost = host === "bookrightly.co.uk" || host.endsWith(".bookrightly.co.uk");
+      const bookingOrigin = (isLocalPreview || isBookrightlyHost)
+        ? window.location.origin
+        : "https://bookrightly.co.uk";
+      window.location.href = `${bookingOrigin}/${barber.bookingSlug}`;
       return;
     }
 

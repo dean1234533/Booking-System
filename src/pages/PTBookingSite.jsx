@@ -12,6 +12,7 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import { getWhatsAppBookingUrl } from '../utils/whatsapp';
 import AppIcon from '../components/AppIcon';
+import { heroForProfile, portfolioForProfile } from '../data/demoPortfolios';
 
 /* ─── Google Fonts ─────────────────────────────────────────── */
 const fontLink = document.createElement('link');
@@ -655,7 +656,9 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
 
   const portfolioHeading = profile?.portfolioHeading || 'Client transformations';
   const portfolioSubtext = profile?.portfolioSubtext || 'Drag the slider on each image to reveal real client results.';
-  const portfolioItems   = profile?.portfolioItems || [];
+  const portfolioItems   = portfolioForProfile(profile, profile?.portfolioItems || []);
+  const heroBackground   = heroForProfile(profile, profile?.heroBgImage || 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920', 'heroBgImage');
+  const coachHeroImage   = heroForProfile(profile, profile?.heroImage || 'https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800');
 
   const navLinks = [
     { label: 'About',    href: '#about' },
@@ -718,9 +721,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
       <section style={{ position: 'relative', minHeight: '90vh', display: 'flex', alignItems: 'center', background: 'var(--charcoal)', overflow: 'hidden' }}>
         <div style={{
           position: 'absolute', inset: 0,
-          backgroundImage: profile?.heroBgImage
-            ? `url('${profile.heroBgImage}')`
-            : "url('https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920')",
+          backgroundImage: `url('${heroBackground}')`,
           backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.25,
         }} />
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(105deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 60%, ${brandColor}22 100%)` }} />
@@ -774,7 +775,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             <div style={{ flex: isMobile ? '0 0 100%' : '0 0 clamp(260px, 38%, 440px)' }}>
               <div style={{ position: 'relative' }}>
                 <img
-                  src={profile?.heroImage || 'https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800'}
+                  src={coachHeroImage}
                   alt="Trainer"
                   style={{ width: '100%', borderRadius: 16, objectFit: 'cover', aspectRatio: '4/5', display: 'block', boxShadow: '0 24px 72px rgba(0,0,0,0.12)' }}
                 />

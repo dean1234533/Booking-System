@@ -18,18 +18,18 @@ const DEMO_PORTFOLIOS = {
   ],
   hairdresser: [
     {
-      before: "/images/demo/hairdresser/balayage-before.jpg",
-      after: "/images/demo/hairdresser/balayage-after.jpg",
+      before: "/images/demo/hairdresser/balayage-after.jpg",
+      after: "/images/demo/hairdresser/balayage-before.jpg",
       label: "Honey Balayage & Long Layers",
     },
     {
-      before: "/images/demo/hairdresser/brunette-lob-before.jpg",
-      after: "/images/demo/hairdresser/brunette-lob-after.jpg",
+      before: "/images/demo/hairdresser/brunette-lob-after.jpg",
+      after: "/images/demo/hairdresser/brunette-lob-before.jpg",
       label: "Glossy Brunette Lob",
     },
     {
-      before: "/images/demo/hairdresser/curly-cut-before.jpg",
-      after: "/images/demo/hairdresser/curly-cut-after.jpg",
+      before: "/images/demo/hairdresser/curly-cut-after.jpg",
+      after: "/images/demo/hairdresser/curly-cut-before.jpg",
       label: "Curl Definition & Shape",
     },
   ],

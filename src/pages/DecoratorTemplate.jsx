@@ -415,7 +415,11 @@ const DecoratorTemplate = ({ tenantData }) => {
 
   // Services
   const servicesHeading = tenantData?.servicesHeading || "Everything your home needs";
-  const servicesImage   = tenantData?.servicesImage   || "https://images.unsplash.com/photo-1562619425-c307bb83bc42?q=80&w=1935&auto=format&fit=crop";
+  const servicesImage   = heroForProfile(
+    tenantData,
+    tenantData?.servicesImage || "https://images.unsplash.com/photo-1562619425-c307bb83bc42?q=80&w=1935&auto=format&fit=crop",
+    'servicesImage',
+  );
   const serviceItems    = (tenantData?.services || []).length > 0
     ? tenantData.services
     : [

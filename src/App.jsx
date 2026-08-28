@@ -469,6 +469,7 @@ function AppShell() {
             <Route path="/auth/outlook/callback" element={<OutlookCallback />} />
             <Route path="/auth/action" element={<AuthAction />} />
             <Route path="/review/:shopId" element={<ReviewPage />} />
+            <Route path="/review/:shopId/:barberId" element={<ReviewPage />} />
             <Route path="/login" element={tenantBarber ? <TenantLogin tenant={tenantBarber} /> : <Login />} />
             <Route path="/signup" element={tenantBarber ? <TenantSignup tenant={tenantBarber} /> : <Signup />} />
             <Route path="/staff-signup/:shopId/:staffId" element={<StaffSignup />} />

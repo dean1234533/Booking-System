@@ -38,21 +38,35 @@ function getCopy(businessType) {
 }
 
 export default function ReviewPage() {
-  const { shopId } = useParams();
+  const { shopId, barberId } = useParams();
   const navigate   = useNavigate();
 
   const [loading,   setLoading]   = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error,     setError]     = useState("");
   const [businessType, setBusinessType] = useState(null);
+  const [barberName, setBarberName] = useState("");
   const [review, setReview] = useState({ customerName: "", rating: 5, comment: "" });
+
+  // A barberId in the URL means this link belongs to one staff member —
+  // their reviews are their own, separate from the shop's (and from every
+  // other chair-renter at the same shop), so they go in that staff member's
+  // own subcollection instead of the shared shop-level one.
+  const reviewsPath = barberId
+    ? ["barbers", shopId, "staff", barberId, "reviews"]
+    : ["barbers", shopId, "reviews"];
 
   useEffect(() => {
     if (!shopId) return;
     getDoc(doc(db, "barbers", shopId))
       .then(snap => { if (snap.exists()) setBusinessType(snap.data().businessType || "barber"); })
       .catch(() => {});
-  }, [shopId]);
+    if (barberId) {
+      getDoc(doc(db, "barbers", shopId, "staff", barberId))
+        .then(snap => { if (snap.exists()) setBarberName(snap.data().name || ""); })
+        .catch(() => {});
+    }
+  }, [shopId, barberId]);
 
   const copy = getCopy(businessType);
 
@@ -62,7 +76,7 @@ export default function ReviewPage() {
     setError("");
     setLoading(true);
     try {
-      await addDoc(collection(db, "barbers", shopId, "reviews"), {
+      await addDoc(collection(db, ...reviewsPath), {
         customerName: review.customerName,
         rating:       review.rating,
         comment:      review.comment,
@@ -96,7 +110,7 @@ export default function ReviewPage() {
     <Container maxWidth="sm" sx={{ py: 5 }}>
       <Paper sx={{ p: 4, borderRadius: 4, boxShadow: "0 10px 30px rgba(0,0,0,0.05)" }}>
         <Typography variant="h5" fontWeight={900} textAlign="center" mb={1}>
-          {copy.heading}
+          {barberName ? `How was your visit with ${barberName}?` : copy.heading}
         </Typography>
         <Typography variant="body2" color="text.secondary" textAlign="center" mb={4}>
           Share your experience with the community.

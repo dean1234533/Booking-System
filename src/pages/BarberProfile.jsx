@@ -94,8 +94,14 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
   useEffect(() => {
     const shopId = barber?.shopId || barber?.id;
     if (!shopId) return;
+    // A chair-renting barber's reviews are their own, not the shop's — each
+    // staff member has their own review link and their own subcollection,
+    // kept separate from the shop's and from every other staff member's.
+    const reviewsRef = barber?.isStaff
+      ? collection(db, "barbers", shopId, "staff", barber.id, "reviews")
+      : collection(db, "barbers", shopId, "reviews");
     return onSnapshot(
-      collection(db, "barbers", shopId, "reviews"),
+      reviewsRef,
       snap => {
         const liveReviews = snap.docs
           .map(reviewDoc => ({ id: reviewDoc.id, ...reviewDoc.data() }))

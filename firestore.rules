@@ -96,6 +96,17 @@ service cloud.firestore {
           && (request.auth.uid == barberId || request.auth.uid == staffId);
         allow update: if request.auth != null
           && (request.auth.uid == barberId || request.auth.uid == staffId);
+
+        // ── Staff reviews — a chair-renting barber's own reviews, separate
+        // from the shop's and from every other staff member's. Anyone can
+        // post (same trust model as the shop-level reviews above); either
+        // the shop owner or the staff member themselves can delete.
+        match /reviews/{reviewId} {
+          allow read: if true;
+          allow create: if true;
+          allow update, delete: if request.auth != null
+            && (request.auth.uid == barberId || request.auth.uid == staffId);
+        }
       }
 
       // ── Live queue — anyone can join, owner manages ───────────────────────

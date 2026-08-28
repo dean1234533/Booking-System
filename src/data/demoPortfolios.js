@@ -1,13 +1,13 @@
 const DEMO_PORTFOLIOS = {
   barber: [
     {
-      before: "/images/demo/barber/skin-fade-before.jpg",
-      after: "/images/demo/barber/skin-fade-after.jpg",
+      before: "/images/demo/barber/skin-fade-after.jpg",
+      after: "/images/demo/barber/skin-fade-before.jpg",
       label: "Skin Fade & Beard Sculpt",
     },
     {
-      before: "/images/demo/barber/curly-taper-before.jpg",
-      after: "/images/demo/barber/curly-taper-after.jpg",
+      before: "/images/demo/barber/curly-taper-after.jpg",
+      after: "/images/demo/barber/curly-taper-before.jpg",
       label: "Curly Taper & Line-Up",
     },
     {

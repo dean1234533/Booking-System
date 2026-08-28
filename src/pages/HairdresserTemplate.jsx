@@ -421,7 +421,7 @@ export default function HairdresserTemplate({ tenantData }) {
   }, [shopId]);
 
   /* ── Content with fallbacks ── */
-  const heroImage    = heroForProfile(tenantData, tenantData?.heroImage || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=2069&auto=format&fit=crop');
+  const heroImage    = heroForProfile(tenantData, tenantData?.heroImage) || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=2069&auto=format&fit=crop';
   const heroEyebrow  = tenantData?.heroTagline || 'London\'s Premier Hair Salon';
   const heroLine1    = tenantData?.heroHeadingLine1 || 'Where Every';
   const heroLine2    = tenantData?.heroHeadingLine2 || 'Strand Shines';

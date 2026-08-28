@@ -122,16 +122,20 @@ export default function TenantHome({ tenant: initialTenant }) {
   const aboutTextColor    = getContrastText(aboutBgColor);
   const trustBarTextColor = getContrastText(trustBarBgColor);
  
+  // Only the actually-saved value here — the generic Unsplash URL used to be
+  // baked in at this point as the fallback, which meant heroForProfile below
+  // always received a truthy value and could never substitute the curated
+  // placeholder for an account with nothing saved yet.
   const savedHeroImage = isMobileOrTablet
-    ? (freshTenant?.heroImageMobile || freshTenant?.heroImage || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1")
-    : (freshTenant?.heroImage || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1");
+    ? (freshTenant?.heroImageMobile || freshTenant?.heroImage || "")
+    : (freshTenant?.heroImage || "");
   const isDemoTenant = isDemoProfile(freshTenant);
   const usesDemoHomeHero = savedHeroImage === "/images/demo/barber/home-hero.jpg";
   const heroImageUrl = isMobileOrTablet && usesDemoHomeHero
     ? "/images/demo/barber/home-hero-mobile.jpg"
     : heroForProfile(
         freshTenant,
-        savedHeroImage,
+        savedHeroImage || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1",
         isMobileOrTablet ? "mobileHomeHeroImage" : "homeHeroImage",
       );
   const portfolioItems = portfolioForProfile(freshTenant, freshTenant?.portfolioItems || []);

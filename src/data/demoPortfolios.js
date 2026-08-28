@@ -11,8 +11,8 @@ const DEMO_PORTFOLIOS = {
       label: "Curly Taper & Line-Up",
     },
     {
-      before: "/images/demo/barber/textured-crop-before.jpg",
-      after: "/images/demo/barber/textured-crop-after.jpg",
+      before: "/images/demo/barber/textured-crop-after.jpg",
+      after: "/images/demo/barber/textured-crop-before.jpg",
       label: "Textured Crop & Beard Shape",
     },
   ],

@@ -257,7 +257,11 @@ export default function TenantHome({ tenant: initialTenant }) {
         display: "flex", alignItems: "center", justifyContent: "center",
         background: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('${heroImageUrl}')`,
         backgroundSize: "cover",
-        backgroundPosition: "center center",
+        // Centering vertically on a tall, narrow mobile/tablet viewport
+        // leaves a lot of empty space above the subject in a portrait-style
+        // hero photo — biasing the crop upward keeps the actual subject in
+        // frame instead of mostly empty background.
+        backgroundPosition: { xs: "center 20%", md: "center center" },
         color: "white", textAlign: "center"
       }}>
         <Container maxWidth="lg">

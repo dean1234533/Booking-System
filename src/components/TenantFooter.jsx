@@ -43,6 +43,11 @@ export default function TenantFooter({ tenant, businessType }) {
   const dividerColor = footerText === "#ffffff"
     ? "rgba(255,255,255,0.05)"
     : "rgba(0,0,0,0.1)";
+  const footerSocialHeading = tenant?.footerSocialHeading || "Stay Connected";
+  const footerLoginLabel = tenant?.footerLoginLabel || LOGIN_LABEL[businessType] || "BARBER LOGIN";
+  const footerPrivacyLabel = tenant?.footerPrivacyLabel || "Privacy Policy";
+  const footerTermsLabel = tenant?.footerTermsLabel || "Terms of Service";
+  const footerCloseLabel = tenant?.footerCloseLabel || "CLOSE";
   
   // Contact Info
   const address = tenant?.address;
@@ -55,13 +60,13 @@ export default function TenantFooter({ tenant, businessType }) {
     if (type === 'privacy') {
       setModal({
         open: true,
-        title: "Privacy Policy",
+        title: footerPrivacyLabel,
         content: tenant?.privacyPolicy || `${businessName} is committed to protecting your privacy. We collect your name, contact details, and appointment information to provide our booking services. Your data is stored securely via Bookrightly and is never sold to third parties. You have the right to access, correct, or delete your data by contacting us directly. For platform-level privacy information, see bookrightly.co.uk/privacy.`
       });
     } else {
       setModal({
         open: true,
-        title: "Terms of Service",
+        title: footerTermsLabel,
         content: tenant?.termsConditions || "By booking, you agree to our cancellation and conduct policies..."
       });
     }
@@ -96,12 +101,12 @@ export default function TenantFooter({ tenant, businessType }) {
               </Box>
             )}
 
-            <Typography variant="h6" sx={{ fontWeight: 950, mb: address ? 1 : 2, letterSpacing: "-.04em", fontSize: { xs: "1.6rem", md: "2.2rem" }, color: footerText }}>
+            <Typography variant="h6" sx={{ fontWeight: 950, mb: address ? 1 : 2, letterSpacing: "-.04em", fontSize: { xs: "1.3rem", sm: "1.6rem", md: "2.2rem" }, color: footerText }}>
               {businessName}
             </Typography>
 
             {address && (
-              <Typography variant="body2" sx={{ color: mutedText, mb: 2, maxWidth: 320 }}>
+              <Typography variant="body2" sx={{ color: mutedText, mb: 2, maxWidth: 320, fontSize: { xs: "0.78rem", sm: "0.875rem" } }}>
                 {address}
               </Typography>
             )}
@@ -125,7 +130,7 @@ export default function TenantFooter({ tenant, businessType }) {
           {/* Social */}
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-end' } }}>
             <Typography variant="overline" sx={{ color: brandColor, fontWeight: 900, letterSpacing: 2, mb: 1.5 }}>
-              Stay Connected
+              {footerSocialHeading}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1.5 }}>
               <IconButton component="a" href={instagram || '#'} target={instagram ? '_blank' : '_self'} sx={socialSx}><InstagramIcon /></IconButton>
@@ -149,16 +154,16 @@ export default function TenantFooter({ tenant, businessType }) {
               © {new Date().getFullYear()} {businessName}
             </Typography>
             <Link component={RouterLink} to="/login" sx={{ fontSize: '0.7rem', color: brandColor, textDecoration: 'none', fontWeight: 900, letterSpacing: 1 }}>
-              {LOGIN_LABEL[businessType] || 'BARBER LOGIN'}
+              {footerLoginLabel}
             </Link>
           </Stack>
 
           <Stack direction="row" spacing={3} sx={{ flexWrap: 'wrap', justifyContent: 'center', rowGap: 1 }}>
             <Link onClick={() => handleOpenLegal('privacy')} sx={{ cursor: 'pointer', fontSize: '0.75rem', color: mutedText, textDecoration: 'none', '&:hover': { color: brandColor } }}>
-              Privacy Policy
+              {footerPrivacyLabel}
             </Link>
             <Link onClick={() => handleOpenLegal('terms')} sx={{ cursor: 'pointer', fontSize: '0.75rem', color: mutedText, textDecoration: 'none', '&:hover': { color: brandColor } }}>
-              Terms of Service
+              {footerTermsLabel}
             </Link>
           </Stack>
         </Stack>
@@ -177,7 +182,7 @@ export default function TenantFooter({ tenant, businessType }) {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setModal({ ...modal, open: false })} sx={{ color: brandColor, fontWeight: 900 }}>CLOSE</Button>
+          <Button onClick={() => setModal({ ...modal, open: false })} sx={{ color: brandColor, fontWeight: 900 }}>{footerCloseLabel}</Button>
         </DialogActions>
       </Dialog>
     </Box>

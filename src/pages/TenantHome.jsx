@@ -103,6 +103,35 @@ export default function TenantHome({ tenant: initialTenant }) {
   const heroHeading     = freshTenant?.heroHeadingLine1 || businessName;
   const heroSubtext     = freshTenant?.heroSubtext || "";
   const heroCtaText     = freshTenant?.heroCtaText || "Book Now";
+  const heroReviewText  = freshTenant?.heroReviewText || "5.0/5.0 Top Rated Excellence";
+  const queueCtaText    = freshTenant?.queueCtaText || "View Live Queue";
+  const portfolioEyebrow = freshTenant?.portfolioEyebrow || "GALLERY";
+  const portfolioHeading = freshTenant?.portfolioHeading || (isDemoProfile(freshTenant) ? "Sharp work. Real results." : "Recent work");
+  const servicesEyebrow = freshTenant?.servicesEyebrow || "SERVICES";
+  const servicesHeading = freshTenant?.servicesHeading || "What We Offer";
+  const aboutTagline    = freshTenant?.aboutTagline || "OUR STORY";
+  const aboutHeading    = freshTenant?.aboutHeading || (isDemoProfile(freshTenant) ? "East London craft, cut with intent." : "Our Story");
+  const aboutCtaText    = freshTenant?.aboutCtaText || "MEET THE TEAM";
+  const standardsHeading = freshTenant?.standardsHeading || "The Fade Factory standard";
+  const visitHeading    = freshTenant?.visitHeading || "Visit Us";
+  const directionsCtaText = freshTenant?.directionsCtaText || "GET DIRECTIONS";
+  const hoursHeading    = freshTenant?.hoursHeading || "Opening Hours";
+  const closedLabel     = freshTenant?.closedLabel || "Closed";
+  const hoursFallbackText = freshTenant?.hoursFallbackText || "Contact us for opening times";
+  const availabilityEyebrow = freshTenant?.availabilityEyebrow || "AVAILABILITY";
+  const availabilityHeading = freshTenant?.availabilityHeading || "Book Your Appointment";
+  const teamEyebrow     = freshTenant?.teamEyebrow || "EXPERTS";
+  const teamHeading     = freshTenant?.teamHeading || "Our Master Barbers";
+  const whatsappCtaText = freshTenant?.whatsappCtaText || "Or enquire via WhatsApp";
+  const ownerRoleLabel  = freshTenant?.ownerRoleLabel || "Owner & Barber";
+  const staffRoleLabel  = freshTenant?.staffRoleLabel || "Professional Barber";
+  const depositLabel    = freshTenant?.depositLabel || "Deposit";
+  const staffCardCtaText = freshTenant?.staffCardCtaText || "BOOK NOW →";
+  const reviewsEyebrow  = freshTenant?.reviewsEyebrow || "Testimonials";
+  const reviewsHeading  = freshTenant?.reviewsHeading || "What Our Clients Say";
+  const verifiedClientLabel = freshTenant?.verifiedClientLabel || "Verified Client";
+  const noReviewsHeading = freshTenant?.noReviewsHeading || "No reviews yet";
+  const noReviewsBody   = freshTenant?.noReviewsBody || "Be the first to share your experience.";
  
   // ── Owner social links ────────────────────────────────────────────────────
   const ownerInstagram = freshTenant?.instagramUrl || "";
@@ -133,13 +162,16 @@ export default function TenantHome({ tenant: initialTenant }) {
   const isDemoTenant = isDemoProfile(freshTenant);
   const usesDemoHomeHero = savedHeroImage === "/images/demo/barber/home-hero.jpg";
   const heroImageUrl = usePortraitHero && usesDemoHomeHero
-    ? "/images/demo/barber/home-hero-mobile.jpg"
+    ? "/images/demo/barber/home-hero-mobile-v2.jpg"
     : heroForProfile(
         freshTenant,
         savedHeroImage,
         usePortraitHero ? "mobileHomeHeroImage" : "homeHeroImage",
       ) || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1";
   const portfolioItems = portfolioForProfile(freshTenant, freshTenant?.portfolioItems || []);
+  // The oldest Fade Factory seed predates the businessType field, so the
+  // same barber fallback used by the page is the reliable identifier here.
+  const isFadeFactoryDemo = isDemoTenant && isBarberShop;
  
   useEffect(() => { window.scrollTo(0, 0); }, [tenantId, initialTenant?.id]);
  
@@ -249,68 +281,107 @@ export default function TenantHome({ tenant: initialTenant }) {
     : null;
 
   return (
-    <Box sx={{ bgcolor: "#FFFFFF", minHeight: "100vh", overflowX: 'hidden' }}>
+    <Box sx={{ bgcolor: isFadeFactoryDemo ? "#f3efe7" : "#FFFFFF", minHeight: "100vh", overflowX: 'hidden' }}>
       
       {/* ── 1. HERO ──────────────────────────────────────────────────────── */}
       <Box sx={{
-        height: "100vh",
-        minHeight: "100dvh",
+        // Keep the established mobile hero untouched; the redesign begins at
+        // the desktop breakpoint only.
+        height: isFadeFactoryDemo ? { xs: "100vh", md: "92vh" } : "100vh",
+        minHeight: isFadeFactoryDemo ? { xs: "100dvh", md: 720 } : "100dvh",
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('${heroImageUrl}')`,
-        backgroundSize: "cover",
+        background: isFadeFactoryDemo
+          ? {
+              xs: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('${heroImageUrl}')`,
+              md: `linear-gradient(90deg, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.48) 43%, rgba(0,0,0,0.12) 76%, rgba(0,0,0,0.28) 100%), url('${heroImageUrl}')`,
+            }
+          : `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('${heroImageUrl}')`,
+        backgroundSize: isFadeFactoryDemo
+          ? { xs: "100% 100%, 100% auto", md: "cover" }
+          : "cover",
+        backgroundRepeat: "no-repeat",
         // Centering vertically on a tall, narrow mobile/tablet viewport
         // leaves a lot of empty space above the subject in a portrait-style
         // hero photo — biasing the crop upward keeps the actual subject in
         // frame instead of mostly empty background.
-        backgroundPosition: { xs: "center 20%", md: "center center" },
-        color: "white", textAlign: "center"
+        backgroundPosition: isFadeFactoryDemo ? { xs: "center, center bottom", md: "center 44%" } : { xs: "center 20%", md: "center center" },
+        color: "white", textAlign: isFadeFactoryDemo ? { xs: "center", md: "left" } : "center"
       }}>
-        <Container maxWidth="lg">
-          <Box sx={{ display: 'inline-block', border: '1px solid rgba(255,255,255,0.3)', px: 4, py: 1, mb: 4 }}>
-            <Typography variant="overline" sx={{ letterSpacing: 6, color: "#fff", fontWeight: 400, fontSize: '0.8rem' }}>
+        <Container maxWidth="lg" sx={isFadeFactoryDemo ? { display: "flex", justifyContent: { xs: "center", md: "flex-start" } } : undefined}>
+          <Box sx={isFadeFactoryDemo ? { width: "100%", maxWidth: { xs: "100%", md: 760 }, display: "flex", flexDirection: "column", alignItems: { xs: "center", md: "flex-start" } } : undefined}>
+          <Box sx={{ display: 'inline-block', border: '1px solid rgba(255,255,255,0.3)', px: isFadeFactoryDemo ? { xs: 2.5, sm: 4 } : 4, py: 1, mb: 4 }}>
+            <Typography variant="overline" sx={{ letterSpacing: isFadeFactoryDemo ? { xs: 3, sm: 6 } : 6, color: "#fff", fontWeight: 400, fontSize: isFadeFactoryDemo ? { xs: '0.62rem', sm: '0.8rem' } : '0.8rem', whiteSpace: isFadeFactoryDemo ? { xs: 'nowrap', sm: 'normal' } : 'normal' }}>
               {heroEyebrow}
             </Typography>
           </Box>
-          <Typography variant="h1" sx={{ fontWeight: 400, fontSize: { xs: '3.5rem', sm: '5rem', md: '7rem', lg: '8.5rem' }, fontFamily: displayFont, lineHeight: 1, mb: 2, textTransform: 'uppercase', letterSpacing: { xs: -1, md: -2 } }}>
+          <Typography variant="h1" sx={{ fontWeight: 400, fontSize: isFadeFactoryDemo ? { xs: 'clamp(2.55rem, 11vw, 2.8rem)', sm: '5rem', md: '6.4rem', lg: '7.2rem' } : { xs: '3.5rem', sm: '5rem', md: '7rem', lg: '8.5rem' }, fontFamily: displayFont, lineHeight: isFadeFactoryDemo ? { xs: 0.94, sm: 1, md: 0.9 } : 1, mb: isFadeFactoryDemo ? { xs: 2, md: 3 } : 2, textTransform: 'uppercase', letterSpacing: { xs: -1, md: -2 } }}>
             {heroHeading}
           </Typography>
           {heroSubtext && <Typography sx={{ maxWidth: 680, mx: "auto", mt: 2, color: "rgba(255,255,255,0.82)", fontSize: { xs: "1rem", md: "1.16rem" }, lineHeight: 1.75 }}>{heroSubtext}</Typography>}
-          <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', gap: 0.5 }}>
-              {[1,2,3,4,5].map(i => <StarIcon key={i} sx={{ color: brandColor, fontSize: 24, opacity: 0.8 }} />)}
+          <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: isFadeFactoryDemo ? { xs: 'center', md: 'flex-start' } : 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: isFadeFactoryDemo ? { xs: 0.3, sm: 0.5 } : 0.5 }}>
+              {[1,2,3,4,5].map(i => <StarIcon key={i} sx={{ color: brandColor, fontSize: isFadeFactoryDemo ? { xs: 18, sm: 24 } : 24, opacity: 0.9 }} />)}
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: isFadeFactoryDemo ? { xs: 'center', md: 'flex-start' } : 'center', gap: { xs: 1.5, sm: 3 } }}>
               <Box sx={{ width: 40, height: '1px', bgcolor: 'rgba(255,255,255,0.4)' }} />
-              <Typography sx={{ letterSpacing: { xs: 4, md: 8 }, fontWeight: 300, fontSize: '0.9rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)' }}>5.0/5.0 Top Rated Excellence</Typography>
+              <Typography sx={{ letterSpacing: isFadeFactoryDemo ? { xs: 2.3, sm: 4, md: 8 } : { xs: 4, md: 8 }, fontWeight: 300, fontSize: isFadeFactoryDemo ? { xs: '0.7rem', sm: '0.9rem' } : '0.9rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)' }}>{heroReviewText}</Typography>
               <Box sx={{ width: 40, height: '1px', bgcolor: 'rgba(255,255,255,0.4)' }} />
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 2 }}>
               <Button variant="contained" onClick={() => document.getElementById('barber-section')?.scrollIntoView({ behavior: 'smooth' })}
-                sx={{ bgcolor: brandColor, color: getContrastText(brandColor), fontWeight: 700, letterSpacing: 2, px: 5, py: 1.75, borderRadius: 0, fontSize: '0.85rem', '&:hover': { bgcolor: brandColor, filter: 'brightness(1.1)' } }}>
+                sx={{ bgcolor: brandColor, color: getContrastText(brandColor), fontWeight: 700, letterSpacing: 2, px: isFadeFactoryDemo ? { xs: 3.5, sm: 5 } : 5, py: isFadeFactoryDemo ? { xs: 1.25, sm: 1.75 } : 1.75, borderRadius: 0, fontSize: isFadeFactoryDemo ? { xs: '0.72rem', sm: '0.85rem' } : '0.85rem', '&:hover': { bgcolor: brandColor, filter: 'brightness(1.1)' } }}>
                 {heroCtaText}
               </Button>
               {isBarberShop && freshTenant?.id && (
-                <Button variant="outlined" onClick={() => navigate(`/queue/${freshTenant.id}`)} sx={{ color: "#fff", borderColor: "rgba(255,255,255,0.55)", fontWeight: 700, letterSpacing: 1.5, px: 4, py: 1.75, borderRadius: 0, fontSize: '0.82rem', '&:hover': { borderColor: "#fff", bgcolor: "rgba(255,255,255,0.08)" } }}>
-                  View Live Queue
+                <Button variant="outlined" onClick={() => navigate(`/queue/${freshTenant.id}`)} sx={{ color: "#fff", borderColor: "rgba(255,255,255,0.55)", fontWeight: 700, letterSpacing: 1.5, px: isFadeFactoryDemo ? { xs: 3.25, sm: 4 } : 4, py: isFadeFactoryDemo ? { xs: 1.25, sm: 1.75 } : 1.75, borderRadius: 0, fontSize: isFadeFactoryDemo ? { xs: '0.7rem', sm: '0.82rem' } : '0.82rem', '&:hover': { borderColor: "#fff", bgcolor: "rgba(255,255,255,0.08)" } }}>
+                  {queueCtaText}
                 </Button>
               )}
             </Stack>
           </Box>
+          </Box>
         </Container>
       </Box>
+
+      {isFadeFactoryDemo && (
+        <Box sx={{ bgcolor: "#0b0b0b", color: "#fff", borderTop: `1px solid ${alpha(brandColor, 0.65)}`, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <Container maxWidth="lg">
+            <Grid container>
+              {[
+                { value: freshTenant?.statBar1Num || "10+", label: freshTenant?.statBar1Label || "Years of craft" },
+                { value: freshTenant?.statBar2Num || "5.0", label: freshTenant?.statBar2Label || "Client rating" },
+                { value: freshTenant?.statBar3Num || "7", label: freshTenant?.statBar3Label || "Days a week" },
+                { value: freshTenant?.statBar4Num || "LIVE", label: freshTenant?.statBar4Label || "Walk-in queue" },
+              ].map((fact, index) => (
+                <Grid item xs={6} md={3} key={fact.label}>
+                  <Box sx={{ py: { xs: 2.5, md: 3.25 }, px: 2, textAlign: "center", borderRight: { xs: index % 2 === 0 ? "1px solid rgba(255,255,255,0.1)" : "none", md: index < 3 ? "1px solid rgba(255,255,255,0.1)" : "none" }, borderBottom: { xs: index < 2 ? "1px solid rgba(255,255,255,0.1)" : "none", md: "none" } }}>
+                    <Typography sx={{ color: brandColor, fontFamily: displayFont, fontSize: { xs: "1.35rem", sm: "1.6rem", md: "2rem" }, lineHeight: 1 }}>{fact.value}</Typography>
+                    <Typography sx={{ mt: 0.7, color: "rgba(255,255,255,0.58)", fontSize: { xs: "0.55rem", sm: "0.62rem" }, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" }}>{fact.label}</Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          </Container>
+        </Box>
+      )}
  
  
       {/* ── 3b. GALLERY ──────────────────────────────────────────────────── */}
       {portfolioItems.length > 0 && (
-        <Box sx={{ py: { xs: 10, md: 15 }, bgcolor: "#111" }}>
+        <Box sx={{ py: isFadeFactoryDemo ? { xs: 7, md: 10 } : { xs: 10, md: 15 }, bgcolor: "#111" }}>
           <Container maxWidth="lg">
-            <Box sx={{ mb: 8, textAlign: "center" }}>
+            <Box sx={{ mb: isFadeFactoryDemo ? { xs: 5, md: 6 } : 8, textAlign: "center" }}>
               <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>
-                GALLERY
+                {portfolioEyebrow}
               </Typography>
-              <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont, color: "#fff" }}>
-                {freshTenant?.portfolioHeading || "Recent work"}
+              <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont, color: "#fff", fontSize: isFadeFactoryDemo ? { xs: "2rem", sm: "3rem" } : undefined }}>
+                {portfolioHeading}
               </Typography>
+              {freshTenant?.portfolioSubtext && (
+                <Typography sx={{ color: "rgba(255,255,255,0.58)", maxWidth: 680, mx: "auto", mb: 2, lineHeight: 1.7 }}>
+                  {freshTenant.portfolioSubtext}
+                </Typography>
+              )}
               <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
             </Box>
             <Grid container spacing={3}>
@@ -331,17 +402,17 @@ export default function TenantHome({ tenant: initialTenant }) {
           <Container maxWidth="sm">
             <Box sx={{ mb: 8, textAlign: "center" }}>
               <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>
-                SERVICES
+                {servicesEyebrow}
               </Typography>
-              <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>
-                What We Offer
+              <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont, fontSize: isFadeFactoryDemo ? { xs: "2rem", sm: "3rem" } : undefined }}>
+                {servicesHeading}
               </Typography>
             </Box>
             <Stack spacing={0}>
               {freshTenant.services.map((svc, i) => (
                 <Box key={i} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 2, borderBottom: i < freshTenant.services.length - 1 ? "1px solid rgba(0,0,0,0.08)" : "none" }}>
-                  <Typography sx={{ fontSize: "1rem", color: "#333" }}>{svc.name}</Typography>
-                  <Typography sx={{ fontSize: "1rem", fontWeight: 700, color: brandColor }}>
+                  <Typography sx={{ fontSize: { xs: "0.88rem", sm: "1rem" }, color: "#333" }}>{svc.name}</Typography>
+                  <Typography sx={{ fontSize: { xs: "0.88rem", sm: "1rem" }, fontWeight: 700, color: brandColor }}>
                     {typeof svc.price === "number" ? `£${svc.price}` : svc.price}
                   </Typography>
                 </Box>
@@ -352,46 +423,87 @@ export default function TenantHome({ tenant: initialTenant }) {
       )}
 
       {/* ── 3d. ABOUT ────────────────────────────────────────────────────── */}
-      <Box id="about" sx={{ py: { xs: 12, md: 20 }, textAlign: 'center', backgroundColor: aboutBgColor, color: aboutTextColor }}>
-        <Container maxWidth="md">
-          <ContentCutIcon sx={{ color: brandColor, fontSize: 40, mb: 3, opacity: 0.6 }} />
-          <Typography variant="h3" sx={{ fontFamily: displayFont, mb: 4, letterSpacing: 2 }}>
-            Our Story
-          </Typography>
-          <Typography variant="h6" sx={{ fontWeight: 300, lineHeight: 2, opacity: 0.8, maxWidth: '750px', mx: 'auto', fontSize: '1.2rem' }}>
-            {freshTenant?.aboutBody || freshTenant?.aboutUs || `Welcome to ${businessName}. Share your mission, your craft, and what sets your business apart.`}
-          </Typography>
-        </Container>
+      <Box id="about" sx={{ py: isFadeFactoryDemo ? { xs: 7, md: 10 } : { xs: 12, md: 20 }, textAlign: isFadeFactoryDemo ? 'left' : 'center', backgroundColor: aboutBgColor, color: aboutTextColor }}>
+        {isFadeFactoryDemo ? (
+          <Container maxWidth="lg">
+            <Grid container spacing={{ xs: 5, md: 8 }} alignItems="stretch">
+              <Grid item xs={12} md={7}>
+                <Typography variant="overline" sx={{ color: brandColor, fontWeight: 700, letterSpacing: 5 }}>
+                  {aboutTagline}
+                </Typography>
+                <Typography sx={{ fontFamily: displayFont, mt: 1.5, mb: 3, fontSize: { xs: "2.1rem", sm: "2.6rem", md: "4.25rem" }, lineHeight: 1.03, maxWidth: 650 }}>
+                  {aboutHeading}
+                </Typography>
+                <Typography sx={{ fontWeight: 300, lineHeight: 1.8, opacity: 0.76, maxWidth: 680, fontSize: { xs: "0.9rem", sm: "1rem", md: "1.08rem" } }}>
+                  {freshTenant?.aboutBody || freshTenant?.aboutUs || `Welcome to ${businessName}. Share your mission, your craft, and what sets your business apart.`}
+                </Typography>
+                <Button onClick={() => document.getElementById('barber-section')?.scrollIntoView({ behavior: 'smooth' })} sx={{ mt: 4, px: 0, minWidth: 0, color: aboutTextColor, borderBottom: `2px solid ${brandColor}`, borderRadius: 0, fontSize: "0.72rem", fontWeight: 800, letterSpacing: "0.16em", '&:hover': { bgcolor: 'transparent', color: brandColor } }}>
+                  {aboutCtaText}
+                </Button>
+              </Grid>
+              <Grid item xs={12} md={5}>
+                <Box sx={{ height: "100%", bgcolor: "#101010", color: "white", p: { xs: 3, sm: 4, md: 5 }, borderTop: `3px solid ${brandColor}`, boxShadow: "0 18px 45px rgba(0,0,0,0.12)" }}>
+                  <Typography sx={{ color: brandColor, fontSize: "0.66rem", fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", mb: 3 }}>
+                    {standardsHeading}
+                  </Typography>
+                  {[
+                    { icon: <ContentCutIcon />, title: freshTenant?.standard1Title || "Detail first", copy: freshTenant?.standard1Body || "Clean lines, balanced shape and a finish built around you." },
+                    { icon: <WorkspacePremiumIcon />, title: freshTenant?.standard2Title || "Premium finish", copy: freshTenant?.standard2Body || "Considered service from consultation through to the final detail." },
+                    { icon: <AccessTimeIcon />, title: freshTenant?.standard3Title || "Time respected", copy: freshTenant?.standard3Body || "Book ahead or check the live queue before you set off." },
+                  ].map((item, index) => (
+                    <Stack key={item.title} direction="row" spacing={2.2} sx={{ py: 2.2, borderBottom: index < 2 ? "1px solid rgba(255,255,255,0.1)" : "none" }}>
+                      <Box sx={{ color: brandColor, mt: 0.2, '& svg': { fontSize: { xs: 20, sm: 24 } } }}>{item.icon}</Box>
+                      <Box>
+                        <Typography sx={{ fontFamily: displayFont, fontSize: { xs: "1.08rem", sm: "1.25rem" }, mb: 0.5 }}>{item.title}</Typography>
+                        <Typography sx={{ color: "rgba(255,255,255,0.55)", fontSize: { xs: "0.75rem", sm: "0.82rem" }, lineHeight: 1.65 }}>{item.copy}</Typography>
+                      </Box>
+                    </Stack>
+                  ))}
+                </Box>
+              </Grid>
+            </Grid>
+          </Container>
+        ) : (
+          <Container maxWidth="md">
+            <ContentCutIcon sx={{ color: brandColor, fontSize: 40, mb: 3, opacity: 0.6 }} />
+            <Typography variant="h3" sx={{ fontFamily: displayFont, mb: 4, letterSpacing: 2 }}>
+              {aboutHeading}
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 300, lineHeight: 2, opacity: 0.8, maxWidth: '750px', mx: 'auto', fontSize: '1.2rem' }}>
+              {freshTenant?.aboutBody || freshTenant?.aboutUs || `Welcome to ${businessName}. Share your mission, your craft, and what sets your business apart.`}
+            </Typography>
+          </Container>
+        )}
       </Box>
 
       {/* ── 3e. FIND US & HOURS ──────────────────────────────────────────── */}
-      <Container id="find-us" sx={{ mt: 10, mb: 15 }}>
-        <Grid container spacing={4}>
+      <Container id="find-us" maxWidth="lg" sx={isFadeFactoryDemo ? { py: { xs: 7, md: 9 } } : { mt: 10, mb: 15 }}>
+        <Grid container spacing={isFadeFactoryDemo ? 2 : 4}>
           <Grid item xs={12} md={6}>
-            <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
+            <Paper elevation={0} sx={{ p: isFadeFactoryDemo ? { xs: 3, md: 4 } : { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: isFadeFactoryDemo ? '#fffdf8' : '#f9f9f9', border: isFadeFactoryDemo ? `1px solid ${alpha(brandColor, 0.28)}` : '1px solid #eee', boxShadow: isFadeFactoryDemo ? '0 12px 35px rgba(42,31,12,0.06)' : 'none' }}>
               <LocationOnIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
-              <Typography variant="h5" sx={{ fontFamily: displayFont, mb: 2 }}>Visit Us</Typography>
-              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', minHeight: '3em', fontWeight: 300 }}>{address}</Typography>
+              <Typography variant="h5" sx={{ fontFamily: displayFont, mb: 2, fontSize: isFadeFactoryDemo ? { xs: "1.2rem", sm: "1.5rem" } : undefined }}>{visitHeading}</Typography>
+              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', minHeight: '3em', fontWeight: 300, fontSize: isFadeFactoryDemo ? { xs: "0.88rem", sm: "1rem" } : undefined }}>{address}</Typography>
              <Button
     variant="outlined"
     onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)}
-    sx={{ borderColor: 'black', color: 'black', fontWeight: 600, letterSpacing: 2, px: 4, py: 1.5, borderRadius: 0, '&:hover': { bgcolor: 'black', color: 'white' } }}
+    sx={{ borderColor: 'black', color: 'black', fontWeight: 600, letterSpacing: 2, px: isFadeFactoryDemo ? { xs: 3, sm: 4 } : 4, py: isFadeFactoryDemo ? { xs: 1.1, sm: 1.5 } : 1.5, fontSize: isFadeFactoryDemo ? { xs: "0.68rem", sm: "0.875rem" } : undefined, borderRadius: 0, '&:hover': { bgcolor: 'black', color: 'white' } }}
   >
-    GET DIRECTIONS
+    {directionsCtaText}
   </Button>
             </Paper>
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Paper elevation={0} sx={{ p: { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: '#f9f9f9', border: '1px solid #eee' }}>
+            <Paper elevation={0} sx={{ p: isFadeFactoryDemo ? { xs: 3, md: 4 } : { xs: 3, md: 6 }, borderRadius: 0, height: '100%', bgcolor: isFadeFactoryDemo ? '#fffdf8' : '#f9f9f9', border: isFadeFactoryDemo ? `1px solid ${alpha(brandColor, 0.28)}` : '1px solid #eee', boxShadow: isFadeFactoryDemo ? '0 12px 35px rgba(42,31,12,0.06)' : 'none' }}>
               <AccessTimeIcon sx={{ color: brandColor, fontSize: 32, mb: 1 }} />
-              <Typography variant="h5" sx={{ fontFamily: displayFont, mb: 3 }}>Opening Hours</Typography>
+              <Typography variant="h5" sx={{ fontFamily: displayFont, mb: 3, fontSize: isFadeFactoryDemo ? { xs: "1.2rem", sm: "1.5rem" } : undefined }}>{hoursHeading}</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {freshTenant?.hours ? (
                   ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day, i) => {
                     const dayData   = freshTenant?.hours?.[day] || freshTenant?.hours?.[day.toLowerCase()];
                     const isClosed = !dayData || dayData.isClosed || !dayData.open || !dayData.close;
-                    const hourText = isClosed ? "Closed" : `${dayData.open} – ${dayData.close}`;
+                    const hourText = isClosed ? closedLabel : `${dayData.open} – ${dayData.close}`;
                     return (
                       <Box key={day}>
                         <Box display="flex" justifyContent="space-between" alignItems="center">
@@ -406,7 +518,7 @@ export default function TenantHome({ tenant: initialTenant }) {
                   })
                 ) : (
                   <Typography variant="body1" sx={{ color: 'text.secondary', whiteSpace: 'pre-line' }}>
-                    {freshTenant?.openingHours || "Contact us for opening times"}
+                    {freshTenant?.openingHours || hoursFallbackText}
                   </Typography>
                 )}
               </Box>
@@ -423,10 +535,10 @@ export default function TenantHome({ tenant: initialTenant }) {
         <Container id="barber-section" sx={{ py: 15 }}>
           <Box sx={{ mb: 8, textAlign: "center" }}>
             <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>
-              AVAILABILITY
+              {availabilityEyebrow}
             </Typography>
-            <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>
-              Book Your Appointment
+            <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont, fontSize: isFadeFactoryDemo ? { xs: "2rem", sm: "3rem" } : undefined }}>
+              {availabilityHeading}
             </Typography>
             <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
             {whatsappUrl && (
@@ -435,7 +547,7 @@ export default function TenantHome({ tenant: initialTenant }) {
                 variant="outlined" size="small" startIcon={<WhatsAppIcon />}
                 sx={{ mt: 3, color: "#25D366", borderColor: "#25D36680", "&:hover": { borderColor: "#25D366", bgcolor: "#25D36610" } }}
               >
-                Or enquire via WhatsApp
+                {whatsappCtaText}
               </Button>
             )}
           </Box>
@@ -448,13 +560,13 @@ export default function TenantHome({ tenant: initialTenant }) {
           />
         </Container>
       ) : (
-      <Container id="barber-section" sx={{ py: 15 }}>
-        <Box sx={{ mb: 10, textAlign: "center" }}>
+      <Container id="barber-section" maxWidth={isFadeFactoryDemo ? "md" : "lg"} sx={{ py: isFadeFactoryDemo ? { xs: 7, md: 9 } : 15 }}>
+        <Box sx={{ mb: isFadeFactoryDemo ? { xs: 5, md: 6 } : 10, textAlign: "center" }}>
           <Typography variant="overline" sx={{ color: brandColor, fontWeight: 600, letterSpacing: 5 }}>
-            EXPERTS
+            {teamEyebrow}
           </Typography>
-          <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont }}>
-            Our Master Barbers
+          <Typography variant="h3" mt={1} mb={2} sx={{ fontFamily: displayFont, fontSize: isFadeFactoryDemo ? { xs: "2rem", sm: "3rem" } : undefined }}>
+            {teamHeading}
           </Typography>
           <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto" }} />
           {whatsappUrl && (
@@ -463,7 +575,7 @@ export default function TenantHome({ tenant: initialTenant }) {
               variant="outlined" size="small" startIcon={<WhatsAppIcon />}
               sx={{ mt: 3, color: "#25D366", borderColor: "#25D36680", "&:hover": { borderColor: "#25D366", bgcolor: "#25D36610" } }}
             >
-              Or enquire via WhatsApp
+              {whatsappCtaText}
             </Button>
           )}
         </Box>
@@ -483,7 +595,7 @@ export default function TenantHome({ tenant: initialTenant }) {
               { state: { tenant: { ...barber, businessName: barber.name, businessLogo: barber.profilePic, brandColor } } }
             );
             return (
-              <Grid item xs={12} sm={6} md={4} key={barber.id}>
+              <Grid item xs={12} sm={6} md={isFadeFactoryDemo ? 6 : 4} key={barber.id}>
                 <Box
                   onClick={handleBooking}
                   sx={{
@@ -522,15 +634,15 @@ export default function TenantHome({ tenant: initialTenant }) {
 
                   {/* Content */}
                   <Box sx={{ p: 3 }}>
-                    <Typography sx={{ fontFamily: displayFont, fontSize: "1.45rem", fontWeight: 500, color: "#111", lineHeight: 1.2, mb: 0.5 }}>
+                    <Typography sx={{ fontFamily: displayFont, fontSize: { xs: "1.25rem", sm: "1.45rem" }, fontWeight: 500, color: "#111", lineHeight: 1.2, mb: 0.5 }}>
                       {displayName}
                     </Typography>
                     <Typography sx={{ fontSize: "0.66rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: cardColor, mb: barber.bio ? 2 : 0 }}>
-                      {barber.isOwner ? "Owner & Barber" : "Professional Barber"}
+                      {barber.isOwner ? ownerRoleLabel : staffRoleLabel}
                     </Typography>
                     {barber.bio && (
                       <Typography sx={{
-                        fontSize: "0.82rem", color: "#888", fontWeight: 300, lineHeight: 1.7,
+                        fontSize: { xs: "0.75rem", sm: "0.82rem" }, color: "#888", fontWeight: 300, lineHeight: 1.7,
                         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
                         mt: 1.5,
                       }}>
@@ -539,11 +651,11 @@ export default function TenantHome({ tenant: initialTenant }) {
                     )}
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2.5, pt: 2, borderTop: "1px solid #f0ece4" }}>
                       <Box>
-                        <Typography sx={{ fontSize: "0.55rem", fontWeight: 700, color: "#bbb", letterSpacing: "0.1em", textTransform: "uppercase" }}>Deposit</Typography>
+                        <Typography sx={{ fontSize: "0.55rem", fontWeight: 700, color: "#bbb", letterSpacing: "0.1em", textTransform: "uppercase" }}>{depositLabel}</Typography>
                         <Typography sx={{ fontSize: "0.92rem", fontWeight: 700, color: "#111" }}>£{depositValue}</Typography>
                       </Box>
                       <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color: cardColor, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                        BOOK NOW →
+                        {staffCardCtaText}
                       </Typography>
                     </Box>
                   </Box>
@@ -557,7 +669,7 @@ export default function TenantHome({ tenant: initialTenant }) {
 
       {/* ── 5. REVIEWS ───────────────────────────────────────────────────────── */}
       <Box id="reviews" sx={{
-        py: { xs: 10, md: 15 }, bgcolor: "#f8f7f4",
+        py: isFadeFactoryDemo ? { xs: 7, md: 9 } : { xs: 10, md: 15 }, bgcolor: "#f8f7f4",
         borderTop: `3px solid ${brandColor}`,
         position: "relative", overflow: "hidden",
       }}>
@@ -570,10 +682,10 @@ export default function TenantHome({ tenant: initialTenant }) {
           {/* Header */}
           <Box sx={{ mb: { xs: 6, md: 8 }, textAlign: "center" }}>
             <Typography sx={{ color: brandColor, fontWeight: 700, letterSpacing: "0.3em", fontSize: "0.62rem", textTransform: "uppercase", mb: 1.5 }}>
-              Testimonials
+              {reviewsEyebrow}
             </Typography>
-            <Typography sx={{ fontFamily: displayFont, fontSize: { xs: "2.3rem", md: "3rem" }, fontWeight: 400, color: "#111", lineHeight: 1.15 }}>
-              What Our Clients Say
+            <Typography sx={{ fontFamily: displayFont, fontSize: { xs: "1.9rem", sm: "2.3rem", md: "3rem" }, fontWeight: 400, color: "#111", lineHeight: 1.15 }}>
+              {reviewsHeading}
             </Typography>
             <Box sx={{ width: 40, height: 2, bgcolor: brandColor, mx: "auto", mt: 2.5 }} />
           </Box>
@@ -597,13 +709,13 @@ export default function TenantHome({ tenant: initialTenant }) {
                         {/* Stars */}
                         <Box sx={{ display: "flex", justifyContent: "center", gap: 0.3, mb: 3 }}>
                           {[...Array(5)].map((_, i) => (
-                            <StarIcon key={i} sx={{ fontSize: 16, color: i < stars ? brandColor : "#ddd" }} />
+                            <StarIcon key={i} sx={{ fontSize: { xs: 14, sm: 16 }, color: i < stars ? brandColor : "#ddd" }} />
                           ))}
                         </Box>
                         {/* Review text */}
                         <Typography sx={{
                           fontFamily: displayFont, fontStyle: "italic", fontWeight: 400,
-                          fontSize: { xs: "1.15rem", md: "1.3rem" }, color: "#1a1a1a",
+                          fontSize: { xs: "1rem", sm: "1.15rem", md: "1.3rem" }, color: "#1a1a1a",
                           lineHeight: 1.85, textAlign: "center", mb: 4, px: { xs: 0, md: 1 },
                         }}>
                           "{rev.comment || rev.text || "Great experience!"}"
@@ -622,7 +734,7 @@ export default function TenantHome({ tenant: initialTenant }) {
                             <Stack direction="row" spacing={0.5} alignItems="center">
                               <VerifiedIcon sx={{ fontSize: 11, color: brandColor }} />
                               <Typography sx={{ fontSize: "0.62rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#888" }}>
-                                Verified Client
+                                {verifiedClientLabel}
                               </Typography>
                             </Stack>
                           </Box>
@@ -669,10 +781,10 @@ export default function TenantHome({ tenant: initialTenant }) {
           ) : (
             <Box sx={{ textAlign: "center", py: 4 }}>
               <Typography sx={{ color: "rgba(0,0,0,0.3)", fontFamily: displayFont, fontSize: "1.1rem", mb: 1 }}>
-                No reviews yet
+                {noReviewsHeading}
               </Typography>
               <Typography sx={{ color: "rgba(0,0,0,0.2)", fontSize: "0.82rem", fontWeight: 300 }}>
-                Be the first to share your experience.
+                {noReviewsBody}
               </Typography>
             </Box>
           )}

@@ -35,18 +35,18 @@ const DEMO_PORTFOLIOS = {
   ],
   trainer: [
     {
-      before: "/images/demo/trainer/male-strength-before.jpg",
-      after: "/images/demo/trainer/male-strength-after.jpg",
+      before: "/images/demo/trainer/male-strength-after.jpg",
+      after: "/images/demo/trainer/male-strength-before.jpg",
       label: "12-Month Strength Transformation",
     },
     {
-      before: "/images/demo/trainer/female-strength-before.jpg",
-      after: "/images/demo/trainer/female-strength-after.jpg",
+      before: "/images/demo/trainer/female-strength-after.jpg",
+      after: "/images/demo/trainer/female-strength-before.jpg",
       label: "9-Month Strength Transformation",
     },
     {
-      before: "/images/demo/trainer/six-month-strength-before.jpg",
-      after: "/images/demo/trainer/six-month-strength-after.jpg",
+      before: "/images/demo/trainer/six-month-strength-after.jpg",
+      after: "/images/demo/trainer/six-month-strength-before.jpg",
       label: "6-Month Strength Transformation",
     },
   ],

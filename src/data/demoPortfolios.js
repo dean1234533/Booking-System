@@ -115,16 +115,22 @@ export function isDemoProfile(profile) {
   );
 }
 
-/** Keep production customer portfolios untouched while giving seeded demos
- * deterministic, genuinely matched transformation pairs. */
+/** Seeded demo accounts always show the curated set, so the demo stays
+ * controlled and consistent. Real customer accounts show their own saved
+ * portfolio/hero when they have one — otherwise they get the same curated
+ * placeholder (matched to their business type) rather than an empty section,
+ * on both the platform domain and any custom domain, until they upload their
+ * own. */
 export function portfolioForProfile(profile, fallback = []) {
-  if (!isDemoProfile(profile)) return fallback;
-  return DEMO_PORTFOLIOS[profile.businessType] || fallback;
+  if (isDemoProfile(profile)) return DEMO_PORTFOLIOS[profile?.businessType] || fallback;
+  if (fallback?.length) return fallback;
+  return DEMO_PORTFOLIOS[profile?.businessType] || fallback;
 }
 
 export function heroForProfile(profile, fallback = "", field = "heroImage") {
-  if (!isDemoProfile(profile)) return fallback;
-  return DEMO_HERO_IMAGES[profile.businessType]?.[field] || fallback;
+  if (isDemoProfile(profile)) return DEMO_HERO_IMAGES[profile?.businessType]?.[field] || fallback;
+  if (fallback) return fallback;
+  return DEMO_HERO_IMAGES[profile?.businessType]?.[field] || fallback;
 }
 
 export { DEMO_HERO_IMAGES, DEMO_PORTFOLIOS };

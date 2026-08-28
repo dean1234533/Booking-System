@@ -85,13 +85,17 @@ const DEMO_HERO_IMAGES = {
   barber: {
     heroImage: "/images/demo/barber/hero.jpg",
     homeHeroImage: "/images/demo/barber/home-hero.jpg",
+    mobileHomeHeroImage: "/images/demo/barber/home-hero-mobile.jpg",
   },
   hairdresser: { heroImage: "/images/demo/hairdresser/hero.jpg" },
   trainer: {
     heroImage: "/images/demo/trainer/hero.jpg",
     heroBgImage: "/images/demo/trainer/hero-bg.jpg",
   },
-  decorator: { heroImage: "/images/demo/decorator/hero.jpg" },
+  decorator: {
+    heroImage: "/images/demo/decorator/hero.jpg",
+    servicesImage: "/images/demo/decorator/services-painting.jpg",
+  },
   plumber: { heroImage: "/images/demo/plumber/hero.jpg" },
 };
 

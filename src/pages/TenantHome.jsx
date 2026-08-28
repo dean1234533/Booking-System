@@ -125,8 +125,15 @@ export default function TenantHome({ tenant: initialTenant }) {
   const savedHeroImage = isMobileOrTablet
     ? (freshTenant?.heroImageMobile || freshTenant?.heroImage || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1")
     : (freshTenant?.heroImage || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1");
-  const heroImageUrl = heroForProfile(freshTenant, savedHeroImage, "homeHeroImage");
   const isDemoTenant = isDemoProfile(freshTenant);
+  const usesDemoHomeHero = savedHeroImage === "/images/demo/barber/home-hero.jpg";
+  const heroImageUrl = isMobileOrTablet && usesDemoHomeHero
+    ? "/images/demo/barber/home-hero-mobile.jpg"
+    : heroForProfile(
+        freshTenant,
+        savedHeroImage,
+        isMobileOrTablet ? "mobileHomeHeroImage" : "homeHeroImage",
+      );
   const portfolioItems = portfolioForProfile(freshTenant, freshTenant?.portfolioItems || []);
  
   useEffect(() => { window.scrollTo(0, 0); }, [tenantId, initialTenant?.id]);

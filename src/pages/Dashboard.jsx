@@ -201,9 +201,14 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   // submitted from a client's phone, so a one-time fetch leaves this screen
   // stale until the barber refreshes the whole app.
   useEffect(() => {
-    if (!userRole.isOwner || !userRole.shopId) return;
+    if (!userRole.shopId) return;
+    // A chair-renting staff member's reviews live in their own subcollection,
+    // separate from the shop's and from every other staff member's.
+    const reviewsRef = userRole.isOwner
+      ? collection(db, "barbers", userRole.shopId, "reviews")
+      : collection(db, "barbers", userRole.shopId, "staff", barber.uid, "reviews");
     return onSnapshot(
-      collection(db, "barbers", userRole.shopId, "reviews"),
+      reviewsRef,
       snap => {
         const liveReviews = snap.docs
           .map(reviewDoc => ({ id: reviewDoc.id, ...reviewDoc.data() }))
@@ -212,7 +217,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       },
       err => console.error("[reviews listener]", err),
     );
-  }, [userRole.isOwner, userRole.shopId]);
+  }, [userRole.isOwner, userRole.shopId, barber?.uid]);
 
   // Handle post-Stripe-connect redirect
   useEffect(() => {
@@ -500,7 +505,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   async function handleDeleteReview(reviewId) {
     if (!window.confirm("Delete this review? This cannot be undone.")) return;
     try {
-      await deleteDoc(doc(db, "barbers", userRole.shopId, "reviews", reviewId));
+      const reviewDocPath = userRole.isOwner
+        ? doc(db, "barbers", userRole.shopId, "reviews", reviewId)
+        : doc(db, "barbers", userRole.shopId, "staff", barber.uid, "reviews", reviewId);
+      await deleteDoc(reviewDocPath);
       setReviews(prev => prev.filter(r => r.id !== reviewId));
       setToast("Review deleted.");
     } catch (err) {
@@ -724,7 +732,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     ...(!isTrainer ? [{ key: "services", label: "Services", icon: <ListIcon /> }] : []),
     ...(userRole.isOwner ? [{ key: "staff", label: "Team", icon: <PeopleIcon /> }] : []),
     ...(userRole.isOwner ? [{ key: "finance", label: "Finance", icon: <PaymentsIcon /> }] : []),
-    ...(userRole.isOwner ? [{ key: "reviews", label: "Reviews", icon: <ReviewsIcon /> }]  : []),
+    // Barber staff rent their own chair, so they get their own review link
+    // and their own reviews too — owners of every business type keep theirs.
+    ...(userRole.isOwner || isBarber ? [{ key: "reviews", label: "Reviews", icon: <ReviewsIcon /> }]  : []),
     ...(userRole.isOwner ? [{ key: "design",    label: "Design",    icon: <PaletteIcon /> }]  : []),
     ...(userRole.isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
     { key: "pay",           label: "Pay",      icon: <NfcIcon /> },
@@ -825,7 +835,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         { label: "Profile",  icon: <PersonIcon />,  index: tabIdx("edit-page") },
         ...(!isTrainer ? [{ label: "Services", icon: <ListIcon />, index: tabIdx("services") }] : []),
         ...(userRole.isOwner ? [{ label: "Team", icon: <PeopleIcon />, index: IDX_STAFF }] : []),
-        ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon />, index: IDX_REVIEWS }] : []),
+        ...(userRole.isOwner || isBarber ? [{ label: "Reviews", icon: <ReviewsIcon />, index: IDX_REVIEWS }] : []),
         ...(userRole.isOwner                   ? [{ label: "Design",    icon: <PaletteIcon />,  index: IDX_DESIGN }] : []),
         ...(userRole.isOwner && !initialTenant ? [{ label: "Domain",    icon: <LanguageIcon />, index: IDX_DOMAIN }] : []),
       ]),
@@ -1193,10 +1203,15 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
-        {/* ── Reviews (owner only) ── */}
-        {userRole.isOwner && (
+        {/* ── Reviews (owner, or barber staff reviewing their own chair) ── */}
+        {(userRole.isOwner || isBarber) && (
           <TabPanel value={tab} index={IDX_REVIEWS}>
-            <ReviewsTab reviews={reviews} onDeleteReview={handleDeleteReview} shopId={userRole.shopId} brandColor={brandColor} />
+            <ReviewsTab
+              reviews={reviews} onDeleteReview={handleDeleteReview}
+              shopId={userRole.shopId}
+              barberId={userRole.isOwner ? undefined : barber.uid}
+              brandColor={brandColor}
+            />
           </TabPanel>
         )}
 

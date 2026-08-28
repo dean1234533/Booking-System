@@ -12,11 +12,15 @@ import QrCode2Icon      from "@mui/icons-material/QrCode2";
 import FullscreenIcon   from "@mui/icons-material/Fullscreen";
 import { SITE_URL } from "../../../utils/siteUrl";
 
-export default function ReviewsTab({ reviews, onDeleteReview, shopId, brandColor = "#2563EB" }) {
+export default function ReviewsTab({ reviews, onDeleteReview, shopId, barberId, brandColor = "#2563EB" }) {
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
 
-  const reviewLink = shopId ? `${SITE_URL}/review/${shopId}` : null;
+  // A chair-renting staff member gets their own link to their own reviews,
+  // kept separate from the shop's and from every other staff member's.
+  const reviewLink = shopId
+    ? `${SITE_URL}/review/${shopId}${barberId ? `/${barberId}` : ""}`
+    : null;
 
   const handleCopy = async () => {
     if (!reviewLink) return;

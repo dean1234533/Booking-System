@@ -178,7 +178,7 @@ const DECORATOR_PROFILE = {
   facebookUrl:        str('https://facebook.com/premierpainterslondon'),
   logoUrl:            str('https://images.unsplash.com/photo-1562619425-c307bb83bc42?w=400&h=400&fit=crop'),
   heroImage:          str('/images/demo/decorator/hero.jpg'),
-  servicesImage:      str('https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop'),
+  servicesImage:      str('/images/demo/decorator/services-painting.jpg'),
   portfolioHeading:   str('Recent transformations'),
   portfolioSubtext:   str('See the difference a professional finish makes.'),
   services: arr([

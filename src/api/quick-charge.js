@@ -1,8 +1,7 @@
 import Stripe from "stripe";
 
-// In-person platform fee — lower than online bookings (5%) since face-to-face
-// payments have no fraud risk and the business is present to handle disputes.
-const IN_PERSON_FEE_PCT = 0.01; // 1%
+// No platform fee — see PLATFORM_FEE_PERCENT in bookingHelpers.jsx.
+const IN_PERSON_FEE_PCT = 0;
 
 export async function onRequestPost(context) {
   const { request, env } = context;

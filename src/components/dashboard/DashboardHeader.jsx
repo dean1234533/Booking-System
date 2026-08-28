@@ -1,9 +1,6 @@
 import React from "react";
-import { Box, Avatar, Typography, IconButton, Button, CircularProgress, Tooltip, Stack } from "@mui/material";
-import { Logout as LogoutIcon, Save as SaveIcon } from "@mui/icons-material";
-
-const SERIF = "'Playfair Display', serif";
-const SANS  = "'DM Sans', sans-serif";
+import { Box, Avatar, Typography, IconButton, Button, CircularProgress, Tooltip } from "@mui/material";
+import { LogOut, Save } from "lucide-react";
 
 function contrastColor(hex) {
   const r = parseInt(hex.slice(1, 3), 16) || 0;
@@ -20,65 +17,44 @@ export default function DashboardHeader({
 
   return (
     <Box sx={{
-      background: "rgba(245,243,237,.9)",
-      backdropFilter: "blur(18px)",
-      borderBottom: "1px solid #DEDDD8",
+      background: "rgba(255,255,255,.94)",
+      backdropFilter: "blur(12px)",
+      borderBottom: "1px solid #E4E7EC",
       position: "sticky", top: 0, zIndex: 100,
     }}>
-      {/* Subtle ambient glow strip beneath the brand border */}
-      <Box sx={{ height: 3, background: `linear-gradient(to right, #2563EB, ${brandColor}, #FF735C)` }} />
-
       <Box sx={{
-        maxWidth: 1200, mx: "auto",
+        maxWidth: 1360, mx: "auto",
         px: { xs: 2, sm: 3 },
-        py: { xs: 1.5, sm: 2 },
+        minHeight: 64,
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
 
         {/* ── Left: avatar + identity + colour picker ── */}
         <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1.5, sm: 2.5 } }}>
 
-          {/* Avatar with glow ring */}
           <Box sx={{ position: "relative", flexShrink: 0 }}>
             <Avatar
               src={profilePreview || profile.profilePic}
               sx={{
-                width:  { xs: 38, sm: 46 },
-                height: { xs: 38, sm: 46 },
-                border: `2px solid ${brandColor}`,
-                boxShadow: `0 0 0 4px ${brandColor}18`,
-                fontFamily: SERIF,
+                width: 36, height: 36, bgcolor: `${brandColor}18`, color: brandColor,
+                border: "1px solid #E4E7EC", fontSize: ".85rem", fontWeight: 750,
               }}
-            />
-            {/* Online dot */}
-            <Box sx={{
-              position: "absolute", bottom: 1, right: 1,
-              width: 9, height: 9, borderRadius: "50%",
-              bgcolor: "#4ade80",
-              border: "2px solid #F5F3ED",
-              boxShadow: "0 0 5px rgba(74,222,128,0.6)",
-            }} />
+            >
+              {(profile.name || profile.businessName || "B").slice(0, 1).toUpperCase()}
+            </Avatar>
           </Box>
 
           {/* Name + role */}
           <Box>
             <Typography sx={{
-              fontFamily: SERIF, lineHeight: 1.15,
-              color: "#111116", fontSize: { xs: "0.95rem", sm: "1.05rem" },
-              letterSpacing: "-.025em", fontWeight: 800,
+              lineHeight: 1.2, color: "#101828", fontSize: ".9rem",
+              letterSpacing: "-.01em", fontWeight: 750,
             }}>
-              {profile.name || "Dashboard"}
+              {profile.businessName || profile.name || "Dashboard"}
             </Typography>
-            <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.25 }}>
-              <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: brandColor, flexShrink: 0 }} />
-              <Typography sx={{
-                fontFamily: SANS, fontSize: "0.6rem", fontWeight: 700,
-                letterSpacing: "0.18em", textTransform: "uppercase",
-                color: "#85858D",
-              }}>
-                {profile.role === "owner" ? "Shop Owner" : "Staff"}
-              </Typography>
-            </Stack>
+            <Typography sx={{ mt: .1, fontSize: ".68rem", fontWeight: 550, color: "#98A2B3" }}>
+              {profile.role === "owner" ? "Owner workspace" : "Staff workspace"}
+            </Typography>
           </Box>
 
           {/* Brand colour picker */}
@@ -91,13 +67,12 @@ export default function DashboardHeader({
                 <Box sx={{
                   width: 20, height: 20, borderRadius: "50%", bgcolor: brandColor, flexShrink: 0,
                   border: "2px solid #fff",
-                  boxShadow: `0 0 0 3px ${brandColor}22, 0 0 10px ${brandColor}35`,
-                  transition: "transform .15s, box-shadow .15s",
-                  "&:hover": { transform: "scale(1.2)", boxShadow: `0 0 0 3px ${brandColor}40, 0 0 18px ${brandColor}50` },
+                  boxShadow: `0 0 0 2px ${brandColor}18`,
+                  transition: "transform .15s",
+                  "&:hover": { transform: "scale(1.1)" },
                 }} />
                 <Typography sx={{
-                  fontFamily: SANS, fontSize: "0.57rem", fontWeight: 700, letterSpacing: "0.14em",
-                  textTransform: "uppercase", color: "#85858D",
+                  fontSize: ".68rem", fontWeight: 650, color: "#667085",
                   display: { xs: "none", sm: "block" },
                 }}>
                   Brand
@@ -120,14 +95,13 @@ export default function DashboardHeader({
             aria-label="Log out"
             size="small"
             sx={{
-              color: "#696A73",
-              border: "1px solid #DEDDD8", bgcolor: "#fff",
-              borderRadius: 99, p: 0.9,
+              color: "#667085", border: "1px solid transparent", bgcolor: "transparent",
+              borderRadius: 2, p: 1,
               transition: "all .18s",
-              "&:hover": { color: "#ff6b6b", borderColor: "rgba(255,107,107,0.3)", bgcolor: "rgba(255,107,107,0.06)" },
+              "&:hover": { color: "#D92D20", bgcolor: "#FEF3F2" },
             }}
           >
-            <LogoutIcon sx={{ fontSize: 17 }} />
+            <LogOut size={18} strokeWidth={1.8} />
           </IconButton>
 
           {showSave && <Button
@@ -141,18 +115,14 @@ export default function DashboardHeader({
               px: { xs: 1.75, sm: 2.5 },
               py: 0.95,
               fontSize: { xs: "0.72rem", sm: "0.76rem" },
-              fontFamily: SANS,
-              fontWeight: 700,
-              letterSpacing: "0.08em",
-              borderRadius: 99,
-              boxShadow: `0 10px 26px ${brandColor}28`,
-              transition: "box-shadow .2s, filter .2s",
-              "&:hover":    { bgcolor: brandColor, filter: "brightness(1.1)", boxShadow: `0 0 24px ${brandColor}55` },
+              fontWeight: 700, borderRadius: 2,
+              transition: "filter .2s",
+              "&:hover":    { bgcolor: brandColor, filter: "brightness(.94)" },
               "&:disabled": { bgcolor: brandColor, opacity: 0.55, boxShadow: "none" },
             }}
             startIcon={uploading
               ? <CircularProgress size={13} sx={{ color: saveTextColor }} />
-              : <SaveIcon sx={{ fontSize: { xs: 14, sm: 15 } }} />}
+              : <Save size={15} strokeWidth={1.9} />}
           >
             {uploading ? "Saving…" : "Save changes"}
           </Button>}

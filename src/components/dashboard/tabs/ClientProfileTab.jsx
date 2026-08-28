@@ -36,6 +36,7 @@ import NutritionPlanTab        from "./NutritionPlanTab";
 import ExerciseGeneratorTab    from "./ExerciseGeneratorTab";
 import NotepadTab              from "./NotepadTab";
 import ClientFormsTab          from "./ClientFormsTab";
+import ErrorBoundary           from "../../ErrorBoundary";
 
 const METRICS = [
   { id: "weight",  label: "Weight",       unit: "kg"    },
@@ -205,35 +206,66 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
   if (!trainerId) return <Box sx={{ p: 2 }}><Alert severity="warning">PT profile not found.</Alert></Box>;
 
   const SECTION_TABS = [
-    { label: "Clients",         icon: <PeopleIcon fontSize="small" /> },
-    { label: "Workouts",        icon: <FitnessCenterIcon fontSize="small" /> },
-    { label: "Nutrition",       icon: <RestaurantMenuIcon fontSize="small" /> },
-    { label: "Exercises",       icon: <FitnessCenterIcon fontSize="small" /> },
-    { label: "Notepad",         icon: <ListIcon fontSize="small" /> },
-    { label: "Check-In Config", icon: <AssignmentIcon fontSize="small" /> },
+    { label: "Clients",   detail: "Profiles, progress and forms", icon: <PeopleIcon fontSize="small" /> },
+    { label: "Workouts",  detail: "Build training programmes", icon: <FitnessCenterIcon fontSize="small" /> },
+    { label: "Nutrition", detail: "Create client meal plans", icon: <RestaurantMenuIcon fontSize="small" /> },
+    { label: "Exercises", detail: "Browse and generate exercises", icon: <FitnessCenterIcon fontSize="small" /> },
+    { label: "Coach notes", detail: "Private coaching notebook", icon: <ListIcon fontSize="small" /> },
+    { label: "Check-ins", detail: "Configure client questions", icon: <AssignmentIcon fontSize="small" /> },
   ];
 
   return (
     <Box sx={{ p: { xs: 0, sm: 0 } }}>
-      {/* ── Section navigation ── */}
-      <Tabs
-        value={sectionTab}
-        onChange={(_, v) => setSectionTab(v)}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
-      >
-        {SECTION_TABS.map((t, i) => (
-          <Tab key={i} label={t.label} icon={t.icon} iconPosition="start" sx={{ minHeight: 48, fontSize: "0.78rem" }} />
-        ))}
-      </Tabs>
+      {/* ── Coaching workspace navigation ── */}
+      <Box sx={{ mb: 2.5 }}>
+        <Typography sx={{ color: brandColor, fontWeight: 850, fontSize: ".68rem", letterSpacing: ".08em", textTransform: "uppercase" }}>
+          Coaching workspace
+        </Typography>
+        <Typography sx={{ mt: .45, fontWeight: 850, fontSize: { xs: "1.05rem", sm: "1.2rem" } }}>
+          Clients, plans and check-ins in one place
+        </Typography>
+      </Box>
+      <Box sx={{
+        display: "grid",
+        gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))" },
+        gap: 1,
+        mb: 3,
+      }}>
+        {SECTION_TABS.map((item, index) => {
+          const active = sectionTab === index;
+          return (
+            <Button
+              key={item.label}
+              onClick={() => setSectionTab(index)}
+              aria-current={active ? "page" : undefined}
+              sx={{
+                minWidth: 0, justifyContent: "flex-start", textAlign: "left", p: { xs: 1.25, sm: 1.5 },
+                border: "1px solid", borderColor: active ? `${brandColor}77` : "#E4E7EC",
+                bgcolor: active ? `${brandColor}0D` : "#fff", color: active ? brandColor : "#344054",
+                "&:hover": { bgcolor: active ? `${brandColor}14` : "#F9FAFB", borderColor: active ? brandColor : "#D0D5DD" },
+              }}
+            >
+              <Box sx={{ display: "flex", gap: 1.1, alignItems: "flex-start", minWidth: 0 }}>
+                <Box sx={{ display: "grid", placeItems: "center", mt: .15, color: active ? brandColor : "#98A2B3" }}>{item.icon}</Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: ".8rem", lineHeight: 1.25 }}>{item.label}</Typography>
+                  <Typography sx={{ color: "text.secondary", fontSize: ".66rem", lineHeight: 1.3, mt: .3, display: { xs: "none", sm: "block" } }}>{item.detail}</Typography>
+                </Box>
+              </Box>
+            </Button>
+          );
+        })}
+      </Box>
 
-      {/* ── Trainer tools (shown without needing a client selected) ── */}
-      {sectionTab === 1 && <WorkoutPlansTab barber={barber} brandColor={brandColor} />}
-      {sectionTab === 2 && <NutritionPlanTab barber={barber} profile={profile} brandColor={brandColor} bookings={bookings} />}
-      {sectionTab === 3 && <ExerciseGeneratorTab barber={barber} profile={profile} brandColor={brandColor} />}
-      {sectionTab === 4 && <NotepadTab barber={barber} profile={profile} brandColor={brandColor} />}
-      {sectionTab === 5 && <ClientFormsTab barber={barber} brandColor={brandColor} />}
+      {/* ── Trainer tools (shown without needing a client selected) ──
+          Each wrapped in its own boundary so a crash in one tab (e.g.
+          bad data in a single workout plan) can't blank the others —
+          switching tabs still works instead of the whole workspace dying. */}
+      {sectionTab === 1 && <ErrorBoundary><WorkoutPlansTab barber={barber} brandColor={brandColor} /></ErrorBoundary>}
+      {sectionTab === 2 && <ErrorBoundary><NutritionPlanTab barber={barber} profile={profile} brandColor={brandColor} bookings={bookings} /></ErrorBoundary>}
+      {sectionTab === 3 && <ErrorBoundary><ExerciseGeneratorTab barber={barber} profile={profile} brandColor={brandColor} /></ErrorBoundary>}
+      {sectionTab === 4 && <ErrorBoundary><NotepadTab barber={barber} profile={profile} brandColor={brandColor} /></ErrorBoundary>}
+      {sectionTab === 5 && <ErrorBoundary><ClientFormsTab barber={barber} brandColor={brandColor} /></ErrorBoundary>}
 
       {/* ── Clients section ── */}
       {sectionTab === 0 && (
@@ -262,7 +294,7 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
           </Box>
           {clients.length === 0 && !loading && (
             <Typography variant="caption" sx={{ display: "block", mt: 1, color: "text.secondary" }}>
-              No clients yet. Click <strong>Add</strong> to create one.
+              No clients yet. Click <strong>Add</strong> — you'll get one link to send them with everything on it: plans, progress, check-ins, food diary and PAR-Q.
             </Typography>
           )}
         </CardContent>
@@ -272,6 +304,9 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
       <Dialog open={addOpen} onClose={() => !adding && setAddOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Add a Client</DialogTitle>
         <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Just a name to get started. Once added, you'll get one link to send them — their portal covers plans, progress, check-ins, food diary and PAR-Q all in one place.
+          </Typography>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField label="Name" required fullWidth autoFocus value={newClient.customerName} onChange={e => setNewClient({ ...newClient, customerName: e.target.value })} />
             <TextField label="Email" type="email" fullWidth value={newClient.customerEmail} onChange={e => setNewClient({ ...newClient, customerEmail: e.target.value })} />
@@ -498,7 +533,7 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
 
               {/* ── Submitted forms (PAR-Q, food diary etc.) ── */}
               {tab === 3 && (
-                <ClientSubmittedForms trainerId={trainerId} clientId={selectedId} />
+                <ErrorBoundary><ClientSubmittedForms trainerId={trainerId} clientId={selectedId} /></ErrorBoundary>
               )}
 
 

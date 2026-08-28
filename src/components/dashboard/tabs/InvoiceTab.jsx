@@ -121,7 +121,7 @@ export default function InvoiceTab({ barber, profile, brandColor = "#2563EB" }) 
             <Typography variant="caption" color="text.secondary" lineHeight={1.6}>
               Invoices are sent via Stripe and routed through your connected account.
               The client receives a secure payment link and has 7 days to pay.
-              A 5% platform fee is deducted automatically — the same rate as online bookings.
+              No platform fee — you receive the full invoice amount, minus only Stripe's own processing cost.
             </Typography>
           </Paper>
         </Grid>

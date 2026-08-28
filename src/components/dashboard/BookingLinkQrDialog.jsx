@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, CircularProgress } from "@mui/material";
 import QRCode from "qrcode";
 
@@ -9,24 +9,52 @@ import QRCode from "qrcode";
  * URL anywhere else).
  */
 export default function BookingLinkQrDialog({ open, onClose, bookingSlug, brandColor = "#2563EB" }) {
-  const canvasRef = useRef(null);
+  // A plain useRef here raced MUI's Dialog transition: the effect that draws
+  // the QR code ran on mount, but the <canvas> wasn't always attached to the
+  // DOM yet on that same pass, so canvasRef.current was still null and the
+  // draw call never happened — stuck on the loading spinner forever. A
+  // callback ref fires exactly when the node actually mounts, so it can't
+  // race the effect.
+  const [canvasNode, setCanvasNode] = useState(null);
+  const canvasRef = useCallback((node) => setCanvasNode(node), []);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
+  // Bumped to force the draw effect to re-run when the user hits "Try again".
+  const [attempt, setAttempt] = useState(0);
 
   const url = bookingSlug ? `https://bookrightly.co.uk/${bookingSlug}` : "";
 
   useEffect(() => {
-    if (!open || !url || !canvasRef.current) return;
+    if (!open || !url || !canvasNode) return;
     setReady(false);
-    QRCode.toCanvas(canvasRef.current, url, { width: 260, margin: 2, color: { dark: "#000000", light: "#ffffff" } })
-      .then(() => setReady(true))
-      .catch(() => setReady(false));
-  }, [open, url]);
+    setError("");
+    let settled = false;
+    // Belt-and-braces: if toCanvas ever hangs instead of resolving or
+    // rejecting, this stops it being an infinite, unexplained spinner.
+    const timeout = setTimeout(() => {
+      if (!settled) { settled = true; setError("Timed out generating the QR code."); }
+    }, 6000);
+    QRCode.toCanvas(canvasNode, url, { width: 260, margin: 2, color: { dark: "#000000", light: "#ffffff" } })
+      .then(() => { if (!settled) { settled = true; clearTimeout(timeout); setReady(true); } })
+      .catch((err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        // Previously failed silently — stuck spinner forever with nothing to
+        // go on. Surface the real reason so a repeat failure is diagnosable
+        // instead of another guess.
+        console.error("QR code generation failed:", err);
+        setError(err?.message || "Something went wrong generating the QR code.");
+        setReady(false);
+      });
+    return () => { settled = true; clearTimeout(timeout); };
+  }, [open, url, canvasNode, attempt]);
 
   function handleDownload() {
-    if (!canvasRef.current) return;
+    if (!canvasNode) return;
     const link = document.createElement("a");
     link.download = `bookrightly-${bookingSlug}-qr.png`;
-    link.href = canvasRef.current.toDataURL("image/png");
+    link.href = canvasNode.toDataURL("image/png");
     link.click();
   }
 
@@ -37,9 +65,16 @@ export default function BookingLinkQrDialog({ open, onClose, bookingSlug, brandC
         <Typography sx={{ color: "text.secondary", fontSize: ".85rem", mb: 2 }}>
           Scan to open {url.replace(/^https:\/\//, "")}. Use this on flyers, business cards, shop windows, or appointment cards.
         </Typography>
-        <Box sx={{ display: "flex", justifyContent: "center", position: "relative", minHeight: 260 }}>
-          {!ready && <CircularProgress sx={{ position: "absolute", top: "50%", left: "50%", mt: "-12px", ml: "-12px", color: brandColor }} size={24} />}
-          <canvas ref={canvasRef} style={{ visibility: ready ? "visible" : "hidden", borderRadius: 8 }} />
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", minHeight: 260 }}>
+          {!ready && !error && <CircularProgress sx={{ color: brandColor }} size={24} />}
+          {error && (
+            <Box sx={{ textAlign: "center", px: 2 }}>
+              <Typography sx={{ color: "error.main", fontSize: ".82rem", fontWeight: 700, mb: .5 }}>Couldn't generate the QR code</Typography>
+              <Typography sx={{ color: "text.secondary", fontSize: ".75rem", mb: 1.5 }}>{error}</Typography>
+              <Button size="small" onClick={() => setAttempt((n) => n + 1)}>Try again</Button>
+            </Box>
+          )}
+          <canvas ref={canvasRef} style={{ display: ready ? "block" : "none", borderRadius: 8 }} />
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>

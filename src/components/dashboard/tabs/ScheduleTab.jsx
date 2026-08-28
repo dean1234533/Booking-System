@@ -101,7 +101,7 @@ export default function ScheduleTab({
       {reminderBlocks.length > 0 && (
         <Paper sx={{ p: 2.5, borderRadius: 3, mb: 3, border: `1px dashed ${brandColor}`, bgcolor: `${brandColor}08` }}>
           <Typography variant="subtitle2" fontWeight={800} mb={1.5} sx={{ color: brandColor }}>
-            🔔 Reminder Preview for {newSlot.date}
+            Reminder Preview for {newSlot.date}
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>
             You'll receive one reminder per block of consecutive slots, 1 hour before the first slot in each block.

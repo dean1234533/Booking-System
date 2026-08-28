@@ -48,7 +48,7 @@ export default function BookingLinkCard({ bookingSlug, brandColor = "#2563EB", s
           <Button size="small" startIcon={<ContentCopyIcon />} onClick={handleCopy} sx={{ bgcolor: brandColor, color: "#fff", borderRadius: 99, px: 2, "&:hover": { bgcolor: brandColor, filter: "brightness(.92)" } }}>{copied ? "Copied" : "Copy"}</Button>
           <Button size="small" startIcon={<OpenInNewIcon />} component="a" href={url} target="_blank" rel="noopener noreferrer" sx={{ color: "#fff", border: "1px solid #ffffff30", borderRadius: 99 }}>Open</Button>
           <Button size="small" startIcon={<ShareIcon />} onClick={handleShare} sx={{ color: "#fff", border: "1px solid #ffffff30", borderRadius: 99 }}>Share</Button>
-          {showQrButton && <Button size="small" aria-label="Show QR code" onClick={onShowQr} sx={{ minWidth: 40, width: 40, color: "#111116", bgcolor: "#93C5FD", borderRadius: "50%" }}><QrCodeIcon /></Button>}
+          {showQrButton && <Button size="small" aria-label="Show QR code" onClick={onShowQr} sx={{ minWidth: 40, width: 40, color: "#111116", bgcolor: "#93C5FD", borderRadius: "50%", "&:hover": { bgcolor: "#93C5FD", filter: "brightness(.92)" } }}><QrCodeIcon /></Button>}
         </Stack>
       </Box>
     </Paper>

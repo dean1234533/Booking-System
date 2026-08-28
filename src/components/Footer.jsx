@@ -6,11 +6,11 @@ import { BrandMark } from "./Nav";
 
 const GROUPS = [
   { title: "Product", links: [["Pricing", "/pricing"], ["Compare", "/compare"], ["How it works", "/how-it-works"], ["Tools", "/tools"]] },
-  { title: "For your work", links: [["Barbers", "/booking-software/barbers"], ["Hair salons", "/booking-software/salons"], ["Personal trainers", "/booking-software/personal-trainers"], ["Decorators", "/booking-software/decorators"]] },
+  { title: "For your work", links: [["Barbers", "/booking-software/barbers"], ["Hair salons", "/booking-software/salons"], ["Personal trainers", "/booking-software/personal-trainers"], ["Decorators", "/booking-software/decorators"], ["Plumbing & heating", "/signup"]] },
   { title: "Company", links: [["Blog", "/blog"], ["Contact", "/contact"], ["Privacy", "/privacy"], ["Terms", "/terms"]] },
 ];
 
-export default function Footer() {
+export default function Footer({ isHomePage = false }) {
   const navigate = useNavigate();
   return (
     <Box component="footer" sx={{ bgcolor: "#111116", color: "#fff", p: { xs: 2, md: 4 } }}>
@@ -28,9 +28,23 @@ export default function Footer() {
             <Box sx={{ gridColumn: { xs: "1 / -1", sm: "auto" } }}><Typography sx={{ fontSize: ".64rem", fontWeight: 950, letterSpacing: ".14em", textTransform: "uppercase", mb: 2, opacity: .58 }}>Account</Typography><Stack spacing={1.45}><Typography onClick={() => navigate("/login")} sx={{ fontWeight: 850, fontSize: ".85rem", cursor: "pointer" }}>Log in</Typography><Typography onClick={() => navigate("/signup")} sx={{ fontWeight: 850, fontSize: ".85rem", cursor: "pointer" }}>Join Bookrightly</Typography></Stack></Box>
           </Box>
         </Box>
-        <Box sx={{ borderTop: "1px solid #ffffff17", px: { xs: 3, md: 6 }, py: 2.5, display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", gap: 1.5 }}>
+        <Box sx={{ borderTop: "1px solid #ffffff17", px: { xs: 3, md: 6 }, py: 2.5, display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5 }}>
           <Typography sx={{ color: "#ffffff55", fontSize: ".7rem" }}>© {new Date().getFullYear()} Bookrightly. Built for independent UK businesses.</Typography>
           <Typography sx={{ color: "#ffffff55", fontSize: ".7rem" }}>Booking • clients • payments • your website</Typography>
+          {/* Launchpadly — Bookrightly (text) — homepage only, per Launchpadly's
+              verification requiring the badge on the URL submitted to them. */}
+          {isHomePage && (
+            <Typography
+              component="a"
+              href="https://launchpadly.co/startup/bookrightly?ref=badge"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-launchpadly-badge="bookrightly"
+              sx={{ color: "#ffffff55", fontSize: ".7rem", textDecoration: "none", "&:hover": { color: "#ffffff88" } }}
+            >
+              Proudly listed on Launchpadly Startup Directory
+            </Typography>
+          )}
         </Box>
       </Box>
     </Box>

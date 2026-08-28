@@ -5,6 +5,8 @@ import {
 } from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
+import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 import { collection, onSnapshot, addDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
 
@@ -37,6 +39,9 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
   const [form, setForm]       = useState({ name: "", haircutType: "", preferredBarber: "" });
   const [joining, setJoining] = useState(false);
   const [error, setError]     = useState("");
+  const [notificationPermission, setNotificationPermission] = useState(
+    typeof Notification === "undefined" ? "unsupported" : Notification.permission
+  );
   const notifiedRef           = useRef(false);
   const calledRef             = useRef(false);
   const wakeLockRef           = useRef(null);
@@ -102,7 +107,7 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
       calledRef.current = true;
       startCallAlerts();
       try {
-        new Notification("It's your turn! 💈", {
+        new Notification("It's your turn!", {
           body: "Head to the barber now — you've been called!",
           requireInteraction: true,
         });
@@ -177,10 +182,30 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
     try { navigator.vibrate?.(0); } catch {}
   }
 
+  async function requestAlerts() {
+    if (typeof Notification === "undefined") {
+      setNotificationPermission("unsupported");
+      return "unsupported";
+    }
+    if (Notification.permission !== "default") {
+      setNotificationPermission(Notification.permission);
+      return Notification.permission;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      return permission;
+    } catch {
+      setNotificationPermission("denied");
+      return "denied";
+    }
+  }
+
   async function joinQueue() {
     if (!form.name.trim()) { setError("Enter your name."); return; }
     setError(""); setJoining(true);
     try {
+      await requestAlerts();
       const sessionId = genSession();
       const docRef = await addDoc(collection(db, "barbers", shopId, "liveQueue"), {
         name:            form.name.trim(),
@@ -196,7 +221,6 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
       setView("waiting");
       // Initialise AudioContext on user gesture so it's ready when called
       try { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
-      try { Notification.requestPermission(); } catch {}
       acquireWakeLock();
     } catch (e) {
       console.error(e);
@@ -294,6 +318,29 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
               Your Details
             </Typography>
             <Stack spacing={2}>
+              <Box sx={{
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2,
+                p: 2, border: "1px solid rgba(255,255,255,0.1)", bgcolor: "rgba(255,255,255,0.025)",
+              }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                  {notificationPermission === "granted"
+                    ? <NotificationsActiveIcon sx={{ color: brandColor, fontSize: 21 }} />
+                    : <NotificationsOffIcon sx={{ color: "rgba(255,255,255,0.48)", fontSize: 21 }} />}
+                  <Box>
+                    <Typography sx={{ color: "#fff", fontSize: "0.78rem", fontWeight: 700 }}>
+                      Call alerts {notificationPermission === "granted" ? "are on" : "need permission"}
+                    </Typography>
+                    <Typography sx={{ color: "rgba(255,255,255,0.42)", fontSize: "0.66rem", lineHeight: 1.5 }}>
+                      Keep this page open so sound, vibration and live position updates can reach you.
+                    </Typography>
+                  </Box>
+                </Box>
+                {notificationPermission === "default" && (
+                  <Button onClick={requestAlerts} size="small" sx={{ color: brandColor, border: `1px solid ${brandColor}66`, flexShrink: 0, fontSize: "0.68rem" }}>
+                    Allow
+                  </Button>
+                )}
+              </Box>
               <TextField
                 fullWidth label="Your Name *"
                 value={form.name}
@@ -355,7 +402,7 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
                   {myEntry?.name}
                 </Typography>
                 <Typography sx={{ fontFamily: SANS, fontSize: "1rem", color: "rgba(0,0,0,0.6)", mb: 3, lineHeight: 1.6 }}>
-                  Head to the barber now — you've been called! 💈
+                  Head to the barber now — you've been called!
                 </Typography>
                 <Button onClick={leaveQueue}
                   sx={{ bgcolor: "rgba(0,0,0,0.25)", color: "#fff", border: "none", borderRadius: 0, px: 4, py: 1.2, fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", "&:hover": { bgcolor: "rgba(0,0,0,0.35)" } }}>
@@ -414,8 +461,10 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
                   </Box>
                 )}
 
-                <Typography sx={{ fontFamily: SANS, fontSize: "0.66rem", color: "rgba(255,255,255,0.22)", mb: 3 }}>
-                  Keep this page open — your phone will play a sound when you're called
+                <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(255,255,255,0.48)", mb: 3, lineHeight: 1.6 }}>
+                  Keep this page open — {notificationPermission === "granted"
+                    ? "you'll get a browser notification and your phone will play a sound when you're called."
+                    : "your live position will update here and your phone will play a sound when you're called."}
                 </Typography>
 
                 <Button onClick={leaveQueue}

@@ -6,6 +6,7 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../firebase/config";
 import { SITE_URL } from "../../../utils/siteUrl";
@@ -18,10 +19,10 @@ const DEFAULT_CONFIG = { avgCutMins: 20, activeBarbers: 1, isPaused: false, isOp
 function cfgFieldSx() {
   return {
     "& .MuiOutlinedInput-root": {
-      borderRadius: 0, color: "#fff",
-      "& fieldset":             { borderColor: "rgba(255,255,255,0.15)" },
-      "&:hover fieldset":       { borderColor: "rgba(255,255,255,0.3)" },
-      "&.Mui-focused fieldset": { borderColor: "rgba(255,255,255,0.4)" },
+      borderRadius: 1.5, color: "#101828", bgcolor: "#fff",
+      "& fieldset":             { borderColor: "#D0D5DD" },
+      "&:hover fieldset":       { borderColor: "#98A2B3" },
+      "&.Mui-focused fieldset": { borderColor: "#667085" },
     },
   };
 }
@@ -93,7 +94,7 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
   const bb     = parseInt(hex.slice(4, 6), 16);
 
   const STATUS_STYLE = {
-    waiting: { label: "Waiting", bg: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" },
+    waiting: { label: "Waiting", bg: "#F2F4F7", color: "#475467" },
     called:  { label: "Called",  bg: `rgba(${rr},${gg},${bb},0.18)`, color: brandColor },
   };
 
@@ -103,9 +104,45 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
   return (
     <Box>
 
+      {/* ── Customer access ── */}
+      <Box sx={{
+        bgcolor: `${brandColor}0D`, border: `1px solid ${brandColor}33`,
+        borderRadius: 2, p: { xs: 2, sm: 2.5 }, mb: 3,
+        display: "flex", alignItems: { xs: "flex-start", md: "center" },
+        justifyContent: "space-between", gap: 2, flexWrap: "wrap",
+      }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography sx={{ fontWeight: 800, fontSize: "0.92rem", color: "#101828", mb: 0.5 }}>
+            How clients join and get called
+          </Typography>
+          <Typography sx={{ fontSize: "0.78rem", color: "#475467", lineHeight: 1.65, mb: 1 }}>
+            Clients can tap <strong>View live queue</strong> on your public barber page, or you can send them this direct link. After joining, they allow browser notifications and keep the queue page open to receive position updates, sound and vibration when called.
+          </Typography>
+          <Typography sx={{ fontFamily: "monospace", fontSize: "0.72rem", color: "#344054", wordBreak: "break-all" }}>
+            {queueUrl}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            size="small" startIcon={<ContentCopyIcon sx={{ fontSize: 15 }} />}
+            onClick={copyLink}
+            sx={{ color: brandColor, border: `1px solid ${brandColor}66`, bgcolor: "#fff", textTransform: "none", fontWeight: 700 }}
+          >
+            {copied ? "Copied!" : "Copy client link"}
+          </Button>
+          <Button
+            size="small" startIcon={<OpenInNewIcon sx={{ fontSize: 15 }} />}
+            component="a" href={queueUrl} target="_blank" rel="noopener noreferrer"
+            sx={{ color: "#344054", border: "1px solid #D0D5DD", bgcolor: "#fff", textTransform: "none", fontWeight: 700 }}
+          >
+            Open client view
+          </Button>
+        </Stack>
+      </Box>
+
       {/* ── Config strip ── */}
       <Box sx={{
-        bgcolor: "#111", border: "1px solid rgba(255,255,255,0.07)",
+        bgcolor: "#F8FAFC", border: "1px solid #E4E7EC", borderRadius: 2,
         p: 2.5, mb: 3,
         display: "flex", flexWrap: "wrap", gap: 3, alignItems: "center",
       }}>
@@ -117,11 +154,11 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
             checked={config.isOpen === true}
             onChange={e => saveConfig({ isOpen: e.target.checked })}
             sx={{
-              "& .MuiSwitch-track":              { bgcolor: "rgba(255,255,255,0.15)" },
+              "& .MuiSwitch-track":              { bgcolor: "#98A2B3" },
               "& .Mui-checked + .MuiSwitch-track": { bgcolor: brandColor },
             }}
           />
-          <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: config.isOpen ? brandColor : "rgba(255,255,255,0.3)", fontWeight: 600 }}>
+          <Typography sx={{ fontFamily: SANS, fontSize: "0.75rem", color: config.isOpen ? brandColor : "#344054", fontWeight: 700 }}>
             {config.isOpen ? "Queue Open" : "Queue Closed"}
           </Typography>
         </Box>
@@ -133,56 +170,45 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
             checked={config.isPaused === true}
             onChange={e => saveConfig({ isPaused: e.target.checked })}
             sx={{
-              "& .MuiSwitch-track":              { bgcolor: "rgba(255,255,255,0.15)" },
+              "& .MuiSwitch-track":              { bgcolor: "#98A2B3" },
               "& .Mui-checked + .MuiSwitch-track": { bgcolor: "#eab308" },
             }}
           />
-          <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: config.isPaused ? "#eab308" : "rgba(255,255,255,0.3)" }}>
+          <Typography sx={{ fontFamily: SANS, fontSize: "0.75rem", color: config.isPaused ? "#B54708" : "#344054", fontWeight: 600 }}>
             Paused
           </Typography>
         </Box>
 
         {/* Active barbers */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography sx={{ fontFamily: SANS, fontSize: "0.68rem", color: "rgba(255,255,255,0.4)" }}>
+          <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "#344054", fontWeight: 600 }}>
             Barbers:
           </Typography>
           <TextField
             size="small" type="number"
             value={config.activeBarbers || 1}
             onChange={e => saveConfig({ activeBarbers: Math.max(1, Number(e.target.value)) })}
-            inputProps={{ min: 1, max: 10, style: { color: "#fff", width: 36, textAlign: "center", fontSize: "0.8rem", padding: "4px 6px" } }}
+            inputProps={{ min: 1, max: 10, style: { color: "#101828", width: 36, textAlign: "center", fontSize: "0.8rem", padding: "4px 6px" } }}
             sx={{ ...cfgFieldSx(), width: 68 }}
           />
         </Box>
 
         {/* Avg cut time */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography sx={{ fontFamily: SANS, fontSize: "0.68rem", color: "rgba(255,255,255,0.4)" }}>
+          <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "#344054", fontWeight: 600 }}>
             Min/cut:
           </Typography>
           <TextField
             size="small" type="number"
             value={config.avgCutMins || 20}
             onChange={e => saveConfig({ avgCutMins: Math.max(5, Number(e.target.value)) })}
-            inputProps={{ min: 5, max: 120, style: { color: "#fff", width: 36, textAlign: "center", fontSize: "0.8rem", padding: "4px 6px" } }}
+            inputProps={{ min: 5, max: 120, style: { color: "#101828", width: 36, textAlign: "center", fontSize: "0.8rem", padding: "4px 6px" } }}
             sx={{ ...cfgFieldSx(), width: 68 }}
           />
         </Box>
 
         {/* Actions */}
         <Box sx={{ ml: "auto", display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <Button
-            size="small" startIcon={<ContentCopyIcon sx={{ fontSize: 13 }} />}
-            onClick={copyLink}
-            sx={{
-              color: copied ? brandColor : "rgba(255,255,255,0.4)",
-              border: `1px solid ${copied ? brandColor : "rgba(255,255,255,0.1)"}`,
-              borderRadius: 0, fontSize: "0.65rem", px: 1.5, py: 0.6, textTransform: "none",
-            }}
-          >
-            {copied ? "Copied!" : "Copy Link"}
-          </Button>
           <Button
             size="small"
             disabled={waiting === 0}
@@ -207,9 +233,9 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
           { label: "Waiting",   val: waiting },
           { label: "Called",    val: called },
         ].map(s => (
-          <Box key={s.label} sx={{ bgcolor: "#111", border: "1px solid rgba(255,255,255,0.07)", px: 3, py: 2 }}>
-            <Typography sx={{ fontFamily: SERIF, fontSize: "1.9rem", color: "#fff", lineHeight: 1 }}>{s.val}</Typography>
-            <Typography sx={{ fontFamily: SANS, fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", mt: 0.3 }}>
+          <Box key={s.label} sx={{ bgcolor: "#fff", border: "1px solid #E4E7EC", borderRadius: 2, minWidth: 128, px: 3, py: 2 }}>
+            <Typography sx={{ fontFamily: SERIF, fontSize: "1.9rem", color: "#101828", lineHeight: 1 }}>{s.val}</Typography>
+            <Typography sx={{ fontFamily: SANS, fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#667085", mt: 0.5 }}>
               {s.label}
             </Typography>
           </Box>
@@ -218,13 +244,13 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
 
       {/* ── Queue list ── */}
       {queue.length === 0 ? (
-        <Box sx={{ textAlign: "center", py: 9 }}>
-          <Typography sx={{ fontFamily: SERIF, fontSize: "1.2rem", color: "rgba(255,255,255,0.18)" }}>
+        <Box sx={{ textAlign: "center", py: 8, px: 2, border: "1px dashed #D0D5DD", borderRadius: 2, bgcolor: "#FCFCFD" }}>
+          <Typography sx={{ fontFamily: SERIF, fontSize: "1.25rem", color: "#344054" }}>
             Queue is empty
           </Typography>
-          <Typography sx={{ fontFamily: SANS, fontSize: "0.76rem", color: "rgba(255,255,255,0.14)", mt: 0.75, lineHeight: 1.8 }}>
-            Share this link so customers can join:{" "}
-            <Box component="span" onClick={copyLink} sx={{ cursor: "pointer", color: "rgba(255,255,255,0.3)", "&:hover": { color: brandColor } }}>
+          <Typography sx={{ fontFamily: SANS, fontSize: "0.78rem", color: "#667085", mt: 0.75, lineHeight: 1.8 }}>
+            Open the queue when walk-ins begin, then share the client link above:{" "}
+            <Box component="span" onClick={copyLink} sx={{ cursor: "pointer", color: brandColor, fontWeight: 700 }}>
               {queueUrl}
             </Box>
           </Typography>
@@ -236,32 +262,32 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
             return (
               <Box key={entry.id} sx={{
                 display: "flex", alignItems: "center",
-                bgcolor: "#111", border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden",
+                bgcolor: "#fff", border: "1px solid #E4E7EC", borderRadius: 2, overflow: "hidden",
               }}>
                 {/* Position */}
                 <Box sx={{
                   width: 52, flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  borderRight: "1px solid rgba(255,255,255,0.06)", py: 2.5,
+                  borderRight: "1px solid #E4E7EC", py: 2.5,
                 }}>
-                  <Typography sx={{ fontFamily: SERIF, fontSize: "1.35rem", color: idx === 0 ? brandColor : "rgba(255,255,255,0.28)" }}>
+                  <Typography sx={{ fontFamily: SERIF, fontSize: "1.35rem", color: idx === 0 ? brandColor : "#667085" }}>
                     {idx + 1}
                   </Typography>
                 </Box>
 
                 {/* Info */}
                 <Box sx={{ flex: 1, px: 2, py: 1.5, minWidth: 0 }}>
-                  <Typography sx={{ fontFamily: SANS, fontWeight: 700, color: "#fff", fontSize: "0.9rem" }}>
+                  <Typography sx={{ fontFamily: SANS, fontWeight: 700, color: "#101828", fontSize: "0.9rem" }}>
                     {entry.name}
                   </Typography>
                   <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", mt: 0.3 }}>
                     {entry.haircutType && (
-                      <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", color: "rgba(255,255,255,0.3)" }}>
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.68rem", color: "#667085" }}>
                         {entry.haircutType}
                       </Typography>
                     )}
                     {entry.preferredBarber && (
-                      <Typography sx={{ fontFamily: SANS, fontSize: "0.65rem", color: "rgba(255,255,255,0.28)" }}>
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.68rem", color: "#667085" }}>
                         → {entry.preferredBarber}
                       </Typography>
                     )}
@@ -275,11 +301,11 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
                     sx={{ bgcolor: sc.bg, color: sc.color, fontSize: "0.6rem", height: 20, borderRadius: 0, letterSpacing: "0.04em" }}
                   />
                   <IconButton size="small" onClick={() => markDone(entry.id)} title="Mark done"
-                    sx={{ color: "rgba(255,255,255,0.22)", "&:hover": { color: "#4ade80" } }}>
+                    sx={{ color: "#667085", "&:hover": { color: "#16A34A" } }}>
                     <CheckCircleIcon sx={{ fontSize: 16 }} />
                   </IconButton>
                   <IconButton size="small" onClick={() => removeEntry(entry.id)} title="Remove"
-                    sx={{ color: "rgba(255,255,255,0.18)", "&:hover": { color: "#ff6b6b" } }}>
+                    sx={{ color: "#98A2B3", "&:hover": { color: "#D92D20" } }}>
                     <RemoveCircleOutlineIcon sx={{ fontSize: 16 }} />
                   </IconButton>
                 </Box>

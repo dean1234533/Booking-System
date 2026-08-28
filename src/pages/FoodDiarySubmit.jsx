@@ -26,9 +26,16 @@ function inputSx(brand) {
     "& .MuiInputLabel-root.Mui-focused":  { color: brand },
     "& .MuiOutlinedInput-root": {
       color: "#fff", borderRadius: 0,
+      backgroundColor: "rgba(255,255,255,0.03)",
+      colorScheme: "dark",
       "& fieldset":             { borderColor: "rgba(255,255,255,0.12)" },
       "&:hover fieldset":       { borderColor: "rgba(255,255,255,0.28)" },
       "&.Mui-focused fieldset": { borderColor: brand },
+      "& input:-webkit-autofill": {
+        WebkitBoxShadow: "0 0 0 1000px #1a1a1a inset",
+        WebkitTextFillColor: "#fff",
+        caretColor: "#fff",
+      },
     },
     "& .MuiSelect-icon": { color: "rgba(255,255,255,0.35)" },
   };

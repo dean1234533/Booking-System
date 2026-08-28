@@ -21,8 +21,8 @@ const FAQS = [
   { q: "How much does Treatwell charge per booking?", a: "Treatwell typically charges a commission of 20–30% on every booking made through their platform. On a £50 appointment, that's up to £15 going to Treatwell before you even account for your costs." },
   { q: "Can I keep my existing clients when I move?", a: "Yes. Your existing clients can rebook directly at bookrightly.co.uk/your-name. You can share the link on Instagram, WhatsApp, or Google — no marketplace needed." },
   { q: "Is Bookrightly only for salons and beauty?", a: "No — that's one of the key differences. Bookrightly supports barbers, hairdressers, personal trainers, and decorators. Treatwell is beauty-only." },
-  { q: "How long does it take to set up?", a: "Most professionals are fully set up in under an hour. Add your services, set your availability, upload a photo, and your booking page is live." },
-  { q: "What does Bookrightly cost after the trial?", a: "£10/month for most business types, £20/month for personal trainers (who get additional features like PAR-Q forms, food diary, and a client portal)." },
+  { q: "How long does it take to set up?", a: "Most professionals are fully set up in under 15 minutes. Add your services, set your availability, upload a photo, and your booking page is live." },
+  { q: "What does Bookrightly cost after the trial?", a: "£10/month for most business types, £15/month for personal trainers (who get additional features like PAR-Q forms, food diary, and a client portal)." },
 ];
 
 export default function TreatwellAlternativePage() {
@@ -31,7 +31,7 @@ export default function TreatwellAlternativePage() {
       <SEOHero
         eyebrow="Treatwell Alternative UK"
         title="Stop giving Treatwell 30% of every booking"
-        subtitle="Treatwell takes a commission on every appointment. Bookrightly charges a flat £10–20/month — no percentage, no marketplace, no race to the bottom on price."
+        subtitle="Treatwell takes a commission on every appointment. Bookrightly charges a flat £10–15/month — no percentage, no marketplace, no race to the bottom on price."
       />
 
       <Section dark>
@@ -42,10 +42,10 @@ export default function TreatwellAlternativePage() {
         />
         <Grid container spacing={3}>
           {[
-            ["💸", "Up to 30% commission", "Every booking through Treatwell costs you a percentage. On a £60 colour treatment, that's £12–18 in commission before you've paid for product, rent, or your own time."],
-            ["🏬", "You're one of thousands", "On Treatwell, your salon sits next to every other salon in your area. Customers filter by price. You either drop your prices or lose bookings to someone cheaper."],
-            ["⏳", "No-shows still cost you", "Treatwell charges commission on confirmed bookings regardless of whether the client shows up. At least with Bookrightly's deposit system, no-shows don't leave you out of pocket."],
-            ["🔒", "They own the customer relationship", "Customers book 'via Treatwell'. They return to Treatwell, not your page. Bookrightly gives you a page your clients bookmark directly."],
+            ["money", "Up to 30% commission", "Every booking through Treatwell costs you a percentage. On a £60 colour treatment, that's £12–18 in commission before you've paid for product, rent, or your own time."],
+            ["marketplace", "You're one of thousands", "On Treatwell, your salon sits next to every other salon in your area. Customers filter by price. You either drop your prices or lose bookings to someone cheaper."],
+            ["time", "No-shows still cost you", "Treatwell charges commission on confirmed bookings regardless of whether the client shows up. At least with Bookrightly's deposit system, no-shows don't leave you out of pocket."],
+            ["lock", "They own the customer relationship", "Customers book 'via Treatwell'. They return to Treatwell, not your page. Bookrightly gives you a page your clients bookmark directly."],
           ].map(([icon, title, body]) => (
             <Grid item xs={12} sm={6} key={title}>
               <FeatureCard icon={icon} title={title} body={body} />
@@ -82,7 +82,7 @@ export default function TreatwellAlternativePage() {
           {[
             ["20 bookings/week", "At £50 avg", "£1,000/week revenue"],
             ["Treatwell at 25%", "Commission taken", "£250/week to Treatwell"],
-            ["Bookrightly", "£20/month flat", "£5/week. Save £245/week."],
+            ["Bookrightly", "£10/month flat", "£2.50/week. Save £247.50/week."],
           ].map(([label, sub, value]) => (
             <Box key={label} sx={{ bgcolor: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.2)", p: 3, textAlign: "center" }}>
               <Typography sx={{ fontFamily: SANS, fontWeight: 700, fontSize: "0.8rem", color: GOLD, letterSpacing: "0.08em", textTransform: "uppercase", mb: 1 }}>{label}</Typography>

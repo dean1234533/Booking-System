@@ -9,7 +9,17 @@ export default defineConfig({
     VitePWA({
       strategies: "injectManifest",
       srcDir: "src",
-      filename: "sw.js",
+      // Renamed from sw.js after Cloudflare got a pre-fix copy of that exact
+      // URL stuck in edge cache indefinitely (a purged/bypassed cache still
+      // doesn't evict what's already stored) — every browser's update-check
+      // kept comparing against that same frozen response, so no fix could
+      // ever reach anyone. A URL Cloudflare has never cached is guaranteed a
+      // clean fetch. Also inline the registration script (below) instead of
+      // vite-plugin-pwa's default separate registerSW.js file, since that
+      // file hit the exact same stuck-cache problem — index.html itself is
+      // already reliably no-store, so inlining removes the risk entirely.
+      filename: "sw-v3.js",
+      injectRegister: "inline",
       registerType: "autoUpdate",
       injectManifest: {
         // Deliberately excludes html: precaching index.html lets Workbox's

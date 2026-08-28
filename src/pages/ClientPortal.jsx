@@ -4,7 +4,7 @@ import {
   Box, Container, Typography, CircularProgress, Stack,
   Grid, Paper, Button, TextField, MenuItem, Divider,
   Chip, IconButton, Alert, Collapse, Select, FormControl, InputLabel,
-  Checkbox, FormControlLabel,
+  Checkbox, FormControlLabel, Menu,
 } from "@mui/material";
 import FitnessCenterIcon     from "@mui/icons-material/FitnessCenter";
 import ArrowBackIcon         from "@mui/icons-material/ArrowBack";
@@ -15,13 +15,14 @@ import CalendarMonthIcon     from "@mui/icons-material/CalendarMonth";
 import AddIcon               from "@mui/icons-material/Add";
 import CheckCircleIcon       from "@mui/icons-material/CheckCircle";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
-import CloseIcon             from "@mui/icons-material/Close";
 import ExpandMoreIcon        from "@mui/icons-material/ExpandMore";
 import DeleteIcon            from "@mui/icons-material/Delete";
 import MenuBookIcon          from "@mui/icons-material/MenuBook";
 import AutoAwesomeIcon       from "@mui/icons-material/AutoAwesome";
 import HealthAndSafetyIcon  from "@mui/icons-material/HealthAndSafety";
-import { Dialog, DialogContent } from "@mui/material";
+import HomeRoundedIcon      from "@mui/icons-material/HomeRounded";
+import MoreHorizIcon        from "@mui/icons-material/MoreHoriz";
+import ArrowForwardIcon     from "@mui/icons-material/ArrowForward";
 import {
   doc, getDoc, getDocs, collection,
   addDoc, serverTimestamp, query, orderBy, limit,
@@ -30,6 +31,7 @@ import { db } from "../firebase/config";
 import { getNutritionPlan } from "../firebase/firestore";
 import PWAInstallBanner from "../components/dashboard/PWAInstallBanner";
 import OfflineIndicator from "../components/dashboard/OfflineIndicator";
+import ErrorBoundary from "../components/ErrorBoundary";
 import FoodGeneratorContent from "../components/FoodGeneratorContent";
 
 const SERIF = "'Playfair Display', serif";
@@ -74,9 +76,22 @@ function inputSx(brand) {
     "& .MuiInputLabel-root.Mui-focused": { color: brand },
     "& .MuiOutlinedInput-root": {
       color: "#fff", borderRadius: "8px",
+      backgroundColor: "rgba(255,255,255,0.03)",
+      // Without this, native inputs (date pickers especially) fall back to
+      // the browser's light default chrome regardless of the sx overrides
+      // above, rendering as a solid white box with invisible white-on-white
+      // text — exactly what "blank" looked like in the field.
+      colorScheme: "dark",
       "& fieldset": { borderColor: "rgba(255,255,255,0.12)" },
       "&:hover fieldset": { borderColor: "rgba(255,255,255,0.28)" },
       "&.Mui-focused fieldset": { borderColor: brand },
+      // Browser autofill paints its own white background over ours — this
+      // is the other half of the same "blank white field" bug.
+      "& input:-webkit-autofill": {
+        WebkitBoxShadow: "0 0 0 1000px #1a1a1a inset",
+        WebkitTextFillColor: "#fff",
+        caretColor: "#fff",
+      },
     },
     "& .MuiSelect-icon": { color: "rgba(255,255,255,0.4)" },
     "& textarea, & input": { "&::placeholder": { color: "rgba(255,255,255,0.18)", opacity: 1 } },
@@ -113,7 +128,6 @@ function SectionHead({ icon: Icon, title, brandColor }) {
 }
 
 function WorkoutCard({ plan, brandColor }) {
-  const [videoUrl, setVideoUrl] = useState(null);
   const [open, setOpen] = useState(true);
 
   return (
@@ -134,7 +148,7 @@ function WorkoutCard({ plan, brandColor }) {
               return (
                 <Box key={i} sx={{ display: "flex", alignItems: "flex-start", gap: 2, py: 1.5, borderTop: i === 0 ? "none" : "1px solid #222" }}>
                   {ytId ? (
-                    <Box onClick={() => setVideoUrl(ex.youtubeUrl || ex.videoUrl)}
+                    <Box onClick={() => window.open(ex.youtubeUrl || ex.videoUrl, "_blank", "noopener,noreferrer")}
                       sx={{ flexShrink: 0, width: 72, height: 48, borderRadius: "6px", bgcolor: "#111", overflow: "hidden", cursor: "pointer", position: "relative", "&:hover .play": { opacity: 1 } }}>
                       <Box component="img" src={`https://img.youtube.com/vi/${ytId}/default.jpg`} sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       <Box className="play" sx={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "rgba(0,0,0,0.5)", opacity: 0, transition: ".2s" }}>
@@ -161,18 +175,6 @@ function WorkoutCard({ plan, brandColor }) {
           </Box>
         </Collapse>
       </Paper>
-
-      <Dialog open={Boolean(videoUrl)} onClose={() => setVideoUrl(null)} maxWidth="md" fullWidth>
-        <DialogContent sx={{ p: 0, bgcolor: "#000", position: "relative" }}>
-          <IconButton onClick={() => setVideoUrl(null)} sx={{ position: "absolute", top: 8, right: 8, color: "#fff", zIndex: 1 }}><CloseIcon /></IconButton>
-          {videoUrl && (
-            <Box component="iframe"
-              src={`https://www.youtube.com/embed/${extractYouTubeId(videoUrl)}?autoplay=1`}
-              allow="autoplay; encrypted-media" allowFullScreen
-              sx={{ width: "100%", aspectRatio: "16/9", border: "none", display: "block" }} />
-          )}
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
@@ -316,7 +318,8 @@ export default function ClientPortal() {
   const [client,         setClient]         = useState(null);
   const [workoutPlans,   setWorkoutPlans]   = useState([]);
   const [nutritionPlan,  setNutritionPlan]  = useState(null);
-  const [section,        setSection]        = useState("plan");
+  const [section,        setSection]        = useState("home");
+  const [mobileMore,     setMobileMore]     = useState(null);
 
   // Progress
   const [progressLog,  setProgressLog]  = useState([]);
@@ -584,20 +587,23 @@ export default function ClientPortal() {
   }
 
   const NAV = [
-    { id: "plan",      label: "My Plan",    icon: FitnessCenterIcon },
+    { id: "home",      label: "Home",       detail: "Your coaching overview", icon: HomeRoundedIcon },
+    { id: "plan",      label: "My Plan",    detail: "Workouts and nutrition", icon: FitnessCenterIcon },
     { id: "progress",  label: "Progress",   icon: TrendingUpIcon },
     { id: "checkin",   label: "Check-In",   icon: AssignmentTurnedInIcon },
     { id: "fooddiary", label: "Food Diary", icon: MenuBookIcon },
     { id: "foodgen",   label: "Food Gen",   icon: AutoAwesomeIcon },
     { id: "parq",      label: "PAR-Q",      icon: HealthAndSafetyIcon },
   ];
+  const mobilePrimary = NAV.filter(item => ["home", "plan", "progress", "checkin"].includes(item.id));
+  const mobileSecondary = NAV.filter(item => ["fooddiary", "foodgen", "parq"].includes(item.id));
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#0d0d0d", fontFamily: SANS }}>
 
       {/* ── Header ── */}
       <Box sx={{ borderBottom: "1px solid rgba(255,255,255,0.07)", bgcolor: "#111", position: "sticky", top: 0, zIndex: 100 }}>
-        <Container maxWidth="md">
+        <Container maxWidth="lg">
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
             <Stack direction="row" spacing={1.5} alignItems="center">
               {trainer.logoUrl && (
@@ -626,50 +632,112 @@ export default function ClientPortal() {
       <OfflineIndicator />
       <PWAInstallBanner brandColor={brandColor} />
 
-      {/* ── Welcome ── */}
-      <Box sx={{ bgcolor: "#111", borderBottom: "1px solid rgba(255,255,255,0.05)", py: 3 }}>
-        <Container maxWidth="md">
-          <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "1.5rem", sm: "1.9rem" }, color: "#fff" }}>
-            Hey, <em style={{ fontStyle: "italic", color: brandColor }}>{client.customerName?.split(" ")[0]}</em> 👋
-          </Typography>
-          <Typography sx={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.4)", mt: 0.5 }}>
-            Your training hub — view your plans, log progress, and send your weekly check-in.
-          </Typography>
-        </Container>
-      </Box>
+      {/* ── Mobile navigation ── */}
+      <Paper sx={{
+        display: { xs: "grid", md: "none" }, gridTemplateColumns: "repeat(5, 1fr)",
+        position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 1200,
+        bgcolor: "#151515", borderRadius: 0, border: 0, borderTop: "1px solid #2a2a2a",
+        px: .5, pt: .6, pb: "max(7px, env(safe-area-inset-bottom))",
+      }}>
+        {mobilePrimary.map(({ id, label, icon: Icon }) => {
+          const active = section === id;
+          return (
+            <Button key={id} onClick={() => setSection(id)} aria-current={active ? "page" : undefined}
+              sx={{ minWidth: 0, color: active ? brandColor : "rgba(255,255,255,.45)", display: "flex", flexDirection: "column", gap: .3, px: .25, py: .45, fontSize: ".6rem", fontWeight: active ? 800 : 550 }}>
+              <Icon sx={{ fontSize: 20 }} /><span>{label}</span>
+            </Button>
+          );
+        })}
+        <Button onClick={event => setMobileMore(event.currentTarget)}
+          sx={{ minWidth: 0, color: mobileSecondary.some(item => item.id === section) ? brandColor : "rgba(255,255,255,.45)", display: "flex", flexDirection: "column", gap: .3, px: .25, py: .45, fontSize: ".6rem", fontWeight: 650 }}>
+          <MoreHorizIcon sx={{ fontSize: 20 }} /><span>More</span>
+        </Button>
+      </Paper>
+      <Menu anchorEl={mobileMore} open={Boolean(mobileMore)} onClose={() => setMobileMore(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }} transformOrigin={{ vertical: "bottom", horizontal: "right" }}
+        PaperProps={{ sx: { width: 240, bgcolor: "#1a1a1a", color: "#fff", border: "1px solid #2a2a2a", mb: 1.5 } }}>
+        {mobileSecondary.map(({ id, label, icon: Icon }) => (
+          <MenuItem key={id} selected={section === id} onClick={() => { setSection(id); setMobileMore(null); }} sx={{ gap: 1.5, py: 1.25, "&.Mui-selected": { bgcolor: `${brandColor}20`, color: brandColor } }}>
+            <Icon sx={{ fontSize: 19 }} />{label}
+          </MenuItem>
+        ))}
+      </Menu>
 
-      {/* ── Section nav ── */}
-      <Box sx={{ bgcolor: "#111", borderBottom: "1px solid rgba(255,255,255,0.07)", position: "sticky", top: 57, zIndex: 99 }}>
-        <Container maxWidth="md">
-          <Stack direction="row" spacing={0}>
+      {/* ── Desktop navigation + content ── */}
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 }, pb: { xs: 12, md: 5 }, display: "flex", alignItems: "flex-start", gap: 3 }}>
+        <Paper component="nav" aria-label="Client portal sections" sx={{
+          display: { xs: "none", md: "block" }, width: 226, flexShrink: 0, position: "sticky", top: 82,
+          bgcolor: "#151515", border: "1px solid #292929", borderRadius: "14px", p: 1.25,
+        }}>
+          <Typography sx={{ px: 1.25, py: 1, color: "rgba(255,255,255,.28)", fontSize: ".66rem", fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase" }}>Your portal</Typography>
+          <Stack spacing={.45}>
             {NAV.map(({ id, label, icon: Icon }) => {
               const active = section === id;
               return (
-                <Button key={id} onClick={() => setSection(id)} disableRipple
-                  startIcon={<Icon sx={{ fontSize: "15px !important" }} />}
-                  sx={{
-                    color: active ? brandColor : "rgba(255,255,255,0.4)",
-                    borderBottom: active ? `2px solid ${brandColor}` : "2px solid transparent",
-                    borderRadius: 0, px: { xs: 1.5, sm: 2 }, py: 1.4,
-                    fontFamily: SANS, fontWeight: active ? 700 : 400,
-                    fontSize: "0.78rem", letterSpacing: "0.04em", textTransform: "uppercase",
-                    "& .MuiButton-startIcon": { display: { xs: "none", sm: "flex" } },
-                    "&:hover": { bgcolor: "transparent", color: "#fff" },
-                  }}
-                >
+                <Button key={id} fullWidth onClick={() => setSection(id)} aria-current={active ? "page" : undefined}
+                  startIcon={<Icon sx={{ fontSize: "18px !important" }} />}
+                  sx={{ justifyContent: "flex-start", minHeight: 42, px: 1.25, borderRadius: "8px", color: active ? brandColor : "rgba(255,255,255,.55)", bgcolor: active ? `${brandColor}16` : "transparent", fontWeight: active ? 800 : 550, fontSize: ".8rem", "& .MuiButton-startIcon": { color: active ? brandColor : "rgba(255,255,255,.28)" }, "&:hover": { bgcolor: active ? `${brandColor}20` : "rgba(255,255,255,.05)" } }}>
                   {label}
                 </Button>
               );
             })}
           </Stack>
-        </Container>
-      </Box>
+        </Paper>
 
-      {/* ── Content ── */}
-      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Box component="main" sx={{ flex: 1, minWidth: 0 }}>
+
+        {/* ── HOME ── */}
+        {section === "home" && (<ErrorBoundary>
+          <Box>
+            <Paper sx={{ position: "relative", overflow: "hidden", bgcolor: "#151515", border: "1px solid #292929", borderRadius: "16px", p: { xs: 2.5, sm: 3.5 }, mb: 3 }}>
+              <Box sx={{ position: "absolute", width: 220, height: 220, borderRadius: "50%", bgcolor: `${brandColor}16`, filter: "blur(10px)", right: -80, top: -110 }} />
+              <Typography sx={{ color: brandColor, fontSize: ".68rem", fontWeight: 850, letterSpacing: ".1em", textTransform: "uppercase" }}>Your coaching dashboard</Typography>
+              <Typography sx={{ position: "relative", fontFamily: SERIF, fontSize: { xs: "1.65rem", sm: "2.05rem" }, color: "#fff", mt: .75 }}>
+                Welcome back, {client.customerName?.split(" ")[0]}
+              </Typography>
+              <Typography sx={{ position: "relative", maxWidth: 590, fontSize: ".86rem", color: "rgba(255,255,255,.45)", lineHeight: 1.65, mt: .75 }}>
+                Everything from {trainer.businessName || trainer.name} is organised here. Start your plan, update your progress, or send your trainer a check-in.
+              </Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.1} sx={{ mt: 2.5 }}>
+                <Button variant="contained" onClick={() => setSection("plan")} endIcon={<ArrowForwardIcon />} sx={{ bgcolor: brandColor, color: "#0d0d0d", fontWeight: 850, "&:hover": { bgcolor: brandColor, filter: "brightness(1.08)" } }}>Open my plan</Button>
+                <Button variant="outlined" onClick={() => setSection("checkin")} sx={{ borderColor: "rgba(255,255,255,.16)", color: "#fff", "&:hover": { borderColor: brandColor, bgcolor: `${brandColor}0b` } }}>Send weekly check-in</Button>
+              </Stack>
+            </Paper>
+
+            <Typography sx={{ color: "#fff", fontWeight: 800, mb: 1.25 }}>Your coaching</Typography>
+            <Grid container spacing={1.5} sx={{ mb: 3 }}>
+              {[
+                { icon: FitnessCenterIcon, label: "Training plan", value: workoutPlans.length ? `${workoutPlans.length} plan${workoutPlans.length === 1 ? "" : "s"}` : "Not assigned", action: "plan" },
+                { icon: RestaurantMenuIcon, label: "Nutrition", value: nutritionPlan ? "Plan ready" : "Not assigned", action: "plan" },
+                { icon: TrendingUpIcon, label: "Progress entries", value: progressLog.length, action: "progress" },
+                { icon: AssignmentTurnedInIcon, label: "Weekly check-in", value: checkInQuestions.length ? "Ready to complete" : "Not set up", action: "checkin" },
+              ].map(({ icon: Icon, label, value, action }) => (
+                <Grid item xs={6} sm={3} key={label}>
+                  <Paper onClick={() => setSection(action)} sx={{ height: "100%", cursor: "pointer", bgcolor: "#171717", border: "1px solid #292929", borderRadius: "12px", p: 2, transition: ".18s", "&:hover": { borderColor: `${brandColor}77`, transform: "translateY(-2px)" } }}>
+                    <Icon sx={{ color: brandColor, fontSize: 20 }} />
+                    <Typography sx={{ color: "rgba(255,255,255,.4)", fontSize: ".68rem", mt: 1.4 }}>{label}</Typography>
+                    <Typography sx={{ color: "#fff", fontSize: ".9rem", fontWeight: 800, mt: .35 }}>{value}</Typography>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+
+            <Typography sx={{ color: "#fff", fontWeight: 800, mb: 1.25 }}>Forms and tools</Typography>
+            <Grid container spacing={1.25}>
+              {mobileSecondary.map(({ id, label, icon: Icon }) => (
+                <Grid item xs={12} sm={4} key={id}>
+                  <Button fullWidth onClick={() => setSection(id)} endIcon={<ArrowForwardIcon sx={{ color: "rgba(255,255,255,.2)" }} />}
+                    sx={{ justifyContent: "flex-start", p: 1.7, bgcolor: "#171717", border: "1px solid #292929", color: "#fff", "& .MuiButton-endIcon": { ml: "auto" }, "&:hover": { bgcolor: "#1d1d1d", borderColor: `${brandColor}66` } }}>
+                    <Icon sx={{ color: brandColor, fontSize: 19, mr: 1.1 }} />{label}
+                  </Button>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        </ErrorBoundary>)}
 
         {/* ── MY PLAN — workouts + nutrition combined ── */}
-        {section === "plan" && (
+        {section === "plan" && (<ErrorBoundary>
           <Box>
             {/* Workouts */}
             <SectionHead icon={FitnessCenterIcon} title="Workout Plans" brandColor={brandColor} />
@@ -689,12 +757,12 @@ export default function ClientPortal() {
               <NutritionDisplay plan={nutritionPlan} brandColor={brandColor} />
             )}
           </Box>
-        )}
+        </ErrorBoundary>)}
 
         {/* ── PROGRESS ── */}
-        {section === "progress" && (
+        {section === "progress" && (<ErrorBoundary>
           <Box>
-            <BackButton onClick={() => setSection("plan")} />
+            <BackButton onClick={() => setSection("home")} />
             <SectionHead icon={TrendingUpIcon} title="Log Your Progress" brandColor={brandColor} />
 
             <Paper sx={{ bgcolor: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: "12px", p: 3, mb: 3 }}>
@@ -753,12 +821,12 @@ export default function ClientPortal() {
             )}
             {progressLog.length === 0 && <EmptyState message="No progress entries yet. Log your first one above." brandColor={brandColor} />}
           </Box>
-        )}
+        </ErrorBoundary>)}
 
         {/* ── CHECK-IN ── */}
-        {section === "checkin" && (
+        {section === "checkin" && (<ErrorBoundary>
           <Box>
-            <BackButton onClick={() => setSection("plan")} />
+            <BackButton onClick={() => setSection("home")} />
             <SectionHead icon={AssignmentTurnedInIcon} title="Weekly Check-In" brandColor={brandColor} />
 
             {checkInDone ? (
@@ -819,21 +887,21 @@ export default function ClientPortal() {
               </Paper>
             )}
           </Box>
-        )}
+        </ErrorBoundary>)}
 
         {/* ── FOOD GENERATOR ── */}
-        {section === "foodgen" && (
+        {section === "foodgen" && (<ErrorBoundary>
           <Box>
-            <BackButton onClick={() => setSection("plan")} />
+            <BackButton onClick={() => setSection("home")} />
             <SectionHead icon={AutoAwesomeIcon} title="Food Generator" brandColor={brandColor} />
             <FoodGeneratorContent brandColor={brandColor} />
           </Box>
-        )}
+        </ErrorBoundary>)}
 
         {/* ── FOOD DIARY ── */}
-        {section === "fooddiary" && (
+        {section === "fooddiary" && (<ErrorBoundary>
           <Box>
-            <BackButton onClick={() => setSection("plan")} />
+            <BackButton onClick={() => setSection("home")} />
             <SectionHead icon={MenuBookIcon} title="Weekly Food Diary" brandColor={brandColor} />
 
             {foodDone ? (
@@ -961,12 +1029,12 @@ export default function ClientPortal() {
               </Box>
             )}
           </Box>
-        )}
+        </ErrorBoundary>)}
 
         {/* ── PAR-Q ── */}
-        {section === "parq" && (
+        {section === "parq" && (<ErrorBoundary>
           <Box>
-            <BackButton onClick={() => setSection("plan")} />
+            <BackButton onClick={() => setSection("home")} />
             <SectionHead icon={HealthAndSafetyIcon} title="Health Screening (PAR-Q)" brandColor={brandColor} />
 
             {parqDone ? (
@@ -1078,8 +1146,9 @@ export default function ClientPortal() {
               </Box>
             )}
           </Box>
-        )}
+        </ErrorBoundary>)}
 
+        </Box>
       </Container>
     </Box>
   );

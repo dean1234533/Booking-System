@@ -19,7 +19,25 @@ export default function SlotPicker({
   const [selectedDate, setSelectedDate] = useState(null);
 
   const availableSlots = useMemo(() => {
-    let filtered = (slots || []).filter(slot => !slot.status || slot.status.toLowerCase() === "open");
+    const now = new Date();
+    // Two different collections feed this component with two different
+    // "bookable" vocabularies: the generic `slots` collection (barber/
+    // hairdresser/decorator) uses status "open", while PT's `ptSlots` uses
+    // "available". Only checking for "open" silently dropped every single
+    // PT slot here, even though they were fetched correctly — the picker
+    // just doesn't recognise "available" as bookable.
+    let filtered = (slots || []).filter(slot =>
+      !slot.status || ["open", "available"].includes(slot.status.toLowerCase())
+    );
+
+    // A slot dated today with a time that's already gone by is still
+    // technically "open" in Firestore (nothing ever un-publishes it), so
+    // without this it stays bookable indefinitely after the time passes.
+    filtered = filtered.filter(slot => {
+      if (!slot.date || !slot.time) return true;
+      const slotDateTime = new Date(`${slot.date}T${slot.time}`);
+      return isNaN(slotDateTime) || slotDateTime >= now;
+    });
 
     // Filter based on calendar sync display mode
     if (displayMode === "free-slots") {

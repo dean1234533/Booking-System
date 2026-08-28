@@ -211,7 +211,7 @@ export default function CalendarSyncTab({ barber, brandColor, profile }) {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
-          📅 Calendar Sync
+          Calendar Sync
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Connect your Google Calendar to sync bookings automatically. When a client books an appointment, it will
@@ -399,27 +399,27 @@ export default function CalendarSyncTab({ barber, brandColor, profile }) {
       {calendarSettings?.syncEnabled && (
         <Paper sx={{ p: 3, mt: 3, borderRadius: 2, bgcolor: "rgba(255,255,255,0.03)" }}>
           <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>
-            ✨ What happens when someone books:
+            What happens when someone books:
           </Typography>
           <Stack component="ol" spacing={1} sx={{ pl: 2 }}>
             <li>
               <Typography variant="body2">
-                ✅ Event created in your Google Calendar
+                Event created in your Google Calendar
               </Typography>
             </li>
             <li>
               <Typography variant="body2">
-                ✅ Calendar invite emailed to the client
+                Calendar invite emailed to the client
               </Typography>
             </li>
             <li>
               <Typography variant="body2">
-                ✅ Client can add to their calendar with one click
+                Client can add to their calendar with one click
               </Typography>
             </li>
             <li>
               <Typography variant="body2">
-                ✅ If booking cancelled, event removed from your calendar
+                If booking cancelled, event removed from your calendar
               </Typography>
             </li>
           </Stack>

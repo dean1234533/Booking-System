@@ -10,28 +10,17 @@ import {
   ArrowForward as ArrowForwardIcon,
   LocationOn as LocationIcon,
   Today as TodayIcon,
+  ReceiptLong as ReceiptLongIcon,
 } from "@mui/icons-material";
 import {
   collection, getDocs, addDoc, deleteDoc, doc, updateDoc, serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase/config";
+import { getShopStaff } from "../../../firebase/firestore";
+import { nextJobStatus, getJobTypes } from "../../../utils/tradeJobs";
 
 const SANS  = "'DM Sans', sans-serif";
 const SERIF = "'Playfair Display', serif";
-
-const JOB_TYPES = [
-  "Full Interior Paint",
-  "Full Exterior Paint",
-  "Feature Wall",
-  "Ceiling",
-  "Woodwork / Gloss",
-  "Prep & Prime",
-  "Touch-Ups",
-  "Wallpaper — Hang",
-  "Wallpaper — Strip",
-  "Site Visit / Quote",
-  "Other",
-];
 
 const STATUS = {
   pending:       { label: "Pending",     bg: "rgba(0,0,0,0.06)",          color: "rgba(0,0,0,0.5)",  bar: "rgba(0,0,0,0.18)" },
@@ -66,16 +55,24 @@ function formatDate(d) {
   return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
-export default function DayPlannerTab({ barber, brandColor }) {
+export default function DayPlannerTab({
+  barber, brandColor, businessType,
+  prefill, onPrefillConsumed,
+  showJobLinkFields = false, onCreateInvoice,
+}) {
+  const jobTypes = getJobTypes(businessType);
+  const blankForm = () => ({
+    time: "08:00", endTime: "16:00", client: "",
+    address: "", jobType: jobTypes[0], notes: "", assignedStaffId: "",
+  });
+
   const [date,    setDate]    = useState(new Date());
   const [jobs,    setJobs]    = useState([]);
+  const [staff,   setStaff]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding,  setAdding]  = useState(false);
   const [saving,  setSaving]  = useState(false);
-  const [form,    setForm]    = useState({
-    time: "08:00", endTime: "16:00", client: "",
-    address: "", jobType: JOB_TYPES[0], notes: "",
-  });
+  const [form,    setForm]    = useState(blankForm());
 
   const fx  = fieldSx(brandColor);
   const tid = barber?.uid;
@@ -83,6 +80,27 @@ export default function DayPlannerTab({ barber, brandColor }) {
   const isToday = key === dateKey(new Date());
 
   useEffect(() => { load(); }, [key, tid]);
+  useEffect(() => {
+    if (!showJobLinkFields || !tid) return;
+    getShopStaff(tid).then(setStaff).catch(() => {});
+  }, [showJobLinkFields, tid]);
+
+  // Seeds the new-job form from a quote/enquiry handed over by another tab
+  // (e.g. QuoteTab's "Convert to job") so details aren't re-typed.
+  useEffect(() => {
+    if (!prefill) return;
+    setForm(f => ({
+      ...blankForm(),
+      client: prefill.clientName || prefill.name || "",
+      address: prefill.address || "",
+      notes: prefill.jobTitle || prefill.problemDescription || "",
+      sourceQuoteId: prefill.sourceQuoteId || null,
+      sourceEnquiryId: prefill.sourceEnquiryId || null,
+    }));
+    setAdding(true);
+    onPrefillConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   async function load() {
     if (!tid) return;
@@ -102,20 +120,29 @@ export default function DayPlannerTab({ barber, brandColor }) {
     if (!form.client.trim()) return;
     setSaving(true);
     try {
-      const data = { ...form, status: "pending", createdAt: serverTimestamp() };
+      const { sourceQuoteId, sourceEnquiryId, ...rest } = form;
+      const data = {
+        ...rest,
+        ...(sourceQuoteId ? { sourceQuoteId } : {}),
+        ...(sourceEnquiryId ? { sourceEnquiryId } : {}),
+        status: "pending", createdAt: serverTimestamp(),
+      };
       const ref  = await addDoc(collection(db, "barbers", tid, "dayPlan", key, "jobs"), data);
+      if (sourceQuoteId) {
+        // Marks the source quote as converted so it can't be double-converted.
+        updateDoc(doc(db, "barbers", tid, "quotes", sourceQuoteId), { convertedToJobId: ref.id, convertedToJobDate: key }).catch(() => {});
+      }
       const updated = [...jobs, { id: ref.id, ...data }];
       updated.sort((a, b) => (a.time || "").localeCompare(b.time || ""));
       setJobs(updated);
-      setForm({ time: "08:00", endTime: "16:00", client: "", address: "", jobType: JOB_TYPES[0], notes: "" });
+      setForm(blankForm());
       setAdding(false);
     } catch (e) { console.error(e); }
     finally { setSaving(false); }
   }
 
   async function cycleStatus(job) {
-    const cycle = { pending: "in-progress", "in-progress": "done", done: "pending" };
-    const next  = cycle[job.status] || "pending";
+    const next = nextJobStatus(job.status);
     try {
       await updateDoc(doc(db, "barbers", tid, "dayPlan", key, "jobs", job.id), { status: next });
       setJobs(p => p.map(j => j.id === job.id ? { ...j, status: next } : j));
@@ -213,7 +240,7 @@ export default function DayPlannerTab({ barber, brandColor }) {
                 <InputLabel>Job Type</InputLabel>
                 <Select value={form.jobType} label="Job Type" onChange={e => setF("jobType", e.target.value)}
                   MenuProps={{ PaperProps: { sx: { bgcolor: "#fff", color: "#111", borderRadius: "8px", border: "1px solid #e5e7eb", maxHeight: 280 } } }}>
-                  {JOB_TYPES.map(t => (
+                  {jobTypes.map(t => (
                     <MenuItem key={t} value={t} sx={{ fontSize: "0.82rem", "&:hover": { bgcolor: `${brandColor}20` } }}>{t}</MenuItem>
                   ))}
                 </Select>
@@ -225,6 +252,20 @@ export default function DayPlannerTab({ barber, brandColor }) {
             <Grid item xs={12} sm={6}>
               <TextField fullWidth size="small" label="Address" value={form.address} onChange={e => setF("address", e.target.value)} sx={fx} />
             </Grid>
+            {showJobLinkFields && staff.length > 0 && (
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth size="small" sx={fx}>
+                  <InputLabel>Assigned to</InputLabel>
+                  <Select value={form.assignedStaffId} label="Assigned to" onChange={e => setF("assignedStaffId", e.target.value)}
+                    MenuProps={{ PaperProps: { sx: { bgcolor: "#fff", color: "#111", borderRadius: "8px", border: "1px solid #e5e7eb" } } }}>
+                    <MenuItem value="" sx={{ fontSize: "0.82rem" }}>Unassigned</MenuItem>
+                    {staff.map(s => (
+                      <MenuItem key={s.id} value={s.id} sx={{ fontSize: "0.82rem", "&:hover": { bgcolor: `${brandColor}20` } }}>{s.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
             <Grid item xs={12}>
               <TextField fullWidth size="small" label="Notes" value={form.notes} onChange={e => setF("notes", e.target.value)} sx={fx} />
             </Grid>
@@ -290,6 +331,11 @@ export default function DayPlannerTab({ barber, brandColor }) {
                       <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "rgba(0,0,0,0.5)" }}>{job.address}</Typography>
                     </Box>
                   )}
+                  {showJobLinkFields && job.assignedStaffId && (
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(0,0,0,0.45)" }}>
+                      Assigned: {staff.find(s => s.id === job.assignedStaffId)?.name || "Team member"}
+                    </Typography>
+                  )}
                   {job.notes && (
                     <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(0,0,0,0.45)", fontStyle: "italic" }}>{job.notes}</Typography>
                   )}
@@ -297,6 +343,14 @@ export default function DayPlannerTab({ barber, brandColor }) {
 
                 {/* Status chip + delete */}
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.5, flexShrink: 0 }}>
+                  {showJobLinkFields && onCreateInvoice && job.status === "done" && (
+                    <Tooltip title="Create invoice for this job">
+                      <IconButton size="small" onClick={() => onCreateInvoice(job)}
+                        sx={{ color: "rgba(0,0,0,0.4)", "&:hover": { color: brandColor } }}>
+                        <ReceiptLongIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   <Chip
                     label={sc.label}
                     size="small"
@@ -304,7 +358,7 @@ export default function DayPlannerTab({ barber, brandColor }) {
                     sx={{
                       bgcolor: sc.bg, color: sc.color, fontSize: "0.62rem", height: 22, borderRadius: 0,
                       cursor: "pointer", letterSpacing: "0.04em",
-                      "&:hover": { filter: "brightness(0.95)" },
+                      "&:hover": { bgcolor: sc.bg, filter: "brightness(0.95)" },
                     }}
                   />
                   <IconButton size="small" onClick={() => deleteJob(job.id)}

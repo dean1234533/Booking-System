@@ -37,6 +37,16 @@ registerRoute(
   })
 );
 
+// pages-cache has no expiration, so on a slow mobile connection a NetworkFirst
+// timeout (3s) can fall back to a document cached from before a deploy — one
+// whose Content-Security-Policy header (baked into the cached Response) is
+// stale, silently blocking calls like claimBookingSlug with no way to recover
+// short of the user manually clearing site data. Wipe it on every SW update so
+// each deploy's users can only ever fall back to a same-deploy cached page.
+self.addEventListener('activate', (event) => {
+  event.waitUntil(caches.delete('pages-cache'));
+});
+
 // ── Push notifications ────────────────────────────────────────────────────────
 
 self.addEventListener('push', (event) => {

@@ -10,7 +10,7 @@ export const GOALS = [
   {
     id: "weight-loss",
     label: "Weight Loss",
-    emoji: "🔥",
+    icon: "fire",
     tagline: "Lean, high-protein, calorie-controlled meals to burn fat while preserving muscle.",
     color: "#e05c5c",
     calNote: "Target a 300–500 kcal daily deficit from your TDEE.",
@@ -19,7 +19,7 @@ export const GOALS = [
   {
     id: "bulking",
     label: "Bulking",
-    emoji: "💪",
+    icon: "fitness",
     tagline: "Calorie-dense, nutrient-rich meals to fuel muscle growth and strength gains.",
     color: "#4caf80",
     calNote: "Target a 300–500 kcal daily surplus above your TDEE.",
@@ -28,7 +28,7 @@ export const GOALS = [
   {
     id: "trim-tone",
     label: "Trim & Tone",
-    emoji: "⚡",
+    icon: "energy",
     tagline: "Balanced, clean meals to reduce body fat, build lean muscle and improve definition.",
     color: "#5b9bd5",
     calNote: "Stay at or slightly below your TDEE (−100 to −200 kcal).",
@@ -37,11 +37,11 @@ export const GOALS = [
 ];
 
 export const MEAL_TYPES = [
-  { id: "breakfast", label: "Breakfast", emoji: "🌅" },
-  { id: "lunch",     label: "Lunch",     emoji: "☀️" },
-  { id: "dinner",    label: "Dinner",    emoji: "🌙" },
-  { id: "snacks",    label: "Snacks",    emoji: "🍎" },
-  { id: "shakes",    label: "Shakes",    emoji: "🥤" },
+  { id: "breakfast", label: "Breakfast", icon: "sun" },
+  { id: "lunch",     label: "Lunch",     icon: "sun" },
+  { id: "dinner",    label: "Dinner",    icon: "time" },
+  { id: "snacks",    label: "Snacks",    icon: "star" },
+  { id: "shakes",    label: "Shakes",    icon: "drink" },
 ];
 
 // ─── FOOD DATA ────────────────────────────────────────────────────────────────
@@ -497,7 +497,7 @@ export const NUTRITION_GUIDE = {
 
   preWorkout: {
     title: "Eating Before Training",
-    icon: "⚡",
+    icon: "energy",
     intro: "What you eat before a session directly impacts your performance, endurance, and ability to push hard. Training on empty or with the wrong fuel means poor output and faster muscle breakdown.",
     points: [
       {
@@ -525,7 +525,7 @@ export const NUTRITION_GUIDE = {
 
   postWorkout: {
     title: "Eating After Training",
-    icon: "🔄",
+    icon: "check",
     intro: "The post-workout window is when your muscles are most receptive to nutrients. Get this right and you'll recover faster, build more muscle, and reduce soreness.",
     points: [
       {
@@ -553,7 +553,7 @@ export const NUTRITION_GUIDE = {
 
   breakfast: {
     title: "Why Breakfast Matters",
-    icon: "🌅",
+    icon: "sun",
     intro: "Breakfast isn't just a habit — it's a metabolic trigger. After 7–9 hours of sleep (fasting), your body needs fuel to switch from a recovery state to a performance state.",
     points: [
       {
@@ -581,7 +581,7 @@ export const NUTRITION_GUIDE = {
 
   lateNight: {
     title: "Late Night Eating — What's Safe?",
-    icon: "🌙",
+    icon: "time",
     intro: "Hunger before bed is real — and ignoring it can disrupt sleep, cause muscle breakdown overnight, and actually make weight loss harder. The key is choosing the right foods.",
     points: [
       {
@@ -613,7 +613,7 @@ export const NUTRITION_GUIDE = {
 
   hydration: {
     title: "Hydration — The Overlooked Essential",
-    icon: "💧",
+    icon: "water",
     intro: "Dehydration of just 1–2% of body weight reduces strength, endurance, and cognitive function. For active people, getting hydration right is as important as training and nutrition.",
     points: [
       {
@@ -645,7 +645,7 @@ export const NUTRITION_GUIDE = {
 
   shakesForBusy: {
     title: "Shakes — When Life Gets in the Way",
-    icon: "🥤",
+    icon: "drink",
     intro: "You're busy. Work runs long, clients run over, you haven't eaten since breakfast and it's 7pm. This is where shakes are genuinely useful — not as a replacement for real food, but as a nutritional safety net.",
     points: [
       {
@@ -678,7 +678,7 @@ export const NUTRITION_GUIDE = {
   drinksGuide: [
     {
       name: "Water",
-      rating: "✅ Essential",
+      rating: "Essential",
       color: "#4caf80",
       pros: ["Zero calories", "Essential for every bodily function", "Best for hydration, performance, and recovery"],
       cons: ["None — drink more of it"],
@@ -686,7 +686,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Black Coffee",
-      rating: "✅ Great for training",
+      rating: "Great for training",
       color: "#8b6552",
       pros: [
         "Proven performance enhancer — increases endurance and strength output by 10–15%",
@@ -703,7 +703,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Green Tea",
-      rating: "✅ Excellent",
+      rating: "Excellent",
       color: "#6abf69",
       pros: [
         "Rich in antioxidants (EGCG) — reduces inflammation and aids recovery",
@@ -719,7 +719,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Herbal Tea",
-      rating: "✅ Good",
+      rating: "Good",
       color: "#8bc34a",
       pros: [
         "Chamomile — promotes relaxation and better sleep (great before bed)",
@@ -733,7 +733,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Whole Milk",
-      rating: "✅ Good for recovery",
+      rating: "Good for recovery",
       color: "#e0d9cc",
       pros: [
         "Complete protein (casein + whey) — great post-workout or before bed",
@@ -749,7 +749,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Fresh Fruit Juice",
-      rating: "⚠️ Use with caution",
+      rating: "Use with caution",
       color: "#f5a623",
       pros: ["Contains vitamins and minerals", "Quick source of fast-absorbing carbs (good immediately post-workout)"],
       cons: [
@@ -762,7 +762,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Sports Drinks (e.g. Lucozade Sport)",
-      rating: "⚠️ Only when needed",
+      rating: "Only when needed",
       color: "#ffcc02",
       pros: [
         "Useful during exercise sessions lasting 60+ minutes",
@@ -778,7 +778,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Energy Drinks (e.g. Monster, Red Bull)",
-      rating: "⚠️ Occasional pre-workout only",
+      rating: "Occasional pre-workout only",
       color: "#e57c1e",
       pros: [
         "High caffeine content gives a genuine short-term performance boost",
@@ -796,7 +796,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Fizzy Drinks / Soda",
-      rating: "❌ Avoid",
+      rating: "Avoid",
       color: "#e05c5c",
       pros: ["Zero nutritional benefit", "Diet versions: technically calorie-free"],
       cons: [
@@ -810,7 +810,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Alcohol",
-      rating: "❌ Avoid around training",
+      rating: "Avoid around training",
       color: "#d32f2f",
       pros: ["Modest social relaxation effect (non-physical)", "Red wine: small amounts contain resveratrol (antioxidant)"],
       cons: [
@@ -825,7 +825,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Coconut Water",
-      rating: "✅ Good post-workout",
+      rating: "Good post-workout",
       color: "#80cbc4",
       pros: [
         "Natural electrolytes — potassium, sodium, magnesium",
@@ -838,7 +838,7 @@ export const NUTRITION_GUIDE = {
     },
     {
       name: "Protein Shakes",
-      rating: "✅ Excellent tool",
+      rating: "Excellent tool",
       color: "#7b8cde",
       pros: [
         "Fast delivery of 20–50g protein — convenient and effective",

@@ -11,6 +11,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
 import PersonIcon from "@mui/icons-material/Person";
 import TagIcon from "@mui/icons-material/Tag";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { getBooking, getBarber } from "../firebase/firestore";
 import { formatDate, formatTime, formatCurrency } from "../stripe/formatters";
 
@@ -155,8 +156,8 @@ export default function Confirmation() {
           bgcolor: "rgba(37,99,235,0.04)"
         }}
       >
-        <Typography variant="body2" fontWeight={800} color="warning.dark" mb={0.5}>
-          ⚠️ IMPORTANT INFORMATION
+        <Typography variant="body2" fontWeight={800} color="warning.dark" mb={0.5} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <WarningAmberRoundedIcon fontSize="small" /> IMPORTANT INFORMATION
         </Typography>
         <Stack spacing={0.5} mt={1}>
           <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.6, display: 'block' }}>

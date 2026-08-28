@@ -1,7 +1,7 @@
 # Bookrightly — Claude Code Instructions
 
 ## What this project is
-Bookrightly is a multi-industry booking SaaS for UK service professionals (barbers, hairdressers, personal trainers, decorators). Each business gets their own public profile page, online booking, payments, and a dashboard. It is live at **https://bookrightly.co.uk**.
+Bookrightly is a multi-industry booking SaaS for UK service professionals (barbers, hairdressers, personal trainers, decorators, plumbing/heating/electrical). Each business gets their own public profile page, online booking, payments, and a dashboard. It is live at **https://bookrightly.co.uk**.
 
 ## Tech stack
 - **Frontend**: React + Vite + MUI (Material UI)
@@ -22,7 +22,9 @@ Always run this after any code change. Never deploy only one part without the ot
 - `src/App.jsx` — React Router setup, tenant loading logic
 - `src/pages/BarberProfile.jsx` — Barber public profile (uses `slots` collection, `useSlots` hook)
 - `src/pages/HairdresserTemplate.jsx` — Hairdresser public profile (uses `slots` collection, `barberId` query)
-- `src/pages/DecoratorTemplate.jsx` — Decorator public profile (quote form + slot picker)
+- `src/pages/DecoratorTemplate.jsx` — Decorator public profile (quote/enquiry form, no slot picker)
+- `src/pages/PlumberTemplateV2.jsx` — Plumbing/Heating/Electrical public profile (services by category, standard charges, areas covered, job-request enquiry form with photo upload — enquiry/quote based, no slot picker)
+- `src/utils/tradeJobs.js` — shared business-type-agnostic logic for QuoteTab/DayPlannerTab/EnquiriesTab/PlumberInvoiceTab (line-item totals, job status cycling, enquiry status list, per-business-type cosmetic defaults)
 - `src/pages/PTBookingSite.jsx` — PT marketing/profile page (YouTube embed, reviews, pricing)
 - `src/pages/PTBookingPage.jsx` — PT slot booking page (reads `barbers/{id}/ptSlots`)
 - `src/pages/Dashboard.jsx` — Business owner dashboard
@@ -35,9 +37,12 @@ Always run this after any code change. Never deploy only one part without the ot
 ```
 barbers/{uid}                    — business owner profile document
   businessName, name, specialty
-  businessType: barber | hairdresser | decorator | trainer
+  businessType: barber | hairdresser | decorator | trainer | plumber
   brandColor, logoUrl, heroImage
-  services: [{ name, price (number), duration }]
+  services: [{ name, price (number), duration }]     — barber/hairdresser/trainer
+  serviceCategories: [{ category, items: [{ name, description, startingPrice, bookableOnline }] }]  — plumber only
+  standardCharges: { calloutFee, hourlyRate, minimumCharge, diagnosticFee, emergencyRate, extraNote } — plumber only
+  serviceAreas: [string], serviceRadius, travelChargeNote                                            — plumber only
   aboutBody, heroTagline, heroCtaText
   stat1Value, stat1Label, stat2Value, stat2Label, stat3Value, stat3Label
   instagramUrl, facebookUrl, tiktokUrl
@@ -48,7 +53,20 @@ barbers/{uid}                    — business owner profile document
 barbers/{uid}/reviews            — subcollection: { customerName, rating (number), comment }
 barbers/{uid}/ptSlots            — PT booking slots: { date, time, duration, price, status: "available" }
 barbers/{uid}/notifications      — in-app notifications
-barbers/{uid}/enquiries          — decorator quote requests
+barbers/{uid}/enquiries          — decorator/plumber job-request enquiries
+  { name, phone, email, address, postcode, serviceCategory, problemDescription, urgency, preferredDate,
+    preferredTime, photoUrls: [string], status (see ENQUIRY_STATUSES in tradeJobs.js), notes: [{text, createdAt}],
+    convertedToQuoteId, submittedAt, read }            — plumber sets all fields; decorator only name/phone/message
+barbers/{uid}/quotes             — decorator/plumber quotes, public-read share link at /quote-view/{uid}/{quoteId}
+  { clientName, clientEmail, address, quoteDate, jobTitle, validDays, vatRate, items: [{desc,qty,unit,price}],
+    notes, reference, sourceEnquiryId, convertedToJobId, createdAt }
+barbers/{uid}/dayPlan/{date}/jobs — decorator/plumber day planner, owner-only
+  { time, endTime, client, address, jobType, notes, status: pending|in-progress|done,
+    assignedStaffId, sourceQuoteId, sourceEnquiryId — plumber only, createdAt }
+barbers/{uid}/invoices           — plumber invoices (Firestore-persisted, VAT + payment status, print/PDF; NOT
+  the same as the Stripe-only InvoiceTab.jsx used by barber/hairdresser/decorator, which doesn't persist)
+  { clientName, clientEmail, address, invoiceDate, jobTitle, vatRate, paymentStatus: unpaid|paid|overdue,
+    items, reference, sourceQuoteId, sourceJobId, createdAt }
 
 slots/{id}                       — barber/hairdresser/decorator slots (top-level collection)
   barberId, shopId, date, time, isBooked: false, status: "open"
@@ -71,6 +89,7 @@ slots/{id}                       — barber/hairdresser/decorator slots (top-lev
 | `/decorator/:id` | DecoratorTemplate | decorator |
 | `/pt-booking/:id` | PTBookingSite | trainer |
 | `/pt-book/:id` | PTBookingPage | trainer (slot picker only) |
+| `/plumber/:id` | PlumberTemplateV2 | plumber |
 
 ## Demo accounts (do not delete)
 | UID | Business | Type |

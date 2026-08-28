@@ -67,7 +67,7 @@ function WeeklyHours({ staffId, shopId, brandColor, businessType }) {
   }
 
   return (
-    <Section title="🗓️ Weekly Hours">
+    <Section title="Weekly Hours">
       <Typography variant="body2" color="text.secondary" mb={2}>
         This team member has no login of their own, so their availability is set here. Turn on the days they work — this opens slots for the next 4 weeks. Running it again adds another 4 weeks on top, so only re-run it once existing slots are running low.
       </Typography>
@@ -108,7 +108,7 @@ function InviteBox({ member, shopId, brandColor }) {
   }
 
   return (
-    <Section title="🔗 Give them their own login">
+    <Section title="Give them their own login">
       <Typography variant="body2" color="text.secondary" mb={2}>
         Send this link to {member.name || "this team member"} so they can set a password, then manage their own hours, photo and page from their own dashboard — instead of you doing it for them.
       </Typography>
@@ -198,7 +198,7 @@ function StaffMemberCard({ member, shopId, brandColor, businessType, onRemove })
 
       {data.hasLogin ? (
         <Typography variant="body2" color="text.secondary" mt={3}>
-          🗓️ {data.name || "This team member"} manages their own hours and profile from their own dashboard.
+          {data.name || "This team member"} manages their own hours and profile from their own dashboard.
         </Typography>
       ) : (
         <>

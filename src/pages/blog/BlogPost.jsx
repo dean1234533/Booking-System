@@ -38,6 +38,17 @@ function renderBlock(block, i) {
           {block.text}
         </Typography>
       );
+    // Same styling as "p", but renders author-authored HTML (e.g. an inline
+    // <a> link) instead of plain text. Only ever fed static content from
+    // posts.js, never user input, so dangerouslySetInnerHTML is safe here.
+    case "p-html":
+      return (
+        <Typography
+          key={i}
+          sx={{ fontSize: "0.95rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.9, mb: 2.5, "& a": { color: GOLD, textDecoration: "underline" } }}
+          dangerouslySetInnerHTML={{ __html: block.html }}
+        />
+      );
     case "cta":
       return (
         <Box key={i} sx={{ bgcolor: "rgba(37,99,235,0.07)", border: "1px solid rgba(37,99,235,0.25)", p: 3.5, mt: 5 }}>
@@ -111,7 +122,7 @@ export default function BlogPost() {
               Start taking online bookings today
             </Typography>
             <Typography sx={{ color: "rgba(255,255,255,0.4)", fontSize: "0.9rem", mb: 3, maxWidth: 440, mx: "auto", lineHeight: 1.8 }}>
-              90-day free trial. No card needed. Set up in under an hour.
+              90-day free trial. No card needed. Set up in under 15 minutes.
             </Typography>
             <Box component="button" onClick={() => navigate("/signup")} sx={{ px: 4, py: 1.75, bgcolor: GOLD, color: DARK, fontFamily: SANS, fontWeight: 800, fontSize: "0.9rem", border: "none", cursor: "pointer", "&:hover": { opacity: 0.9 } }}>
               Get started free

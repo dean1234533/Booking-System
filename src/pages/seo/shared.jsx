@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Typography, Stack, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import AppIcon from "../../components/AppIcon";
 
 export const GOLD  = "#2563EB";
 export const DARK  = "#F5F3ED";
@@ -69,7 +70,7 @@ export function SectionHead({ eyebrow, title, sub }) {
 export function FeatureCard({ icon, title, body }) {
   return (
     <Box sx={{ bgcolor: "#fff", border: "1px solid #DEDDD8", borderRadius: "7px 30px 30px 30px", p: 3.5, minHeight: 240, height: "100%", display: "flex", flexDirection: "column", boxShadow: "none", "&:hover": { bgcolor: "#111116", color: "#fff", transform: "translateY(-4px) rotate(-.3deg)", "& p": { color: "inherit" } }, transition: "all 0.25s" }}>
-      {icon && <Box sx={{ width: 48, height: 48, borderRadius: "50%", bgcolor: "#EAF2FF", display: "grid", placeItems: "center" }}><Typography sx={{ fontSize: "1.45rem" }}>{icon}</Typography></Box>}
+      {icon && <Box sx={{ width: 48, height: 48, borderRadius: "50%", bgcolor: "#EAF2FF", color: GOLD, display: "grid", placeItems: "center", "& svg": { fontSize: 25 } }}>{React.isValidElement(icon) ? icon : <AppIcon name={icon} />}</Box>}
       <Typography sx={{ fontFamily: SANS, fontWeight: 900, fontSize: "1rem", mt: "auto", mb: 1.5, color: "#111116" }}>{title}</Typography>
       <Typography sx={{ color: "#696A73", fontSize: "0.84rem", lineHeight: 1.75 }}>{body}</Typography>
     </Box>
@@ -96,7 +97,13 @@ export function BottomCTA({ title, sub }) {
       <CTAButton onClick={() => navigate("/signup")}>Get started free</CTAButton>
       <Typography sx={{ mt: 3, fontSize: "0.78rem", color: "rgba(255,255,255,0.25)" }}>
         Don't see your industry?{" "}
-        <Box component="span" onClick={() => navigate("/#request")} sx={{ color: GOLD, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}>
+        <Box
+          component="a"
+          href="https://mail.google.com/mail/?view=cm&fs=1&to=info@bookrightly.co.uk&su=Industry%20request&body=I'd%20like%20to%20use%20Bookrightly%20for%3A%20"
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ color: GOLD, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
+        >
           Request it — we'll build it out.
         </Box>
       </Typography>

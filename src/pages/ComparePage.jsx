@@ -14,7 +14,7 @@ const COMPETITORS = [
 ];
 
 const FEATURES = [
-  ["Multi-industry support", "Barbers, salons, PTs and decorators", ["no", "no", "partial", "partial"]],
+  ["Multi-industry support", "Barbers, salons, PTs, decorators and plumbing trades", ["no", "no", "partial", "partial"]],
   ["Your own branded page", "Your identity stays front and centre", ["no", "no", "partial", "no"]],
   ["Flat monthly price", "Know your software cost", ["no", "no", "yes", "no"]],
   ["No booking commission", "Your growth does not raise the fee", ["no", "no", "yes", "yes"]],
@@ -44,29 +44,29 @@ export default function ComparePage() {
   const competitor = COMPETITORS[selected];
 
   return (
-    <Box sx={{ bgcolor: "#f4f1e9", color: "#111116", minHeight: "100vh" }}>
+    <Box sx={{ bgcolor: "#f4f1e9", color: "#111116", minHeight: "100vh", overflowX: "hidden" }}>
       <Box sx={{ px: { xs: 2, md: 5 }, pt: { xs: 13, md: 17 }, pb: { xs: 7, md: 10 }, maxWidth: 1240, mx: "auto" }}>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.2fr .8fr" }, gap: 6, alignItems: "end" }}>
           <Box><Chip label="An honest side-by-side" sx={{ bgcolor: "#EAF2FF", color: "#2563EB", fontWeight: 900 }} /><Typography component="h1" sx={{ mt: 2.5, fontSize: { xs: "3rem", md: "6.2rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .87 }}>Compare the fit.<br/>Not just the list.</Typography></Box>
-          <Box><Typography sx={{ color: "#696a73", fontSize: "1.05rem", lineHeight: 1.75 }}>Most comparisons hide the working model behind a wall of ticks. Pick a platform and see what changes for your brand, clients and monthly cost.</Typography><Stack direction="row" spacing={1.2} sx={{ mt: 3 }}><Button onClick={() => navigate("/signup")} sx={{ bgcolor: "#111116", color: "#fff", borderRadius: 99, px: 3, py: 1.25, fontWeight: 900 }}>Start free</Button><Button onClick={() => navigate("/pricing")} endIcon={<ArrowOutwardRoundedIcon />} sx={{ color: "#111116", fontWeight: 900 }}>See pricing</Button></Stack></Box>
+          <Box><Typography sx={{ color: "#696a73", fontSize: "1.05rem", lineHeight: 1.75 }}>Most comparisons hide the working model behind a wall of ticks. Pick a platform and see what changes for your brand, clients and monthly cost.</Typography><Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "stretch", sm: "center" }} spacing={1.2} sx={{ mt: 3 }}><Button onClick={() => navigate("/signup")} sx={{ bgcolor: "#111116", color: "#fff", borderRadius: 99, px: 3, py: 1.25, fontWeight: 900 }}>Start free</Button><Button onClick={() => navigate("/pricing")} endIcon={<ArrowOutwardRoundedIcon />} sx={{ color: "#111116", fontWeight: 900 }}>See pricing</Button></Stack></Box>
         </Box>
       </Box>
 
       <Box sx={{ bgcolor: "#111116", color: "#fff", borderRadius: { xs: "32px 32px 0 0", md: "58px 58px 0 0" }, px: { xs: 2, md: 5 }, py: { xs: 6, md: 9 } }}>
         <Box sx={{ maxWidth: 1160, mx: "auto" }}>
           <Typography sx={{ color: "#9da6ff", fontSize: ".68rem", fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase" }}>Choose who to compare</Typography>
-          <Box sx={{ display: "flex", gap: 1, overflowX: "auto", py: 2.5 }}>
-            {COMPETITORS.map((item, index) => <Button key={item.name} onClick={() => setSelected(index)} sx={{ whiteSpace: "nowrap", color: selected === index ? "#111116" : "#fff", bgcolor: selected === index ? "#93C5FD" : "#ffffff0c", border: "1px solid #ffffff22", borderRadius: 99, px: 2.5, "&:hover": { bgcolor: selected === index ? "#93C5FD" : "#ffffff18" } }}>{item.name}</Button>)}
+          <Box sx={{ display: "flex", gap: 1, mx: { xs: -2, md: 0 }, px: { xs: 2, md: 0 }, overflowX: "auto", py: 2.5, scrollSnapType: "x mandatory", scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
+            {COMPETITORS.map((item, index) => <Button key={item.name} onClick={() => setSelected(index)} sx={{ flexShrink: 0, scrollSnapAlign: "start", whiteSpace: "nowrap", color: selected === index ? "#111116" : "#fff", bgcolor: selected === index ? "#93C5FD" : "#ffffff0c", border: "1px solid #ffffff22", borderRadius: 99, px: 2.5, "&:hover": { bgcolor: selected === index ? "#93C5FD" : "#ffffff18" } }}>{item.name}</Button>)}
           </Box>
 
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: ".78fr 1.22fr" }, border: "1px solid #ffffff1c", borderRadius: { xs: 4, md: 7 }, overflow: "hidden" }}>
-            <Box sx={{ p: { xs: 3, md: 5 }, bgcolor: "#2563EB", display: "flex", flexDirection: "column", minHeight: 370 }}>
+            <Box sx={{ p: { xs: 3, md: 5 }, bgcolor: "#2563EB", display: "flex", flexDirection: "column", minHeight: { xs: 280, md: 370 } }}>
               <Typography sx={{ fontSize: ".68rem", fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase", opacity: .65 }}>Bookrightly</Typography>
-              <Typography sx={{ fontSize: { xs: "3.5rem", md: "5.2rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .85, mt: "auto" }}>£10–20</Typography>
+              <Typography sx={{ fontSize: { xs: "3.5rem", md: "5.2rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .85, mt: "auto" }}>£10–15</Typography>
               <Typography sx={{ fontWeight: 850, mt: 1 }}>/month • flat subscription</Typography>
               <Typography sx={{ color: "#ffffffaa", mt: 3, lineHeight: 1.65 }}>Your branded page, purpose-built workspace and 90-day trial are included.</Typography>
             </Box>
-            <Box sx={{ p: { xs: 3, md: 5 }, bgcolor: "#191a20", display: "flex", flexDirection: "column", minHeight: 370 }}>
+            <Box sx={{ p: { xs: 3, md: 5 }, bgcolor: "#191a20", display: "flex", flexDirection: "column", minHeight: { xs: 280, md: 370 } }}>
               <Typography sx={{ color: "#ffffff77", fontSize: ".68rem", fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase" }}>{competitor.name}</Typography>
               <Typography sx={{ fontSize: { xs: "3rem", md: "4.7rem" }, fontWeight: 950, letterSpacing: "-.07em", lineHeight: .9, mt: "auto" }}>{competitor.price}</Typography>
               <Typography sx={{ color: "#ff765c", fontWeight: 850, mt: 1 }}>{competitor.model}</Typography>
@@ -80,7 +80,7 @@ export default function ComparePage() {
         <Box sx={{ maxWidth: 1160, mx: "auto" }}>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: ".8fr 1.2fr" }, gap: 5, mb: 5 }}><Typography sx={{ fontSize: { xs: "2.4rem", md: "4rem" }, fontWeight: 950, letterSpacing: "-.07em", lineHeight: .95 }}>What changes in practice.</Typography><Typography sx={{ color: "#696a73", lineHeight: 1.75, alignSelf: "end" }}>Bookrightly is always the left status. The right status updates when you select another platform above.</Typography></Box>
           <Stack spacing={0}>
-            {FEATURES.map(([label, sub, values], index) => <Box key={label} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr auto auto", sm: "1fr 130px 130px" }, alignItems: "center", gap: 1, py: 2.2, borderBottom: "1px solid #dedbd3" }}><Box><Typography sx={{ fontWeight: 900 }}>{label}</Typography><Typography sx={{ color: "#818189", fontSize: ".73rem", mt: .25 }}>{sub}</Typography></Box><Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Status/><Typography sx={{ display: { xs: "none", sm: "block" }, fontSize: ".7rem", fontWeight: 800 }}>Bookrightly</Typography></Box><Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Status value={values[selected]}/><Typography sx={{ display: { xs: "none", sm: "block" }, fontSize: ".7rem", fontWeight: 800 }}>{competitor.name}</Typography></Box></Box>)}
+            {FEATURES.map(([label, sub, values], index) => <Box key={label} sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr) 34px 34px", sm: "minmax(0, 1fr) 130px 130px" }, alignItems: "center", gap: { xs: .75, sm: 1 }, py: 2.2, borderBottom: "1px solid #dedbd3" }}><Box sx={{ minWidth: 0, pr: { xs: 1, sm: 0 } }}><Typography sx={{ fontWeight: 900, lineHeight: 1.25 }}>{label}</Typography><Typography sx={{ color: "#818189", fontSize: ".73rem", mt: .25, lineHeight: 1.45 }}>{sub}</Typography></Box><Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Status/><Typography sx={{ display: { xs: "none", sm: "block" }, fontSize: ".7rem", fontWeight: 800 }}>Bookrightly</Typography></Box><Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Status value={values[selected]}/><Typography sx={{ display: { xs: "none", sm: "block" }, fontSize: ".7rem", fontWeight: 800 }}>{competitor.name}</Typography></Box></Box>)}
           </Stack>
         </Box>
       </Box>

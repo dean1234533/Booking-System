@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, query, where, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import SlotPicker from "../components/SlotPicker";
@@ -9,7 +9,9 @@ import { Box, Container, Typography, Paper, Stack, Avatar, Divider, Button, useM
 import StarIcon from '@mui/icons-material/Star';
 import RateReviewIcon from '@mui/icons-material/RateReview';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import { getWhatsAppBookingUrl } from '../utils/whatsapp';
+import AppIcon from '../components/AppIcon';
 
 /* ─── Google Fonts ─────────────────────────────────────────── */
 const fontLink = document.createElement('link');
@@ -275,7 +277,7 @@ const GOAL_OPTIONS = [
   'Other',
 ];
 
-function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, businessName, onClose }) {
+function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, businessName, barberId, onClose, onBooked }) {
   const isSmall = useMediaQuery('(max-width: 480px)');
   const [form, setForm] = useState({
     name: '', phone: '', email: '', age: '', trainingLocation: '',
@@ -308,8 +310,8 @@ function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, business
     setStatus('sending');
     setErrMsg('');
     try {
-      if (!barber?.uid) throw new Error('Business not found.');
-      await addDoc(collection(db, "barbers", barber.uid, "notifications"), {
+      if (!barberId) throw new Error('Business not found.');
+      await addDoc(collection(db, "barbers", barberId, "notifications"), {
         type:      "consultation",
         title:     "New Consultation Request!",
         body:      `${form.name} wants a consultation${slot ? ` on ${slot.date} at ${slot.time}` : ''}`,
@@ -331,14 +333,28 @@ function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, business
         read:      false,
         createdAt: serverTimestamp(),
       });
-      fetch("/api/send-push", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          barberId: barber.uid,
-          payload: { title: "New Consultation Request!", body: `${form.name} wants a consultation`, tag: "consultation" },
-        }),
-      }).catch(() => {});
+      // A push-notification call used to sit here, but /api/send-push
+      // requires the caller to be authenticated as the trainer themselves
+      // (so a stranger can't send arbitrary pushes to any business) — a
+      // public visitor booking a consultation can never satisfy that, so
+      // it always 401'd. The in-app notification just written above is
+      // the real, working delivery path (visible in the dashboard's
+      // notifications tab); this was a silently-dead second channel.
+      // Hold the slot as soon as someone requests it, rather than leaving
+      // it bookable by anyone else while the trainer confirms by phone.
+      // This is the same barbers/{id}/ptSlots doc the Availability tab and
+      // Today overview both read — firestore.rules has a narrow public-
+      // update exception for exactly this (status "available" -> "booked",
+      // only these fields), so no server round-trip is needed here.
+      if (slot?.id) {
+        updateDoc(doc(db, "barbers", barberId, "ptSlots", slot.id), {
+          status: "booked",
+          clientName: form.name,
+          purpose: form.goalText || "Consultation request",
+          bookedAt: serverTimestamp(),
+        }).catch(() => {});
+        onBooked?.(slot.id);
+      }
       setStatus('success');
     } catch (err) {
       setErrMsg('Something went wrong. Please try again.');
@@ -384,7 +400,7 @@ function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, business
 
         {status === 'success' ? (
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
-            <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
+            <CheckCircleRounded sx={{ fontSize: 52, color: brandColor, mb: 2 }} />
             <h3 style={{ fontFamily: displayFont, fontSize: 28, color: '#fff', letterSpacing: '0.06em', marginBottom: 8 }}>Request Sent!</h3>
             <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>
               Your consultation request for <strong style={{ color: '#fff' }}>{slotDisplay}</strong> has been submitted. We'll be in touch shortly to confirm.
@@ -543,6 +559,7 @@ function ConsultationModal({ slot, brandColor, displayFont, ownerEmail, business
 export default function PTBookingSite({ profile, barber, reviews: propReviews = [] }) {
   const navigate = useNavigate();
   const [slots,    setSlots]    = useState([]);
+  const [slotsError, setSlotsError] = useState('');
   const [reviews,  setReviews]  = useState(propReviews);
   const [team,     setTeam]     = useState([]);
   const [modal,    setModal]    = useState(null);
@@ -562,10 +579,16 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
     async function fetchData() {
       if (!barber?.uid) return;
       try {
+        // PT availability lives in barbers/{id}/ptSlots (set via the
+        // Availability tab and read by the /pt-book direct booking page) —
+        // this was querying the generic top-level `slots` collection
+        // instead, a completely different, unrelated collection nothing
+        // else in the PT flow ever writes to. Slots the trainer actually
+        // set up never appeared here, and a consultation "booked" through
+        // this picker never touched the data any other PT view reads.
         const qSlots = query(
-          collection(db, 'slots'),
-          where('barberId', '==', barber.uid),
-          where('isBooked', '==', false)
+          collection(db, 'barbers', barber.uid, 'ptSlots'),
+          where('status', '==', 'available')
         );
         const ssSlots = await getDocs(qSlots);
         setSlots(ssSlots.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -576,7 +599,14 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
 
         const ssTeam = await getDocs(collection(db, 'barbers', barber.uid, 'staff'));
         setTeam(ssTeam.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.name));
-      } catch (err) { console.error(err); }
+      } catch (err) {
+        // Previously silent — a genuine fetch failure here (blocked
+        // request, offline, permissions) looked identical to "there are
+        // just no slots", with no way to tell the two apart from a
+        // screenshot. Surface the real reason instead.
+        console.error(err);
+        setSlotsError(err?.message || 'Failed to load availability. Please refresh and try again.');
+      }
     }
     fetchData();
   }, [barber?.uid]);
@@ -839,7 +869,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
                 <div key={i} className="card-hover" style={{ background: 'var(--cream)', borderRadius: 12, padding: isMobile ? 20 : 32, borderLeft: `4px solid ${brandColor}`, position: 'relative', overflow: 'hidden' }}>
                   <div style={{ position: 'absolute', top: -8, right: 12, fontFamily: displayFont, fontSize: 72, color: brandColor, opacity: 0.07, lineHeight: 1, userSelect: 'none', pointerEvents: 'none' }}>0{i + 1}</div>
                   <div style={{ width: 36, height: 36, borderRadius: 8, background: brandColor, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 16, color: '#fff', fontWeight: 900 }}>
-                    {['💪', '🔥', '⚡', '🎯'][i % 4]}
+                    <AppIcon name={['fitness', 'fire', 'energy', 'check'][i % 4]} sx={{ fontSize: 19 }} />
                   </div>
                   <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, fontSize: 17, marginBottom: 10, lineHeight: 1.2 }}>{spec.title}</h3>
                   <p style={{ color: 'var(--ink-soft)', fontSize: 14, lineHeight: 1.7, fontWeight: 300, margin: 0 }}>{spec.description}</p>
@@ -922,7 +952,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
                 Or enquire via WhatsApp
               </Button>
             )}
-            <SlotPicker slots={slots} brandColor={brandColor} onSelect={slot => setConsultationSlot(slot)} />
+            <SlotPicker slots={slots} error={slotsError} brandColor={brandColor} onSelect={slot => setConsultationSlot(slot)} />
           </div>
         </section>
       </FadeIn>
@@ -940,7 +970,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
                   onMouseEnter={e => e.currentTarget.style.color = brandColor}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
                 >
-                  <span style={{ fontSize: 14 }}>📞</span> {contactPhone}
+                  <AppIcon name="phoneCall" sx={{ fontSize: 16 }} /> {contactPhone}
                 </a>
               )}
               {contactEmail && (
@@ -948,7 +978,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
                   onMouseEnter={e => e.currentTarget.style.color = brandColor}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}
                 >
-                  <span style={{ fontSize: 14 }}>✉</span> {contactEmail}
+                  <AppIcon name="email" sx={{ fontSize: 16 }} /> {contactEmail}
                 </a>
               )}
               {profile?.openingHours && (
@@ -1047,7 +1077,9 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
           displayFont={displayFont}
           ownerEmail={barber?.email || profile?.businessEmail || profile?.email || ''}
           businessName={businessName}
+          barberId={barber?.uid}
           onClose={() => setConsultationSlot(null)}
+          onBooked={(slotId) => setSlots(prev => prev.filter(s => s.id !== slotId))}
         />
       )}
 

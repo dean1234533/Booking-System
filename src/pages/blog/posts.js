@@ -123,7 +123,7 @@ export const BLOG_POSTS = [
       },
       {
         type: "cta",
-        text: "Bookrightly's PT plan includes Stripe deposits at booking, digital PAR-Q forms, food diary, check-ins, and workout plans — all for £20/month with a 90-day free trial.",
+        text: "Bookrightly's PT plan includes Stripe deposits at booking, digital PAR-Q forms, food diary, check-ins, and workout plans — all for £15/month with a 90-day free trial.",
       },
     ],
   },
@@ -150,6 +150,10 @@ export const BLOG_POSTS = [
       {
         type: "p",
         text: "If your bio currently says 'DM to book', you're losing a measurable percentage of potential clients every week. People who see your work at 11pm don't want to DM and wait for a response — they want to book the slot immediately.",
+      },
+      {
+        type: "p-html",
+        html: "The exception is if you genuinely have more than one thing worth sending people to — a booking page, a portfolio site, your Google reviews, a WhatsApp line for questions. Cramming that into a single bio link isn't possible, and that's the actual use case for a link-in-bio page like <a href=\"https://linkos.bio\" target=\"_blank\" rel=\"noopener noreferrer\">Linkos</a> — one page with a few clearly labelled destinations. The rule stays the same either way: whatever tool you use, your booking link is the first, most prominent option, not buried under four others.",
       },
       {
         type: "h2",
@@ -310,6 +314,148 @@ export const BLOG_POSTS = [
       {
         type: "cta",
         text: "Bookrightly gives decorators a portfolio page, quote request form, site visit booking, colour approval tool, and client reviews — all for £10/month with a 90-day free trial.",
+      },
+    ],
+  },
+  {
+    slug: "instagram-tiktok-x-which-platform-for-service-business",
+    title: "Instagram, TikTok, or X? Where UK Service Businesses Should Actually Post",
+    description: "Not every platform is worth your time. Here's a practical breakdown of where barbers, trainers, and tradespeople actually get bookings from — and where you're just posting into the void.",
+    date: "2025-07-23",
+    readTime: "5 min",
+    category: "Marketing",
+    content: [
+      {
+        type: "intro",
+        text: "\"Just be consistent on social media\" is advice every service business has heard and almost none has a real plan for. The honest question isn't how often to post — it's which platform actually turns into bookings for what you do, and which ones are a waste of your evening.",
+      },
+      {
+        type: "h2",
+        text: "Instagram is still the default — and for most trades, correctly so",
+      },
+      {
+        type: "p",
+        text: "Barbers, salons, and PTs live or die on visual proof of work — a fresh cut, a transformation, a client hitting a new PB. Instagram rewards exactly that, and it's where most UK clients already expect to find you and book. If you only have time for one platform, this is it for almost every trade this blog covers.",
+      },
+      {
+        type: "h2",
+        text: "TikTok works — if you can actually commit to video",
+      },
+      {
+        type: "p",
+        text: "TikTok's reach for a new account can outperform Instagram by a wide margin, but only if you're genuinely willing to film process content regularly, not just repost your Instagram reels. If you're not going to film consistently, don't split your attention — a dead TikTok account does nothing for you.",
+      },
+      {
+        type: "h2",
+        text: "Where does X (Twitter) actually fit in?",
+      },
+      {
+        type: "p",
+        text: "For most client-facing trades, X isn't where your customers are — this isn't the platform to chase a fully-booked diary through. Where it does matter is if you're building something adjacent to your trade business: documenting your journey as a founder, sharing what you're learning running a small business, or building a following among other tradespeople and business owners rather than end clients. That's a real, different audience, and it behaves nothing like Instagram.",
+      },
+      {
+        type: "p-html",
+        html: "If that's the goal, the honest bottleneck on X is the same as everywhere else — consistent, decent writing takes time you don't have between jobs. Tools like <a href=\"https://climbx.so\" target=\"_blank\" rel=\"noopener noreferrer\">ClimbX</a> exist specifically for this: it studies what's actually working in your niche and drafts posts in your own voice so you're editing rather than starting from a blank page every time. Worth knowing about if you're serious about building a presence there, not worth bothering with if X was never where your clients were going to be anyway.",
+      },
+      {
+        type: "h2",
+        text: "Google Business Profile beats all of them for actual bookings",
+      },
+      {
+        type: "p",
+        text: "None of the above replaces this. When someone searches \"barber near me\" or \"decorator in [town]\", Google Business Profile is what shows up — not your Instagram. Keep it updated with photos, respond to reviews, and make sure your booking link is in the profile. It converts better than any social platform because the person searching has already decided they want to book someone today.",
+      },
+      {
+        type: "cta",
+        text: "Bookrightly gives you one booking link to put everywhere — Instagram bio, TikTok, Google Business Profile, wherever your clients actually are. 90-day free trial, no card needed.",
+      },
+    ],
+  },
+  {
+    slug: "when-does-a-small-service-business-outgrow-a-spreadsheet",
+    title: "When Does a Small Service Business Outgrow a Spreadsheet?",
+    description: "A spreadsheet is a perfectly good place to start tracking your business. Here's the honest signal that tells you it's time to move on — and what to move on to.",
+    date: "2025-07-30",
+    readTime: "4 min",
+    category: "Marketing",
+    content: [
+      {
+        type: "intro",
+        text: "Almost every solo tradesperson and small service business starts the same way: a notebook, then a spreadsheet. Jobs in one tab, money in another, maybe a rough client list somewhere else. There's nothing wrong with that — it's honest, it's free, and it works for longer than people expect.",
+      },
+      {
+        type: "h2",
+        text: "Spreadsheets are genuinely good at the money side",
+      },
+      {
+        type: "p-html",
+        html: "Tracking income, outgoings, and job costs in a spreadsheet isn't a compromise — for a lot of businesses it's the right tool, full stop. A well-built template gives you totals, categories, and a clear picture of the month without paying for software you don't need yet. If that's all you're missing, a dedicated template is often a better fix than a whole new system — sites like <a href=\"https://spreadsheetshub.com\" target=\"_blank\" rel=\"noopener noreferrer\">SpreadsheetsHub</a> have ready-made budgeting and job-tracking templates built for exactly this, rather than you rebuilding formulas from scratch.",
+      },
+      {
+        type: "h2",
+        text: "Where a spreadsheet quietly starts costing you",
+      },
+      {
+        type: "p",
+        text: "The problem was never tracking the money. It's the client-facing side — a spreadsheet can't take a booking at 9pm while you're asleep, can't collect a deposit, can't show a client live availability, and can't give your business its own professional-looking page. Every one of those gaps is invisible admin cost until you notice how many messages you're answering by hand every evening.",
+      },
+      {
+        type: "h2",
+        text: "The actual signal it's time to move on",
+      },
+      {
+        type: "p",
+        text: "It's not a client count or a revenue number. It's the moment you catch yourself manually copying a booking from a text message into your diary, or chasing someone for a deposit that a proper system would have collected automatically. That's not a scale problem — it happens at five clients a week just as often as fifty. It's a sign the admin has outgrown what a spreadsheet was ever meant to do.",
+      },
+      {
+        type: "cta",
+        text: "Bookrightly picks up exactly where the spreadsheet leaves off — a branded booking page, live availability, and Stripe deposits, so the client-facing side runs itself while you keep tracking the money however you already do. 90-day free trial, no card needed.",
+      },
+    ],
+  },
+  {
+    slug: "how-to-actually-price-a-job-uk-tradesperson-freelancer",
+    title: "How to Actually Price a Job as a UK Tradesperson or Freelancer",
+    description: "Most undercharging isn't a confidence problem — it's a maths problem. Here's how to work out a number that actually covers what the job costs you.",
+    date: "2025-08-06",
+    readTime: "5 min",
+    category: "Marketing",
+    content: [
+      {
+        type: "intro",
+        text: "Ask most tradespeople and freelancers how they landed on their price, and the honest answer is usually \"what felt about right\" or \"what the last person charged.\" That's not a confidence problem, it's a maths problem — and it's the single biggest reason busy people still aren't making the money the work should generate.",
+      },
+      {
+        type: "h2",
+        text: "Your day rate isn't your day rate",
+      },
+      {
+        type: "p",
+        text: "If you charge £150 for a job that takes four hours, that's not £37.50 an hour — not once you factor in travel, prep, admin, chasing payment, and the days that don't fill up. Most people price the visible time and quietly eat the invisible time for free. Work backwards from what you actually need to earn in a year, divide by the realistic number of billable hours (not the theoretical maximum), and you get a number that's uncomfortable to look at the first time and correct every time after.",
+      },
+      {
+        type: "h2",
+        text: "Materials and overhead get forgotten more than people think",
+      },
+      {
+        type: "p",
+        text: "Fuel, insurance, tools wearing out, software subscriptions, the van — none of that shows up on a single invoice, so it's easy to under-account for across the year. A price that only covers the job in front of you, with nothing left over for the things keeping the business running, isn't really profit. It's turnover with a delay on the bad news.",
+      },
+      {
+        type: "p-html",
+        html: "This is where a proper calculator earns its keep over a rough mental estimate. Tools like <a href=\"https://calculatorai.app\" target=\"_blank\" rel=\"noopener noreferrer\">CalculatorAI</a> let you work out a real rate from your actual expenses and hours rather than a guess, and keep a running expense tracker so the number stays accurate as costs change — not just a one-off calculation you do once and never revisit.",
+      },
+      {
+        type: "h2",
+        text: "Pricing the job is only half of it",
+      },
+      {
+        type: "p",
+        text: "Working out the right number solves one problem. Getting someone to actually book at that rate — and pay a deposit that makes the booking real rather than a maybe — is a separate one. This is where a lot of the pricing work quietly gets undone: a good rate followed by a client who cancels for free the morning of, or negotiates you back down because there was never a deposit locking anything in to begin with.",
+      },
+      {
+        type: "cta",
+        text: "Bookrightly takes the number you've worked out and turns it into a real booking — deposits collected upfront via Stripe, so the rate you calculated is the rate that actually lands in your account. 90-day free trial, no card needed.",
       },
     ],
   },

@@ -18,18 +18,18 @@ const SERIF = "'Playfair Display', serif";
 const FEES = [
   {
     type: "Online bookings",
-    rate: "5%",
-    desc: "Added on top of your price at checkout. The client pays the fee — you receive your full deposit amount.",
+    rate: "0%",
+    desc: "No commission, ever. Your client only ever pays Stripe's own real card processing cost — you receive your full deposit amount.",
   },
   {
     type: "Invoices",
-    rate: "5%",
-    desc: "Deducted automatically when your client pays a Stripe invoice you send from the dashboard.",
+    rate: "0%",
+    desc: "No commission. You receive the full amount when your client pays a Stripe invoice you send from the dashboard, minus only Stripe's own processing cost.",
   },
   {
     type: "In-person QR pay",
-    rate: "1%",
-    desc: "Lower rate for face-to-face payments. Generate a QR code in seconds — no card reader needed.",
+    rate: "0%",
+    desc: "No commission. Generate a QR code in seconds — no card reader needed.",
   },
 ];
 
@@ -89,7 +89,7 @@ export default function PricingModal({ open, onClose }) {
           fontFamily: SANS, fontSize: "0.9rem",
           color: "rgba(255,255,255,0.5)", mt: 1.5, maxWidth: 480, lineHeight: 1.75,
         }}>
-          90-day free trial, then from £10-20/month depending on your business type. Small per-transaction fees only when you earn — no surprises.
+          90-day free trial, then from £10-15/month depending on your business type. No commission — only Stripe's own processing cost when you earn.
         </Typography>
       </Box>
 
@@ -137,7 +137,7 @@ export default function PricingModal({ open, onClose }) {
                     </Typography>
                     <Box display="flex" alignItems="baseline" gap={0.5}>
                       <Typography sx={{ fontFamily: SERIF, fontSize: "1.8rem", fontWeight: 400, color: G.dark }}>
-                        £20
+                        £15
                       </Typography>
                       <Typography sx={{ fontFamily: SANS, fontSize: "0.85rem", color: "#7a7060" }}>
                         /month
@@ -203,9 +203,10 @@ export default function PricingModal({ open, onClose }) {
               fontFamily: SANS, fontSize: "0.85rem", color: "#7a7060",
               mb: 3, lineHeight: 1.75,
             }}>
-              You only pay a small platform fee when a client actually pays you.
-              Stripe's own processing fees (~1.5% + 20p) are separate and paid directly to Stripe — they are not our fee.
+              No commission, ever — not on a single transaction.
+              The only thing added at checkout is Stripe's own real processing cost (~1.5% + 20p), which we don't mark up.
             </Typography>
+            <Box component="img" src="/images/stripe/powered-by-stripe-black.svg" alt="Powered by Stripe" sx={{ height: 16, display: "block", mb: 3 }} />
 
             <Stack spacing={2}>
               {FEES.map(f => (
@@ -241,7 +242,7 @@ export default function PricingModal({ open, onClose }) {
                 Example payout
               </Typography>
               <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "#2F855A", lineHeight: 1.75 }}>
-                On a £20 online booking: your client pays £21.84 (5% platform fee plus card processing, added on top).
+                On a £20 online booking: your client pays £20.82 — just Stripe's own card processing cost, added on top, no commission from us.
                 You receive the full <strong>£20.00</strong> deposit — nothing is deducted.
               </Typography>
             </Paper>
@@ -255,7 +256,7 @@ export default function PricingModal({ open, onClose }) {
             textAlign: "center", lineHeight: 1.85,
           }}>
             Stripe Connect is required to accept payments — free to set up from your dashboard.
-            Platform fees are collected automatically and are non-refundable once a payment is processed.
+            Stripe's own processing cost is collected automatically and is non-refundable once a payment is processed.
             Prices shown include VAT where applicable.
           </Typography>
         </Box>

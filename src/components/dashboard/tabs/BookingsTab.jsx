@@ -126,7 +126,7 @@ export default function BookingsTab({
                         {b.customerName || b.name || "Client"}
                       </Typography>
                       {b.source === "manual" && (
-                        <Chip size="small" label="📞 Phone booking"
+                        <Chip size="small" label="Phone booking"
                           sx={{ height: 20, fontSize: 10, bgcolor: `${brandColor}20`, color: brandColor, fontWeight: 700 }} />
                       )}
                     </Box>
@@ -140,12 +140,12 @@ export default function BookingsTab({
                   <Divider sx={{ my: 1 }} />
                   <Grid container spacing={1}>
                     {[
-                      ["📧 Email",   b.email    || b.customerEmail],
-                      ["📱 Phone",   b.phone    || b.customerPhone],
-                      ["✂️ Service", b.serviceName || b.haircutStyle],
-                      ["👤 Gender",  b.gender],
-                      ["💰 Deposit", b.depositAmount ? `£${Number(b.depositAmount).toFixed(2)}` : null],
-                      ["🪪 Ref",      b.id?.slice(-8).toUpperCase()],
+                      ["Email",   b.email    || b.customerEmail],
+                      ["Phone",   b.phone    || b.customerPhone],
+                      ["Service", b.serviceName || b.haircutStyle],
+                      ["Gender",  b.gender],
+                      ["Deposit", b.depositAmount ? `£${Number(b.depositAmount).toFixed(2)}` : null],
+                      ["Ref",      b.id?.slice(-8).toUpperCase()],
                     ].filter(([, val]) => val).map(([label, value]) => (
                       <Grid item xs={12} sm={6} key={label}>
                         <Box display="flex" gap={1} alignItems="center">
@@ -163,7 +163,7 @@ export default function BookingsTab({
                 {(b.notes || b.additionalInfo) && (
                   <Grid item xs={12}>
                     <Box sx={{ mt: 1, p: 1.5, bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1 }}>
-                      <Typography variant="caption" color="text.secondary" fontWeight={700}>📝 Notes</Typography>
+                      <Typography variant="caption" color="text.secondary" fontWeight={700}>Notes</Typography>
                       <Typography variant="caption" display="block">{b.notes || b.additionalInfo}</Typography>
                     </Box>
                   </Grid>

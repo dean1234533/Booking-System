@@ -1,6 +1,6 @@
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
   deleteUser,
   reauthenticateWithCredential,
@@ -8,12 +8,19 @@ import {
   setPersistence,
   browserLocalPersistence,
   sendPasswordResetEmail,
+  sendEmailVerification,
 } from "firebase/auth";
 import { auth, db } from "./config";
 import {
   doc, setDoc, deleteDoc, serverTimestamp, getDoc, Timestamp,
-  collection, query, where, getDocs, updateDoc,
 } from "firebase/firestore";
+
+// Without this, sendEmailVerification() falls back to Firebase's bare
+// default: the verification link's landing page is unbranded, and there's
+// no way back to the actual site afterward — it just dead-ends on a plain
+// "email verified" confirmation with no continue link. This sends people
+// back to their dashboard once they've verified.
+const EMAIL_VERIFICATION_SETTINGS = { url: "https://bookrightly.co.uk/dashboard" };
 
 /**
  * Updated to support business types and custom domains instead of Vercel URLs
@@ -28,6 +35,7 @@ export async function signUpBarber(data) {
   // 1. Create Auth Account
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
+  sendEmailVerification(user, EMAIL_VERIFICATION_SETTINGS).catch(() => {}); // best-effort — never block signup on this
 
   // 2. Prepare Profile Data
   const profileData = {
@@ -96,6 +104,7 @@ export async function claimStaffInvite({ shopId, staffId, email, password }) {
 
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
+  sendEmailVerification(user, EMAIL_VERIFICATION_SETTINGS).catch(() => {}); // best-effort — never block claiming on this
 
   await setDoc(doc(db, "barbers", user.uid), {
     uid: user.uid,
@@ -119,10 +128,16 @@ export async function claimStaffInvite({ shopId, staffId, email, password }) {
     uid: user.uid,
     hasLogin: true,
   });
-  await deleteDoc(doc(db, "barbers", shopId, "staff", staffId));
 
-  const slotsSnap = await getDocs(query(collection(db, "slots"), where("barberId", "==", staffId)));
-  await Promise.all(slotsSnap.docs.map(d => updateDoc(d.ref, { barberId: user.uid })));
+  // Deleting the OLD placeholder doc (a different id than user.uid) and
+  // re-pointing slots generated against that old id both need elevated,
+  // cross-id trust that a plain ownership rule can't express — done
+  // server-side in finalizeStaffInviteClaim instead. See that function's
+  // comment and firestore.rules' staff create/delete rule for why.
+  const { getFunctions, httpsCallable } = await import("firebase/functions");
+  const { getApp } = await import("firebase/app");
+  const finalize = httpsCallable(getFunctions(getApp(), "us-central1"), "finalizeStaffInviteClaim");
+  await finalize({ shopId, staffId });
 
   return user;
 }
@@ -172,7 +187,7 @@ export async function signInBarber(email, password) {
 }
 
 export async function resetBarberPassword(email) {
-  return await sendPasswordResetEmail(auth, email);
+  return await sendPasswordResetEmail(auth, email, { url: "https://bookrightly.co.uk/login" });
 }
 
 export async function logoutBarber() {

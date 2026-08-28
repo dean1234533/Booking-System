@@ -360,7 +360,7 @@ export default function DomainTab({barber, brandColor}) {
 
           {justPurchased && (
             <Alert severity="success" sx={{mb: 2}} onClose={() => setJustPurchased(false)}>
-              🎉 Payment received! Your domain is being provisioned — usually 2–5 minutes.
+              Payment received! Your domain is being provisioned — usually 2–5 minutes.
               SSL activation can take up to 24 hours.
             </Alert>
           )}
@@ -579,7 +579,7 @@ export default function DomainTab({barber, brandColor}) {
               <Box>
                 {barberDoc.domainStatus === "active" ? (
                   <Alert severity="success">
-                    ✅ <strong>{barberDoc.customDomain}</strong> is live and connected.
+                    <strong>{barberDoc.customDomain}</strong> is live and connected.
                   </Alert>
                 ) : (
                   <>
@@ -591,6 +591,16 @@ export default function DomainTab({barber, brandColor}) {
                     {barberDoc.nameservers.map((ns, i) => (
                       <CopyField key={i} label={`Nameserver ${i + 1}`} value={ns} />
                     ))}
+                    <Typography
+                      variant="caption"
+                      component="a"
+                      href="https://youtu.be/gBisE6_9Yhs"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, color: brandColor, fontWeight: 700, mt: 1 }}
+                    >
+                      Not sure how? Watch: how to change your nameservers <OpenInNewIcon sx={{ fontSize: 13 }} />
+                    </Typography>
                     <Box display="flex" alignItems="center" gap={1} mt={1.5}>
                       <CircularProgress size={14} sx={{color: brandColor}} />
                       <Typography variant="caption" color="text.secondary">
@@ -682,6 +692,17 @@ export default function DomainTab({barber, brandColor}) {
                 <Alert severity="success" sx={{mb: 2}}>
                   Follow the steps below in your domain registrar's DNS settings.
                 </Alert>
+
+                <Typography
+                  variant="caption"
+                  component="a"
+                  href="https://youtu.be/1mB7ZJajegw"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, color: brandColor, fontWeight: 700, mb: 2 }}
+                >
+                  Not sure how? Watch: how to find and add DNS records <OpenInNewIcon sx={{ fontSize: 13 }} />
+                </Typography>
 
                 {verifyError && (
                   <Alert severity="warning" sx={{mb: 2}}>{verifyError}</Alert>

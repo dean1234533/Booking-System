@@ -2,12 +2,10 @@ import { describe, it, expect } from "vitest";
 import { calculateBookingFee, PLATFORM_FEE_PERCENT, STRIPE_PERCENT, STRIPE_FIXED_PENCE } from "./bookingHelpers";
 
 describe("calculateBookingFee", () => {
-  it("computes the confirmed 5% platform fee correctly for a £25 deposit", () => {
+  it("computes the gross-up correctly for a £25 deposit (platform fee is 0 — customer only covers Stripe's real cost)", () => {
     const fee = calculateBookingFee(25);
     expect(fee.depositPence).toBe(2500);
     expect(fee.isValid).toBe(true);
-    // platformFee = round(2500 * 0.05) = 125
-    // customerPaysPence = ceil((2500 + 125 + 45) / (1 - 0.0175))
     const expectedPlatformFee = Math.round(2500 * PLATFORM_FEE_PERCENT);
     const expectedCustomerPays = Math.ceil((2500 + expectedPlatformFee + STRIPE_FIXED_PENCE) / (1 - STRIPE_PERCENT));
     expect(fee.customerPaysPence).toBe(expectedCustomerPays);

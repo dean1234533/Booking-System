@@ -80,7 +80,7 @@ export default function BlogIndex() {
           Ready to take your first online booking?
         </Typography>
         <Typography sx={{ color: "rgba(255,255,255,0.4)", fontSize: "0.95rem", mb: 4, maxWidth: 460, mx: "auto", lineHeight: 1.8 }}>
-          90-day free trial. No card. Set up in under an hour.
+          90-day free trial. No card. Set up in under 15 minutes.
         </Typography>
         <Box component="button" onClick={() => navigate("/signup")} sx={{ px: 4, py: 1.75, bgcolor: GOLD, color: DARK, fontFamily: SANS, fontWeight: 800, fontSize: "0.9rem", border: "none", cursor: "pointer", "&:hover": { opacity: 0.9 } }}>
           Get started free

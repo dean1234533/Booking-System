@@ -29,12 +29,12 @@ export default function SalonSoftwarePage() {
         />
         <Grid container spacing={3}>
           {[
-            ["💇‍♀️", "Branded salon page", "Your salon gets a public profile with your name, logo, hero image, colour palette, treatment menu, and a live booking button. Looks premium on desktop and mobile."],
-            ["🎨", "Before & after portfolio", "Showcase your colour work, cuts, and transformations directly on your salon page. Clients see your quality before they book."],
-            ["💳", "Deposit booking via Stripe", "Collect a deposit at the point of booking to protect against no-shows. Funds go directly to your bank account via Stripe."],
-            ["📩", "Automated booking confirmations", "Clients receive a booking confirmation the moment they book. You get a push notification. No manual follow-up needed."],
-            ["⭐", "Client reviews on your page", "Clients leave reviews that show on your public profile, building trust for every new visitor who finds you."],
-            ["📱", "Works on every device", "Your booking page is fully responsive and can be installed as a PWA — clients add it to their home screen like a native app."],
+            ["hairdresser", "Branded salon page", "Your salon gets a public profile with your name, logo, hero image, colour palette, treatment menu, and a live booking button. Looks premium on desktop and mobile."],
+            ["paint", "Before & after portfolio", "Showcase your colour work, cuts, and transformations directly on your salon page. Clients see your quality before they book."],
+            ["payment", "Deposit booking via Stripe", "Collect a deposit at the point of booking to protect against no-shows. Funds go directly to your bank account via Stripe."],
+            ["notification", "Automated booking confirmations", "Clients receive a booking confirmation the moment they book. You get a push notification. No manual follow-up needed."],
+            ["star", "Client reviews on your page", "Clients leave reviews that show on your public profile, building trust for every new visitor who finds you."],
+            ["devices", "Works on every device", "Your booking page is fully responsive and can be installed as a PWA — clients add it to their home screen like a native app."],
           ].map(([icon, title, body]) => (
             <Grid item xs={12} sm={6} md={4} key={title}>
               <FeatureCard icon={icon} title={title} body={body} />
@@ -44,7 +44,7 @@ export default function SalonSoftwarePage() {
       </Section>
 
       <Section>
-        <SectionHead eyebrow="How it works" title="Live and taking bookings in under an hour" />
+        <SectionHead eyebrow="How it works" title="Live and taking bookings in under 15 minutes" />
         <Grid container spacing={3}>
           {[
             ["1", "Build your salon page", "Add your salon name, logo, services with prices, your bio, and upload your portfolio images. Your page is live instantly."],

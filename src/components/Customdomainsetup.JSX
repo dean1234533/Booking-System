@@ -298,7 +298,7 @@ export default function CustomDomainSetup() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h3 style={styles.successTitle}>Your Domain is Live! 🎉</h3>
+          <h3 style={styles.successTitle}>Your Domain is Live!</h3>
           <p style={styles.successDesc}>
             <strong>{setupData?.domain}</strong> is now connected, verified, and secured with HTTPS.
           </p>

@@ -5,7 +5,22 @@
   "compatibility_date": "2026-05-19",
   "assets": {
     "directory": "dist",  // <-- This serves your built Vite frontend files
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // Without this, requests that don't hit a literal file (any bookingSlug
+    // page, custom-domain page, SPA route, etc.) get served straight from
+    // the Assets system's own SPA-fallback index.html — bypassing worker.js
+    // entirely, so its SEO injection (per-business title/favicon/description),
+    // CSP headers, and multi-tenant custom-domain routing all silently never
+    // run. This was invisible in curl (which happened to keep hitting a
+    // worker-served response) but consistently reproduced in a real browser,
+    // traced to a raw cf-cache-status: HIT carrying zero business-specific
+    // content — the Assets system's own cache, not worker.js's. A prior
+    // attempt at this setting was removed after a deploy warning about
+    // needing an assets binding — that binding is right here, so the
+    // warning was either stale or about something else; this app's worker
+    // is load-bearing for nearly every request, so running it first for
+    // everything is the correct setting, not a narrow exception list.
+    "run_worker_first": true
   },
   "compatibility_flags": [
     "nodejs_compat"

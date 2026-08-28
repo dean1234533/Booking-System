@@ -131,13 +131,13 @@ export default function ManualBookingDialog({ open, onClose, slot, barber, profi
               Ready to confirm this manual booking!
             </Alert>
             {[
-              ["🗓 Date",    slot?.date],
-              ["⏰ Time",    slot?.time],
-              ["👤 Client",  client.name    || "—"],
-              ["📱 Phone",   client.phone   || "—"],
-              ["📧 Email",   client.email   || "—"],
-              ["✂️ Service", client.service || "—"],
-              ["📝 Notes",   client.notes   || "—"],
+              ["Date",    slot?.date],
+              ["Time",    slot?.time],
+              ["Client",  client.name    || "—"],
+              ["Phone",   client.phone   || "—"],
+              ["Email",   client.email   || "—"],
+              ["Service", client.service || "—"],
+              ["Notes",   client.notes   || "—"],
             ].map(([label, value]) => (
               <Box key={label} display="flex" gap={2} mb={1}>
                 <Typography variant="body2" color="text.secondary" sx={{ minWidth: 90 }}>{label}</Typography>

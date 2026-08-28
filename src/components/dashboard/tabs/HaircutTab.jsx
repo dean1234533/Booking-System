@@ -185,7 +185,7 @@ export default function HaircutTab({ barber, brandColor }) {
 
       {/* ── HISTORY ── */}
       {view === "history" && (
-        <Box sx={{ maxWidth: 680 }}>
+        <Box sx={{ maxWidth: 760 }}>
           {cuts.length === 0 ? (
             <Box sx={{ textAlign: "center", py: 10, border: "1px dashed rgba(0,0,0,0.12)" }}>
               <ContentCutIcon sx={{ fontSize: 44, color: "rgba(0,0,0,0.15)", mb: 2 }} />
@@ -198,7 +198,7 @@ export default function HaircutTab({ barber, brandColor }) {
                 <Box key={cut.id} sx={{ bgcolor: "#ffffff", border: "1px solid rgba(0,0,0,0.1)", overflow: "hidden" }}>
                   {cut.photoUrl && (
                     <Box component="img" src={cut.photoUrl} alt="haircut"
-                      sx={{ width: "100%", height: 200, objectFit: "cover", objectPosition: "top center", display: "block" }} />
+                      sx={{ width: "100%", aspectRatio: { xs: "3 / 4", sm: "4 / 3" }, objectFit: "contain", objectPosition: "top center", display: "block", bgcolor: "#111" }} />
                   )}
                   <Box sx={{ p: 2.5 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
@@ -241,12 +241,13 @@ export default function HaircutTab({ barber, brandColor }) {
 
       {/* ── ADD NEW CUT ── */}
       {view === "add" && (
-        <Box sx={{ maxWidth: 580 }}>
+        <Box sx={{ maxWidth: 760 }}>
           {/* Photo upload */}
           <Box
             onClick={() => fileRef.current?.click()}
             sx={{
-              width: "100%", height: 200, bgcolor: "#ffffff", mb: 3,
+              width: "100%", aspectRatio: { xs: "3 / 4", sm: "4 / 3" },
+              minHeight: { xs: 360, sm: 480 }, bgcolor: "#111", mb: 1,
               border: photoPreview ? "none" : "2px dashed rgba(0,0,0,0.15)",
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: "pointer", overflow: "hidden",
@@ -254,14 +255,17 @@ export default function HaircutTab({ barber, brandColor }) {
             }}
           >
             {photoPreview ? (
-              <Box component="img" src={photoPreview} sx={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+              <Box component="img" src={photoPreview} alt="Haircut reference preview" sx={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "top center" }} />
             ) : (
               <Box sx={{ textAlign: "center" }}>
-                <AddPhotoAlternateIcon sx={{ fontSize: 36, color: "rgba(0,0,0,0.35)", mb: 0.75 }} />
-                <Typography sx={{ fontSize: "0.76rem", color: "rgba(0,0,0,0.5)" }}>Click to add reference photo</Typography>
+                <AddPhotoAlternateIcon sx={{ fontSize: 48, color: "rgba(255,255,255,0.55)", mb: 1 }} />
+                <Typography sx={{ fontSize: "0.86rem", color: "rgba(255,255,255,0.78)" }}>Click to add reference photo</Typography>
               </Box>
             )}
           </Box>
+          <Typography sx={{ fontSize: "0.72rem", color: "rgba(0,0,0,0.5)", mb: 3 }}>
+            The full photo is shown without cropping so the haircut stays visible. Portrait photos work best.
+          </Typography>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => {
             const f = e.target.files?.[0]; if (!f) return;
             setPhoto(f); setPrev(URL.createObjectURL(f));

@@ -29,12 +29,12 @@ export default function DecoratorSoftwarePage() {
         />
         <Grid container spacing={3}>
           {[
-            ["🎨", "Before & after portfolio", "Upload transformation photos directly to your profile. Clients see your finish quality, your attention to detail, and the standard of your work before they even contact you."],
-            ["📋", "Quote request form", "Clients describe the job, upload photos of the space, and submit their contact details. You receive a detailed enquiry with everything you need to provide an accurate quote."],
-            ["📅", "Site visit booking", "Add available slots for site visits so clients can book a convenient time without calls or messages. Shows you're organised and professional from the first interaction."],
-            ["🔵", "Digital colour approval", "Send clients a colour palette to review and formally approve before work starts. Creates a clear record and protects you from disputes about colour choice after the job is done."],
-            ["⭐", "Client reviews", "Satisfied clients leave reviews on your Bookrightly profile. They show up on your public page and build trust for every new visitor who finds you."],
-            ["📱", "Works on every device", "Your profile is fully responsive and can be installed as a PWA on any phone — clients find you and enquire from wherever they are."],
+            ["paint", "Before & after portfolio", "Upload transformation photos directly to your profile. Clients see your finish quality, your attention to detail, and the standard of your work before they even contact you."],
+            ["assignment", "Quote request form", "Clients describe the job, upload photos of the space, and submit their contact details. You receive a detailed enquiry with everything you need to provide an accurate quote."],
+            ["calendar", "Site visit booking", "Add available slots for site visits so clients can book a convenient time without calls or messages. Shows you're organised and professional from the first interaction."],
+            ["paint", "Digital colour approval", "Send clients a colour palette to review and formally approve before work starts. Creates a clear record and protects you from disputes about colour choice after the job is done."],
+            ["star", "Client reviews", "Satisfied clients leave reviews on your Bookrightly profile. They show up on your public page and build trust for every new visitor who finds you."],
+            ["devices", "Works on every device", "Your profile is fully responsive and can be installed as a PWA on any phone — clients find you and enquire from wherever they are."],
           ].map(([icon, title, body]) => (
             <Grid item xs={12} sm={6} md={4} key={title}>
               <FeatureCard icon={icon} title={title} body={body} />
@@ -44,7 +44,7 @@ export default function DecoratorSoftwarePage() {
       </Section>
 
       <Section>
-        <SectionHead eyebrow="How it works" title="From sign-up to first enquiry in under an hour" />
+        <SectionHead eyebrow="How it works" title="From sign-up to first enquiry in under 15 minutes" />
         <Grid container spacing={3}>
           {[
             ["1", "Build your profile", "Add your business name, logo, service area, a short bio, and upload your portfolio photos. Your page is live the moment you save."],

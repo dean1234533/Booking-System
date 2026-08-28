@@ -5,29 +5,30 @@ import {
 } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";
 import {
-  AccessTime as AccessTimeIcon,
-  Store as StoreIcon,
-  Person as PersonIcon,
-  ListAlt as ListIcon,
-  Payments as PaymentsIcon,
-  Palette as PaletteIcon,
+  BellRing as NotificationsActiveIcon,
+  BriefcaseBusiness as BriefcaseIcon,
+  CalendarClock as TodayIcon,
+  CalendarDays as StoreIcon,
+  Clock3 as AccessTimeIcon,
   Nfc as NfcIcon,
-  Language as LanguageIcon,
-  AutoAwesome as AutoAwesomeIcon,
-  Extension as ExtensionIcon,
-  People as PeopleIcon,
-  ColorLens as ColorLensIcon,
-  RequestQuote as RequestQuoteIcon,
-  Today as TodayIcon,
-  ContentCut as ContentCutIcon,
-  NotificationsActive as NotificationsActiveIcon,
-  ReceiptLong as ReceiptLongIcon,
-  Reviews as ReviewsIcon,
-  Edit as EditIcon,
-  Dashboard as DashboardIcon,
-} from "@mui/icons-material";
+  FileText as ReceiptLongIcon,
+  Globe2 as LanguageIcon,
+  LayoutDashboard as DashboardIcon,
+  List as ListIcon,
+  MessageSquareText as ReviewsIcon,
+  Paintbrush as ColorLensIcon,
+  Palette as PaletteIcon,
+  Plug as ExtensionIcon,
+  ReceiptText as RequestQuoteIcon,
+  Scissors as ContentCutIcon,
+  Dumbbell as FitnessCenterIcon,
+  UserRound as PersonIcon,
+  UsersRound as PeopleIcon,
+  WalletCards as PaymentsIcon,
+} from "lucide-react";
 
 import imageCompression from "browser-image-compression";
+import { getAuth }      from "firebase/auth";
 import { useAuth }      from "../hooks/useAuth";
 import { useNavigate }  from "react-router-dom";
 
@@ -52,6 +53,7 @@ import DashboardHeader     from "../components/dashboard/DashboardHeader";
 import DashboardTabBar     from "../components/dashboard/DashboardTabBar";
 import DashboardOverview   from "../components/dashboard/DashboardOverview";
 import PWAInstallBanner    from "../components/dashboard/PWAInstallBanner";
+import EmailVerificationBanner from "../components/dashboard/EmailVerificationBanner";
 import OfflineIndicator    from "../components/dashboard/OfflineIndicator";
 import ManualBookingDialog from "../components/dashboard/ManualBookingDialog";
 import ScheduleTab  from "../components/dashboard/tabs/ScheduleTab";
@@ -73,6 +75,10 @@ import QuoteTab            from "../components/dashboard/tabs/QuoteTab";
 import DayPlannerTab       from "../components/dashboard/tabs/DayPlannerTab";
 import QueueManagementTab  from "../components/dashboard/tabs/QueueManagementTab";
 import HaircutTab          from "../components/dashboard/tabs/HaircutTab";
+// ── Plumber-specific tabs ──
+import EnquiriesTab         from "../components/dashboard/tabs/EnquiriesTab";
+import ChargesTab           from "../components/dashboard/tabs/ChargesTab";
+import PlumberInvoiceTab    from "../components/dashboard/tabs/PlumberInvoiceTab";
 // ── Hairdresser-specific tabs ──
 import InvoiceTab               from "../components/dashboard/tabs/InvoiceTab";
 import PTInvoiceTab             from "../components/dashboard/tabs/PTInvoiceTab";
@@ -80,6 +86,7 @@ import NotificationSettingsTab  from "../components/dashboard/tabs/NotificationS
 import PTAvailabilityTab        from "../components/dashboard/tabs/PTAvailabilityTab";
 import IntegrationsTab          from "../components/dashboard/tabs/IntegrationsTab";
 import { checkOutlookAvailability, getOutlookTokens } from "../firebase/outlook";
+import { geocodeAddress } from "../utils/geocode";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -90,10 +97,10 @@ function TabPanel({ value, index, children, bare = false }) {
     <Box sx={{ py: 3 }}>
       <Box sx={{
         bgcolor: "#ffffff",
-        borderRadius: "18px",
-        border: "1px solid #ececf0",
-        boxShadow: "0 1px 2px rgba(16,24,40,0.04), 0 8px 24px rgba(16,24,40,0.05)",
-        p: { xs: 2.25, md: 4 },
+        borderRadius: "14px",
+        border: "1px solid #E4E7EC",
+        boxShadow: "0 1px 2px rgba(16,24,40,0.04)",
+        p: { xs: 2, md: 3 },
       }}>
         {children}
       </Box>
@@ -134,6 +141,11 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const [stripeLoading,setStripeLoading]= useState(false);
   const [uploading,    setUploading]    = useState(false);
   const [toast,        setToast]        = useState(null);
+  // Carries an enquiry/quote/job's details across a tab switch so converting
+  // one into the next (enquiry -> quote -> job -> invoice) never means
+  // re-typing details already captured — see EnquiriesTab/QuoteTab/
+  // DayPlannerTab's `prefill`/`onPrefillConsumed` props (plumber only).
+  const [plumberDraft, setPlumberDraft] = useState(null);
 
   // ── Data state ────────────────────────────────────────────────────────────
   const [userRole, setUserRole] = useState({ isOwner: true, shopId: null });
@@ -185,6 +197,23 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   useEffect(() => () => { if (pollingRef.current) clearInterval(pollingRef.current); }, []);
   useEffect(() => { if (!authLoading && barber) loadData(); }, [barber, authLoading]);
 
+  // Keep the Reviews tab in sync while the dashboard is open. Reviews can be
+  // submitted from a client's phone, so a one-time fetch leaves this screen
+  // stale until the barber refreshes the whole app.
+  useEffect(() => {
+    if (!userRole.isOwner || !userRole.shopId) return;
+    return onSnapshot(
+      collection(db, "barbers", userRole.shopId, "reviews"),
+      snap => {
+        const liveReviews = snap.docs
+          .map(reviewDoc => ({ id: reviewDoc.id, ...reviewDoc.data() }))
+          .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        setReviews(liveReviews);
+      },
+      err => console.error("[reviews listener]", err),
+    );
+  }, [userRole.isOwner, userRole.shopId]);
+
   // Handle post-Stripe-connect redirect
   useEffect(() => {
     if (!barber?.uid) return;
@@ -201,7 +230,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         const data = await res.json();
         if (data.connected) {
           setProfile(prev => ({ ...prev, stripeConnected: true }));
-          setToast("🎉 Stripe connected!");
+          setToast("Stripe connected!");
         }
       } catch (e) { console.error("Post-Stripe return check failed:", e); }
     })();
@@ -271,12 +300,6 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       const mySlots = await getProfessionalSlots(barber.uid);
       setSlots(mySlots || []);
 
-      if (isOwner) {
-        try {
-          const rSnap = await getDocs(collection(db, "barbers", activeShopId, "reviews"));
-          setReviews(rSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-        } catch { setReviews([]); }
-      }
     } catch { setToast("Error loading dashboard data"); }
     finally  { setDataLoading(false); }
   }
@@ -329,11 +352,23 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         tiktokUrl:    profile.tiktokUrl     || "",
         facebookUrl:  profile.facebookUrl   || "",
       };
+      // Geocode the address into coordinates so the marketplace can sort by
+      // real distance instead of just text-matching the location string.
+      // Silently skipped on failure/no match — never blocks the save itself.
+      const locationQuery = [profile.address, profile.area, profile.postcode].filter(Boolean).join(", ");
+      if (locationQuery) {
+        const coords = await geocodeAddress(locationQuery);
+        if (coords) {
+          updatedData.latitude = coords.latitude;
+          updatedData.longitude = coords.longitude;
+        }
+      }
+
       const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true };
-      if (profileFile)    { const c = await imageCompression(profileFile, options);     updatedData.profilePic      = await uploadBarberImage(c, barber.uid, "profile_pic"); }
-      if (logoFile)       { const c = await imageCompression(logoFile, options);        updatedData.logoUrl         = await uploadBarberImage(c, barber.uid, "business_logo"); }
-      if (heroFileDesktop){ const c = await imageCompression(heroFileDesktop, options); updatedData.heroImage       = await uploadBarberImage(c, barber.uid, "hero_banner_desktop"); }
-      if (heroFileMobile) { const c = await imageCompression(heroFileMobile, options);  updatedData.heroImageMobile = await uploadBarberImage(c, barber.uid, "hero_banner_mobile"); }
+      if (profileFile)    { const c = await imageCompression(profileFile, options);     updatedData.profilePic      = await uploadBarberImage(c, "profile_pic", barber.uid); }
+      if (logoFile)       { const c = await imageCompression(logoFile, options);        updatedData.logoUrl         = await uploadBarberImage(c, "business_logo", barber.uid); }
+      if (heroFileDesktop){ const c = await imageCompression(heroFileDesktop, options); updatedData.heroImage       = await uploadBarberImage(c, "hero_banner_desktop", barber.uid); }
+      if (heroFileMobile) { const c = await imageCompression(heroFileMobile, options);  updatedData.heroImageMobile = await uploadBarberImage(c, "hero_banner_mobile", barber.uid); }
 
       // Always write to the barber's own top-level doc
       await updateBarber(barber.uid, updatedData);
@@ -421,7 +456,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           manualBookingId: null,
         });
       }
-      setToast("✅ Booking completed — slot is available again.");
+      setToast("Booking completed — slot is available again.");
       await loadData();
     } catch { setToast("Error completing booking."); }
   }
@@ -498,9 +533,10 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       const currentOrigin = domainField
         ? (domainField.startsWith("http") ? domainField : `https://${domainField}`)
         : window.location.origin;
+      const idToken = await getAuth().currentUser?.getIdToken();
       const res  = await fetch("/api/connect", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body:    JSON.stringify({ userId: barber.uid, email: barber.email, origin: currentOrigin }),
       });
       const data = await res.json();
@@ -522,7 +558,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           clearInterval(pollingRef.current);
           pollingRef.current = null;
           setTerminalStatus("paid");
-          setToast("✅ Payment received!");
+          setToast("Payment received!");
         }
       } catch (err) { console.warn("Polling error:", err); }
     }, 2500);
@@ -579,7 +615,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const subStatus   = profile.subscriptionStatus || "trialing";
   const trialEndDate = toDateDash(profile.trialEndsAt);
   const isExpiredTrial = subStatus === "trialing" && trialEndDate && trialEndDate < new Date();
-  const isBlocked   = isExpiredTrial || subStatus === "past_due" || subStatus === "canceled";
+  const isBlocked   = !profile.freeForever && (isExpiredTrial || subStatus === "past_due" || subStatus === "canceled");
 
   // ── Tab config ────────────────────────────────────────────────────────────
   // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
@@ -587,11 +623,18 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const isTrainer       = profile.businessType === "trainer";
   const isDecorator     = profile.businessType === "decorator";
   const isHairdresser   = profile.businessType === "hairdresser";
+  const isPlumber       = profile.businessType === "plumber";
   const isBarber        = !profile.businessType || profile.businessType === "barber";
   const businessTypeLabel = isTrainer ? "Personal Trainer"
     : isDecorator ? "Decorator"
     : isHairdresser ? "Hairdresser"
+    : isPlumber ? "Plumbing, Heating & Electrical"
     : "Barber";
+  const workspaceLabel = isTrainer ? "Coaching"
+    : isDecorator ? "Projects"
+    : isHairdresser ? "Salon"
+    : isPlumber ? "Jobs"
+    : "Workday";
 
   // ── Scoped, professional light theme for the whole dashboard ────────────────
   // Refines cards, buttons, inputs and typography for a cohesive, polished look.
@@ -601,9 +644,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       mode: "light",
       primary:    { main: "#2563EB", dark: "#1D4ED8", contrastText: "#ffffff" },
       secondary:  { main: brandColor },
-      background: { default: "#F5F3ED", paper: "#ffffff" },
-      text:       { primary: "#111116", secondary: "#696A73" },
-      divider:    "#DEDDD8",
+      background: { default: "#F7F8FA", paper: "#ffffff" },
+      text:       { primary: "#18181B", secondary: "#667085" },
+      divider:    "#E4E7EC",
     },
     shape: { borderRadius: 12 },
     typography: {
@@ -615,18 +658,18 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     components: {
       MuiPaper: {
         defaultProps: { elevation: 0 },
-        styleOverrides: { root: { backgroundImage: "none", border: "1px solid #DEDDD8", borderRadius: 18, boxShadow: "0 14px 38px rgba(17,17,22,.05)" } },
+        styleOverrides: { root: { backgroundImage: "none", border: "1px solid #E4E7EC", borderRadius: 14, boxShadow: "0 1px 2px rgba(16,24,40,.04)" } },
       },
       MuiCard: {
         defaultProps: { elevation: 0 },
-        styleOverrides: { root: { borderRadius: 20, border: "1px solid #DEDDD8", boxShadow: "0 14px 38px rgba(17,17,22,.05)" } },
+        styleOverrides: { root: { borderRadius: 14, border: "1px solid #E4E7EC", boxShadow: "0 1px 2px rgba(16,24,40,.04)" } },
       },
       MuiButton: {
         defaultProps: { disableElevation: true },
-        styleOverrides: { root: { borderRadius: 999, boxShadow: "none", paddingInline: 20, "&:hover": { boxShadow: "none" } } },
+        styleOverrides: { root: { borderRadius: 9, boxShadow: "none", paddingInline: 16, "&:hover": { boxShadow: "none" } } },
       },
       MuiOutlinedInput: {
-        styleOverrides: { root: { borderRadius: 14, backgroundColor: "#fff" } },
+        styleOverrides: { root: { borderRadius: 10, backgroundColor: "#fff" } },
       },
       MuiChip: {
         styleOverrides: { root: { fontWeight: 600 } },
@@ -659,9 +702,17 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "hd-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
   ] : [];
 
+  const plumberTabs = isPlumber ? [
+    { key: "enquiries",    label: "Enquiries", icon: <PeopleIcon /> },
+    { key: "quote",        label: "Quotes",    icon: <RequestQuoteIcon /> },
+    { key: "dayplanner",   label: "Job Plan",  icon: <TodayIcon /> },
+    { key: "charges",      label: "Charges",   icon: <PaymentsIcon /> },
+    { key: "plu-invoices", label: "Invoices",  icon: <ReceiptLongIcon /> },
+  ] : [];
+
   const barberTabs = isBarber ? [
     { key: "queue",   label: "Queue",   icon: <PeopleIcon /> },
-    { key: "haircut", label: "Haircut", icon: <ContentCutIcon /> },
+    { key: "haircut", label: "Client cuts", icon: <ContentCutIcon /> },
     { key: "bar-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
   ] : [];
 
@@ -672,7 +723,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "edit-page",     label: "Profile",  icon: <PersonIcon /> },
     ...(!isTrainer ? [{ key: "services", label: "Services", icon: <ListIcon /> }] : []),
     ...(userRole.isOwner ? [{ key: "staff", label: "Team", icon: <PeopleIcon /> }] : []),
-    { key: "finance",       label: "Finance",  icon: <PaymentsIcon /> },
+    ...(userRole.isOwner ? [{ key: "finance", label: "Finance", icon: <PaymentsIcon /> }] : []),
     ...(userRole.isOwner ? [{ key: "reviews", label: "Reviews", icon: <ReviewsIcon /> }]  : []),
     ...(userRole.isOwner ? [{ key: "design",    label: "Design",    icon: <PaletteIcon /> }]  : []),
     ...(userRole.isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
@@ -683,6 +734,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     ...decoratorTabs,
     ...hairdresserTabs,
     ...barberTabs,
+    ...plumberTabs,
   ];
   const tabIdx = (key) => tabs.some((t) => t.key === key) ? key : null;
 
@@ -698,47 +750,92 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   // return index -1 from tabIdx — filter those out so no broken menu entries appear.
   const filterItems = (items) => items.filter(i => i.index != null);
 
+  // Each group carries a one-line description shown under its label in the
+  // nav, so a group's contents are guessable without clicking in first —
+  // the previous "Clients" group only ever held one unrelated item
+  // (Reviews for most business types, or Clients for trainers alone) and
+  // wasn't a real category, just leftover space; merged into where each
+  // item actually belongs instead of keeping a group name that described
+  // neither of its own contents.
+  const workflowGroups = isTrainer ? [{
+    label: "Coaching",
+    description: "Clients, plans and sessions",
+    icon: <FitnessCenterIcon />,
+    items: filterItems([
+      { label: "Clients & coaching", icon: <PeopleIcon />, index: tabIdx("clients") },
+      { label: "Availability", icon: <AccessTimeIcon />, index: "schedule" },
+      { label: "Sessions", icon: <StoreIcon />, index: "bookings" },
+    ]),
+  }] : isDecorator ? [{
+    label: "Projects",
+    description: "From estimate to completed work",
+    icon: <BriefcaseIcon />,
+    items: filterItems([
+      { label: "Quotes", icon: <RequestQuoteIcon />, index: tabIdx("quote") },
+      { label: "Day plan", icon: <TodayIcon />, index: tabIdx("dayplanner") },
+      { label: "Colour approvals", icon: <ColorLensIcon />, index: tabIdx("colourapproval") },
+      { label: "Appointments", icon: <StoreIcon />, index: "bookings" },
+      { label: "Availability", icon: <AccessTimeIcon />, index: "schedule" },
+    ]),
+  }] : isPlumber ? [{
+    label: "Jobs",
+    description: "From enquiry to paid invoice",
+    icon: <BriefcaseIcon />,
+    items: filterItems([
+      { label: "Enquiries", icon: <PeopleIcon />, index: tabIdx("enquiries") },
+      { label: "Quotes", icon: <RequestQuoteIcon />, index: tabIdx("quote") },
+      { label: "Job plan", icon: <TodayIcon />, index: tabIdx("dayplanner") },
+      { label: "Call-outs", icon: <StoreIcon />, index: "bookings" },
+      { label: "Availability", icon: <AccessTimeIcon />, index: "schedule" },
+      { label: "Charges", icon: <PaymentsIcon />, index: tabIdx("charges") },
+    ]),
+  }] : isHairdresser ? [{
+    label: "Salon diary",
+    description: "Appointments and availability",
+    icon: <ContentCutIcon />,
+    items: filterItems([
+      { label: "Diary", icon: <AccessTimeIcon />, index: "schedule" },
+      { label: "Appointments", icon: <StoreIcon />, index: "bookings" },
+    ]),
+  }] : [{
+    label: "Workday",
+    description: "Appointments, walk-ins and clients",
+    icon: <ContentCutIcon />,
+    items: filterItems([
+      { label: "Queue", icon: <PeopleIcon />, index: tabIdx("queue") },
+      { label: "Appointments", icon: <StoreIcon />, index: "bookings" },
+      { label: "Availability", icon: <AccessTimeIcon />, index: "schedule" },
+      { label: "Client cuts", icon: <ContentCutIcon />, index: tabIdx("haircut") },
+    ]),
+  }];
+
   const tabGroups = [
     {
-      label: "Overview",
+      label: "Today",
+      description: `Your ${workspaceLabel.toLowerCase()} at a glance`,
       icon: <DashboardIcon />,
       items: [{ label: "Today", icon: <DashboardIcon />, index: "overview" }],
     },
+    ...workflowGroups,
     {
-      label: "Booking",
-      icon: <AccessTimeIcon />,
-      items: filterItems([
-        { label: "Schedule", icon: <AccessTimeIcon />, index: "schedule" },
-        { label: "Bookings", icon: <StoreIcon />,      index: "bookings" },
-        ...(isBarber ? [
-          { label: "Queue", icon: <PeopleIcon />, index: tabIdx("queue") },
-        ] : []),
-      ]),
-    },
-    {
-      label: "Clients",
-      icon: <PeopleIcon />,
-      items: filterItems([
-        ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon />, index: IDX_REVIEWS }] : []),
-        ...(isTrainer        ? [{ label: "Clients", icon: <PeopleIcon />, index: tabIdx("clients") }] : []),
-      ]),
-    },
-    {
-      label: "Website",
+      label: "Business page",
+      description: "What customers see on your page",
       icon: <LanguageIcon />,
       items: filterItems([
         { label: "Profile",  icon: <PersonIcon />,  index: tabIdx("edit-page") },
         ...(!isTrainer ? [{ label: "Services", icon: <ListIcon />, index: tabIdx("services") }] : []),
         ...(userRole.isOwner ? [{ label: "Team", icon: <PeopleIcon />, index: IDX_STAFF }] : []),
+        ...(userRole.isOwner ? [{ label: "Reviews", icon: <ReviewsIcon />, index: IDX_REVIEWS }] : []),
         ...(userRole.isOwner                   ? [{ label: "Design",    icon: <PaletteIcon />,  index: IDX_DESIGN }] : []),
         ...(userRole.isOwner && !initialTenant ? [{ label: "Domain",    icon: <LanguageIcon />, index: IDX_DOMAIN }] : []),
       ]),
     },
     {
       label: "Money",
+      description: "Payments and invoices",
       icon: <PaymentsIcon />,
       items: filterItems([
-        { label: "Finance", icon: <PaymentsIcon />, index: IDX_FINANCE },
+        ...(userRole.isOwner ? [{ label: "Finance", icon: <PaymentsIcon />, index: IDX_FINANCE }] : []),
         { label: "Pay",     icon: <NfcIcon />,      index: IDX_PAY },
         ...(isTrainer ? [
           { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("pt-invoices") },
@@ -748,30 +845,15 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("hd-invoices") },
         ] : isBarber ? [
           { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("bar-invoices") },
+        ] : isPlumber ? [
+          { label: "Invoices", icon: <ReceiptLongIcon />, index: tabIdx("plu-invoices") },
         ] : []),
       ]),
     },
-    // ── Barber tools ──
-    ...(isBarber ? [{
-      label: "Tools",
-      icon: <AutoAwesomeIcon />,
-      items: filterItems([
-        { label: "Haircut", icon: <ContentCutIcon />, index: tabIdx("haircut") },
-      ]),
-    }] : []),
-    // ── Decorator projects ──
-    ...(isDecorator ? [{
-      label: "Projects",
-      icon: <RequestQuoteIcon />,
-      items: filterItems([
-        { label: "Colour",   icon: <ColorLensIcon />,    index: tabIdx("colourapproval") },
-        { label: "Quotes",   icon: <RequestQuoteIcon />, index: tabIdx("quote") },
-        { label: "Day Plan", icon: <TodayIcon />,        index: tabIdx("dayplanner") },
-      ]),
-    }] : []),
     // ── Settings (all business types) — kept last so it sits at the far right ──
     {
       label: "Settings",
+      description: "Alerts and connected apps",
       icon: <NotificationsActiveIcon />,
       items: filterItems([
         { label: "Notifications", icon: <NotificationsActiveIcon />, index: tabIdx("notifications") },
@@ -781,11 +863,12 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   ];
 
   const sectionMeta = tabs.find(item => item.key === tab) || tabs[0];
+  const activeGroupMeta = tabGroups.find(group => group.items.some(item => item.index === tab));
   const mobileItems = [
     tabs.find(item => item.key === "overview"),
-    tabs.find(item => item.key === "schedule"),
-    tabs.find(item => item.key === "bookings"),
-    tabs.find(item => item.key === (isTrainer ? "clients" : isDecorator ? "quote" : isBarber ? "queue" : "services")),
+    tabs.find(item => item.key === (isTrainer ? "clients" : isDecorator ? "dayplanner" : isPlumber ? "enquiries" : isBarber ? "queue" : "schedule")),
+    tabs.find(item => item.key === (isTrainer ? "schedule" : isDecorator ? "quote" : isPlumber ? "dayplanner" : "bookings")),
+    tabs.find(item => item.key === (isTrainer ? "bookings" : isDecorator ? "colourapproval" : isPlumber ? "quote" : isBarber ? "haircut" : "services")),
   ].filter(Boolean).map(item => ({ label: item.label, icon: item.icon, index: item.key }));
 
   const handleSectionChange = (key) => {
@@ -815,9 +898,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       if (!barber?.uid) return;
       setPortalLoading(true);
       try {
+        const idToken = await getAuth().currentUser?.getIdToken();
         const res  = await fetch("/api/billing-portal", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+          },
           body:    JSON.stringify({ barberId: barber.uid }),
         });
         const data = await res.json();
@@ -832,9 +919,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       if (!barber?.uid || !barber?.email) return;
       setSubLoading(true);
       try {
+        const idToken = await getAuth().currentUser?.getIdToken();
         const res  = await fetch("/api/create-subscription", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+          },
           body:    JSON.stringify({
             barberId:     barber.uid,
             email:        barber.email,
@@ -974,7 +1065,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <ThemeProvider theme={dashTheme}>
-    <Box sx={{ pb: isMobile ? 12 : 6, bgcolor: "#F5F3ED", minHeight: "100vh", backgroundImage: "radial-gradient(circle at 90% 0%, rgba(37,99,235,.08), transparent 28%)" }}>
+    <Box sx={{ pb: isMobile ? 12 : 6, bgcolor: "#F7F8FA", minHeight: "100vh" }}>
       <Snackbar
         open={Boolean(toast)} autoHideDuration={4000}
         onClose={() => setToast(null)} message={toast}
@@ -988,7 +1079,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         barber={barber}
         profile={profile}
         onBooked={async () => {
-          setToast("✅ Manual booking confirmed! Slot removed from online availability.");
+          setToast("Manual booking confirmed! Slot removed from online availability.");
           setSlots(await getProfessionalSlots(barber.uid) || []);
           await loadData();
         }}
@@ -1006,8 +1097,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
       <OfflineIndicator />
       <PWAInstallBanner brandColor={brandColor} />
+      <EmailVerificationBanner user={barber} brandColor={brandColor} />
 
-      <Box sx={{ maxWidth: 1440, mx: "auto", px: { xs: 1.5, md: 3 }, mt: 3, display: "flex", alignItems: "flex-start", gap: 3 }}>
+      <Box sx={{ maxWidth: 1360, mx: "auto", px: { xs: 1.5, md: 3 }, mt: { xs: 2, md: 3 }, display: "flex", alignItems: "flex-start", gap: 3 }}>
         <DashboardTabBar
           groups={tabGroups}
           activeTab={tab}
@@ -1020,12 +1112,17 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         <Box component="main" sx={{ flex: 1, minWidth: 0 }}>
           {tab !== "overview" && (
             <Box sx={{ mb: 1 }}>
-              <Typography sx={{ color: brandColor, fontWeight: 850, fontSize: ".68rem", letterSpacing: ".11em", textTransform: "uppercase" }}>
-                {businessTypeLabel} workspace
+              <Typography sx={{ color: "text.secondary", fontWeight: 700, fontSize: ".72rem" }}>
+                {businessTypeLabel} · {activeGroupMeta?.label || workspaceLabel}
               </Typography>
-              <Typography sx={{ fontWeight: 850, fontSize: { xs: "1.35rem", md: "1.65rem" }, letterSpacing: "-.025em", mt: .35 }}>
+              <Typography sx={{ fontWeight: 750, fontSize: { xs: "1.35rem", md: "1.6rem" }, letterSpacing: "-.02em", mt: .25 }}>
                 {sectionMeta.label}
               </Typography>
+              {activeGroupMeta?.description && (
+                <Typography sx={{ color: "text.secondary", fontSize: ".78rem", mt: .35 }}>
+                  {activeGroupMeta.description}
+                </Typography>
+              )}
             </Box>
           )}
 
@@ -1037,6 +1134,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             businessType={profile.businessType || "barber"}
             brandColor={brandColor}
             onNavigate={handleSectionChange}
+            barberId={barber?.uid}
           />
         </TabPanel>
 
@@ -1102,13 +1200,17 @@ export default function Dashboard({ tenant: initialTenant = null }) {
           </TabPanel>
         )}
 
-        {/* ── Finance ── */}
-        <TabPanel value={tab} index={IDX_FINANCE}>
-          <FinanceTab
-            profile={profile} setProfile={setProfile} userRole={userRole}
-            stripeLoading={stripeLoading} handleConnectStripe={handleConnectStripe}
-          />
-        </TabPanel>
+        {/* ── Finance (owner only — subscription billing and Stripe Connect
+             are shop-level, not something a staff login should touch) ── */}
+        {userRole.isOwner && (
+          <TabPanel value={tab} index={IDX_FINANCE}>
+            <FinanceTab
+              profile={profile} setProfile={setProfile} userRole={userRole}
+              barber={barber}
+              stripeLoading={stripeLoading} handleConnectStripe={handleConnectStripe}
+            />
+          </TabPanel>
+        )}
 
         {/* ── Design (owner only) ── */}
         {userRole.isOwner && (
@@ -1175,13 +1277,49 @@ export default function Dashboard({ tenant: initialTenant = null }) {
               <ColourApprovalTab barber={barber} brandColor={brandColor} />
             </TabPanel>
             <TabPanel value={tab} index={tabIdx("quote")}>
-              <QuoteTab barber={barber} profile={profile} brandColor={brandColor} />
+              <QuoteTab barber={barber} profile={profile} brandColor={brandColor} businessType="decorator" />
             </TabPanel>
             <TabPanel value={tab} index={tabIdx("dayplanner")}>
-              <DayPlannerTab barber={barber} brandColor={brandColor} />
+              <DayPlannerTab barber={barber} brandColor={brandColor} businessType="decorator" />
             </TabPanel>
             <TabPanel value={tab} index={tabIdx("dec-invoices")}>
               <InvoiceTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+          </>
+        )}
+
+        {/* ── Plumber-only tabs ── */}
+        {isPlumber && (
+          <>
+            <TabPanel value={tab} index={tabIdx("enquiries")}>
+              <EnquiriesTab barber={barber} brandColor={brandColor}
+                onConvertToQuote={data => { setPlumberDraft({ target: "quote", data }); handleSectionChange("quote"); }} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("quote")}>
+              <QuoteTab barber={barber} profile={profile} brandColor={brandColor} businessType="plumber"
+                prefill={plumberDraft?.target === "quote" ? plumberDraft.data : null}
+                onPrefillConsumed={() => setPlumberDraft(null)}
+                enableConversions
+                onConvertToJob={quote => { setPlumberDraft({ target: "dayplanner", data: { clientName: quote.clientName, address: quote.address, jobTitle: quote.jobTitle, sourceQuoteId: quote.id } }); handleSectionChange("dayplanner"); }}
+                onCreateInvoice={quote => { setPlumberDraft({ target: "plu-invoices", data: { ...quote, sourceIsQuote: true } }); handleSectionChange("plu-invoices"); }}
+              />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("dayplanner")}>
+              <DayPlannerTab barber={barber} brandColor={brandColor} businessType="plumber"
+                prefill={plumberDraft?.target === "dayplanner" ? plumberDraft.data : null}
+                onPrefillConsumed={() => setPlumberDraft(null)}
+                showJobLinkFields
+                onCreateInvoice={job => { setPlumberDraft({ target: "plu-invoices", data: { ...job, sourceIsJob: true } }); handleSectionChange("plu-invoices"); }}
+              />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("charges")}>
+              <ChargesTab barber={barber} profile={profile} brandColor={brandColor} />
+            </TabPanel>
+            <TabPanel value={tab} index={tabIdx("plu-invoices")}>
+              <PlumberInvoiceTab barber={barber} profile={profile} brandColor={brandColor} businessType="plumber"
+                prefill={plumberDraft?.target === "plu-invoices" ? plumberDraft.data : null}
+                onPrefillConsumed={() => setPlumberDraft(null)}
+              />
             </TabPanel>
           </>
         )}

@@ -3,23 +3,47 @@ import { Box, Typography } from "@mui/material";
 import WifiOffIcon from "@mui/icons-material/WifiOff";
 import WifiIcon from "@mui/icons-material/Wifi";
 
+// Ping a tiny same-origin resource to confirm the network is actually down —
+// navigator.onLine and the browser's online/offline events only reflect
+// whether SOME network interface is active, not real connectivity, so a
+// brief Wi-Fi blip, VPN toggle, or laptop wake can fire a false "offline"
+// event even though the internet works fine.
+const canReachServer = async () => {
+  try {
+    const res = await fetch("/favicon.ico", { method: "HEAD", cache: "no-store", signal: AbortSignal.timeout(4000) });
+    return res.ok || res.type === "opaque";
+  } catch {
+    return false;
+  }
+};
+
 export default function OfflineIndicator() {
-  const [online, setOnline] = useState(navigator.onLine);
+  const [online, setOnline] = useState(true);
   const [justReconnected, setJustReconnected] = useState(false);
 
   useEffect(() => {
-    const handleOnline = () => {
+    let cancelled = false;
+
+    const handleOnline = async () => {
+      const reachable = await canReachServer();
+      if (cancelled || !reachable) return;
       setOnline(true);
       setJustReconnected(true);
       setTimeout(() => setJustReconnected(false), 3000);
     };
-    const handleOffline = () => {
+    const handleOffline = async () => {
+      const reachable = await canReachServer();
+      if (cancelled || reachable) return;
       setOnline(false);
       setJustReconnected(false);
     };
+
+    if (!navigator.onLine) handleOffline();
+
     window.addEventListener("online",  handleOnline);
     window.addEventListener("offline", handleOffline);
     return () => {
+      cancelled = true;
       window.removeEventListener("online",  handleOnline);
       window.removeEventListener("offline", handleOffline);
     };

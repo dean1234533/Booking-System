@@ -224,7 +224,7 @@ export default function ProgressTrackerTab({ barber, profile, brandColor, traine
     if (!file) return;
     setUploading(true);
     try {
-      const url = await uploadBarberImage(file);
+      const url = await uploadBarberImage(file, `progress_${selectedClientId}_${type}_${Date.now()}.jpg`, trainerId);
       setPhotos((prev) => ({ ...prev, [type]: url }));
     } catch (err) {
       setError("Failed to upload photo: " + err.message);

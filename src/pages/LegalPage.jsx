@@ -52,7 +52,7 @@ const TERMS = {
       `We may update these Terms from time to time. If we make material changes we will take reasonable steps to notify you. Continued use of the Service after changes take effect constitutes acceptance.`,
     ]},
     { h: "9. Contact", b: [
-      `Questions about these Terms can be sent to support@bookrightly.com.`,
+      `Questions about these Terms can be sent to info@bookrightly.co.uk.`,
     ]},
   ],
 };
@@ -100,7 +100,7 @@ const PRIVACY = {
       `We use essential cookies to keep you signed in and to operate the platform, and may use analytics cookies to understand usage. You can control cookies through your browser settings.`,
     ]},
     { h: "9. Contact", b: [
-      `For privacy questions or to exercise your rights, contact us at privacy@bookrightly.com. You also have the right to complain to the UK Information Commissioner's Office (ICO).`,
+      `For privacy questions or to exercise your rights, contact us at info@bookrightly.co.uk. You also have the right to complain to the UK Information Commissioner's Office (ICO).`,
     ]},
   ],
 };

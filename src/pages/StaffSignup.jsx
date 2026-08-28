@@ -9,6 +9,7 @@ import { doc, getDoc } from "firebase/firestore";
 import AuthShell, { AUTH_GOLD } from "../components/auth/AuthShell";
 import { db } from "../firebase/config";
 import { claimStaffInvite } from "../firebase/auth";
+import { validatePassword, PASSWORD_HELP_TEXT } from "../utils/passwordValidation";
 
 // Reached via an owner-issued invite link (Team tab → "Copy invite link"),
 // scoped to one specific barbers/{shopId}/staff/{staffId} placeholder. This
@@ -55,7 +56,8 @@ export default function StaffSignup() {
   async function handleSubmit(event) {
     event.preventDefault();
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError("Enter a valid email address.");
-    if (password.length < 6) return setError("Use at least 6 characters for your password.");
+    const passwordError = validatePassword(password);
+    if (passwordError) return setError(passwordError);
     if (password !== confirm) return setError("Passwords do not match.");
 
     setLoading(true);
@@ -64,7 +66,11 @@ export default function StaffSignup() {
       await claimStaffInvite({ shopId, staffId, email: email.trim(), password });
       navigate("/dashboard");
     } catch (err) {
-      setError(err.message || "We couldn't set up your login. Please try again.");
+      setError(
+        err.code === "auth/password-does-not-meet-requirements"
+          ? PASSWORD_HELP_TEXT
+          : err.message || "We couldn't set up your login. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -118,7 +124,7 @@ export default function StaffSignup() {
               label="Create password" fullWidth required
               type={showPassword ? "text" : "password"} value={password}
               onChange={e => { setPassword(e.target.value); setError(null); }}
-              autoComplete="new-password" helperText="Use at least 6 characters."
+              autoComplete="new-password" helperText={PASSWORD_HELP_TEXT}
               InputProps={{ endAdornment: <InputAdornment position="end"><IconButton aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(v => !v)}>{showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}</IconButton></InputAdornment> }}
             />
             <TextField

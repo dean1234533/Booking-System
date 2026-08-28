@@ -22,7 +22,14 @@ function fieldSx(brand) {
     "& .MuiInputLabel-root":             { color: "rgba(255,255,255,0.6)", fontSize: "0.85rem" },
     "& .MuiInputLabel-root.Mui-focused": { color: brand },
     "& .MuiOutlinedInput-root": {
-      color: "#fff", borderRadius: 0,
+      // MUI's OutlinedInput has no background of its own — without this it
+      // falls through to a solid white default, leaving white label/input
+      // text sitting on a white field on this dark page (invisible).
+      color: "#fff", borderRadius: 0, backgroundColor: "rgba(255,255,255,0.04)",
+      "& input:-webkit-autofill": {
+        WebkitBoxShadow: "0 0 0 1000px #111 inset",
+        WebkitTextFillColor: "#fff",
+      },
       "& fieldset":             { borderColor: "rgba(255,255,255,0.25)" },
       "&:hover fieldset":       { borderColor: "rgba(255,255,255,0.4)" },
       "&.Mui-focused fieldset": { borderColor: brand },

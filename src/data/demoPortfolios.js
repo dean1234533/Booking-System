@@ -84,8 +84,8 @@ const DEMO_PORTFOLIOS = {
 const DEMO_HERO_IMAGES = {
   barber: {
     heroImage: "/images/demo/barber/hero.jpg",
-    homeHeroImage: "/images/demo/barber/home-hero.jpg",
-    mobileHomeHeroImage: "/images/demo/barber/home-hero-mobile.jpg",
+    homeHeroImage: "/images/demo/barber/home-hero-desktop-v2.jpg",
+    mobileHomeHeroImage: "/images/demo/barber/home-hero-mobile-v2.jpg",
   },
   hairdresser: { heroImage: "/images/demo/hairdresser/hero.jpg" },
   trainer: {

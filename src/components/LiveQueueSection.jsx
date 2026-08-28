@@ -19,12 +19,12 @@ function genSession() {
 
 function fieldSx(brand) {
   return {
-    "& .MuiInputLabel-root":             { color: "rgba(255,255,255,0.35)", fontSize: "0.85rem" },
+    "& .MuiInputLabel-root":             { color: "rgba(255,255,255,0.6)", fontSize: "0.85rem" },
     "& .MuiInputLabel-root.Mui-focused": { color: brand },
     "& .MuiOutlinedInput-root": {
       color: "#fff", borderRadius: 0,
-      "& fieldset":             { borderColor: "rgba(255,255,255,0.12)" },
-      "&:hover fieldset":       { borderColor: "rgba(255,255,255,0.28)" },
+      "& fieldset":             { borderColor: "rgba(255,255,255,0.25)" },
+      "&:hover fieldset":       { borderColor: "rgba(255,255,255,0.4)" },
       "&.Mui-focused fieldset": { borderColor: brand },
     },
   };

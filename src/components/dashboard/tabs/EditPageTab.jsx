@@ -749,6 +749,26 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
               onChange={(e) => set("heroSubtext", e.target.value)}
             />
           </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Rating line"
+              placeholder="5.0/5.0 Top Rated Excellence"
+              value={profile.heroReviewText || ""}
+              onChange={(e) => set("heroReviewText", e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Live queue button text"
+              placeholder="View Live Queue"
+              value={profile.queueCtaText || ""}
+              onChange={(e) => set("queueCtaText", e.target.value)}
+            />
+          </Grid>
           <Grid item xs={12}>
             <ImageField
               label="Main hero image"
@@ -781,6 +801,26 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
 
       <Section title="About your barber shop">
         <Grid container spacing={2}>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Small heading"
+              placeholder="OUR STORY"
+              value={profile.aboutTagline || ""}
+              onChange={(e) => set("aboutTagline", e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={8}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Story heading"
+              placeholder="East London craft, cut with intent."
+              value={profile.aboutHeading || ""}
+              onChange={(e) => set("aboutHeading", e.target.value)}
+            />
+          </Grid>
           <Grid item xs={12}>
             <TextField
               fullWidth
@@ -793,19 +833,29 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
               onChange={(e) => { set("aboutBody", e.target.value); set("aboutUs", e.target.value); }}
             />
           </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Story button text"
+              placeholder="MEET THE TEAM"
+              value={profile.aboutCtaText || ""}
+              onChange={(e) => set("aboutCtaText", e.target.value)}
+            />
+          </Grid>
         </Grid>
       </Section>
 
       <Section title="Business highlights">
         <Typography variant="body2" color="text.secondary" mb={2}>
-          Three stats shown in a brand-colour strip (only visible when filled
-          in).
+          Four stats shown in the dark trust strip below the hero.
         </Typography>
         <Grid container spacing={2}>
           {[
-            ["statBar1Num", "statBar1Label", "500+", "Cuts completed"],
-            ["statBar2Num", "statBar2Label", "5.0★", "Average rating"],
-            ["statBar3Num", "statBar3Label", "8+", "Years experience"],
+            ["statBar1Num", "statBar1Label", "10+", "Years of craft"],
+            ["statBar2Num", "statBar2Label", "5.0", "Client rating"],
+            ["statBar3Num", "statBar3Label", "7", "Days a week"],
+            ["statBar4Num", "statBar4Label", "LIVE", "Walk-in queue"],
           ].map(([nKey, lKey, nDef, lDef], i) => (
             <React.Fragment key={i}>
               <Grid item xs={6} sm={3}>
@@ -886,6 +936,115 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
         headingPlaceholder="Recent work"
         subtextPlaceholder="Drag the slider on each image to reveal the difference a professional cut makes."
       />
+
+      <Section title="Section headings and buttons">
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          Change the wording used throughout the barber home page.
+        </Typography>
+        <Grid container spacing={2}>
+          {[
+            ["portfolioEyebrow", "Gallery small heading", "GALLERY"],
+            ["servicesEyebrow", "Services small heading", "SERVICES"],
+            ["servicesHeading", "Services heading", "What We Offer"],
+            ["standardsHeading", "Standards panel heading", "The Fade Factory standard"],
+            ["visitHeading", "Location heading", "Visit Us"],
+            ["directionsCtaText", "Directions button text", "GET DIRECTIONS"],
+            ["hoursHeading", "Opening hours heading", "Opening Hours"],
+            ["closedLabel", "Closed-day label", "Closed"],
+            ["hoursFallbackText", "Opening-hours fallback", "Contact us for opening times"],
+            ["availabilityEyebrow", "Solo booking small heading", "AVAILABILITY"],
+            ["availabilityHeading", "Solo booking heading", "Book Your Appointment"],
+            ["teamEyebrow", "Team small heading", "EXPERTS"],
+            ["teamHeading", "Team heading", "Our Master Barbers"],
+            ["whatsappCtaText", "WhatsApp button text", "Or enquire via WhatsApp"],
+            ["reviewsEyebrow", "Reviews small heading", "Testimonials"],
+            ["reviewsHeading", "Reviews heading", "What Our Clients Say"],
+            ["verifiedClientLabel", "Verified-review label", "Verified Client"],
+            ["noReviewsHeading", "No-reviews heading", "No reviews yet"],
+            ["noReviewsBody", "No-reviews message", "Be the first to share your experience."],
+          ].map(([key, label, placeholder]) => (
+            <Grid item xs={12} sm={6} key={key}>
+              <TextField
+                fullWidth
+                size="small"
+                label={label}
+                placeholder={placeholder}
+                value={profile[key] || ""}
+                onChange={(e) => set(key, e.target.value)}
+              />
+            </Grid>
+          ))}
+        </Grid>
+      </Section>
+
+      <Section title="The barber shop standard">
+        <Grid container spacing={2}>
+          {[
+            ["standard1Title", "standard1Body", "Detail first", "Clean lines, balanced shape and a finish built around you."],
+            ["standard2Title", "standard2Body", "Premium finish", "Considered service from consultation through to the final detail."],
+            ["standard3Title", "standard3Body", "Time respected", "Book ahead or check the live queue before you set off."],
+          ].map(([titleKey, bodyKey, titlePlaceholder, bodyPlaceholder], index) => (
+            <React.Fragment key={titleKey}>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label={`Standard ${index + 1} title`}
+                  placeholder={titlePlaceholder}
+                  value={profile[titleKey] || ""}
+                  onChange={(e) => set(titleKey, e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={8}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label={`Standard ${index + 1} description`}
+                  placeholder={bodyPlaceholder}
+                  value={profile[bodyKey] || ""}
+                  onChange={(e) => set(bodyKey, e.target.value)}
+                />
+              </Grid>
+            </React.Fragment>
+          ))}
+        </Grid>
+      </Section>
+
+      <Section title="Team cards">
+        <Grid container spacing={2}>
+          {[
+            ["ownerRoleLabel", "Owner role label", "Owner & Barber"],
+            ["staffRoleLabel", "Staff role label", "Professional Barber"],
+            ["depositLabel", "Deposit label", "Deposit"],
+            ["staffCardCtaText", "Card button text", "BOOK NOW →"],
+          ].map(([key, label, placeholder]) => (
+            <Grid item xs={12} sm={6} key={key}>
+              <TextField fullWidth size="small" label={label} placeholder={placeholder} value={profile[key] || ""} onChange={(e) => set(key, e.target.value)} />
+            </Grid>
+          ))}
+        </Grid>
+      </Section>
+
+      <Section title="Navigation and footer">
+        <Grid container spacing={2}>
+          {[
+            ["navTeamLabel", "Team navigation label", "Our Team"],
+            ["navAboutLabel", "About navigation label", "About"],
+            ["navFindUsLabel", "Location navigation label", "Find Us"],
+            ["navReviewsLabel", "Reviews navigation label", "Reviews"],
+            ["navBookLabel", "Navigation booking button", "BOOK NOW"],
+            ["footerSocialHeading", "Footer social heading", "Stay Connected"],
+            ["footerLoginLabel", "Footer login link", "BARBER LOGIN"],
+            ["footerPrivacyLabel", "Privacy link label", "Privacy Policy"],
+            ["footerTermsLabel", "Terms link label", "Terms of Service"],
+            ["footerCloseLabel", "Legal window close button", "CLOSE"],
+          ].map(([key, label, placeholder]) => (
+            <Grid item xs={12} sm={6} key={key}>
+              <TextField fullWidth size="small" label={label} placeholder={placeholder} value={profile[key] || ""} onChange={(e) => set(key, e.target.value)} />
+            </Grid>
+          ))}
+        </Grid>
+      </Section>
     </>
   );
 }

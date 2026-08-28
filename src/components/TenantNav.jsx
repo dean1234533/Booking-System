@@ -15,13 +15,6 @@ import { auth } from "../firebase/config";
 import { signOut } from "firebase/auth";
 import { isDemoProfile } from "../data/demoPortfolios";
 
-const NAV_LINKS = [
-  { label: "Our Team", id: "barber-section" },
-  { label: "About",    id: "about" },
-  { label: "Find Us",  id: "find-us" },
-  { label: "Reviews",  id: "reviews" },
-];
-
 export default function TenantNav({ tenant }) {
   const { barber } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +27,13 @@ export default function TenantNav({ tenant }) {
   const logo         = isDemoProfile(tenant) ? "" : (tenant?.businessLogo || tenant?.logoUrl);
   const shopRouteId  = tenant?.shopId || tenant?.id || tenant?.uid;
   const homeHref     = tenant?.bookingSlug ? `/${tenant.bookingSlug}` : `/shop/${shopRouteId}`;
+  const navBookLabel = tenant?.navBookLabel || "BOOK NOW";
+  const navLinks = [
+    { label: tenant?.navTeamLabel || "Our Team", id: "barber-section" },
+    { label: tenant?.navAboutLabel || "About", id: "about" },
+    { label: tenant?.navFindUsLabel || "Find Us", id: "find-us" },
+    { label: tenant?.navReviewsLabel || "Reviews", id: "reviews" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -110,7 +110,7 @@ export default function TenantNav({ tenant }) {
 
             {/* Nav links — desktop centre */}
             <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 4 }}>
-              {NAV_LINKS.map(({ label, id }) => (
+              {navLinks.map(({ label, id }) => (
                 <Typography
                   key={id}
                   onClick={() => scrollTo(id)}
@@ -192,7 +192,7 @@ export default function TenantNav({ tenant }) {
                     display: { xs: "none", md: "inline-flex" },
                   }}
                 >
-                  BOOK NOW
+                  {navBookLabel}
                 </Button>
               )}
 
@@ -231,7 +231,7 @@ export default function TenantNav({ tenant }) {
 
           {/* Links */}
           <List disablePadding>
-            {NAV_LINKS.map(({ label, id }) => (
+            {navLinks.map(({ label, id }) => (
               <ListItem key={id} disablePadding sx={{ mb: 0.5 }}>
                 <Box
                   onClick={() => scrollTo(id)}
@@ -262,7 +262,7 @@ export default function TenantNav({ tenant }) {
                 boxShadow: "none", "&:hover": { bgcolor: brandColor, boxShadow: "none" },
               }}
             >
-              BOOK NOW
+              {navBookLabel}
             </Button>
           )}
         </Box>

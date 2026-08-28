@@ -96,7 +96,10 @@ function ServiceCard({ category, defaultOpen = false, onSelectService }) {
     category.image,
     CATEGORY_IMAGES[category.category] || CATEGORY_IMAGES.Plumbing,
   );
-  const items = Array.isArray(category.items) ? category.items : [];
+  // Skip rows saved with no name — an owner who started adding a service and
+  // didn't finish would otherwise show a blank row (just a number and an
+  // Enquire button) instead of nothing.
+  const items = (Array.isArray(category.items) ? category.items : []).filter(item => item.name?.trim());
   return (
     <article className={`trade-service-card${open ? " open" : ""}`}>
       <div className="trade-service-image-wrap">

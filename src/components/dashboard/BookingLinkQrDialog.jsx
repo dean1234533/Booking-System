@@ -3,12 +3,18 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typogra
 import QRCode from "qrcode";
 
 /**
- * Generates a downloadable QR code for the account's booking link — for
- * flyers, business cards, shop windows, appointment cards. Client-side only
- * (no third-party image service, no network dependency, doesn't send the
- * URL anywhere else).
+ * Generates a downloadable QR code for a link — for flyers, business cards,
+ * shop windows, appointment cards. Client-side only (no third-party image
+ * service, no network dependency, doesn't send the URL anywhere else).
+ *
+ * Originally booking-link-only (hence the name and the bookingSlug prop,
+ * still supported so existing callers don't need to change); pass `url`
+ * directly to encode anything else, e.g. the live queue join link.
  */
-export default function BookingLinkQrDialog({ open, onClose, bookingSlug, brandColor = "#2563EB" }) {
+export default function BookingLinkQrDialog({
+  open, onClose, bookingSlug, brandColor = "#2563EB",
+  url: urlProp, title = "Your booking page QR code", description, filename,
+}) {
   // A plain useRef here raced MUI's Dialog transition: the effect that draws
   // the QR code ran on mount, but the <canvas> wasn't always attached to the
   // DOM yet on that same pass, so canvasRef.current was still null and the
@@ -22,7 +28,7 @@ export default function BookingLinkQrDialog({ open, onClose, bookingSlug, brandC
   // Bumped to force the draw effect to re-run when the user hits "Try again".
   const [attempt, setAttempt] = useState(0);
 
-  const url = bookingSlug ? `https://bookrightly.co.uk/${bookingSlug}` : "";
+  const url = urlProp || (bookingSlug ? `https://bookrightly.co.uk/${bookingSlug}` : "");
 
   useEffect(() => {
     if (!open || !url || !canvasNode) return;
@@ -53,17 +59,17 @@ export default function BookingLinkQrDialog({ open, onClose, bookingSlug, brandC
   function handleDownload() {
     if (!canvasNode) return;
     const link = document.createElement("a");
-    link.download = `bookrightly-${bookingSlug}-qr.png`;
+    link.download = `${filename || `bookrightly-${bookingSlug || "link"}-qr`}.png`;
     link.href = canvasNode.toDataURL("image/png");
     link.click();
   }
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ fontWeight: 800 }}>Your booking page QR code</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 800 }}>{title}</DialogTitle>
       <DialogContent>
         <Typography sx={{ color: "text.secondary", fontSize: ".85rem", mb: 2 }}>
-          Scan to open {url.replace(/^https:\/\//, "")}. Use this on flyers, business cards, shop windows, or appointment cards.
+          {description || `Scan to open ${url.replace(/^https:\/\//, "")}. Use this on flyers, business cards, shop windows, or appointment cards.`}
         </Typography>
         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", minHeight: 260 }}>
           {!ready && !error && <CircularProgress sx={{ color: brandColor }} size={24} />}

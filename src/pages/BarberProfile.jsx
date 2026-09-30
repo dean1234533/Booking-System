@@ -8,7 +8,6 @@ import {
 import { alpha } from "@mui/material/styles";
 import InstagramIcon    from "@mui/icons-material/Instagram";
 import FacebookIcon     from "@mui/icons-material/Facebook";
-import WhatsAppIcon     from "@mui/icons-material/WhatsApp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import ArrowBackIosNewIcon   from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon   from "@mui/icons-material/ArrowForwardIos";
@@ -127,7 +126,11 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
         const ownerSnap = await getDoc(doc(db, "barbers", barberId));
         if (ownerSnap.exists()) {
           const data = ownerSnap.data();
-          if (data.role !== "staff" && data.name) {
+          // An owner's doc can carry businessName without a personal `name`
+          // set (e.g. never filled in) — requiring `name` specifically meant
+          // a perfectly valid business account still fell through to "Barber
+          // profile not found" whenever only businessName was set.
+          if (data.role !== "staff" && (data.name || data.businessName)) {
             staffData = { id: ownerSnap.id, ...data, isStaff: false, shopId: ownerSnap.id };
           }
         }
@@ -198,10 +201,14 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
   const facebookUrl  = barber?.facebookUrl  || effectiveTenant?.facebookUrl  || "";
   const hasSocial    = instagramUrl || tiktokUrl || facebookUrl;
 
-  // Only offered when deposits aren't already being collected — shop-level,
-  // since staff don't have their own Stripe connection.
+  // Shop-level rather than the individual staff member's, since staff don't
+  // have their own Stripe connection.
   const shopContext = barber?.isStaff ? effectiveTenant : barber;
-  const whatsappUrl = !shopContext?.stripeConnected
+  // Always offered as an option alongside direct booking now, not just when
+  // Stripe isn't connected — BookingForm.jsx handles payment (Stripe,
+  // external link, or none) regardless, so this is just a preference some
+  // customers have, not a fallback for a broken flow.
+  const whatsappUrl = shopContext?.whatsappBookingEnabled !== false
     ? getWhatsAppBookingUrl(shopContext?.whatsappNumber, effectiveTenant?.businessName || shopContext?.businessName)
     : null;
 
@@ -217,21 +224,36 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
   // Editable page fields
   const heroTagline  = barber?.heroTagline  || (barber?.isStaff ? "Professional Barber" : "Owner & Barber");
   const heroCtaText  = barber?.heroCtaText  || "BOOK APPOINTMENT";
-  const heroProfile  = barber?.isDemo ? barber : effectiveTenant;
-  const savedHero    = barber?.heroImage || effectiveTenant?.heroImage || "";
+  // effectiveTenant is built for staff pages (shop-level fallback data) and
+  // is essentially empty on a solo owner's own page — using it alone here
+  // meant businessType (needed to pick the right placeholder image) silently
+  // resolved to nothing for owner accounts. Merging keeps barber's own
+  // businessType/isDemo as the base while still letting effectiveTenant's
+  // shop-level fields win for staff.
+  const heroProfile  = barber?.isDemo ? barber : { ...barber, ...effectiveTenant };
+  // Matches BarberCard's marketplace image priority (heroImage, then logo,
+  // then profile pic) — this only checked heroImage before, so a business
+  // with a logo/profile photo but no dedicated hero upload showed their real
+  // photo on the homepage card but the generic placeholder on their own page.
+  const savedHero    = barber?.heroImage || barber?.logoUrl || barber?.profilePic
+    || effectiveTenant?.heroImage || effectiveTenant?.logoUrl || effectiveTenant?.profilePic || "";
   const heroImage    = heroForProfile(heroProfile, savedHero);
   const aboutBody    = barber?.aboutBody    || barber?.aboutUs || "";
-  const statBar = barber?.statBar1Num ? [
-    { num: barber.statBar1Num, label: barber.statBar1Label || "" },
-    { num: barber.statBar2Num, label: barber.statBar2Label || "" },
-    { num: barber.statBar3Num, label: barber.statBar3Label || "" },
-  ] : null;
+  // Matches TenantHome's stat bar defaults — previously required real data
+  // (statBar1Num) to show at all, so a business without it just had no stat
+  // bar instead of the same generic-but-presentable numbers the homepage
+  // template already falls back to.
+  const statBar = [
+    { num: barber?.statBar1Num || "10+", label: barber?.statBar1Label || "Years of craft" },
+    { num: barber?.statBar2Num || "5.0", label: barber?.statBar2Label || "Client rating" },
+    { num: barber?.statBar3Num || "7",   label: barber?.statBar3Label || "Days a week" },
+  ];
 
   // Gallery photos live on the shop's own account too — same reason as the
   // social links above, a staff member's individual doc has no portfolio of
   // its own, so without this fallback only the owner's page ever showed one.
   const savedPortfolio   = barber?.portfolioItems?.length ? barber.portfolioItems : (effectiveTenant?.portfolioItems || []);
-  const portfolioItems   = portfolioForProfile(barber?.isDemo ? barber : effectiveTenant, savedPortfolio);
+  const portfolioItems   = portfolioForProfile(heroProfile, savedPortfolio);
   const portfolioHeading = barber?.portfolioHeading || effectiveTenant?.portfolioHeading || "Recent work";
   const portfolioSubtext = barber?.portfolioSubtext || effectiveTenant?.portfolioSubtext || "";
 
@@ -566,15 +588,6 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
               width: 40, height: 3, bgcolor: brandColor, borderRadius: 2,
               mx: "auto", mt: 2.5,
             }} />
-            {whatsappUrl && (
-              <Button
-                component="a" href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-                variant="outlined" size="small" startIcon={<WhatsAppIcon />}
-                sx={{ mt: 3, color: "#25D366", borderColor: "#25D36680", "&:hover": { borderColor: "#25D366", bgcolor: "#25D36610" } }}
-              >
-                Or enquire via WhatsApp
-              </Button>
-            )}
           </Box>
 
           <SlotPicker
@@ -584,6 +597,21 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
             brandColor={brandColor}
             onSelect={handleSlotSelect}
           />
+          {whatsappUrl && (
+            <Box sx={{ textAlign: "center", mt: 3 }}>
+              <Box
+                component="a"
+                href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                sx={{
+                  display: "inline-flex", alignItems: "center", gap: 1,
+                  px: 3, py: 1.25, border: "1px solid #25D36680", borderRadius: 1,
+                  color: "#25D366", fontSize: "0.85rem", fontWeight: 700, textDecoration: "none",
+                }}
+              >
+                Or book via WhatsApp
+              </Box>
+            </Box>
+          )}
         </Container>
       </Box>
 

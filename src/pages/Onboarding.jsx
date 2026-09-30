@@ -9,7 +9,6 @@ import { getApp } from "firebase/app";
 import { updateBarber, addSlot, uploadBarberImage } from "../firebase/firestore";
 import { sanitizeSlug, isValidSlugFormat, isReservedSlug, validateSlug } from "../utils/bookingSlug";
 import BookingLinkCard from "../components/dashboard/BookingLinkCard";
-import { logFunnelEvent } from "../utils/funnelTracking";
 import AppIcon from "../components/AppIcon";
 
 /* ── Inline styles ── */
@@ -531,6 +530,15 @@ export default function Onboarding({ brandColor: brandColorProp }) {
   // below finished silently overwrote a correct value (e.g. "plumber") with
   // "barber". Found 2026-08-21 after it happened to a real account.
   const [businessType, setBusinessType] = useState(null);
+  // Free-plan accounts (£0) have no services list at all (nothing in
+  // MiniBookingPage.jsx shows one) — the services step is skipped for them
+  // entirely, unlike Basic which turned out to need it after all.
+  const [plan, setPlan] = useState(null);
+  const isFreePlan = plan === "free";
+  // Basic and Mini are solo-only — there's no team/staff feature on either
+  // plan (see Dashboard.jsx's tab gating), so the "just me or a team" step
+  // is a dead choice for them.
+  const isBasicPlan = plan === "basic";
   const [location, setLocation] = useState("");
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
@@ -547,7 +555,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
 
   const completedLoggedRef = useRef(false);
 
-  useEffect(() => { window.scrollTo(0, 0); logFunnelEvent("onboarding_view"); }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   // Each onboarding panel replaces the previous one in place. Reset the
   // document scroll so the next heading, especially the final success screen,
@@ -557,7 +565,6 @@ export default function Onboarding({ brandColor: brandColorProp }) {
   useEffect(() => {
     if (step >= steps.length && !completedLoggedRef.current) {
       completedLoggedRef.current = true;
-      logFunnelEvent("onboarding_completed", { claimedSlug });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
@@ -572,6 +579,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
           const data = snap.data();
           setBusinessName(data.businessName || data.name || "");
           setBusinessType(data.businessType || "barber");
+          setPlan(data.plan || "full");
           setLocation(data.location || data.city || "");
           if (data.brandColor) setBrandColor(data.brandColor);
           if (data.bookingSlug) setClaimedSlug(data.bookingSlug);
@@ -581,9 +589,13 @@ export default function Onboarding({ brandColor: brandColorProp }) {
     })();
   }, [authUser?.uid]);
 
-  // Suggest a slug once we know the business name and reach that step
+  // Suggest a slug once we know the business name and reach that step.
+  // The "Booking link" step's index shifts when the account-type step
+  // (above) is skipped for Basic/Mini — computed here rather than via the
+  // `steps` array itself, since that's assembled later in this component.
+  const slugStepIndex = (isBasicPlan || isFreePlan) ? 1 : 2;
   useEffect(() => {
-    if (step === 2 && !slug && businessName) {
+    if (step === slugStepIndex && !slug && businessName) {
       setSlug(sanitizeSlug(businessName));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -625,12 +637,10 @@ export default function Onboarding({ brandColor: brandColorProp }) {
   }, [slug, step, claimedSlug]);
 
   function skipToDashboard() {
-    logFunnelEvent("onboarding_skipped", { atStep: step, stepLabel: STEP_LABELS[step] });
     navigate("/dashboard");
   }
 
   function goNext(meta = {}) {
-    logFunnelEvent("onboarding_step_completed", { step, stepLabel: STEP_LABELS[step], ...meta });
     setStep(s => s + 1);
     setKey(k => k + 1);
     setError("");
@@ -644,7 +654,6 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       await updateBarber(authUser.uid, { accountType: type });
       goNext();
     } catch (e) {
-      logFunnelEvent("onboarding_step_error", { step, message: e.message || "unknown" });
       setError("Couldn't save that — please try again.");
     } finally {
       setSaving(false);
@@ -670,7 +679,6 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       });
       goNext();
     } catch (e) {
-      logFunnelEvent("onboarding_step_error", { step, message: e.message || "unknown" });
       setError("Couldn't save your profile — please try again.");
     } finally {
       setSaving(false);
@@ -701,7 +709,6 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       setClaimedSlug(res.data.slug);
       goNext();
     } catch (e) {
-      logFunnelEvent("onboarding_step_error", { step, message: e.message || "unknown" });
       setError(e.message?.replace(/^.*claimBookingSlug:\s*/, "") || "Couldn't claim that link — please try a different one.");
     } finally {
       setSaving(false);
@@ -727,7 +734,6 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       }
       goNext();
     } catch (e) {
-      logFunnelEvent("onboarding_step_error", { step, message: e.message || "unknown" });
       setError("Couldn't save that service — please try again.");
     } finally {
       setSaving(false);
@@ -756,7 +762,6 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       }
       goNext();
     } catch (e) {
-      logFunnelEvent("onboarding_step_error", { step, message: e.message || "unknown" });
       setError("Couldn't save your availability — you can add it later from the Schedule tab.");
       goNext();
     } finally {
@@ -772,9 +777,10 @@ export default function Onboarding({ brandColor: brandColorProp }) {
   }
 
   const steps = [
-    // 0 — Account type
-    {
-      num: "Step 01",
+    // 0 — Account type. Basic and Mini have no team/staff feature at all
+    // (see Dashboard.jsx's tab gating), so this choice is skipped entirely
+    // for them rather than offering an option that does nothing.
+    ...(isBasicPlan || isFreePlan ? [] : [{
       heading: <>How will you<br /><em>use Bookrightly?</em></>,
       desc: "Both work the same way underneath — this just tunes what you see, and you can change it later from Settings.",
       body: (
@@ -793,10 +799,9 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       cardIcon: "success",
       cardTitle: "Welcome to Bookrightly",
       cardBody: "In the next few minutes you'll have your own booking page live — no website or domain needed.",
-    },
+    }]),
     // 1 — Profile
     {
-      num: "Step 02",
       heading: <>Tell us about<br /><em>your business</em></>,
       desc: "This appears on your public booking page — you can edit all of it later.",
       body: (
@@ -831,7 +836,6 @@ export default function Onboarding({ brandColor: brandColorProp }) {
     },
     // 2 — Booking link
     {
-      num: "Step 03",
       heading: <>Choose your<br /><em>booking link</em></>,
       desc: "This is the address clients will use to book you — share it anywhere.",
       body: (
@@ -869,9 +873,9 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       cardTitle: "One link, everywhere",
       cardBody: "Put it in your Instagram, TikTok, Facebook or WhatsApp bio so clients can book you anytime.",
     },
-    // 3 — First service
-    {
-      num: "Step 04",
+    // 3 — First service (skipped entirely for Mini-plan accounts — no
+    // services list anywhere on MiniBookingPage.jsx, nothing to show one)
+    ...(isFreePlan ? [] : [{
       heading: <>Add your<br /><em>first service</em></>,
       desc: "You can add more, edit prices, or change anything later from your dashboard.",
       body: (
@@ -894,10 +898,9 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       cardIcon: "barber",
       cardTitle: "What you offer",
       cardBody: "A deposit here cuts no-shows — clients pay upfront to secure the slot.",
-    },
+    }]),
     // 4 — Availability
     {
-      num: "Step 05",
       heading: <>Set your<br /><em>weekly hours</em></>,
       desc: "Turn on the days you work — we'll open slots for the next four weeks. Fine-tune anytime from Schedule.",
       body: (
@@ -923,7 +926,11 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       cardTitle: "When you're free",
       cardBody: "Clients can only book the times you open — no double bookings, ever.",
     },
-  ];
+  // Renumbered by final position rather than hardcoded per-step, since
+  // steps above are conditionally excluded (account type for Basic/Mini,
+  // first service for Mini) and a literal "Step 02" would be wrong once
+  // whatever precedes it is skipped.
+  ].map((s, i) => ({ ...s, num: `Step ${String(i + 1).padStart(2, "0")}` }));
 
   const isLastFormStep = step === steps.length - 1;
   const current = steps[step];

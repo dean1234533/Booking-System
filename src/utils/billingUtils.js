@@ -14,11 +14,10 @@ export async function getBillingInfo(userId) {
     const userData = userDoc.data();
     const businessType = userData.businessType || "barber";
 
-    // Flat fee for every business type — trainers get unlimited clients at
-    // no extra cost, no per-client metering. See PLATFORM_FEE_PERCENT in
-    // bookingHelpers.jsx for the same "no puzzle" reasoning applied to the
-    // transaction-fee side of pricing.
-    const baseCost = businessType === "trainer" ? "£15.00" : "£10.00";
+    // Flat fee for every business type, unlimited clients, no per-client
+    // metering. See PLATFORM_FEE_PERCENT in bookingHelpers.jsx for the same
+    // "no puzzle" reasoning applied to the transaction-fee side of pricing.
+    const baseCost = "£10.00";
     return {
       businessType,
       baseCost,

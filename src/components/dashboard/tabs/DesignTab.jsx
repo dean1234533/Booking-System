@@ -20,6 +20,7 @@ export default function DesignTab({
   const set = (key, val) => setProfile(p => ({ ...p, [key]: val }));
   const brandColor   = profile.brandColor || "#2563EB";
   const selectedFont = profile.siteFont   || "playfair";
+  const isBasicPlan  = profile.plan === "basic";
 
   useEffect(() => { FONT_OPTIONS.forEach(f => loadGoogleFont(f.key)); }, []);
 
@@ -75,6 +76,17 @@ export default function DesignTab({
           </Box>
         </Grid>
 
+        {/* ── Nav button text colour ── */}
+        <Grid item xs={12} sm={6}>
+          <Typography variant="subtitle2" fontWeight={700} mb={1}>Nav Button Text</Typography>
+          <Box display="flex" alignItems="center" gap={1.5}>
+            <input type="color" value={profile.navButtonTextColor || "#111111"}
+              onChange={e => set("navButtonTextColor", e.target.value)}
+              style={{ width: 48, height: 48, border: "none", cursor: "pointer", borderRadius: 8 }} />
+            <Typography variant="caption" color="text.secondary">Text on the "BOOK NOW" nav button — pick a colour that reads against your Brand Colour</Typography>
+          </Box>
+        </Grid>
+
         {/* ── Hero images ── */}
         <Grid item xs={12} sm={6}>
           <Typography variant="subtitle2" fontWeight={700} mb={1}>
@@ -94,26 +106,33 @@ export default function DesignTab({
             </Button>
           </Box>
         </Grid>
-        <Grid item xs={12} sm={6}>
-          <Typography variant="subtitle2" fontWeight={700} mb={1}>
-            <MobileIcon sx={{ verticalAlign: "middle", mr: 0.5, fontSize: 18 }} />
-            Mobile Hero Image
-          </Typography>
-          <Box display="flex" alignItems="center" gap={2}>
-            <Box sx={{
-              width: 100, height: 56, borderRadius: 1, bgcolor: "rgba(255,255,255,0.08)",
-              backgroundImage:    `url(${heroPreviewMobile || profile.heroImageMobile})`,
-              backgroundSize:     "cover", backgroundPosition: "center",
-            }} />
-            <Button variant="outlined" component="label" size="small">
-              Upload Mobile
-              <input type="file" hidden accept="image/*"
-                onChange={e => handleImageChange(e, setHeroFileMobile, setHeroPreviewMobile)} />
-            </Button>
-          </Box>
-        </Grid>
+        {/* MinimalBookingPage.jsx uses a single heroImage — no separate
+            mobile crop like the full templates have. */}
+        {!isBasicPlan && (
+          <Grid item xs={12} sm={6}>
+            <Typography variant="subtitle2" fontWeight={700} mb={1}>
+              <MobileIcon sx={{ verticalAlign: "middle", mr: 0.5, fontSize: 18 }} />
+              Mobile Hero Image
+            </Typography>
+            <Box display="flex" alignItems="center" gap={2}>
+              <Box sx={{
+                width: 100, height: 56, borderRadius: 1, bgcolor: "rgba(255,255,255,0.08)",
+                backgroundImage:    `url(${heroPreviewMobile || profile.heroImageMobile})`,
+                backgroundSize:     "cover", backgroundPosition: "center",
+              }} />
+              <Button variant="outlined" component="label" size="small">
+                Upload Mobile
+                <input type="file" hidden accept="image/*"
+                  onChange={e => handleImageChange(e, setHeroFileMobile, setHeroPreviewMobile)} />
+              </Button>
+            </Box>
+          </Grid>
+        )}
 
         {/* ── Font style ── */}
+        {/* MinimalBookingPage.jsx always renders in Playfair Display — it
+            never reads siteFont. */}
+        {!isBasicPlan && (
         <Grid item xs={12}>
           <Divider sx={{ my: 1 }} />
           <Typography variant="subtitle1" fontWeight={700} mb={0.5} mt={1}>Font Style</Typography>
@@ -156,6 +175,7 @@ export default function DesignTab({
             })}
           </Box>
         </Grid>
+        )}
 
 
         {/* ── Legal ── */}

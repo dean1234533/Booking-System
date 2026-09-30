@@ -7,8 +7,9 @@ import PeopleIcon from "@mui/icons-material/People";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
-import { collection, onSnapshot, addDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
+import { requestAndSubscribe, notificationsSupported, getExistingSubscription } from "../utils/pushNotifications";
 
 const SANS  = "'DM Sans', sans-serif";
 const SERIF = "'Playfair Display', serif";
@@ -49,6 +50,8 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
   const [notificationPermission, setNotificationPermission] = useState(
     typeof Notification === "undefined" ? "unsupported" : Notification.permission
   );
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const pushSubRef            = useRef(null);
   const notifiedRef           = useRef(false);
   const calledRef             = useRef(false);
   const wakeLockRef           = useRef(null);
@@ -62,6 +65,15 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
       if (raw) { const p = JSON.parse(raw); setMyEntry(p); setView("waiting"); }
     } catch {}
   }, [shopId]);
+
+  // Silently pick up a push subscription this browser already has (e.g. from
+  // a previous queue join) — no permission prompt, just checks what's there.
+  useEffect(() => {
+    if (!notificationsSupported()) return;
+    getExistingSubscription().then(sub => {
+      if (sub) { pushSubRef.current = sub.toJSON(); setPushEnabled(true); }
+    });
+  }, []);
 
   // Config listener
   useEffect(() => {
@@ -189,22 +201,33 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
     try { navigator.vibrate?.(0); } catch {}
   }
 
+  // Requests notification permission and, if granted, subscribes this
+  // browser to background push (delivers even if the tab is closed or the
+  // phone is locked) — a superset of the old permission-only check.
   async function requestAlerts() {
-    if (typeof Notification === "undefined") {
+    if (!notificationsSupported()) {
       setNotificationPermission("unsupported");
       return "unsupported";
     }
-    if (Notification.permission !== "default") {
-      setNotificationPermission(Notification.permission);
-      return Notification.permission;
+    const result = await requestAndSubscribe();
+    const permission = Notification.permission;
+    setNotificationPermission(permission);
+    if (result.subscription) {
+      pushSubRef.current = result.subscription.toJSON();
+      setPushEnabled(true);
     }
-    try {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
-      return permission;
-    } catch {
-      setNotificationPermission("denied");
-      return "denied";
+    return permission;
+  }
+
+  // Attaches the current push subscription to this queue entry — used when
+  // alerts are enabled after already joining (subscribing pre-join attaches
+  // it via joinQueue's addDoc instead).
+  async function attachPushToEntry() {
+    const permission = await requestAlerts();
+    if (permission === "granted" && pushSubRef.current && myEntry?.id) {
+      try {
+        await updateDoc(doc(db, "barbers", shopId, "liveQueue", myEntry.id), { pushSubscription: pushSubRef.current });
+      } catch (e) { console.error(e); }
     }
   }
 
@@ -221,6 +244,7 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
         status:          "waiting",
         sessionId,
         joinedAt:        serverTimestamp(),
+        ...(pushSubRef.current ? { pushSubscription: pushSubRef.current } : {}),
       });
       const entry = { id: docRef.id, sessionId, name: form.name.trim() };
       setMyEntry(entry);
@@ -298,7 +322,7 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
             { val: avgCut,       label: "Min / Cut" },
           ].map((s, i) => (
             <React.Fragment key={s.label}>
-              {i > 0 && <Box sx={{ width: 1, bgcolor: "rgba(255,255,255,0.07)" }} />}
+              {i > 0 && <Box sx={{ width: "1px", flexShrink: 0, bgcolor: "rgba(255,255,255,0.07)" }} />}
               <Box sx={{ textAlign: "center" }}>
                 <Typography sx={{ fontFamily: SERIF, fontSize: "2.8rem", color: "#fff", lineHeight: 1 }}>{s.val}</Typography>
                 <Typography sx={{ fontFamily: SANS, fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", mt: 0.5 }}>
@@ -468,11 +492,18 @@ export default function LiveQueueSection({ shopId, brandColor = "#2563EB", displ
                   </Box>
                 )}
 
-                <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(255,255,255,0.48)", mb: 3, lineHeight: 1.6 }}>
-                  Keep this page open — {notificationPermission === "granted"
-                    ? "you'll get a browser notification and your phone will play a sound when you're called."
-                    : "your live position will update here and your phone will play a sound when you're called."}
+                <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", color: "rgba(255,255,255,0.48)", mb: pushEnabled ? 1 : 3, lineHeight: 1.6 }}>
+                  {pushEnabled
+                    ? "Background alerts are on — you'll be notified even if you lock your phone or close this tab."
+                    : "Keep this page open — your live position will update here and your phone will play a sound when you're called."}
                 </Typography>
+
+                {!pushEnabled && notificationPermission !== "unsupported" && (
+                  <Button onClick={attachPushToEntry} size="small"
+                    sx={{ color: brandColor, border: `1px solid ${brandColor}66`, fontSize: "0.68rem", mb: 3 }}>
+                    Enable background alerts
+                  </Button>
+                )}
 
                 <Button onClick={leaveQueue}
                   sx={{ borderColor: "rgba(255,255,255,0.13)", color: "rgba(255,255,255,0.32)", border: "1px solid", borderRadius: 0, px: 3, py: 0.9, fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>

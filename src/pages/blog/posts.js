@@ -60,6 +60,14 @@ export const BLOG_POSTS = [
         text: "If someone no-shows without cancelling, keep the deposit and move on. Don't chase, don't confront. If you're on an online booking system, the slot should refill from your waitlist or become bookable again automatically. The deposit absorbs most of the loss. Over time, clients who are serious self-select through your booking flow and the ones who weren't worth your time stop booking.",
       },
       {
+        type: "h2",
+        text: "Deposits handle the money side — the process still matters",
+      },
+      {
+        type: "p-html",
+        html: "A deposit fixes the incentive problem, but it doesn't fix a confirmation message clients can't find or a reminder sent too close to your cancellation deadline to actually act on. For the operational side — how to word a booking confirmation, when exactly to time a reminder against your notice period, and how to actually measure your no-show rate before and after you change anything — <a href=\"https://opsmavix.com/blog/how-to-reduce-salon-no-shows/\" target=\"_blank\" rel=\"noopener\">OpsMavix's guide to reducing salon no-shows</a> covers it well, with message templates you can adapt directly.",
+      },
+      {
         type: "cta",
         text: "Bookrightly lets you collect deposits at booking via Stripe — clients pay to secure their slot, you get a notification, and reminders go out automatically. 90-day free trial, no card needed.",
       },
@@ -123,7 +131,7 @@ export const BLOG_POSTS = [
       },
       {
         type: "cta",
-        text: "Bookrightly's PT plan includes Stripe deposits at booking, digital PAR-Q forms, food diary, check-ins, and workout plans — all for £15/month with a 90-day free trial.",
+        text: "Bookrightly's PT plan includes Stripe deposits at booking, digital PAR-Q forms, food diary, check-ins, and workout plans — all for £10/month with a 90-day free trial.",
       },
     ],
   },
@@ -255,7 +263,7 @@ export const BLOG_POSTS = [
       },
       {
         type: "cta",
-        text: "Bookrightly gives UK hair salons a branded booking page with your full treatment menu, Stripe deposits, and automatic confirmations — for £10/month with a 90-day free trial.",
+        text: "Bookrightly gives UK hair salons a branded booking page with your full treatment menu, Stripe deposits, and automatic confirmations — for £10/month with a 90-day free trial. Just want a simple booking page and an Instagram link? Lighter plans start at £5/month, or stay on the Free plan forever — see bookrightly.co.uk/pricing.",
       },
     ],
   },
@@ -456,6 +464,348 @@ export const BLOG_POSTS = [
       {
         type: "cta",
         text: "Bookrightly takes the number you've worked out and turns it into a real booking — deposits collected upfront via Stripe, so the rate you calculated is the rate that actually lands in your account. 90-day free trial, no card needed.",
+      },
+    ],
+  },
+  {
+    slug: "free-business-starter-pack-google-directories-search-console",
+    title: "The Free Business Starter Pack: Google, Directories & Tracking Your Traffic",
+    description: "A step-by-step pack for getting your business found online for free — Google Business Profile, the directories worth listing on, and how to check your traffic once you have a custom domain.",
+    date: "2026-08-29",
+    readTime: "7 min",
+    category: "Marketing",
+    content: [
+      {
+        type: "intro",
+        text: "A booking page is only useful once people can find it. Before you spend anything on ads, there's a handful of free setup steps that do most of the heavy lifting — this is the pack we hand every new business on Bookrightly.",
+      },
+      {
+        type: "h2",
+        text: "Step 1: Claim your Google Business Profile",
+      },
+      {
+        type: "p",
+        text: "Google Business Profile (formerly Google My Business) is the single most important free listing for a local service business. It's what puts you on Google Maps, in the local \"map pack\" above the normal search results, and gives you a place for reviews, opening hours, photos and a direct link to your Bookrightly booking page. Most local searches — \"barber near me\", \"plumber in [town]\" — are won or lost here before a searcher even reaches a website.",
+      },
+      {
+        type: "list",
+        items: [
+          "Go to google.com/business and sign in with a Google account (create one for the business if you don't already use one).",
+          "Search for your business name and address — if Google already has a listing for you, claim it; otherwise add a new one.",
+          "Choose your category carefully (e.g. \"Barber shop\", \"Plumber\", \"Personal trainer\") — this is what Google matches against local searches.",
+          "Add your service area or shop address, phone number, and your Bookrightly booking link as the website field.",
+          "Verify the listing — usually by a postcard Google posts to the address, or sometimes by phone or email for service-area businesses.",
+          "Once verified, add photos, your opening hours, and turn on messaging so people can reach you directly from the listing.",
+        ],
+      },
+      {
+        type: "p",
+        text: "After that, ask a handful of happy clients to leave a review. A profile with even five or ten genuine reviews performs noticeably better than one with none — and reviews are one of the few ranking factors you can influence directly.",
+      },
+      {
+        type: "h2",
+        text: "Step 2: List your business on free directories",
+      },
+      {
+        type: "p",
+        text: "Beyond Google, a set of consistent listings across other directories signals to search engines that your business is real and reinforces your local rankings. It also means you show up in more places people actually search. Keep your business name, address and phone number identical across every listing — inconsistent details actively hurt local SEO.",
+      },
+      {
+        type: "list",
+        items: [
+          "Bing Places for Business — Microsoft's equivalent of Google Business Profile, free and quick to set up from an existing Google listing.",
+          "Facebook Business Page — free, and often the first place people check for reviews and opening hours.",
+          "Yell.com — free basic business listing, still widely used in the UK for local search.",
+          "Free Index — free UK business directory with decent search visibility.",
+          "Thomson Local — free listing option alongside its paid tiers.",
+          "Cylex UK and Hotfrog UK — free general business directories worth the five minutes each takes.",
+          "192.com Business Pages — free listing, useful for UK-specific searches.",
+          "Bark.com — free to create a profile (they charge for contacting leads, but the profile and inbound visibility are free).",
+          "Nextdoor Business Page — free, and strong for hyper-local trades like plumbing, decorating and personal training.",
+        ],
+      },
+      {
+        type: "p",
+        text: "You don't need all of these on day one. Google Business Profile and Facebook first, then work through the rest over a few weeks — it's a one-off setup, not ongoing work.",
+      },
+      {
+        type: "h2",
+        text: "Step 3: If you have a custom domain, turn on Search Traffic",
+      },
+      {
+        type: "p",
+        text: "Google Search Console is the tool that shows what's actually happening in search — which queries bring people to your site, how many clicks and impressions you're getting, and your average ranking position. Normally that means creating your own Search Console property and proving you own the domain with a DNS record. Bookrightly does that part for you.",
+      },
+      {
+        type: "list",
+        items: [
+          "Once your custom domain shows as Active in your dashboard's Domain tab, a Search Traffic card appears there.",
+          "Click \"Enable Search Traffic\". Bookrightly verifies your domain with Google on your behalf — for a domain connected automatically, this completes in seconds with nothing else to do.",
+          "If your domain was connected manually (its DNS lives at your own registrar), you'll be shown one TXT record to add there yourself, then click the button again to finish.",
+          "From then on, your clicks, impressions, click-through rate and average position show up directly in that card — no Google account, no separate login, nothing to check on Google's own site.",
+        ],
+      },
+      {
+        type: "p",
+        text: "That covers whether people are finding you through search. If you also want to see overall site visitors — where they come from, which pages they view — that's a separate tool (Google Analytics) you can optionally set up yourself, but Search Traffic alone is enough to see whether your SEO setup is working.",
+      },
+      {
+        type: "cta",
+        text: "Every Bookrightly page is already built search-optimised — this pack is what turns that foundation into actual traffic. If you haven't connected a custom domain yet, you can do that any time from your dashboard's Domain tab.",
+      },
+    ],
+  },
+  {
+    slug: "cv-guide-barbers-stylists-personal-trainers-2026",
+    title: "How Barbers, Stylists and Personal Trainers Should Write a CV in 2026",
+    description: "A practical UK CV guide for barbers, stylists and personal trainers, covering measurable results, ATS-friendly formatting, tailoring and cover notes.",
+    date: "2026-08-30",
+    readTime: "5 min",
+    category: "Careers",
+    author: "RankResume",
+    authorUrl: "https://rankresume.io/",
+    guestContribution: true,
+    content: [
+      {
+        type: "intro",
+        text: "A full diary does not always get you the chair, the gym floor, or the salon you actually want.",
+      },
+      {
+        type: "p",
+        text: "Barbers, hairdressers, personal trainers and other UK service professionals spend years building a client book. Then a better salon, a gym contract, or a chair-rental agreement asks for a CV. What you send often looks like a list of days you turned up, not proof you can do the job.",
+      },
+      {
+        type: "p",
+        text: "Large salon groups, gym chains and even some independent studios now run applications through software before a manager reads anything. If your CV is a Canva poster, a photo of your Instagram, or a Word file with tables and icons, it can fail before a human sees it.",
+      },
+      {
+        type: "p",
+        text: "Here is how to write a CV that still sounds like you, and still gets through.",
+      },
+      {
+        type: "h2",
+        text: "Your client book is evidence. Put it in writing.",
+      },
+      {
+        type: "p",
+        text: "Recruiters cannot sit in your chair for a week. They need numbers and outcomes.",
+      },
+      {
+        type: "p",
+        text: "Swap vague lines for things you can stand behind:",
+      },
+      {
+        type: "list",
+        items: [
+          "“Busy Saturday barber” → “Ran a full Saturday book of 12–16 appointments with low no-shows.”",
+          "“Personal trainer” → “Coached 18 ongoing clients; typical 8-week programme improved strength and session attendance.”",
+          "“Stylist at a high-street salon” → “Built a returning colour clientele; colour and treatment work made up most of my weekly book.”",
+          "“Decorator / trades” → “Quoted, scheduled and completed residential jobs end-to-end, including repeat work from the same households.”",
+        ],
+      },
+      {
+        type: "p",
+        text: "If you do not have perfect numbers, use honest ranges. “Around 10 cuts a day” is better than “highly experienced.”",
+      },
+      {
+        type: "p",
+        text: "Keep client names and private details out of it.",
+      },
+      {
+        type: "h2",
+        text: "Write it like a job, even if you are self-employed.",
+      },
+      {
+        type: "p",
+        text: "Chair rental, booth rental and “self-employed at X salon” still count as work. List them as roles.",
+      },
+      {
+        type: "p",
+        text: "Use a simple structure:",
+      },
+      {
+        type: "list",
+        ordered: true,
+        items: [
+          "Name, city, phone, email, professional Instagram if it is work-only",
+          "One short profile (3–4 lines) aimed at the job in front of you",
+          "Experience in reverse order",
+          "Qualifications and insurance (NVQ, VTCT, REPs, CIMSPA, Level 3 PT, public liability)",
+          "Skills that match the posting (fade work, balayage, small-group training, consultations, till, opening/closing)",
+        ],
+      },
+      {
+        type: "p",
+        text: "One column. Normal headings. No text boxes, no skills bars, no photos on the CV itself. UK managers still want a document they can print and scan, not a brand deck.",
+      },
+      {
+        type: "p",
+        text: "If you split time between employed days and your own clients, say so clearly. “Two days employed at [salon]; three days self-employed chair rental” is easier to trust than a gap.",
+      },
+      {
+        type: "h2",
+        text: "Tailor it every time. One CV will not cover a gym and a colour salon.",
+      },
+      {
+        type: "p",
+        text: "A gym hiring a floor PT cares about inductions, programmes, retention and first-aid. A colour salon cares about consultations, colour correction, retail and how you hold a book. A barbershop hiring a senior barber cares about speed, fades, beard work and whether you can run a Saturday without drama.",
+      },
+      {
+        type: "p",
+        text: "Copy the job description into a note. Highlight the phrases they actually used. Then make sure those phrases appear in your profile and bullets where they are true. Do not invent a qualification. Do translate what you already do into their language.",
+      },
+      {
+        type: "p-html",
+        html: "That is the part most people skip because rewriting a CV for every application is miserable. An <a href=\"https://rankresume.io/\" target=\"_blank\" rel=\"noopener noreferrer\">ATS-friendly CV builder</a> is useful here: you upload the CV you already have, paste the job description, and get a version scored and rewritten around that posting, plus a matching cover note. Start with a free score against the advert so you can see what is missing before you send it.",
+      },
+      {
+        type: "h2",
+        text: "Cover notes still matter in this trade.",
+      },
+      {
+        type: "p",
+        text: "A short email or cover letter should answer three things:",
+      },
+      {
+        type: "list",
+        items: [
+          "Why this salon / gym / studio, specifically",
+          "What your current book looks like (without poaching language)",
+          "When you can start, and whether you are bringing clients, starting fresh, or both",
+        ],
+      },
+      {
+        type: "p",
+        text: "Do not write “I am passionate about hair.” Write “I already run a full Thursday–Saturday book and want a chair in a shop that does serious skin fades, not walk-in only.”",
+      },
+      {
+        type: "p",
+        text: "If you are applying while you still have clients elsewhere, be straight about notice and non-compete. Managers would rather hear it now.",
+      },
+      {
+        type: "h2",
+        text: "What to leave off",
+      },
+      {
+        type: "list",
+        items: [
+          "Selfies and logo-heavy templates",
+          "Every short course you ever clicked through",
+          "“References available on request” as a substitute for proof",
+          "Claims you cannot back with a client, a manager, or a certificate",
+        ],
+      },
+      {
+        type: "p",
+        text: "Instagram can sit as a link. It should not replace the CV.",
+      },
+      {
+        type: "h2",
+        text: "A CV is the door. The book is the job.",
+      },
+      {
+        type: "p",
+        text: "Getting hired as a barber, stylist or PT is still a people business. The CV only has to do one thing: survive the first filter and make a manager want a trial day.",
+      },
+      {
+        type: "p",
+        text: "Keep the document plain, put real numbers on the page, and rewrite it for the job you want, not the job you had. Then show up early for the trial and do the work the CV promised.",
+      },
+    ],
+  },
+  {
+    slug: "turning-instagram-comments-into-bookings",
+    title: "Turning Instagram Comments Into Booked Appointments",
+    description: "\"How much for this?\" and \"DM me\" comments are enquiries, not bookings. Here's how to stop losing them between the comment and the calendar.",
+    date: "2026-08-31",
+    readTime: "5 min",
+    category: "Marketing",
+    content: [
+      {
+        type: "intro",
+        text: "Someone comments \"how much for this?\" under your latest fade, colour, or before-and-after photo. You reply \"DM me for prices!\", they message, you reply a few hours later when you're between clients, and by then they've already booked with whoever answered first. That's not a marketing problem — it's a response-time problem, and it's costing you real bookings every week.",
+      },
+      {
+        type: "h2",
+        text: "The comment-to-booking gap is where enquiries actually die",
+      },
+      {
+        type: "p",
+        text: "Instagram comments and DMs are some of the highest-intent enquiries a service business gets — someone looked at your work and asked about it directly. But they arrive at random times, scattered across comments, story replies and DMs, and if you're mid-appointment when they land, the reply waits. Most people asking \"how much?\" are also asking two or three other businesses the same question. Whoever replies first, with a clear next step, usually gets the booking.",
+      },
+      {
+        type: "h2",
+        text: "Automating the first reply, not the relationship",
+      },
+      {
+        type: "p-html",
+        html: "The fix isn't to be glued to your phone all day — it's to automate the *first* response so nobody waits hours for a price and a link. Tools like <a href=\"https://rapiddm.com/?utm_source=bookrightly.co.uk&utm_medium=referral&utm_campaign=link_exchange\" target=\"_blank\" rel=\"noopener\">RapidDM</a> watch for keyword comments (\"price\", \"how much\", \"DM\") and story reply interactions, then send an instant automated DM back — so the person asking gets a reply in seconds instead of whenever you next check your phone, without you manually typing the same answer fifty times a week.",
+      },
+      {
+        type: "p",
+        text: "The automation's only job is the first touch: acknowledge the enquiry and hand them somewhere to actually book. Everything after that — answering follow-up questions, chasing a deposit, confirming the slot — still needs a real booking system behind it, or you've just made the reply faster without closing the gap.",
+      },
+      {
+        type: "h2",
+        text: "Give the automated reply somewhere real to send people",
+      },
+      {
+        type: "p",
+        text: "This is where most DIY setups fall apart: the auto-reply says \"Book here!\" and links to... a phone number, or a DM thread that still needs a human to check availability and go back and forth. If the very next step after the instant reply is still manual, you've only moved the bottleneck, not removed it.",
+      },
+      {
+        type: "p",
+        text: "A booking link that shows live availability, takes a deposit, and confirms automatically closes the loop properly: comment → instant DM → live booking link → confirmed appointment, with no message left unanswered overnight and no slot held on trust. The faster that whole chain runs, the fewer \"how much?\" comments quietly go to a competitor instead.",
+      },
+      {
+        type: "cta",
+        text: "Bookrightly gives your business a bookable link with live availability and deposits taken automatically — the natural landing spot for every \"DM me\" reply, automated or not. 90-day free trial, no card needed.",
+      },
+    ],
+  },
+  {
+    slug: "add-online-booking-to-existing-website-without-rebuilding",
+    title: "You Already Have a Website — Add Booking Without Rebuilding It",
+    description: "Rebuilding a WordPress or Wix site just to get booking software isn't necessary. Here's how to add live booking, and a live queue, to a website you already have.",
+    date: "2026-09-03",
+    readTime: "4 min",
+    category: "Marketing",
+    content: [
+      {
+        type: "intro",
+        text: "A lot of small businesses already have a website — built by an agency a few years back, put together on Wix or Squarespace, or handed down from whoever ran the business before. It's not perfect, but it's theirs, it ranks on Google, and people already know the address. Then the booking software search starts, and almost every option assumes you're starting from nothing.",
+      },
+      {
+        type: "h2",
+        text: "The problem isn't your website — it's the booking gap",
+      },
+      {
+        type: "p",
+        text: "Without booking built in, the default becomes a phone number, a DM, or a contact form that goes nowhere fast. Every one of those adds friction between someone deciding they want an appointment and it actually landing in your diary — and friction is where bookings quietly go to a competitor instead. The fix isn't a new website. It's closing that specific gap on the one you've already got.",
+      },
+      {
+        type: "h2",
+        text: "What to look for instead of a rebuild",
+      },
+      {
+        type: "p",
+        text: "Most booking platforms only give you a hosted page on their own domain and call it done — fine if you don't have a site yet, useless if you do, because now you're sending traffic away from the page you've spent years building up. What you actually want is something that drops straight into your existing site: a small script tag pasted into a page or a custom HTML block, showing live, bookable availability right there, with nothing to migrate and no second URL to explain to clients.",
+      },
+      {
+        type: "h2",
+        text: "It doesn't have to stop at booking",
+      },
+      {
+        type: "p",
+        text: "If you run a walk-in business — a barbershop is the obvious one — booking slots only solve half the day. The other half is people who show up without an appointment and want to know how long the wait is. A live queue that visitors can join from your own website, showing their position in real time, closes that gap the same way a booking widget closes the appointment one: no app to download, no separate page to send people to, just something already sitting on the site they found you on.",
+      },
+      {
+        type: "p",
+        text: "Either way, the setup for the business owner should be the same: paste one script tag where you want it to appear, done. No login required on the visitor's side, and no reason it can't sit on a WordPress, Wix, Squarespace, or hand-built page exactly as it is today.",
+      },
+      {
+        type: "cta",
+        text: "Bookrightly gives you both a booking widget and a live queue widget you can paste straight into a website you already have — or a full branded booking page if you don't have one yet. 90-day free trial, no card needed.",
       },
     ],
   },

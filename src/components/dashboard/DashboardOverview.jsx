@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box, Button, Chip, Grid, LinearProgress, Paper, Stack, Typography,
+  Alert, Box, Button, Chip, Grid, LinearProgress, Paper, Stack, Typography,
 } from "@mui/material";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import BookingLinkCard from "./BookingLinkCard";
+import ReminderUsageBanner from "./ReminderUsageBanner";
 import BookingLinkQrDialog from "./BookingLinkQrDialog";
 import {
   ArrowRight as ArrowForwardIcon,
@@ -18,6 +19,7 @@ import {
   ReceiptText as RequestQuoteIcon,
   Scissors as ContentCutIcon,
   Store as StorefrontIcon,
+  TrendingUp as TrafficIcon,
   UsersRound as PeopleIcon,
 } from "lucide-react";
 
@@ -70,6 +72,14 @@ export default function DashboardOverview({
   profile = {}, bookings = [], slots = [], businessType = "barber",
   brandColor = "#2563EB", onNavigate, barberId,
 }) {
+  // Basic/Mini accounts don't have every tab this component assumes by
+  // default (queue, haircut history, invoices, domain, and — for Mini
+  // only — services and the "edit-page" Profile tab it's replaced by
+  // "free-page"). Every quick-action, checklist item and shortcut card
+  // below needs to route around whichever of these don't actually exist,
+  // rather than link to a tab that silently does nothing when tapped.
+  const isBasicPlan = profile.plan === "basic";
+  const isFreePlan  = profile.plan === "free";
   const [qrOpen, setQrOpen] = useState(false);
   const [plumberCounts, setPlumberCounts] = useState({ newEnquiries: 0, jobsToday: 0, openQuotes: 0, unpaidInvoices: 0 });
   const [plumberJobs, setPlumberJobs] = useState([]);
@@ -135,10 +145,21 @@ export default function DashboardOverview({
   const checklist = [
     { done: Boolean(profile.name || profile.businessName), label: "Business profile" },
     { done: Boolean(profile.bookingSlug), label: "Booking link" },
-    { done: Boolean(profile.bio || profile.aboutUs), label: "About section" },
-    { done: businessType === "trainer" ? Boolean(profile.pricingPlans?.length) : Boolean(profile.services?.length), label: businessType === "trainer" ? "Pricing plans" : "Services & pricing" },
-    { done: Boolean(profile.stripeConnected || profile.stripeAccountId), label: "Online payments" },
-    { done: Boolean(profile.customDomain || profile.vercelUrl), label: "Custom domain (optional)" },
+    // aboutBody is what most page templates (hairdresser, decorator, PT)
+    // actually read and save from their own "About" editor — aboutUs is only
+    // ever written alongside it on the barber template. Checking aboutUs
+    // alone left this stuck "not complete" for any account whose About text
+    // only ever landed in aboutBody.
+    { done: Boolean(profile.bio || profile.aboutBody || profile.aboutUs), label: "About section" },
+    // Mini has no Services tab at all — nothing to ever mark this done with.
+    ...(!isFreePlan ? [{ done: businessType === "trainer" ? Boolean(profile.pricingPlans?.length) : Boolean(profile.services?.length), label: businessType === "trainer" ? "Pricing plans" : "Services & pricing" }] : []),
+    // Mini's Finance tab hides payment collection entirely — never achievable.
+    // stripeAccountId alone doesn't mean payments work (see BookingForm.jsx) —
+    // only stripeConnected is re-verified against Stripe's own API, or an
+    // external payment link is a valid alternative way to actually take payment.
+    ...(!isFreePlan ? [{ done: Boolean(profile.stripeConnected || profile.externalPaymentLink), label: "Online payments" }] : []),
+    // Domain tab is hidden for both Basic and Mini.
+    ...(!isBasicPlan && !isFreePlan ? [{ done: Boolean(profile.customDomain || profile.vercelUrl), label: "Custom domain (optional)" }] : []),
   ];
   const completed = checklist.filter(item => item.done).length;
   const completion = Math.round((completed / checklist.length) * 100);
@@ -170,6 +191,16 @@ export default function DashboardOverview({
       [<TodayIcon />, "Open job planner", "Organise today's scheduled jobs", "dayplanner"],
     ],
   }[businessType] || [];
+
+  // Basic/Mini only ever apply to barber/hairdresser, and hide every
+  // businessType-specific tool tab (queue, haircut history, invoices) for
+  // both — plus Services entirely for Mini — so any shortcut pointing at
+  // one of those keys would silently do nothing when tapped.
+  const unavailableActionKeys = new Set([
+    ...(isBasicPlan || isFreePlan ? ["queue", "haircut", "bar-invoices", "client-history", "hd-invoices"] : []),
+    ...(isFreePlan ? ["services"] : []),
+  ]);
+  const availableActions = actions.filter(([, , , key]) => !unavailableActionKeys.has(key));
 
   const workspace = {
     barber: {
@@ -243,6 +274,17 @@ export default function DashboardOverview({
     toolsTitle: "Quick actions",
   };
 
+  // Barber's default workspace leads with the live walk-in Queue, which is
+  // hidden for Basic/Mini — the "Open live queue" primary action would
+  // otherwise silently do nothing when tapped.
+  if (businessType === "barber" && (isBasicPlan || isFreePlan)) {
+    Object.assign(workspace, {
+      clearDay: "No cuts are booked yet. Add appointment availability to get started.",
+      emptyDetail: "New bookings will appear here.",
+      primary: ["Add availability", "schedule"],
+    });
+  }
+
   const firstName = (profile.name || profile.businessName || "there").split(" ")[0];
 
   return (
@@ -281,6 +323,33 @@ export default function DashboardOverview({
         <BookingLinkCard bookingSlug={profile.bookingSlug} brandColor={brandColor} onShowQr={() => setQrOpen(true)} sx={{ mb: 2.5 }} />
       )}
       <BookingLinkQrDialog open={qrOpen} onClose={() => setQrOpen(false)} bookingSlug={profile.bookingSlug} brandColor={brandColor} />
+
+      <ReminderUsageBanner barberId={barberId} profile={profile} onNavigate={onNavigate} />
+
+      {/* Decorator/plumber are enquiry-based (no online payment step at all),
+          so this doesn't apply to them — only businessTypes whose public
+          page takes real bookings. Without Stripe, bookings still go
+          through directly (via an external payment link if they've set
+          one in Finance, or with no deposit at all) — this is just a
+          nudge toward Stripe for automatic deposit collection, so an
+          external link (a valid alternative way to actually take payment)
+          also satisfies it. Mini-plan accounts never take a deposit at all
+          by design (Finance hides the payment section entirely for them),
+          so the nudge doesn't apply. stripeAccountId alone is deliberately
+          not checked here — see BookingForm.jsx. */}
+      {!Boolean(profile.stripeConnected || profile.externalPaymentLink) && !["decorator", "plumber"].includes(businessType) && profile.plan !== "free" && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2.5 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => onNavigate("finance")} sx={{ fontWeight: 750, whiteSpace: "nowrap" }}>
+              Connect Stripe
+            </Button>
+          }
+        >
+Bookings are confirming without an automatic deposit — connect Stripe to collect deposits online.
+        </Alert>
+      )}
 
       {businessType === "plumber" ? (
         <Paper sx={{ mb: 2.5, display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, borderRadius: 3, overflow: "hidden", boxShadow: "none", "& > div:nth-of-type(2)": { borderRight: { xs: 0, md: "1px solid #E4E7EC" } } }}>
@@ -339,7 +408,7 @@ export default function DashboardOverview({
 
           <Typography sx={{ fontWeight: 850, mt: 2.5, mb: 1.25 }}>{workspace.toolsTitle}</Typography>
           <Grid container spacing={1.25}>
-            {actions.map(([icon, title, detail, key]) => (
+            {availableActions.map(([icon, title, detail, key]) => (
               <Grid item xs={12} sm={6} key={key}>
                 <QuickAction icon={icon} title={title} detail={detail} brandColor={brandColor} onClick={() => onNavigate(key)} />
               </Grid>
@@ -363,7 +432,7 @@ export default function DashboardOverview({
                 </Box>
               ))}
             </Stack>
-            <Button fullWidth variant="outlined" startIcon={<StorefrontIcon />} onClick={() => onNavigate("edit-page")} sx={{ mt: 2.25, borderColor: `${brandColor}88`, color: brandColor }}>
+            <Button fullWidth variant="outlined" startIcon={<StorefrontIcon />} onClick={() => onNavigate(isFreePlan ? "free-page" : "edit-page")} sx={{ mt: 2.25, borderColor: `${brandColor}88`, color: brandColor }}>
               Complete business page
             </Button>
           </Paper>
@@ -372,8 +441,27 @@ export default function DashboardOverview({
             <LanguageIcon size={20} strokeWidth={1.8} color={brandColor} />
             <Typography sx={{ fontWeight: 850, mt: .75 }}>Your public website</Typography>
             <Typography sx={{ color: "text.secondary", fontSize: ".76rem", mt: .5 }}>Keep your page current so clients can book with confidence.</Typography>
-            <Button size="small" endIcon={<ArrowForwardIcon size={15} strokeWidth={1.8} />} onClick={() => onNavigate("edit-page")} sx={{ mt: 1, px: 0, color: brandColor }}>Manage website</Button>
+            <Button size="small" endIcon={<ArrowForwardIcon size={15} strokeWidth={1.8} />} onClick={() => onNavigate(isFreePlan ? "free-page" : "edit-page")} sx={{ mt: 1, px: 0, color: brandColor }}>Manage website</Button>
           </Paper>
+
+          {/* Search traffic lives on the Domain tab, which is hidden for
+              both Basic and Mini — this card would otherwise link nowhere. */}
+          {!isBasicPlan && !isFreePlan && (profile.customDomain && profile.domainStatus === "active" ? profile.customDomain : profile.bookingSlug ? `bookrightly.co.uk/${profile.bookingSlug}` : null) && (
+            <Paper sx={{ mt: 2, p: 2.5, borderRadius: 3 }}>
+              <TrafficIcon size={20} strokeWidth={1.8} color={brandColor} />
+              <Typography sx={{ fontWeight: 850, mt: .75 }}>Search traffic</Typography>
+              <Typography sx={{ color: "text.secondary", fontSize: ".76rem", mt: .5 }}>
+                See how many people are finding {profile.customDomain && profile.domainStatus === "active" ? profile.customDomain : `bookrightly.co.uk/${profile.bookingSlug}`} on Google.
+              </Typography>
+              <Button
+                size="small" endIcon={<ArrowForwardIcon size={15} strokeWidth={1.8} />}
+                onClick={() => { sessionStorage.setItem("br_scrollTo", "search-traffic"); onNavigate("domain"); }}
+                sx={{ mt: 1, px: 0, color: brandColor }}
+              >
+                View search traffic
+              </Button>
+            </Paper>
+          )}
         </Grid>
       </Grid>
     </Box>

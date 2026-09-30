@@ -4,6 +4,7 @@ import { Box, CircularProgress, Typography } from "@mui/material";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import LiveQueueSection from "../components/LiveQueueSection";
+import PWAInstallBanner from "../components/dashboard/PWAInstallBanner";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 
 
@@ -41,7 +42,7 @@ export default function QueuePage() {
     <Box sx={{ minHeight: "100vh", bgcolor: "#0a0a0a" }}>
 
       {/* Shop header */}
-      <Box sx={{ borderBottom: `3px solid ${brandColor}`, bgcolor: "#111", py: { xs: 3, md: 4 } }}>
+      <Box sx={{ borderBottom: `3px solid ${brandColor}`, bgcolor: "#111", pt: { xs: "calc(20px + env(safe-area-inset-top, 0px))", md: 4 }, pb: { xs: 3, md: 4 } }}>
         <Box sx={{ maxWidth: 600, mx: "auto", px: 3, display: "flex", alignItems: "center", gap: 2 }}>
           {(shop?.businessLogo || shop?.logoUrl) && (
             <Box
@@ -61,6 +62,8 @@ export default function QueuePage() {
           </Box>
         </Box>
       </Box>
+
+      <PWAInstallBanner brandColor={brandColor} />
 
       {/* Queue section — handles open, paused, and closed states */}
       <LiveQueueSection

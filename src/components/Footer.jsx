@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Box, Typography, Button, Stack } from "@mui/material";
 import ArrowOutwardRoundedIcon from "@mui/icons-material/ArrowOutwardRounded";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +9,37 @@ const GROUPS = [
   { title: "For your work", links: [["Barbers", "/booking-software/barbers"], ["Hair salons", "/booking-software/salons"], ["Personal trainers", "/booking-software/personal-trainers"], ["Decorators", "/booking-software/decorators"], ["Plumbing & heating", "/signup"]] },
   { title: "Company", links: [["Blog", "/blog"], ["Contact", "/contact"], ["Privacy", "/privacy"], ["Terms", "/terms"]] },
 ];
+
+// SourceForge's own embed snippet is a literal <script>...</script> block,
+// which the site's CSP (worker.js) would block as an inline script unless
+// hashed. Reproducing what that snippet does — append its own loader
+// script — from here instead means only the external src's origin
+// (b.sf-syn.com) needs allowlisting, not a content hash for this exact
+// snippet. Guarded so it only ever injects once even if Footer re-mounts.
+function SourceForgeBadge() {
+  const rootRef = useRef(null);
+  useEffect(() => {
+    if (document.querySelector('script[src^="https://b.sf-syn.com/badge_js"]')) return;
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://b.sf-syn.com/badge_js?sf_id=4133962&variant_id=sf";
+    document.body.appendChild(script);
+  }, []);
+  return (
+    <div
+      ref={rootRef}
+      className="sf-root"
+      data-id="4133962"
+      data-badge="light-default"
+      data-variant-id="sf"
+      style={{ width: 125 }}
+    >
+      <a href="https://sourceforge.net/software/product/Bookrightly/" target="_blank" rel="noopener noreferrer" style={{ color: "#ffffff55", fontSize: ".7rem" }}>
+        Bookrightly Reviews
+      </a>
+    </div>
+  );
+}
 
 export default function Footer({ isHomePage = false }) {
   const navigate = useNavigate();
@@ -45,6 +76,9 @@ export default function Footer({ isHomePage = false }) {
               Proudly listed on Launchpadly Startup Directory
             </Typography>
           )}
+          {/* SourceForge review badge — homepage only, matching the
+              Launchpadly convention above. */}
+          {isHomePage && <SourceForgeBadge />}
         </Box>
       </Box>
     </Box>

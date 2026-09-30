@@ -156,22 +156,40 @@ export default function TenantHome({ tenant: initialTenant }) {
   // baked in at this point as the fallback, which meant heroForProfile below
   // always received a truthy value and could never substitute the curated
   // placeholder for an account with nothing saved yet.
+  //
+  // A heroImage/heroImageMobile pointing at a /images/demo/ path can never be
+  // a genuine upload — real uploads go to Firebase Storage URLs — so it's
+  // always leftover seed data, not this business's own photo. Some accounts
+  // were seeded with heroImage pointing at a *different* demo stock photo
+  // (not this page's own curated one below), which meant they got stuck
+  // showing that stray, wrong photo forever instead of the placeholder.
+  const isRealUpload = (v) => Boolean(v) && !v.startsWith("/images/demo/");
   const savedHeroImage = usePortraitHero
-    ? (freshTenant?.heroImageMobile || freshTenant?.heroImage || "")
-    : (freshTenant?.heroImage || "");
+    ? [freshTenant?.heroImageMobile, freshTenant?.heroImage].find(isRealUpload) || ""
+    : (isRealUpload(freshTenant?.heroImage) ? freshTenant.heroImage : "");
   const isDemoTenant = isDemoProfile(freshTenant);
-  const usesDemoHomeHero = savedHeroImage === "/images/demo/barber/home-hero.jpg";
-  const heroImageUrl = usePortraitHero && usesDemoHomeHero
-    ? "/images/demo/barber/home-hero-mobile-v2.jpg"
-    : heroForProfile(
-        freshTenant,
-        savedHeroImage,
-        usePortraitHero ? "mobileHomeHeroImage" : "homeHeroImage",
-      ) || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1";
+  // True whenever the photo that's actually about to render is the shared
+  // curated Fade Factory image — either because this genuinely is Fade
+  // Factory, or because this account has no real upload of its own and so
+  // falls through to that same curated default below. Only in that case is
+  // it safe to reuse Fade Factory's hand-tuned crop (below): it's tuned to
+  // that exact photo's composition, so applying it to a business's own,
+  // different uploaded photo would crop it arbitrarily badly.
+  const usesCuratedHero = isDemoTenant || !savedHeroImage;
+  const heroImageUrl = heroForProfile(
+      freshTenant,
+      savedHeroImage,
+      usePortraitHero ? "mobileHomeHeroImage" : "homeHeroImage",
+    ) || "https://images.unsplash.com/photo-1503951914875-452162b0f3f1";
   const portfolioItems = portfolioForProfile(freshTenant, freshTenant?.portfolioItems || []);
-  // The oldest Fade Factory seed predates the businessType field, so the
-  // same barber fallback used by the page is the reliable identifier here.
-  const isFadeFactoryDemo = isDemoTenant && isBarberShop;
+  // Originally gated to isDemoTenant so only the Fade Factory seed got this
+  // richer layout (stats bar, "Standard" panel, fuller About/Find Us) — every
+  // field it uses already has a sensible default ("10+", "Detail first", the
+  // generic about copy, etc.) for when a business hasn't customised it, so
+  // there's no reason a real barber page should fall back to the plainer
+  // layout instead. Kept the name (used ~20x below) rather than a risky
+  // wide rename; it now means "show the full barber layout," not "is demo."
+  const isFadeFactoryDemo = isBarberShop;
  
   useEffect(() => { window.scrollTo(0, 0); }, [tenantId, initialTenant?.id]);
  
@@ -275,8 +293,9 @@ export default function TenantHome({ tenant: initialTenant }) {
 
   // Only offered when deposits aren't already being collected — Stripe not
   // connected means in-app booking is disabled anyway (see BookingForm.jsx),
-  // so WhatsApp fills a real gap instead of letting people dodge the deposit.
-  const whatsappUrl = !freshTenant?.stripeConnected
+  // so WhatsApp fills a real gap instead of letting people dodge the deposit —
+  // and only when the owner hasn't turned it off from the dashboard.
+  const whatsappUrl = (!freshTenant?.stripeConnected && freshTenant?.whatsappBookingEnabled !== false)
     ? getWhatsAppBookingUrl(freshTenant?.whatsappNumber, freshTenant?.businessName)
     : null;
 
@@ -296,7 +315,11 @@ export default function TenantHome({ tenant: initialTenant }) {
               md: `linear-gradient(90deg, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.48) 43%, rgba(0,0,0,0.12) 76%, rgba(0,0,0,0.28) 100%), url('${heroImageUrl}')`,
             }
           : `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('${heroImageUrl}')`,
-        backgroundSize: isFadeFactoryDemo
+        // The mobile-only sizing below is hand-tuned to Fade Factory's own
+        // specific photo — safe for any account currently showing that exact
+        // photo (usesCuratedHero), wrong for a business showing its own
+        // different uploaded photo, which gets plain cover instead.
+        backgroundSize: usesCuratedHero
           ? { xs: "100% 100%, 100% auto", md: "cover" }
           : "cover",
         backgroundRepeat: "no-repeat",
@@ -304,7 +327,12 @@ export default function TenantHome({ tenant: initialTenant }) {
         // leaves a lot of empty space above the subject in a portrait-style
         // hero photo — biasing the crop upward keeps the actual subject in
         // frame instead of mostly empty background.
-        backgroundPosition: isFadeFactoryDemo ? { xs: "center, center bottom", md: "center 44%" } : { xs: "center 20%", md: "center center" },
+        // Hand-tuned to Fade Factory's own photo specifically (same reasoning
+        // as backgroundSize above) — anything showing that same curated photo
+        // gets the identical crop; a business's own different photo gets the
+        // generic-safe position instead of a bottom-anchored crop that would
+        // cut its actual subject out of frame.
+        backgroundPosition: usesCuratedHero ? { xs: "center, center bottom", md: "center 44%" } : { xs: "center 20%", md: "center center" },
         color: "white", textAlign: isFadeFactoryDemo ? { xs: "center", md: "left" } : "center"
       }}>
         <Container maxWidth="lg" sx={isFadeFactoryDemo ? { display: "flex", justifyContent: { xs: "center", md: "flex-start" } } : undefined}>

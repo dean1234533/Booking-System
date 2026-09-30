@@ -11,14 +11,14 @@ import {
   Payments as PaymentsIcon, People as PeopleIcon, Search as SearchIcon,
   Star as StarIcon, Storefront as StoreIcon, TrendingUp as GrowthIcon,
   Verified as VerifiedIcon, PhotoLibrary as GalleryIcon, WhatsApp as WhatsAppIcon,
-  Groups as TeamIcon, Plumbing as PlumbingIcon, Lock as LockIcon,
+  Groups as TeamIcon, Plumbing as PlumbingIcon, Lock as LockIcon, Code as CodeIcon,
 } from "@mui/icons-material";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import BarberCard from "../components/BarberCard";
+import ChatWidget from "../components/ChatWidget";
 import { BrandMark } from "../components/Nav";
 import { useBarbers } from "../hooks/useBarbers";
-import { logFunnelEvent } from "../utils/funnelTracking";
 import { geocodeAddress, distanceMiles, formatDistance } from "../utils/geocode";
 
 const TenantHome = lazy(() => import("./TenantHome"));
@@ -47,6 +47,7 @@ const TRADES = [
 ];
 
 const UPDATES = [
+  { icon: <CodeIcon />, title: "Embed booking and live queue on your own website", copy: "Already have a WordPress, Wix or Squarespace site? Paste one line of code to add live booking and queue joining directly on it — no rebuild, no new site to manage." },
   { icon: <TeamIcon />, title: "Every team member gets their own page", copy: "Add staff from your dashboard and each person gets a branded page with their own gallery, reviews and socials — promoting your team, not just your business." },
   { icon: <GalleryIcon />, title: "Before & after galleries", copy: "Show off real results with a drag-to-reveal gallery on every trade's page, plus your own upload tools in the dashboard." },
   { icon: <WhatsAppIcon />, title: "Book via WhatsApp", copy: "Give clients who'd rather message than fill out a form a quick way to enquire, right next to your normal booking flow." },
@@ -57,6 +58,7 @@ const BENEFITS = [
   { icon: <WebsiteIcon />, kicker: "Website", title: "Your best work, ready to book", copy: "A polished public page with services, reviews and live availability." },
   { icon: <PaymentsIcon />, kicker: "Money", title: "Deposits without the chase", copy: "Take payments and send invoices from the same place you manage the work." },
   { icon: <PeopleIcon />, kicker: "Clients", title: "Every detail remembered", copy: "Notes, preferences and history stay attached to the right person." },
+  { icon: <SearchIcon />, kicker: "Search", title: "Built to be found on Google", copy: "Every business page is search-optimised from day one, and one click in your dashboard shows exactly how many people are finding you." },
   { icon: <GrowthIcon />, kicker: "Insights", title: "Know what is working", copy: "See demand, revenue and open capacity without building a spreadsheet." },
 ];
 
@@ -74,6 +76,7 @@ const STEP_PALETTES = [
 
 const REVIEWS = [
   ["Mpower Electrical and Building Services", "Plumber", "Excellent and easy to use. Bookrightly.co.uk provided me with a refreshingly clean, intuitive and highly functional service and cuts out clutter, allowing me to build a sleek, client-facing booking profile within minutes."],
+  ["Andrew Morris", "Verified user", "The registration process was straightforward, the dashboard was clearly laid out, and it was easy to understand how a business could add its services, manage availability and receive bookings. I regularly hear people asking for websites and better booking solutions, and after testing Bookrightly, I'd feel comfortable recommending it to them."],
 ];
 const GOOGLE_REVIEW_URL = "https://maps.app.goo.gl/qg92kGm8YdDQ17hs8?g_st=iw";
 
@@ -179,8 +182,11 @@ function HomeRebuild({ tenant }) {
   const navigate = useNavigate();
   const { barbers, loading } = useBarbers();
   const [trade, setTrade] = useState("barber");
-  const [pricingOpen] = useState(false);
-  const setPricingOpen = (nextOpen) => { if (nextOpen) navigate("/pricing"); };
+  // Was permanently stuck closed (a plain `useState(false)` with no real
+  // setter — this custom one just navigated to /pricing instead), so
+  // PricingModal below was unreachable dead code regardless of what it
+  // rendered. Restored so "See pricing by trade" actually opens it.
+  const [pricingOpen, setPricingOpen] = useState(false);
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [draftService, setDraftService] = useState("");
   const [draftLocation, setDraftLocation] = useState("");
@@ -191,7 +197,7 @@ function HomeRebuild({ tenant }) {
   const [myCoords, setMyCoords] = useState(null);
 
   useEffect(() => { window.scrollTo(0, 0); }, [tenant]);
-  useEffect(() => { if (!tenant) logFunnelEvent("home_view"); }, [tenant]);
+  
   if (tenant) return <Suspense fallback={null}><TenantHome tenant={tenant} /></Suspense>;
 
   const activeTrade = TRADES.find(item => item.key === trade) || TRADES[0];
@@ -255,7 +261,7 @@ function HomeRebuild({ tenant }) {
     <Box sx={{ bgcolor: P.paper, color: P.ink, overflowX: "hidden", "& > footer": { display: "none" } }}>
       <Helmet>
         <title>Bookrightly | Business, Beautifully Run</title>
-        <meta name="description" content="Websites, bookings, clients and payments in one workspace built for UK service professionals. Start free for 90 days." />
+        <meta name="description" content="Websites, bookings, clients and payments in one workspace built for UK service professionals — or embed booking and live queue tools into a website you already have. Start free for 90 days." />
         <link rel="canonical" href="https://bookrightly.co.uk/" />
       </Helmet>
 
@@ -265,10 +271,10 @@ function HomeRebuild({ tenant }) {
           <Grid container spacing={{ xs: 4, md: 7 }} alignItems="center">
             <Grid item xs={12} md={6}>
               <Label>Business software without the busywork</Label>
-              <Typography component="h1" sx={{ mt: 1.5, fontSize: { xs: "3.2rem", sm: "4.8rem", lg: "6rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .88, maxWidth: 760 }}>More time doing.<Box component="span" sx={{ color: P.blue, display: "block" }}>Less organising.</Box></Typography>
-              <Typography sx={{ mt: 3, maxWidth: 560, color: P.muted, fontSize: { xs: ".96rem", md: "1.08rem" }, lineHeight: 1.75 }}>Bookrightly puts your website, diary, clients and payments into one workspace made for the way you earn.</Typography>
+              <Typography component="h1" sx={{ mt: 1.5, fontSize: { xs: "3.2rem", sm: "4.8rem", lg: "6rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .88, maxWidth: 760 }}>No-shows cost you money.<Box component="span" sx={{ color: P.blue, display: "block" }}>Deposits fix that.</Box></Typography>
+              <Typography sx={{ mt: 3, maxWidth: 560, color: P.muted, fontSize: { xs: ".96rem", md: "1.08rem" }, lineHeight: 1.75 }}>Bookrightly takes the deposit when they book, so the ones who don't show up don't cost you a wasted slot — plus your website, diary and clients in one workspace.</Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} sx={{ mt: 3.5 }}>
-                <Button variant="contained" onClick={() => { logFunnelEvent("home_cta_clicked", { location: "hero" }); navigate("/signup"); }} endIcon={<ArrowIcon />} sx={{ bgcolor: P.blue, color: "#fff", borderRadius: 99, minHeight: 56, px: 3.2, fontWeight: 950, "&:hover": { bgcolor: P.blueDark } }}>Start 90 days free</Button>
+                <Button variant="contained" onClick={() => navigate("/signup")} endIcon={<ArrowIcon />} sx={{ bgcolor: P.blue, color: "#fff", borderRadius: 99, minHeight: 56, px: 3.2, fontWeight: 950, "&:hover": { bgcolor: P.blueDark } }}>Start 90 days free</Button>
                 <Button onClick={() => document.getElementById("browse-section")?.scrollIntoView({ behavior: "smooth" })} sx={{ border: "1px solid " + P.line, color: P.ink, bgcolor: "#fff", borderRadius: 99, minHeight: 56, px: 3 }}>Find a professional</Button>
               </Stack>
               <Stack direction="row" spacing={2.5} sx={{ mt: 3, flexWrap: "wrap", rowGap: 1 }}>{["No card", "Ready in minutes", "Cancel anytime"].map(item => <Stack key={item} direction="row" spacing={.5} alignItems="center"><CheckIcon sx={{ color: P.blue, fontSize: 16 }} /><Typography sx={{ color: P.muted, fontSize: ".7rem", fontWeight: 800 }}>{item}</Typography></Stack>)}</Stack>
@@ -293,17 +299,17 @@ function HomeRebuild({ tenant }) {
             <Chip label="Just shipped" size="small" sx={{ bgcolor: P.mist, color: P.blue, fontWeight: 950, fontSize: ".66rem" }} />
             <Typography sx={{ color: P.muted, fontSize: ".78rem" }}>Recently added to Bookrightly</Typography>
           </Stack>
-          <Grid container spacing={2.5}>
+          <Box sx={{ display: "flex", gap: 2.5, overflowX: "auto", pb: 1, scrollSnapType: "x mandatory", scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
             {UPDATES.map(item => (
-              <Grid item xs={12} sm={4} key={item.title}>
+              <Box key={item.title} sx={{ flex: "0 0 auto", width: { xs: "82%", sm: "44%", md: "31%" }, scrollSnapAlign: "start" }}>
                 <Paper sx={{ height: "100%", p: 3, borderRadius: 4, border: "1px solid " + P.line, boxShadow: "none" }}>
                   <Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: P.mist, color: P.blue, display: "grid", placeItems: "center" }}>{item.icon}</Box>
                   <Typography sx={{ mt: 2, fontSize: "1.02rem", fontWeight: 950, letterSpacing: "-.02em" }}>{item.title}</Typography>
                   <Typography sx={{ mt: 1, color: P.muted, fontSize: ".82rem", lineHeight: 1.65 }}>{item.copy}</Typography>
                 </Paper>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Container>
       </Box>
 
@@ -313,13 +319,13 @@ function HomeRebuild({ tenant }) {
           <Stack direction="row" spacing={1} sx={{ overflowX: "auto", pb: 2, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>{TRADES.map(item => <Button key={item.key} onClick={() => setTrade(item.key)} startIcon={item.icon} sx={{ flexShrink: 0, borderRadius: 99, px: 2.2, py: 1.2, bgcolor: trade === item.key ? P.ink : P.paper, color: trade === item.key ? "#fff" : P.muted, fontWeight: 900, "&:hover": { bgcolor: trade === item.key ? P.ink : P.mist } }}>{item.label}</Button>)}</Stack>
           <Box sx={{ mt: 1, bgcolor: P.blue, color: "#fff", borderRadius: { xs: 4, md: 6 }, p: { xs: 3, sm: 5, md: 7 }, position: "relative", overflow: "hidden" }}>
             <Typography aria-hidden="true" sx={{ position: "absolute", right: -20, bottom: -95, fontSize: { xs: "12rem", md: "22rem" }, fontWeight: 950, lineHeight: 1, color: "rgba(255,255,255,.07)" }}>0{TRADES.findIndex(item => item.key === trade) + 1}</Typography>
-            <Grid container spacing={5} alignItems="center" sx={{ position: "relative" }}><Grid item xs={12} md={7}><Box sx={{ width: 58, height: 58, borderRadius: 3, bgcolor: P.acid, color: P.ink, display: "grid", placeItems: "center", mb: 3 }}>{activeTrade.icon}</Box><Typography sx={{ fontSize: { xs: "2rem", md: "3.4rem" }, fontWeight: 950, letterSpacing: "-.06em", lineHeight: 1 }}>{activeTrade.title}</Typography><Typography sx={{ mt: 2, maxWidth: 620, color: "rgba(255,255,255,.68)", lineHeight: 1.75 }}>{activeTrade.copy}</Typography></Grid><Grid item xs={12} md={5}><Stack spacing={1}>{activeTrade.features.map(feature => <Box key={feature} sx={{ p: 1.6, border: "1px solid rgba(255,255,255,.18)", borderRadius: 2.5, bgcolor: "rgba(255,255,255,.07)", display: "flex", alignItems: "center", gap: 1 }}><CheckIcon sx={{ color: P.acid, fontSize: 18 }} /><Typography sx={{ fontWeight: 850, fontSize: ".82rem" }}>{feature}</Typography></Box>)}</Stack><Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}><Button variant="contained" onClick={() => { logFunnelEvent("home_cta_clicked", { location: "trade_tab", trade }); navigate("/signup"); }} sx={{ bgcolor: P.acid, color: P.ink, borderRadius: 99, fontWeight: 950, "&:hover": { bgcolor: "#BFDBFE" } }}>Start for this trade</Button><Button onClick={() => setFeaturesOpen(true)} sx={{ color: "#fff" }}>Compare features</Button></Stack></Grid></Grid>
+            <Grid container spacing={5} alignItems="center" sx={{ position: "relative" }}><Grid item xs={12} md={7}><Box sx={{ width: 58, height: 58, borderRadius: 3, bgcolor: P.acid, color: P.ink, display: "grid", placeItems: "center", mb: 3 }}>{activeTrade.icon}</Box><Typography sx={{ fontSize: { xs: "2rem", md: "3.4rem" }, fontWeight: 950, letterSpacing: "-.06em", lineHeight: 1 }}>{activeTrade.title}</Typography><Typography sx={{ mt: 2, maxWidth: 620, color: "rgba(255,255,255,.68)", lineHeight: 1.75 }}>{activeTrade.copy}</Typography></Grid><Grid item xs={12} md={5}><Stack spacing={1}>{activeTrade.features.map(feature => <Box key={feature} sx={{ p: 1.6, border: "1px solid rgba(255,255,255,.18)", borderRadius: 2.5, bgcolor: "rgba(255,255,255,.07)", display: "flex", alignItems: "center", gap: 1 }}><CheckIcon sx={{ color: P.acid, fontSize: 18 }} /><Typography sx={{ fontWeight: 850, fontSize: ".82rem" }}>{feature}</Typography></Box>)}</Stack><Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}><Button variant="contained" onClick={() => navigate("/signup")} sx={{ bgcolor: P.acid, color: P.ink, borderRadius: 99, fontWeight: 950, "&:hover": { bgcolor: "#BFDBFE" } }}>Start for this trade</Button><Button onClick={() => setFeaturesOpen(true)} sx={{ color: "#fff" }}>Compare features</Button></Stack></Grid></Grid>
           </Box>
         </Container>
       </Box>
 
       <Box sx={{ bgcolor: P.paper, py: { xs: 8, md: 12 } }}>
-        <Container maxWidth="lg"><Box sx={{ maxWidth: 720, mb: 2 }}><Label>One login. Every moving part.</Label><Typography component="h2" sx={{ mt: 1, fontSize: { xs: "2.3rem", md: "3.7rem" }, fontWeight: 950, letterSpacing: "-.065em", lineHeight: 1 }}>Your day, connected end to end.</Typography></Box><MovingRail label="connected business tools" items={BENEFITS} renderItem={item => <Paper sx={{ height: 240, p: 3.2, borderRadius: 4, border: "1px solid " + P.line, boxShadow: "none" }}><Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: P.mist, color: P.blue, display: "grid", placeItems: "center" }}>{item.icon}</Box><Typography sx={{ mt: 2.2, color: P.blue, fontSize: ".64rem", fontWeight: 950, textTransform: "uppercase", letterSpacing: ".1em" }}>{item.kicker}</Typography><Typography sx={{ mt: .6, fontSize: "1.05rem", fontWeight: 950 }}>{item.title}</Typography><Typography sx={{ mt: 1, color: P.muted, fontSize: ".8rem", lineHeight: 1.65 }}>{item.copy}</Typography></Paper>} /></Container>
+        <Container maxWidth="lg"><Box sx={{ maxWidth: 720, mb: 2 }}><Label>One login. Every moving part.</Label><Typography component="h2" sx={{ mt: 1, fontSize: { xs: "2.3rem", md: "3.7rem" }, fontWeight: 950, letterSpacing: "-.065em", lineHeight: 1 }}>Your day, connected end to end.</Typography></Box><MovingRail label="connected business tools" items={BENEFITS} renderItem={item => <Paper sx={{ height: "100%", p: 3.2, borderRadius: 4, border: "1px solid " + P.line, boxShadow: "none" }}><Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: P.mist, color: P.blue, display: "grid", placeItems: "center" }}>{item.icon}</Box><Typography sx={{ mt: 2.2, color: P.blue, fontSize: ".64rem", fontWeight: 950, textTransform: "uppercase", letterSpacing: ".1em" }}>{item.kicker}</Typography><Typography sx={{ mt: .6, fontSize: "1.05rem", fontWeight: 950 }}>{item.title}</Typography><Typography sx={{ mt: 1, color: P.muted, fontSize: ".8rem", lineHeight: 1.65 }}>{item.copy}</Typography></Paper>} /></Container>
       </Box>
 
       <Box sx={{ bgcolor: "#fff", py: { xs: 8, md: 12 } }}>
@@ -356,7 +362,7 @@ function HomeRebuild({ tenant }) {
       </Box>
 
       <Box sx={{ bgcolor: P.paper, py: { xs: 8, md: 12 } }}>
-        <Container maxWidth="lg"><Grid container spacing={{ xs: 4, md: 7 }}><Grid item xs={12} md={5}><Label>Simple by design</Label><Typography component="h2" sx={{ mt: 1, fontSize: { xs: "2.4rem", md: "3.8rem" }, fontWeight: 950, letterSpacing: "-.07em", lineHeight: 1 }}>One price.<br />A full working system.</Typography><Typography sx={{ mt: 2, color: P.muted, maxWidth: 430, lineHeight: 1.75 }}>Start with every feature for 90 days. Keep going from £10 a month.</Typography><Button onClick={() => setPricingOpen(true)} endIcon={<ArrowIcon />} sx={{ mt: 2, p: 0, color: P.blue, fontWeight: 950 }}>See pricing by trade</Button></Grid><Grid item xs={12} md={7}><Paper sx={{ bgcolor: P.blue, color: "#fff", p: { xs: 3.5, sm: 5 }, borderRadius: 5, position: "relative", overflow: "hidden", boxShadow: "0 30px 70px rgba(37,99,235,.22)" }}><Box sx={{ position: "absolute", width: 250, height: 250, borderRadius: "50%", bgcolor: "rgba(147,197,253,.12)", right: -70, top: -120 }} /><Typography sx={{ color: P.acid, fontSize: ".68rem", fontWeight: 950, textTransform: "uppercase", letterSpacing: ".12em" }}>Everything included</Typography><Typography sx={{ mt: 1, fontSize: "4rem", fontWeight: 950, letterSpacing: "-.08em" }}>£10<Box component="span" sx={{ fontSize: ".8rem", color: "rgba(255,255,255,.55)", letterSpacing: 0 }}>/month</Box></Typography><Stack spacing={1.1} sx={{ mt: 2 }}>{["Your branded booking website", "Clients, payments and invoices", "Tools shaped around your trade"].map(item => <Stack key={item} direction="row" spacing={1} alignItems="center"><Box sx={{ width: 21, height: 21, borderRadius: "50%", bgcolor: P.acid, color: P.ink, display: "grid", placeItems: "center" }}><CheckIcon sx={{ fontSize: 14 }} /></Box><Typography sx={{ color: "rgba(255,255,255,.8)", fontSize: ".82rem" }}>{item}</Typography></Stack>)}</Stack><Button fullWidth variant="contained" onClick={() => { logFunnelEvent("home_cta_clicked", { location: "pricing_section" }); navigate("/signup"); }} sx={{ mt: 3.5, bgcolor: P.acid, color: P.ink, borderRadius: 99, minHeight: 52, fontWeight: 950, "&:hover": { bgcolor: "#BFDBFE" } }}>Start free today</Button></Paper></Grid></Grid></Container>
+        <Container maxWidth="lg"><Grid container spacing={{ xs: 4, md: 7 }}><Grid item xs={12} md={5}><Label>Simple by design</Label><Typography component="h2" sx={{ mt: 1, fontSize: { xs: "2.4rem", md: "3.8rem" }, fontWeight: 950, letterSpacing: "-.07em", lineHeight: 1 }}>One price.<br />A full working system.</Typography><Typography sx={{ mt: 2, color: P.muted, maxWidth: 430, lineHeight: 1.75 }}>Start with every feature for 90 days. Keep going from £5 a month, or stay free forever.</Typography><Button onClick={() => setPricingOpen(true)} endIcon={<ArrowIcon />} sx={{ mt: 2, p: 0, color: P.blue, fontWeight: 950 }}>See pricing by trade</Button></Grid><Grid item xs={12} md={7}><Paper sx={{ bgcolor: P.blue, color: "#fff", p: { xs: 3.5, sm: 5 }, borderRadius: 5, position: "relative", overflow: "hidden", boxShadow: "0 30px 70px rgba(37,99,235,.22)" }}><Box sx={{ position: "absolute", width: 250, height: 250, borderRadius: "50%", bgcolor: "rgba(147,197,253,.12)", right: -70, top: -120 }} /><Typography sx={{ color: P.acid, fontSize: ".68rem", fontWeight: 950, textTransform: "uppercase", letterSpacing: ".12em" }}>Everything included</Typography><Typography sx={{ mt: 1, fontSize: "4rem", fontWeight: 950, letterSpacing: "-.08em" }}>£10<Box component="span" sx={{ fontSize: ".8rem", color: "rgba(255,255,255,.55)", letterSpacing: 0 }}>/month</Box></Typography><Stack spacing={1.1} sx={{ mt: 2 }}>{["Your branded booking website", "Clients, payments and invoices", "Tools shaped around your trade"].map(item => <Stack key={item} direction="row" spacing={1} alignItems="center"><Box sx={{ width: 21, height: 21, borderRadius: "50%", bgcolor: P.acid, color: P.ink, display: "grid", placeItems: "center" }}><CheckIcon sx={{ fontSize: 14 }} /></Box><Typography sx={{ color: "rgba(255,255,255,.8)", fontSize: ".82rem" }}>{item}</Typography></Stack>)}</Stack><Button fullWidth variant="contained" onClick={() => navigate("/signup")} sx={{ mt: 3.5, bgcolor: P.acid, color: P.ink, borderRadius: 99, minHeight: 52, fontWeight: 950, "&:hover": { bgcolor: "#BFDBFE" } }}>Start free today</Button></Paper></Grid></Grid></Container>
       </Box>
 
       <Box id="browse-section" sx={{ bgcolor: "#fff", py: { xs: 8, md: 12 }, scrollMarginTop: 80 }}>
@@ -377,11 +383,12 @@ function HomeRebuild({ tenant }) {
 
       <Box sx={{ bgcolor: P.paper, py: { xs: 8, md: 11 } }}><Container maxWidth="lg"><Grid container spacing={{ xs: 4, md: 8 }}><Grid item xs={12} md={4}><Label>Good to know</Label><Typography component="h2" sx={{ mt: 1, fontSize: { xs: "2.2rem", md: "3.3rem" }, fontWeight: 950, letterSpacing: "-.065em", lineHeight: 1 }}>Questions,<br />answered plainly.</Typography><Button component={Link} to="/contact" sx={{ mt: 2, p: 0, color: P.blue, fontWeight: 950 }}>Talk to us</Button></Grid><Grid item xs={12} md={8}>{FAQS.map(item => <Accordion key={item[0]} disableGutters elevation={0} sx={{ bgcolor: "transparent", borderBottom: "1px solid " + P.line, "&:before": { display: "none" } }}><AccordionSummary expandIcon={<ExpandIcon />} sx={{ px: 0, py: 1 }}><Typography sx={{ fontWeight: 900 }}>{item[0]}</Typography></AccordionSummary><AccordionDetails sx={{ px: 0, pb: 2.5 }}><Typography sx={{ color: P.muted, fontSize: ".85rem", lineHeight: 1.75 }}>{item[1]}</Typography></AccordionDetails></Accordion>)}</Grid></Grid></Container></Box>
 
-      <Box sx={{ bgcolor: P.paper, pb: 5 }}><Container maxWidth="lg"><Box sx={{ bgcolor: P.coral, borderRadius: { xs: 4, md: 6 }, p: { xs: 4, sm: 6, md: 8 }, position: "relative", overflow: "hidden" }}><Typography aria-hidden="true" sx={{ position: "absolute", right: -10, top: -80, fontSize: "16rem", fontWeight: 950, color: "rgba(255,255,255,.12)", lineHeight: 1 }}>B</Typography><Grid container spacing={3} alignItems="center" sx={{ position: "relative" }}><Grid item xs={12} md={8}><Typography sx={{ fontSize: { xs: "2.2rem", md: "3.7rem" }, fontWeight: 950, letterSpacing: "-.07em", lineHeight: .98 }}>Your next booking should not depend on you checking your messages.</Typography></Grid><Grid item xs={12} md={4} sx={{ textAlign: { md: "right" } }}><Button variant="contained" onClick={() => { logFunnelEvent("home_cta_clicked", { location: "final_cta" }); navigate("/signup"); }} endIcon={<ArrowIcon />} sx={{ bgcolor: P.ink, color: "#fff", borderRadius: 99, minHeight: 56, px: 3.2, fontWeight: 950, "&:hover": { bgcolor: P.blueDark } }}>Start 90 days free</Button><Typography sx={{ mt: 1, fontSize: ".68rem", fontWeight: 800 }}>No card required</Typography></Grid></Grid></Box></Container></Box>
+      <Box sx={{ bgcolor: P.paper, pb: 5 }}><Container maxWidth="lg"><Box sx={{ bgcolor: P.coral, borderRadius: { xs: 4, md: 6 }, p: { xs: 4, sm: 6, md: 8 }, position: "relative", overflow: "hidden" }}><Typography aria-hidden="true" sx={{ position: "absolute", right: -10, top: -80, fontSize: "16rem", fontWeight: 950, color: "rgba(255,255,255,.12)", lineHeight: 1 }}>B</Typography><Grid container spacing={3} alignItems="center" sx={{ position: "relative" }}><Grid item xs={12} md={8}><Typography sx={{ fontSize: { xs: "2.2rem", md: "3.7rem" }, fontWeight: 950, letterSpacing: "-.07em", lineHeight: .98 }}>Your next booking should not depend on you checking your messages.</Typography></Grid><Grid item xs={12} md={4} sx={{ textAlign: { md: "right" } }}><Button variant="contained" onClick={() => navigate("/signup")} endIcon={<ArrowIcon />} sx={{ bgcolor: P.ink, color: "#fff", borderRadius: 99, minHeight: 56, px: 3.2, fontWeight: 950, "&:hover": { bgcolor: P.blueDark } }}>Start 90 days free</Button><Typography sx={{ mt: 1, fontSize: ".68rem", fontWeight: 800 }}>No card required</Typography></Grid></Grid></Box></Container></Box>
 
       <Box component="footer" sx={{ bgcolor: P.ink, color: "#fff", py: 6 }}><Container maxWidth="lg"><Grid container spacing={4}><Grid item xs={12} md={6}><BrandMark inverse /><Typography sx={{ mt: 2, maxWidth: 420, color: "rgba(255,255,255,.42)", fontSize: ".78rem", lineHeight: 1.75 }}>The working system for independent UK service professionals.</Typography></Grid><Grid item xs={6} md={2}><Label light>Platform</Label><Stack spacing={1.1} sx={{ mt: 1.5 }}>{[["Sign up", "/signup"], ["Log in", "/login"], ["Pricing", "/pricing"]].map(item => <Link key={item[0]} to={item[1]} style={{ color: "rgba(255,255,255,.58)", textDecoration: "none", fontSize: ".78rem" }}>{item[0]}</Link>)}</Stack></Grid><Grid item xs={6} md={2}><Label light>Learn</Label><Stack spacing={1.1} sx={{ mt: 1.5 }}>{[["How it works", "/how-it-works"], ["Blog", "/blog"], ["Contact", "/contact"]].map(item => <Link key={item[0]} to={item[1]} style={{ color: "rgba(255,255,255,.58)", textDecoration: "none", fontSize: ".78rem" }}>{item[0]}</Link>)}</Stack></Grid><Grid item xs={12} md={2}><Label light>Support</Label><Typography component="a" href="https://mail.google.com/mail/?view=cm&fs=1&to=info@bookrightly.co.uk" target="_blank" rel="noopener noreferrer" sx={{ display: "block", mt: 1.5, color: "rgba(255,255,255,.58)", textDecoration: "none", fontSize: ".78rem" }}>Email us</Typography></Grid></Grid><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} sx={{ mt: 5, pt: 3, borderTop: "1px solid rgba(255,255,255,.09)" }}><Typography sx={{ color: "rgba(255,255,255,.28)", fontSize: ".68rem" }}>© {new Date().getFullYear()} Bookrightly</Typography><Stack direction="row" spacing={2}><Link to="/terms" style={{ color: "rgba(255,255,255,.4)", fontSize: ".68rem" }}>Terms</Link><Link to="/privacy" style={{ color: "rgba(255,255,255,.4)", fontSize: ".68rem" }}>Privacy</Link></Stack></Stack></Container></Box>
 
       <Suspense fallback={null}><PricingModal open={pricingOpen} onClose={() => setPricingOpen(false)} /><FeatureComparisonModal open={featuresOpen} onClose={() => setFeaturesOpen(false)} /></Suspense>
+      <ChatWidget />
     </Box>
   );
 }

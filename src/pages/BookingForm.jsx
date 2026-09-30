@@ -35,6 +35,14 @@ export default function BookingForm({ tenant }) {
   const [error, setError] = useState(null);
   const [formReady, setFormReady] = useState(false);
   const [isStripeActive, setIsStripeActive] = useState(false);
+  // No Stripe Connect on this account: either the business has pasted their
+  // own external payment link (Stripe Payment Link, PayPal.me, etc. —
+  // confirmed the moment the customer clicks through, same trust level as a
+  // business currently taking bank transfers over DM), or they take no
+  // deposit at all and booking just confirms directly. See
+  // handleFinalizeBookingNoPayment in worker.js for the actual write.
+  const [externalPayStep, setExternalPayStep] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -86,7 +94,16 @@ export default function BookingForm({ tenant }) {
             console.warn("⚠️ Barber email not found in Firestore. Go to Dashboard and click Save to fix this — barber will not receive booking emails until resolved.");
           }
           setBarber(foundBarber);
-          setIsStripeActive(stripeData.connected || foundBarber.stripeConnected || !!foundBarber.stripeAccountId);
+          // stripeAccountId alone used to count as "active" too, but that's
+          // just an ID Stripe assigns the moment Connect onboarding starts —
+          // it stays set in Firestore even if onboarding was abandoned
+          // (charges_enabled/details_submitted still false) or Stripe was
+          // never actually completed, wrongly forcing the real Stripe/deposit
+          // flow instead of the external-payment-link path for any business
+          // in that state. stripeConnected (synced by /api/check-stripe,
+          // which re-verifies against Stripe's own API) is the only signal
+          // that actually means payments will work.
+          setIsStripeActive(stripeData.connected || foundBarber.stripeConnected);
         } else {
           setError("Barber profile not found.");
         }
@@ -167,6 +184,18 @@ export default function BookingForm({ tenant }) {
       return;
     }
 
+    if (!isStripeActive) {
+      if (barber?.externalPaymentLink) {
+        // Show the "pay via their link, then confirm" step rather than
+        // finalizing immediately — see handleExternalLinkConfirm below.
+        setExternalPayStep(true);
+      } else {
+        // No Stripe, no external link — a normal booking with no deposit.
+        await finalizeNoPayment("none");
+      }
+      return;
+    }
+
     // The actual PaymentIntent is created once, server-side, by CheckoutForm
     // right before confirmPayment() — never here. This step just validates
     // the deposit meets Stripe's minimum and moves to the payment step;
@@ -180,10 +209,46 @@ export default function BookingForm({ tenant }) {
     setFormReady(true);
   };
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', pt: { xs: 14, md: 10 }, pb: 10 }}><CircularProgress sx={{ color: ui.brandColor }} /></Box>;
+  // Shared by the "no deposit at all" path (called directly) and the
+  // "pay via external link" step (called after the customer clicks through
+  // to the business's own Stripe Payment Link / PayPal.me / etc.). Confirms
+  // on trust the moment they click — there's no webhook or API integration
+  // with an arbitrary external payment provider to verify against, same
+  // trust level as a business currently taking bank transfers over DM.
+  async function finalizeNoPayment(paymentMethod) {
+    setConfirming(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/finalize-booking-no-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          barberId, slotId, formData, date: slotData.date, time: slotData.time, paymentMethod,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server responded with ${res.status}`);
+      navigate(`/confirmation/${data.bookingId}`, { state: { tenant } });
+    } catch (err) {
+      setError(err.message || "Something went wrong — please try again.");
+      setConfirming(false);
+    }
+  }
+
+  // TenantNav (App.jsx) is a fixed floating bar shown for barber-type
+  // tenants on this route (other business types render their own in-page
+  // nav instead, which doesn't persist onto this separate route at all —
+  // see isAlternativeBookingLayout in App.jsx). It overlays whatever's here
+  // regardless of scroll position, since navigating here resets scroll to
+  // top, and the previous pt: 12/5 wasn't enough to clear it.
+  const navClearance = ui.businessType === "barber"
+    ? { xs: "calc(104px + env(safe-area-inset-top, 0px))", md: "128px" }
+    : { xs: 12, md: 5 };
+
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', pt: navClearance, pb: 10 }}><CircularProgress sx={{ color: ui.brandColor }} /></Box>;
 
   return (
-    <Container maxWidth="sm" sx={{ pt: { xs: 12, md: 5 }, pb: 5 }}>
+    <Container maxWidth="sm" sx={{ pt: navClearance, pb: 5 }}>
       <Paper 
         variant="outlined" 
         sx={{ 
@@ -223,15 +288,41 @@ export default function BookingForm({ tenant }) {
 
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography fontWeight={700}>Booking Deposit</Typography>
-          <Typography variant="h5" fontWeight={900} color={ui.brandColor}>
-            £{ui.depositAmount.toFixed(2)}
-          </Typography>
+          {isStripeActive ? (
+            <Typography variant="h5" fontWeight={900} color={ui.brandColor}>
+              £{ui.depositAmount.toFixed(2)}
+            </Typography>
+          ) : barber?.externalPaymentLink ? (
+            <Typography variant="body2" fontWeight={700} color={ui.brandColor}>Paid via {ui.barberName}'s link</Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary">No deposit required</Typography>
+          )}
         </Box>
       </Paper>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {formReady ? (
+      {externalPayStep ? (
+        <Box sx={{ textAlign: "center", py: 2 }}>
+          <Typography sx={{ mb: 2.5, color: "text.secondary" }}>
+            {ui.barberName} takes deposits directly — pay via their link below, then come back to confirm your booking.
+          </Typography>
+          <Button
+            component="a" href={barber.externalPaymentLink} target="_blank" rel="noopener noreferrer"
+            variant="outlined" fullWidth size="large"
+            sx={{ py: 1.75, fontWeight: 800, borderRadius: 2, borderColor: ui.brandColor, color: ui.brandColor, mb: 2 }}
+          >
+            Open payment link
+          </Button>
+          <Button
+            variant="contained" fullWidth size="large" disabled={confirming}
+            onClick={() => finalizeNoPayment("external_link")}
+            sx={{ py: 2, fontWeight: 900, borderRadius: 2, bgcolor: ui.brandColor, "&:hover": { bgcolor: ui.brandColor, filter: "brightness(0.9)" } }}
+          >
+            {confirming ? <CircularProgress size={22} color="inherit" /> : "I've paid — confirm my booking"}
+          </Button>
+        </Box>
+      ) : formReady ? (
         // Deferred mode — no real PaymentIntent (and no real clientSecret)
         // exists yet at mount time. CheckoutForm creates the actual,
         // server-verified PaymentIntent right before confirmPayment().
@@ -243,6 +334,12 @@ export default function BookingForm({ tenant }) {
             mode: "payment",
             currency: "gbp",
             amount: calculateBookingFee(ui.depositAmount).customerPaysPence,
+            // /api/create-intent always sets on_behalf_of to the business's
+            // connected account (destination charges) — Elements must be told
+            // the same thing up front in deferred mode, or confirmPayment()
+            // fails with "provided on_behalf_of does not match the expected
+            // on_behalf_of (null)" once the real clientSecret comes back.
+            onBehalfOf: barber?.stripeAccountId,
           }}
         >
           <CheckoutForm
@@ -280,18 +377,22 @@ export default function BookingForm({ tenant }) {
             </Alert>
           )}
           <Button
-            type="submit" variant="contained" fullWidth size="large" disabled={!isStripeActive && !barber?.isDemo}
+            type="submit" variant="contained" fullWidth size="large" disabled={confirming}
             sx={{
                 mt: barber?.isDemo ? 1 : 4, py: 2, fontWeight: 900, borderRadius: 2, bgcolor: ui.brandColor,
                 "&:hover": { bgcolor: ui.brandColor, filter: "brightness(0.9)" },
                 "&.Mui-disabled": { bgcolor: "#e0e0e0" }
             }}
           >
-            {barber?.isDemo
-              ? "Confirm Demo Booking"
-              : isStripeActive
-                ? `Confirm & Pay £${ui.depositAmount.toFixed(2)}`
-                : `${ui.professionalLabel} Not Accepting Payments`}
+            {confirming
+              ? <CircularProgress size={22} color="inherit" />
+              : barber?.isDemo
+                ? "Confirm Demo Booking"
+                : isStripeActive
+                  ? `Confirm & Pay £${ui.depositAmount.toFixed(2)}`
+                  : barber?.externalPaymentLink
+                    ? "Continue to payment"
+                    : "Confirm Booking"}
           </Button>
         </Box>
       )}

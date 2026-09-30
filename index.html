@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png" />
 
+    <!-- Meta Pixel — fires on every page load (base code). This inline
+         script's content is fixed/static, so it's allow-listed in the
+         Worker's CSP (buildCSP in src/worker.js) by exact SHA-256 hash,
+         same pattern as the beforeinstallprompt script below, rather than
+         by the per-request nonce (which is only threaded through
+         Worker-injected HTML, not this static index.html). If this
+         script's content ever changes, the hash in buildCSP must be
+         recomputed to match, or it'll be silently blocked. -->
+    <script>
+      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)}(window, document,'script',
+      'https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', '1120787196951057');
+      fbq('track', 'PageView');
+    </script>
+
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#2563EB" />
@@ -28,8 +48,9 @@
 
     <title>Bookrightly | Online Booking for Barbers & Salons</title>
     <meta name="google-site-verification" content="7RW3PtKpZORoK9Wcz3F8GQgWgv93ty0dzdJLFmV7IxM" />
+    <meta name="backlink-exchange-verification" content="807ef6c2ea7fa771a32a06402af761e7" />
     <meta name="title" content="Bookrightly | Online Booking for Barbers & Salons" />
-    <meta name="description" content="Bookrightly gives barbers, hairdressers, decorators and personal trainers their own website, online booking, payments and business dashboard — all in one place." />
+    <meta name="description" content="Bookrightly gives barbers, hairdressers, decorators and personal trainers their own website, online booking, payments and business dashboard — or embed booking and live queue tools into a website you already have." />
     <!-- Static fallback for the homepage only — react-helmet-async overrides
          this per-route once the app mounts (see each page's <Helmet> block),
          but this keeps the raw pre-JS HTML honest for the homepage itself,
@@ -39,7 +60,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://bookrightly.co.uk/" />
     <meta property="og:title" content="Bookrightly | More time doing. Less organising." />
-    <meta property="og:description" content="Bookings, payments and your whole working day — connected in one clear place." />
+    <meta property="og:description" content="Bookings, payments and your whole working day — connected in one clear place, or embedded straight into a website you already have." />
     <meta property="og:image" content="https://bookrightly.co.uk/brand/bookrightly-social-share.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -50,11 +71,15 @@
          silently ignored entirely. -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Bookrightly | More time doing. Less organising." />
-    <meta name="twitter:description" content="Bookings, payments and your whole working day — connected in one clear place." />
+    <meta name="twitter:description" content="Bookings, payments and your whole working day — connected in one clear place, or embedded straight into a website you already have." />
     <meta name="twitter:image" content="https://bookrightly.co.uk/brand/bookrightly-social-share.png" />
     <meta name="twitter:image:alt" content="Bookrightly — More time doing. Less organising." />
   </head>
   <body>
+    <!-- Meta Pixel noscript fallback — must live in <body>, not <head>;
+         HTML forbids an <img> inside a <noscript> that's in <head>. -->
+    <noscript><img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=1120787196951057&amp;ev=PageView&amp;noscript=1" /></noscript>
     <div id="root"></div>
     <!-- Capture install prompt before React mounts so it's never missed -->
     <script>

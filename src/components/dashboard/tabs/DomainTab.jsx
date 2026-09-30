@@ -9,7 +9,7 @@ import {
   Box, Button, Chip, CircularProgress, Divider,
   Grid, InputAdornment, Paper, TextField,
   Typography, Alert, Stepper, Step, StepLabel,
-  Stack,
+  Stack, Dialog, DialogTitle, DialogContent, DialogActions,
 } from "@mui/material";
 import {
   Search          as SearchIcon,
@@ -21,12 +21,18 @@ import {
   HourglassBottom as PendingIcon,
   Link            as LinkIcon,
   ContentCopy     as CopyIcon,
+  MenuBook        as GuideIcon,
+  Add             as AddIcon,
+  DeleteOutline   as DeleteIcon,
+  Dns             as DnsIcon,
 } from "@mui/icons-material";
 import {getFunctions, httpsCallable} from "firebase/functions";
 import {getFirestore, doc, onSnapshot} from "firebase/firestore";
 import { getApp } from "firebase/app";
+import { useNavigate } from "react-router-dom";
 import BookingLinkCard from "../BookingLinkCard";
 import BookingLinkQrDialog from "../BookingLinkQrDialog";
+import SearchConsoleTraffic from "./SearchConsoleTraffic";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -100,12 +106,158 @@ function CopyField({label, value}) {
   );
 }
 
+// Self-serve TXT records for domains connected via nameserver delegation —
+// their DNS lives entirely in our Cloudflare zone, so this is the only way
+// they can add a Google Search Console / email verification record themselves.
+function DnsRecordManager({domain, brandColor}) {
+  const functions = getFunctions(getApp(), "us-central1");
+  const [records, setRecords]   = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState("");
+  const [name, setName]         = useState("");
+  const [content, setContent]   = useState("");
+  const [adding, setAdding]     = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [open, setOpen]         = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const list = httpsCallable(functions, "listDomainDnsRecords");
+      const res = await list();
+      setRecords(res.data.records || []);
+    } catch (err) {
+      setError(err.message || "Failed to load DNS records.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { if (open && records === null) load(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAdd = async (e) => {
+    e?.preventDefault();
+    if (!name.trim() || !content.trim()) return;
+    setAdding(true);
+    setError("");
+    try {
+      const add = httpsCallable(functions, "addDomainDnsRecord");
+      await add({name: name.trim(), content: content.trim()});
+      setName("");
+      setContent("");
+      await load();
+    } catch (err) {
+      setError(err.message || "Failed to add record.");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDelete = async (recordId) => {
+    setDeletingId(recordId);
+    setError("");
+    try {
+      const del = httpsCallable(functions, "deleteDomainDnsRecord");
+      await del({recordId});
+      await load();
+    } catch (err) {
+      setError(err.message || "Failed to delete record.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <Box mt={2}>
+      <Button
+        size="small"
+        startIcon={<DnsIcon fontSize="small" />}
+        onClick={() => setOpen(v => !v)}
+        sx={{color: brandColor, fontWeight: 700}}
+      >
+        {open ? "Hide DNS (TXT) records" : "Manage DNS (TXT) records"}
+      </Button>
+
+      {open && (
+        <Box mt={1.5}>
+          <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>
+            Advanced — only needed if you run email through this domain elsewhere (SPF/DKIM records)
+            or a third-party tool asks you to add a verification code. Google Search Console is handled
+            automatically by the Search Traffic card above, not here.
+            Use "@" for the root of <strong>{domain}</strong>, or a subdomain like "mail".
+          </Typography>
+
+          {error && <Alert severity="error" sx={{mb: 1.5}} onClose={() => setError("")}>{error}</Alert>}
+
+          {loading ? (
+            <Box display="flex" justifyContent="center" py={2}><CircularProgress size={20} /></Box>
+          ) : (
+            <>
+              {records?.length > 0 && (
+                <Stack spacing={1} mb={2}>
+                  {records.map((r) => (
+                    <Box
+                      key={r.id}
+                      display="flex" alignItems="center" justifyContent="space-between" gap={1}
+                      p={1.25}
+                      sx={{bgcolor: "rgba(255,255,255,0.04)", borderRadius: 1.5, border: "1px solid rgba(255,255,255,0.1)"}}
+                    >
+                      <Box minWidth={0}>
+                        <Typography variant="caption" fontWeight={700} display="block">{r.name}</Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{wordBreak: "break-all"}}>{r.content}</Typography>
+                      </Box>
+                      <Button
+                        size="small"
+                        color="error"
+                        disabled={deletingId === r.id}
+                        onClick={() => handleDelete(r.id)}
+                        sx={{minWidth: 32, flexShrink: 0}}
+                      >
+                        {deletingId === r.id ? <CircularProgress size={14} /> : <DeleteIcon fontSize="small" />}
+                      </Button>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+
+              <Box component="form" onSubmit={handleAdd} display="flex" flexDirection="column" gap={1}>
+                <Stack direction={{xs: "column", sm: "row"}} spacing={1}>
+                  <TextField
+                    size="small" label="Name" placeholder="@"
+                    value={name} onChange={(e) => setName(e.target.value)}
+                    disabled={adding} sx={{maxWidth: {sm: 140}}}
+                  />
+                  <TextField
+                    fullWidth size="small" label="TXT value" placeholder="google-site-verification=..."
+                    value={content} onChange={(e) => setContent(e.target.value)}
+                    disabled={adding}
+                  />
+                </Stack>
+                <Button
+                  type="submit" variant="outlined" size="small"
+                  startIcon={adding ? <CircularProgress size={14} /> : <AddIcon fontSize="small" />}
+                  disabled={adding || !name.trim() || !content.trim()}
+                  sx={{alignSelf: "flex-start", borderColor: brandColor, color: brandColor, fontWeight: 700}}
+                >
+                  Add record
+                </Button>
+              </Box>
+            </>
+          )}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 const STEPS = ["Search domain", "Purchase", "Auto-connected"];
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DomainTab({barber, brandColor}) {
   const functions = getFunctions(getApp(), "us-central1");
+  const navigate = useNavigate();
 
   // Search state
   const [query,         setQuery]         = useState("");
@@ -131,6 +283,9 @@ export default function DomainTab({barber, brandColor}) {
   const [autoLinking, setAutoLinking] = useState(false);
   const [autoError,   setAutoError]   = useState("");
   const autoPollRef = useRef(null);
+  const [resetting, setResetting] = useState(false);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetError, setResetError] = useState("");
 
   // Live barber doc from Firestore (real-time)
   const [barberDoc, setBarberDoc] = useState(null);
@@ -157,6 +312,26 @@ export default function DomainTab({barber, brandColor}) {
       window.history.replaceState({}, "", "/dashboard");
     }
   }, []);
+
+  // Jump straight to the Search Traffic card when arriving via its link from
+  // the dashboard overview — waits for the domain data to actually load
+  // (and the section to exist) rather than firing on the very first render.
+  const scrolledToTrafficRef = useRef(false);
+  useEffect(() => {
+    if (scrolledToTrafficRef.current) return;
+    if (sessionStorage.getItem("br_scrollTo") !== "search-traffic") return;
+    // Must match the condition the "search-traffic" section itself renders
+    // under (below) — it was requiring an active custom domain specifically,
+    // so accounts on the bookingSlug fallback (no domain connected yet) never
+    // got the section to exist at all, and this effect silently never fired.
+    const hasTrafficSection = (barberDoc?.customDomain && barberDoc?.domainStatus === "active") || bookingSlug;
+    if (!hasTrafficSection) return;
+    scrolledToTrafficRef.current = true;
+    sessionStorage.removeItem("br_scrollTo");
+    requestAnimationFrame(() => {
+      document.getElementById("search-traffic")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [barberDoc?.customDomain, barberDoc?.domainStatus, bookingSlug]);
 
   // Poll checkDomainStatus when domain is pending
   useEffect(() => {
@@ -207,6 +382,22 @@ export default function DomainTab({barber, brandColor}) {
   }, [barberDoc?.cfZoneId, barberDoc?.connectMethod, barberDoc?.domainStatus, barberDoc?.customDomain]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
+
+  async function handleResetDomain() {
+    setResetting(true);
+    setResetError("");
+    try {
+      const reset = httpsCallable(functions, "resetDomainConnection");
+      await reset();
+      setResetConfirmOpen(false);
+      setAutoDomain("");
+      setExistingDomain("");
+    } catch (err) {
+      setResetError(err.message || "Couldn't reset the domain connection.");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   async function handleConnectAuto(e) {
     e?.preventDefault();
@@ -336,6 +527,19 @@ export default function DomainTab({barber, brandColor}) {
           <BookingLinkQrDialog open={qrOpen} onClose={() => setQrOpen(false)} bookingSlug={bookingSlug} brandColor={brandColor} />
         </>
       )}
+
+      <Paper
+        onClick={() => navigate("/starter-pack")}
+        sx={{p: 2.5, borderRadius: 3, mb: 3, display: "flex", alignItems: "center", gap: 2, cursor: "pointer", border: `1px solid ${brandColor}55`, "&:hover": {bgcolor: `${brandColor}0A`}}}
+      >
+        <GuideIcon sx={{color: brandColor, fontSize: 28, flexShrink: 0}} />
+        <Box flex={1}>
+          <Typography fontWeight={800}>Free Business Starter Pack</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Getting found on Google, free directories to list on, and — once your domain's connected — how to track your search traffic.
+          </Typography>
+        </Box>
+      </Paper>
 
       <Box display="flex" alignItems="baseline" gap={1} mb={2}>
         <Typography variant="h6" fontWeight={800}>Want your own domain?</Typography>
@@ -488,6 +692,15 @@ export default function DomainTab({barber, brandColor}) {
       <Grid item xs={12} md={5}>
         <Stack spacing={3}>
 
+          {(connectedDomain && domainStatus === "active" ? connectedDomain : bookingSlug ? `bookrightly.co.uk/${bookingSlug}` : null) && (
+            <Box id="search-traffic" sx={{ scrollMarginTop: "calc(64px + env(safe-area-inset-top, 0px) + 16px)" }}>
+              <SearchConsoleTraffic
+                domain={connectedDomain && domainStatus === "active" ? connectedDomain : `bookrightly.co.uk/${bookingSlug}`}
+                brandColor={brandColor}
+              />
+            </Box>
+          )}
+
           {/* Live status */}
           <Paper sx={{p: 3, borderRadius: 3, bgcolor: "rgba(255,255,255,0.04)"}}>
             <Typography variant="subtitle1" fontWeight={800} mb={2}>
@@ -594,7 +807,7 @@ export default function DomainTab({barber, brandColor}) {
                     <Typography
                       variant="caption"
                       component="a"
-                      href="https://youtu.be/gBisE6_9Yhs"
+                      href="https://youtu.be/zm12p5_doDw"
                       target="_blank"
                       rel="noopener noreferrer"
                       sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, color: brandColor, fontWeight: 700, mt: 1 }}
@@ -609,6 +822,14 @@ export default function DomainTab({barber, brandColor}) {
                     </Box>
                   </>
                 )}
+                <Button
+                  size="small" color="inherit"
+                  onClick={() => setResetConfirmOpen(true)}
+                  sx={{mt: 1.5, color: "text.disabled", fontSize: "0.72rem"}}
+                >
+                  Wrong domain? Start over
+                </Button>
+                <DnsRecordManager domain={barberDoc.customDomain} brandColor={brandColor} />
               </Box>
             ) : (
               <Box component="form" onSubmit={handleConnectAuto} display="flex" flexDirection="column" gap={1.5}>
@@ -696,7 +917,7 @@ export default function DomainTab({barber, brandColor}) {
                 <Typography
                   variant="caption"
                   component="a"
-                  href="https://youtu.be/1mB7ZJajegw"
+                  href="https://youtu.be/7bm7Gt0BA-Y"
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, color: brandColor, fontWeight: 700, mb: 2 }}
@@ -769,6 +990,28 @@ export default function DomainTab({barber, brandColor}) {
       </Grid>
 
     </Grid>
+
+    <Dialog open={resetConfirmOpen} onClose={() => !resetting && setResetConfirmOpen(false)}>
+      <DialogTitle>Start over on this domain?</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" mb={resetError ? 2 : 0}>
+          This disconnects <strong>{barberDoc?.customDomain}</strong> and removes its DNS setup.
+          Your Bookrightly link keeps working — you can connect a different (or corrected) domain right after.
+        </Typography>
+        {resetError && <Alert severity="error">{resetError}</Alert>}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setResetConfirmOpen(false)} disabled={resetting}>Cancel</Button>
+        <Button
+          color="error" variant="contained"
+          onClick={handleResetDomain}
+          disabled={resetting}
+          startIcon={resetting ? <CircularProgress size={16} color="inherit" /> : null}
+        >
+          {resetting ? "Starting over…" : "Start over"}
+        </Button>
+      </DialogActions>
+    </Dialog>
     </Box>
   );
 }

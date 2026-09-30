@@ -12,13 +12,13 @@ import {
   Warning as WarningIcon,
   Info as InfoIcon,
 } from "@mui/icons-material";
+import { getPlan } from "../../../config/plans";
 
-// ── Get pricing based on business type ──────────────────────────────────────
-function getPricingLabel(businessType) {
-  if (businessType === "trainer") {
-    return "£15/month";
-  }
-  return "£10/month";
+// ── Get pricing based on plan — reads src/config/plans.js, the single
+// source of truth, rather than repeating price numbers here. ───────────────
+function getPricingLabel(businessType, plan) {
+  const p = getPlan(plan);
+  return p.priceGBP === 0 ? "Free" : `£${p.priceGBP}/month`;
 }
 
 // ── Fee calculator (mirrors src/utils/bookingHelpers.jsx / worker.js's handleCreateIntent) ──
@@ -71,7 +71,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
   const trialPct     = Math.min(100, Math.round((daysUsed / TRIAL_LENGTH_DAYS) * 100));
   const trialUrgent  = daysLeft <= 5;
 
-  async function handleSubscribe() {
+  async function handleSubscribe(targetPlan) {
     if (!barber?.uid || !barber?.email) return;
     setLoading(true);
     setSubscribeError("");
@@ -86,7 +86,12 @@ function SubscriptionSection({ profile, barber, brandColor }) {
         body:    JSON.stringify({
           barberId: barber.uid,
           email: barber.email,
-          businessType: profile.businessType || "barber"
+          businessType: profile.businessType || "barber",
+          // Free has no paid subscription to "resubscribe" to — the server
+          // rejects plan:"free" outright — so an upgrade from Free defaults
+          // to Basic (the cheapest paid tier) unless a specific plan was
+          // requested via the button that called this.
+          plan: targetPlan || (profile.plan === "free" ? "basic" : profile.plan) || "full",
         }),
       });
       const data = await res.json();
@@ -181,7 +186,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
 
         <Button
           variant="contained"
-          onClick={handleSubscribe}
+          onClick={() => handleSubscribe()}
           disabled={loading}
           startIcon={loading ? <CircularProgress size={14} color="inherit" /> : null}
           sx={{
@@ -193,7 +198,48 @@ function SubscriptionSection({ profile, barber, brandColor }) {
             "&:hover": { bgcolor: brandColor, opacity: 0.9 },
           }}
         >
-          {loading ? "Redirecting…" : `Subscribe early — ${getPricingLabel(profile.businessType || "barber")}`}
+          {loading ? "Redirecting…" : `Subscribe early — ${getPricingLabel(profile.businessType || "barber", profile.plan)}`}
+        </Button>
+        {subscribeError && (
+          <Alert severity="error" sx={{ mt: 1.5, fontSize: "0.78rem" }} onClose={() => setSubscribeError("")}>
+            {subscribeError}
+          </Alert>
+        )}
+      </Box>
+    );
+  }
+
+  // ── Free plan ─────────────────────────────────────────────────────────────
+  // Without this branch, a Free-plan account's subscriptionStatus ("free")
+  // matched neither "trialing" nor "active" and fell through to the
+  // past-due/cancelled branch below — showing a red "your site is offline"
+  // alert that was completely wrong for an account whose page is live and
+  // working exactly as designed.
+  if (status === "free") {
+    return (
+      <Box>
+        <Typography variant="h6" fontWeight={800} mb={1.5}>Platform Subscription</Typography>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You're on the Free plan
+        </Alert>
+        <Typography sx={{ fontSize: "0.82rem", color: "#6b7280", mb: 2, lineHeight: 1.7 }}>
+          Your booking page is live and taking bookings. Upgrade any time to add online deposits, reminder emails, and more.
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={() => handleSubscribe("basic")}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={14} color="inherit" /> : null}
+          sx={{
+            bgcolor: brandColor,
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: "0.8rem",
+            letterSpacing: "0.05em",
+            "&:hover": { bgcolor: brandColor, opacity: 0.9 },
+          }}
+        >
+          {loading ? "Redirecting…" : `Upgrade — ${getPricingLabel(profile.businessType || "barber", "basic")}`}
         </Button>
         {subscribeError && (
           <Alert severity="error" sx={{ mt: 1.5, fontSize: "0.78rem" }} onClose={() => setSubscribeError("")}>
@@ -214,7 +260,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
           icon={<CheckCircleIcon />}
           sx={{ mb: 2 }}
         >
-          Active — {getPricingLabel(profile.businessType || "barber")}
+          Active — {getPricingLabel(profile.businessType || "barber", profile.plan)}
         </Alert>
         <Typography sx={{ fontSize: "0.82rem", color: "#6b7280", mb: 2, lineHeight: 1.7 }}>
           Your subscription is active. Your booking site is live and taking appointments.
@@ -258,7 +304,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
       </Typography>
       <Button
         variant="contained"
-        onClick={handleSubscribe}
+        onClick={() => handleSubscribe()}
         disabled={loading}
         startIcon={loading ? <CircularProgress size={14} color="inherit" /> : null}
         sx={{
@@ -270,7 +316,7 @@ function SubscriptionSection({ profile, barber, brandColor }) {
           "&:hover": { bgcolor: "#b91c1c" },
         }}
       >
-        {loading ? "Redirecting…" : `Reactivate — ${getPricingLabel(profile.businessType || "barber")}`}
+        {loading ? "Redirecting…" : `Reactivate — ${getPricingLabel(profile.businessType || "barber", profile.plan)}`}
       </Button>
       {subscribeError && (
         <Alert severity="error" sx={{ mt: 1.5, fontSize: "0.78rem" }} onClose={() => setSubscribeError("")}>
@@ -327,10 +373,41 @@ export default function FinanceTab({
   profile, setProfile, userRole, barber,
   stripeLoading, handleConnectStripe,
   hideDeposit = false,
+  // Mini-plan bookings are always free/no-deposit by design — there's no
+  // Stripe Connect, external payment link, or deposit amount to configure,
+  // just the subscription itself (what this account pays Bookrightly).
+  hidePayments = false,
 }) {
   const brandColor = profile.brandColor || "#2563EB";
   const [disconnecting, setDisconnecting] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [externalLink, setExternalLink] = useState(profile.externalPaymentLink || "");
+  const [savingLink, setSavingLink] = useState(false);
+  const [linkSaved, setLinkSaved] = useState(false);
+
+  // For businesses without Stripe Connect: a deposit link they already have
+  // (a Stripe Payment Link, PayPal.me, etc.) instead of going through our
+  // own Connect onboarding. Customers are directed there at booking and the
+  // booking confirms once they click through — see BookingForm.jsx and
+  // handleFinalizeBookingNoPayment in worker.js. We can't verify the
+  // payment actually happened this way, same trust level as a business
+  // currently taking bank transfers over DM.
+  async function handleSaveExternalLink() {
+    if (!barber?.uid) return;
+    setSavingLink(true);
+    setLinkSaved(false);
+    try {
+      const trimmed = externalLink.trim();
+      await updateDoc(doc(db, "barbers", barber.uid), { externalPaymentLink: trimmed });
+      setProfile(prev => ({ ...prev, externalPaymentLink: trimmed }));
+      setLinkSaved(true);
+      setTimeout(() => setLinkSaved(false), 2000);
+    } catch {
+      // best-effort — field stays editable to retry
+    } finally {
+      setSavingLink(false);
+    }
+  }
 
   // The owner is authenticated here, so this write satisfies firestore.rules'
   // barbers/{id} owner-write rule directly — no server round-trip needed.
@@ -369,6 +446,7 @@ export default function FinanceTab({
         </Paper>
 
         {/* ── Stripe Connect ── */}
+        {!hidePayments && (
         <Paper sx={{ p: 3, borderRadius: 3 }}>
           <Typography variant="h6" fontWeight={800} mb={2}>Stripe Connect</Typography>
           <Typography sx={{ fontSize: "0.82rem", color: "#6b7280", mb: 2, lineHeight: 1.7 }}>
@@ -417,7 +495,45 @@ export default function FinanceTab({
             </Button>
           )}
 
-          {!hideDeposit && (
+          {!profile.stripeConnected && (
+            <>
+              <Divider sx={{ my: 2.5 }} />
+              <Typography variant="subtitle2" fontWeight={700} mb={0.5}>
+                Or use a payment link you already have
+              </Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "#6b7280", mb: 1.5, lineHeight: 1.65 }}>
+                Already have a Stripe Payment Link, PayPal.me, or similar? Paste it here — clients get sent there to pay their deposit, and their booking confirms once they click through. We can't verify the payment happened this way, so treat it the same as taking a bank transfer over DM. Leave this blank and bookings will confirm with no deposit at all.
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <TextField
+                  size="small" placeholder="https://buy.stripe.com/... or https://paypal.me/..."
+                  value={externalLink} onChange={(e) => setExternalLink(e.target.value)}
+                  sx={{ flex: 1, minWidth: 240 }}
+                />
+                <Button
+                  variant="outlined" size="small" onClick={handleSaveExternalLink}
+                  disabled={savingLink || externalLink.trim() === (profile.externalPaymentLink || "")}
+                >
+                  {savingLink ? <CircularProgress size={16} /> : linkSaved ? "Saved!" : "Save"}
+                </Button>
+              </Box>
+            </>
+          )}
+
+          {/* An external payment link (Stripe Payment Link, PayPal.me, etc.)
+              always charges whatever fixed amount it was itself set up for —
+              our Deposit Amount field has no way to change or override that,
+              so showing it alongside a real number/fee breakdown implied it
+              controlled what the client pays, when it never did. */}
+          {!hideDeposit && profile.externalPaymentLink && (
+            <>
+              <Divider sx={{ my: 2.5 }} />
+              <Alert severity="info" sx={{ fontSize: "0.82rem" }}>
+                You're using a payment link instead of Stripe Connect, so clients pay whatever amount that link is set up to charge — a Deposit Amount set here wouldn't change that, so it's hidden while a payment link is in use. Remove the link above if you'd rather set a deposit amount here instead.
+              </Alert>
+            </>
+          )}
+          {!hideDeposit && !profile.externalPaymentLink && (
             <>
               <Divider sx={{ my: 2.5 }} />
               <Typography variant="subtitle2" fontWeight={700} mb={1}>
@@ -441,6 +557,7 @@ export default function FinanceTab({
             </>
           )}
         </Paper>
+        )}
 
       </Grid>
     </Grid>

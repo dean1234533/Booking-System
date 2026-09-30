@@ -6,6 +6,9 @@ import CheckCircleIcon   from "@mui/icons-material/CheckCircle";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import LinkOffIcon        from "@mui/icons-material/LinkOff";
 import SyncIcon           from "@mui/icons-material/Sync";
+import CodeIcon           from "@mui/icons-material/Code";
+import ContentCopyIcon    from "@mui/icons-material/ContentCopy";
+import DeleteIcon         from "@mui/icons-material/DeleteOutline";
 import {
   initiateOutlookConnect,
   getOutlookTokens,
@@ -16,13 +19,22 @@ import {
 import { collection, getDocs, doc, updateDoc, query, where } from "firebase/firestore";
 import { db } from "../../../firebase/config";
 
-export default function IntegrationsTab({ barber, brandColor = "#2563EB" }) {
+export default function IntegrationsTab({ barber, brandColor = "#2563EB", isBarber = false, plan = "full", handleDeleteProfile }) {
   const uid = barber?.uid;
   const [outlook,    setOutlook]    = useState(null);
   const [loading,    setLoading]    = useState(true);
   const [syncing,    setSyncing]    = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [error,      setError]      = useState(null);
+  const [copiedMode, setCopiedMode] = useState(null);
+
+  const bookingEmbedSnippet = `<div id="bookrightly-widget-booking"></div>\n<script src="https://bookrightly.co.uk/widget.js" data-shop="${uid}" data-mode="booking" async></script>`;
+  const queueEmbedSnippet   = `<div id="bookrightly-widget-queue"></div>\n<script src="https://bookrightly.co.uk/widget.js" data-shop="${uid}" data-mode="queue" async></script>`;
+
+  async function copyEmbed(mode, snippet) {
+    try { await navigator.clipboard.writeText(snippet); setCopiedMode(mode); setTimeout(() => setCopiedMode(null), 2000); }
+    catch {}
+  }
 
   useEffect(() => { load(); }, [uid]);
 
@@ -168,11 +180,108 @@ export default function IntegrationsTab({ barber, brandColor = "#2563EB" }) {
         </Box>
       </Box>
 
+      {/* Website Widget — only for widget-plan accounts. Full-plan accounts
+          already have their own hosted Bookrightly page, so an embed for a
+          separate site isn't something they'd need. */}
+      {plan === "widget" && (
+      <>
+      <Divider sx={{ my: 3 }} />
+
+      <Box sx={{ border: "1px solid #ededf1", borderRadius: "14px", p: 3 }}>
+        <Box display="flex" alignItems="center" gap={2} mb={1.5}>
+          <Box sx={{
+            width: 48, height: 48, borderRadius: "12px", flexShrink: 0,
+            bgcolor: brandColor, display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <CodeIcon sx={{ color: "#fff", fontSize: 26 }} />
+          </Box>
+          <Box flex={1}>
+            <Typography fontWeight={700}>Website Widget</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Already have a website? Paste one of these into it to bring a dashboard tool onto your own site, without sending people to a separate page.
+            </Typography>
+          </Box>
+        </Box>
+
+        <Typography variant="subtitle2" fontWeight={700} mt={2} mb={0.5}>Booking</Typography>
+        <Typography variant="body2" color="text.secondary" mb={1}>
+          Live availability and booking, embedded directly in your page.
+        </Typography>
+        <Box sx={{
+          bgcolor: "#0d0d0d", color: "#e4e7ec", borderRadius: "10px", p: 2,
+          fontFamily: "monospace", fontSize: "0.78rem", whiteSpace: "pre-wrap", wordBreak: "break-all",
+        }}>
+          {bookingEmbedSnippet}
+        </Box>
+        <Button
+          size="small"
+          startIcon={<ContentCopyIcon sx={{ fontSize: 15 }} />}
+          onClick={() => copyEmbed("booking", bookingEmbedSnippet)}
+          sx={{ mt: 1.5, color: brandColor, border: `1px solid ${brandColor}66`, textTransform: "none", fontWeight: 700 }}
+        >
+          {copiedMode === "booking" ? "Copied!" : "Copy embed code"}
+        </Button>
+
+        {/* Only barbers have a Queue tab to actually open/manage a queue — other
+            business types have no queueConfig, so this widget would just sit
+            there permanently showing "closed". */}
+        {isBarber && (
+          <>
+            <Divider sx={{ my: 2.5 }} />
+
+            <Typography variant="subtitle2" fontWeight={700} mb={0.5}>Live Queue</Typography>
+            <Typography variant="body2" color="text.secondary" mb={1}>
+              Adds a "View Live Queue" button to your site — opens your live queue in a new tab, same as on your own booking page.
+            </Typography>
+            <Box sx={{
+              bgcolor: "#0d0d0d", color: "#e4e7ec", borderRadius: "10px", p: 2,
+              fontFamily: "monospace", fontSize: "0.78rem", whiteSpace: "pre-wrap", wordBreak: "break-all",
+            }}>
+              {queueEmbedSnippet}
+            </Box>
+            <Button
+              size="small"
+              startIcon={<ContentCopyIcon sx={{ fontSize: 15 }} />}
+              onClick={() => copyEmbed("queue", queueEmbedSnippet)}
+              sx={{ mt: 1.5, color: brandColor, border: `1px solid ${brandColor}66`, textTransform: "none", fontWeight: 700 }}
+            >
+              {copiedMode === "queue" ? "Copied!" : "Copy embed code"}
+            </Button>
+          </>
+        )}
+
+        <Typography variant="caption" color="text.secondary" display="block" mt={2}>
+          Works on WordPress, Wix, Squarespace, or any site that lets you add custom HTML — no login or account needed on your visitor's side.{isBarber && " You can embed both on the same page."}
+        </Typography>
+      </Box>
+      </>
+      )}
+
       <Divider sx={{ my: 3 }} />
 
       <Typography variant="body2" color="text.secondary">
         More integrations coming soon — Google Calendar, iCal, Zapier.
       </Typography>
+
+      {/* Widget-plan accounts don't have the Profile tab (see Dashboard.jsx),
+          which is where Delete Account normally lives — this is their only
+          way to reach it. */}
+      {plan === "widget" && handleDeleteProfile && (
+        <>
+          <Divider sx={{ my: 3 }} />
+          <Typography variant="subtitle2" color="error" fontWeight={700} gutterBottom>
+            Danger Zone
+          </Typography>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteIcon />}
+            onClick={handleDeleteProfile}
+          >
+            Delete My Account
+          </Button>
+        </>
+      )}
     </Box>
   );
 }

@@ -19,12 +19,12 @@
 export const RESERVED_SLUGS = new Set([
   // Static/system routes (first path segment of every route in App.jsx)
   "shop", "pt-booking", "decorator", "hairdresser", "plumber", "barber", "book",
-  "confirmation", "auth", "review", "login", "signup", "cancel-booking",
+  "confirmation", "auth", "review", "login", "signup", "cancel-booking", "manage-booking", "m",
   "website-design", "compare", "fresha-alternative", "treatwell-alternative",
   "booking-software", "pricing", "how-it-works", "blog", "tools", "terms",
   "privacy", "contact", "workout", "food-diary", "check-in", "par-q",
   "colour-approval", "quote-view", "queue", "food-generator", "client-portal",
-  "pt-book", "onboarding", "dashboard",
+  "pt-book", "onboarding", "dashboard", "starter-pack",
   // General platform/system words not currently routed but reserved to
   "admin", "api", "account", "settings", "support", "help", "about",
   "bookrightly", "www", "register", "sitemap.xml", "robots.txt",

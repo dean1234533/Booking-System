@@ -37,6 +37,7 @@ const INCLUDES = [
   "Your own branded website",
   "Online booking system",
   "Stripe payments & deposits",
+  "Customer email confirmations and reminders",
   "Invoice sending & tracking",
   "In-person QR payments",
   "Instagram, TikTok & YouTube links",
@@ -89,7 +90,7 @@ export default function PricingModal({ open, onClose }) {
           fontFamily: SANS, fontSize: "0.9rem",
           color: "rgba(255,255,255,0.5)", mt: 1.5, maxWidth: 480, lineHeight: 1.75,
         }}>
-          90-day free trial, then from £10-15/month depending on your business type. No commission — only Stripe's own processing cost when you earn.
+          A free plan forever, or a 90-day free trial on any paid plan. No commission — only Stripe's own processing cost when you earn.
         </Typography>
       </Box>
 
@@ -120,7 +121,7 @@ export default function PricingModal({ open, onClose }) {
                 <Stack spacing={1.5}>
                   <Box>
                     <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", fontWeight: 600, color: G.dark }}>
-                      Barber, Hairdresser, Decorator
+                      Every business type
                     </Typography>
                     <Box display="flex" alignItems="baseline" gap={0.5}>
                       <Typography sx={{ fontFamily: SERIF, fontSize: "1.8rem", fontWeight: 400, color: G.dark }}>
@@ -130,28 +131,63 @@ export default function PricingModal({ open, onClose }) {
                         /month
                       </Typography>
                     </Box>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "#7a7060", mt: 0.5 }}>
+                      Barbers, salons, decorators, trainers, tradespeople — one flat rate
+                    </Typography>
                   </Box>
                   <Box>
                     <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", fontWeight: 600, color: G.dark }}>
-                      Personal Trainers
+                      Already have a website? Widget-only plan
                     </Typography>
                     <Box display="flex" alignItems="baseline" gap={0.5}>
                       <Typography sx={{ fontFamily: SERIF, fontSize: "1.8rem", fontWeight: 400, color: G.dark }}>
-                        £15
+                        £5
                       </Typography>
                       <Typography sx={{ fontFamily: SANS, fontSize: "0.85rem", color: "#7a7060" }}>
                         /month
                       </Typography>
                     </Box>
                     <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "#7a7060", mt: 0.5 }}>
-                      Unlimited clients
+                      Booking & queue tools embedded on your own site — no hosted page
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", fontWeight: 600, color: G.dark }}>
+                      No website — just a booking link
+                    </Typography>
+                    <Box display="flex" alignItems="baseline" gap={0.5}>
+                      <Typography sx={{ fontFamily: SERIF, fontSize: "1.8rem", fontWeight: 400, color: G.dark }}>
+                        £5
+                      </Typography>
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.85rem", color: "#7a7060" }}>
+                        /month
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "#7a7060", mt: 0.5 }}>
+                      A simple booking page with your services, prices and a link back to your Instagram, including confirmation emails and reminders — any business type
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", fontWeight: 600, color: G.dark }}>
+                      Just want to try it? Free plan
+                    </Typography>
+                    <Box display="flex" alignItems="baseline" gap={0.5}>
+                      <Typography sx={{ fontFamily: SERIF, fontSize: "1.8rem", fontWeight: 400, color: G.dark }}>
+                        £0
+                      </Typography>
+                      <Typography sx={{ fontFamily: SANS, fontSize: "0.85rem", color: "#7a7060" }}>
+                        forever
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", color: "#7a7060", mt: 0.5 }}>
+                      The cheapest way to take bookings online — a bare page with your logo and slots, no deposits, no reminders. No card, no trial needed
                     </Typography>
                   </Box>
                 </Stack>
               </Box>
 
               <Typography sx={{ fontFamily: SANS, fontSize: "0.8rem", color: "#7a7060", mb: 2.5 }}>
-                After your 90-day free trial — no card required to start
+                90-day free trial on paid plans, no card required. After your trial, you keep a free booking page — you're never locked out.
               </Typography>
 
               <Divider sx={{ mb: 2.5 }} />
@@ -258,6 +294,13 @@ export default function PricingModal({ open, onClose }) {
             Stripe Connect is required to accept payments — free to set up from your dashboard.
             Stripe's own processing cost is collected automatically and is non-refundable once a payment is processed.
             Prices shown include VAT where applicable.
+          </Typography>
+          <Typography sx={{
+            fontFamily: SANS, fontSize: "0.72rem", color: "#aaa",
+            textAlign: "center", mt: 1.5,
+          }}>
+            Don't see your business type?{" "}
+            <a href="mailto:info@bookrightly.co.uk" style={{ color: G.gold }}>We can add it.</a>
           </Typography>
         </Box>
       </DialogContent>

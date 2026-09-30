@@ -4,6 +4,7 @@ import {
   AppBar, Toolbar, Typography, Box, IconButton,
   Menu, MenuItem, Avatar, Button, Container, Divider, Drawer, List, ListItem
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -23,12 +24,21 @@ export default function TenantNav({ tenant }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const brandColor   = tenant?.brandColor  || "#2563EB";
+  // DesignTab.jsx's "Nav Background" picker previously only had an effect
+  // on PlumberTemplateV2's own nav — this toolbar ignored it entirely and
+  // was hardcoded black, so the control did nothing for every other
+  // business type.
+  const navBg        = tenant?.navBgColor || "#0a0a0a";
+  const navButtonTextColor = tenant?.navButtonTextColor || "#111111";
   const businessName = (tenant?.businessName || "PREMIUM BARBER SHOP").toUpperCase();
   const logo         = isDemoProfile(tenant) ? "" : (tenant?.businessLogo || tenant?.logoUrl);
   const shopRouteId  = tenant?.shopId || tenant?.id || tenant?.uid;
   const homeHref     = tenant?.bookingSlug ? `/${tenant.bookingSlug}` : `/shop/${shopRouteId}`;
   const navBookLabel = tenant?.navBookLabel || "BOOK NOW";
-  const navLinks = [
+  // Basic-plan accounts render MinimalBookingPage.jsx, which has none of
+  // these sections (no team grid, about copy, map, or reviews list) — so
+  // there's nothing for these links to scroll to.
+  const navLinks = tenant?.plan === "basic" ? [] : [
     { label: tenant?.navTeamLabel || "Our Team", id: "barber-section" },
     { label: tenant?.navAboutLabel || "About", id: "about" },
     { label: tenant?.navFindUsLabel || "Find Us", id: "find-us" },
@@ -45,6 +55,7 @@ export default function TenantNav({ tenant }) {
     try {
       await signOut(auth);
       setAnchor(null);
+      setDrawerOpen(false);
       navigate("/");
     } catch (error) {
       console.error("Logout failed", error);
@@ -72,11 +83,16 @@ export default function TenantNav({ tenant }) {
           bgcolor: "transparent",
           pt: { xs: 1, md: 1.5 },
           transition: "background-color 0.35s ease, backdrop-filter 0.35s ease, border-color 0.35s ease",
-          zIndex: (theme) => theme.zIndex.drawer + 1,
+          // MUI's default appBar z-index (1100) already sits above ordinary
+          // page content and below the mobile Drawer's (1200) — pinning
+          // this above the drawer too (drawer + 1) made the floating pill
+          // bar render on top of the menu it opens, splitting it visually
+          // into a rounded bar + a separate square-cornered panel below.
+          zIndex: (theme) => theme.zIndex.appBar,
         }}
       >
         <Container maxWidth="xl">
-          <Toolbar sx={{ justifyContent: "space-between", minHeight: 66, px: { xs: 1.4, md: 2.2 }, bgcolor: scrolled ? "rgba(10,10,10,.94)" : "rgba(10,10,10,.66)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "7px 26px 26px 26px", boxShadow: scrolled ? "0 18px 45px rgba(0,0,0,.28)" : "none" }}>
+          <Toolbar sx={{ justifyContent: "space-between", minHeight: 66, px: { xs: 1.4, md: 2.2 }, bgcolor: alpha(navBg, scrolled ? 0.94 : 0.66), backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "7px 26px 26px 26px", boxShadow: scrolled ? "0 18px 45px rgba(0,0,0,.28)" : "none" }}>
 
             {/* Logo / name */}
             <Box
@@ -184,7 +200,7 @@ export default function TenantNav({ tenant }) {
                   onClick={() => scrollTo("barber-section")}
                   startIcon={<CalendarMonthIcon sx={{ fontSize: 15 }} />}
                   sx={{
-                    bgcolor: brandColor, color: "#111", fontWeight: 900,
+                    bgcolor: brandColor, color: navButtonTextColor, fontWeight: 900,
                     borderRadius: "4px 18px 18px 18px", px: { xs: 2, sm: 3 }, py: 0.9,
                     fontSize: "0.7rem", letterSpacing: "0.12em",
                     boxShadow: "none",
@@ -209,13 +225,26 @@ export default function TenantNav({ tenant }) {
         </Container>
       </AppBar>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer — MUI's default Drawer paper always stretches to
+          100vh regardless of content, which read as a huge empty colored
+          panel when there's only a couple of short menu items (e.g. a
+          Basic-plan page with no nav links, or a logged-in viewer's short
+          Dashboard/Logout menu). Sized to its own content instead, capped
+          so it never overflows on a very short screen — and pinned to just
+          below the floating pill nav bar (top: 0 by default) rather than
+          the very top of the screen, so it reads as a dropdown from the
+          nav rather than a second panel overlapping it. */}
       <Drawer
         anchor="right"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         PaperProps={{
-          sx: { width: "75vw", maxWidth: 300, bgcolor: "#0a0a0a", border: "none" }
+          sx: {
+            width: "75vw", maxWidth: 300, bgcolor: navBg, border: "none",
+            top: { xs: "calc(80px + env(safe-area-inset-top, 0px))", md: "88px" },
+            height: "fit-content", maxHeight: "calc(100vh - 100px)",
+            borderBottomLeftRadius: 16,
+          }
         }}
       >
         <Box sx={{ p: 2.5 }}>
@@ -229,41 +258,73 @@ export default function TenantNav({ tenant }) {
             </IconButton>
           </Box>
 
-          {/* Links */}
-          <List disablePadding>
-            {navLinks.map(({ label, id }) => (
-              <ListItem key={id} disablePadding sx={{ mb: 0.5 }}>
-                <Box
-                  onClick={() => scrollTo(id)}
-                  sx={{
-                    width: "100%", py: 1.5, px: 1,
-                    cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.06)",
-                    fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.15em",
-                    textTransform: "uppercase", color: "rgba(255,255,255,0.7)",
-                    transition: "color 0.2s",
-                    "&:hover": { color: "#fff" },
-                  }}
-                >
-                  {label}
+          {barber ? (
+            /* Logged-in viewer (e.g. the owner previewing their own live
+               page) — mobile equivalent of the desktop Avatar/Menu, which
+               only ever rendered at md+ width. Without this the drawer had
+               nothing at all for a signed-in viewer: no links (Basic-plan
+               pages have none) and the Book Now button below is explicitly
+               hidden whenever `barber` is truthy. */
+            <>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3, pb: 3, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+                <Avatar src={barber.profilePic} sx={{ width: 40, height: 40, bgcolor: brandColor, fontSize: "0.9rem", fontWeight: 700 }}>
+                  {barber.name?.[0] || barber.displayName?.[0]}
+                </Avatar>
+                <Box>
+                  <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: "0.85rem" }}>{barber.name || barber.displayName}</Typography>
+                  <Typography sx={{ color: "rgba(255,255,255,0.4)", fontSize: "0.72rem" }}>{barber.role === "admin" ? "Shop Owner" : "Staff Member"}</Typography>
                 </Box>
-              </ListItem>
-            ))}
-          </List>
+              </Box>
+              <List disablePadding>
+                <ListItem disablePadding sx={{ mb: 0.5 }}>
+                  <Box component={Link} to="/dashboard" onClick={() => setDrawerOpen(false)} sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%", py: 1.5, px: 1, textDecoration: "none", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.85)" }}>
+                    <DashboardIcon sx={{ fontSize: 17 }} /> Dashboard
+                  </Box>
+                </ListItem>
+                <ListItem disablePadding>
+                  <Box onClick={handleSignOut} sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%", py: 1.5, px: 1, cursor: "pointer", fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)" }}>
+                    <LogoutIcon sx={{ fontSize: 17 }} /> Logout
+                  </Box>
+                </ListItem>
+              </List>
+            </>
+          ) : (
+            <>
+              {/* Links */}
+              <List disablePadding>
+                {navLinks.map(({ label, id }) => (
+                  <ListItem key={id} disablePadding sx={{ mb: 0.5 }}>
+                    <Box
+                      onClick={() => scrollTo(id)}
+                      sx={{
+                        width: "100%", py: 1.5, px: 1,
+                        cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.06)",
+                        fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.15em",
+                        textTransform: "uppercase", color: "rgba(255,255,255,0.7)",
+                        transition: "color 0.2s",
+                        "&:hover": { color: "#fff" },
+                      }}
+                    >
+                      {label}
+                    </Box>
+                  </ListItem>
+                ))}
+              </List>
 
-          {/* Book Now */}
-          {!barber && (
-            <Button
-              onClick={() => scrollTo("barber-section")}
-              startIcon={<CalendarMonthIcon sx={{ fontSize: 15 }} />}
-              fullWidth
-              sx={{
-                mt: 4, bgcolor: "#fff", color: "#111", fontWeight: 800,
-                borderRadius: "2px", py: 1.4, fontSize: "0.75rem", letterSpacing: "0.12em",
-                boxShadow: "none", "&:hover": { bgcolor: brandColor, boxShadow: "none" },
-              }}
-            >
-              {navBookLabel}
-            </Button>
+              {/* Book Now */}
+              <Button
+                onClick={() => scrollTo("barber-section")}
+                startIcon={<CalendarMonthIcon sx={{ fontSize: 15 }} />}
+                fullWidth
+                sx={{
+                  mt: 4, bgcolor: "#fff", color: "#111", fontWeight: 800,
+                  borderRadius: "2px", py: 1.4, fontSize: "0.75rem", letterSpacing: "0.12em",
+                  boxShadow: "none", "&:hover": { bgcolor: brandColor, color: navButtonTextColor, boxShadow: "none" },
+                }}
+              >
+                {navBookLabel}
+              </Button>
+            </>
           )}
         </Box>
       </Drawer>

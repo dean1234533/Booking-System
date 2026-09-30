@@ -12,7 +12,6 @@ import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography,
 } from '@mui/material';
-import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { heroForProfile, isDemoProfile, portfolioForProfile } from '../data/demoPortfolios';
 
 /* ─── Injected styles ──────────────────────────────────────────────────────── */
@@ -27,8 +26,11 @@ export const HairdresserStyles = () => (
     /* ── NAV ── */
     .hs-nav {
       position: fixed; top: 0; width: 100%; z-index: 200;
-      height: 70px; display: flex; align-items: center; justify-content: space-between;
+      min-height: calc(70px + env(safe-area-inset-top, 0px));
+      display: flex; align-items: center; justify-content: space-between;
       padding: 0 clamp(1.5rem, 4vw, 3.5rem);
+      padding-top: env(safe-area-inset-top, 0px);
+      box-sizing: border-box;
       background: rgba(253,252,250,0.94); backdrop-filter: blur(14px);
       border-bottom: 1px solid rgba(232,227,220,0.7);
     }
@@ -54,7 +56,7 @@ export const HairdresserStyles = () => (
     }
     .hs-hamburger span { display: block; width: 24px; height: 2px; background: #1a1714; border-radius: 2px; }
     .hs-mobile-menu {
-      position: fixed; top: 70px; left: 0; right: 0; z-index: 199;
+      position: fixed; top: calc(70px + env(safe-area-inset-top, 0px)); left: 0; right: 0; z-index: 199;
       background: rgba(253,252,250,0.98); backdrop-filter: blur(14px);
       border-bottom: 1px solid #e8e3dc; padding: 1rem 1.5rem 1.5rem;
     }
@@ -72,7 +74,7 @@ export const HairdresserStyles = () => (
     /* ── HERO — split layout ── */
     .hs-hero {
       display: grid; grid-template-columns: 55% 45%;
-      height: 100vh; min-height: 620px; padding-top: 70px;
+      height: 100vh; min-height: 620px; padding-top: calc(70px + env(safe-area-inset-top, 0px));
     }
     .hs-hero-img { position: relative; overflow: hidden; }
     .hs-hero-img img {
@@ -386,7 +388,7 @@ export default function HairdresserTemplate({ tenantData }) {
   const shopId      = tenantData?.id || tenantData?.uid;
   const brandColor  = tenantData?.brandColor  || '#a07850';
   const businessName = tenantData?.businessName || tenantData?.name || 'The Salon';
-  const whatsappUrl = !tenantData?.stripeConnected
+  const whatsappUrl = tenantData?.whatsappBookingEnabled !== false
     ? getWhatsAppBookingUrl(tenantData?.whatsappNumber, businessName)
     : null;
   const logo        = tenantData?.logoUrl || tenantData?.logo || null;
@@ -421,7 +423,7 @@ export default function HairdresserTemplate({ tenantData }) {
   }, [shopId]);
 
   /* ── Content with fallbacks ── */
-  const heroImage    = heroForProfile(tenantData, tenantData?.heroImage) || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=2069&auto=format&fit=crop';
+  const heroImage    = heroForProfile(tenantData, tenantData?.heroImage || tenantData?.logoUrl || tenantData?.profilePic) || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=2069&auto=format&fit=crop';
   const heroEyebrow  = tenantData?.heroTagline || 'London\'s Premier Hair Salon';
   const heroLine1    = tenantData?.heroHeadingLine1 || 'Where Every';
   const heroLine2    = tenantData?.heroHeadingLine2 || 'Strand Shines';
@@ -764,21 +766,26 @@ export default function HairdresserTemplate({ tenantData }) {
                   <p style={{ fontSize: '0.85rem', color: '#5c5449', lineHeight: 1.8, whiteSpace: 'pre-line', margin: 0 }}>{tenantData.openingHours}</p>
                 </div>
               )}
-              {whatsappUrl && (
-                <Button
-                  component="a" href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-                  variant="outlined" size="small" startIcon={<WhatsAppIcon />}
-                  sx={{ mt: 2.5, color: "#25D366", borderColor: "#25D36680", "&:hover": { borderColor: "#25D366", bgcolor: "#25D36610" } }}
-                >
-                  Or enquire via WhatsApp
-                </Button>
-              )}
             </div>
             <SlotPicker
               slots={slots}
               brandColor={brandColor}
               onSelect={handleSlotSelect}
             />
+            {whatsappUrl && (
+              <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+                <a
+                  href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.75rem 1.5rem', border: '1px solid #25D36680', borderRadius: 4,
+                    color: '#25D366', fontSize: '0.85rem', fontWeight: 700, textDecoration: 'none',
+                  }}
+                >
+                  Or book via WhatsApp
+                </a>
+              </div>
+            )}
           </div>
         </section>
 

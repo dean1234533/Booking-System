@@ -288,6 +288,15 @@ export default function NotificationSettingsTab({ barber, brandColor = "#2563EB"
         </Alert>
       )}
 
+      {permission === "denied" && (
+        <Alert severity="warning" sx={{ mb: 2, fontFamily: SANS }}>
+          Notifications are blocked for this site in your browser — the toggle below won't
+          do anything until you unblock it (browsers never re-show the permission prompt
+          once it's been denied). Click the lock/site-info icon next to the address bar,
+          find "Notifications", and set it to "Allow", then reload this page.
+        </Alert>
+      )}
+
       <Card sx={{ mb: 3, border: `2px solid ${enabled ? brandColor : "#e0e0e0"}`, borderRadius: "14px", transition: "border-color 0.2s" }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

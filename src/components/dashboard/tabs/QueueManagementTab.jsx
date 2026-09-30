@@ -7,9 +7,12 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import QrCode2Icon from "@mui/icons-material/QrCode2";
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { db } from "../../../firebase/config";
 import { SITE_URL } from "../../../utils/siteUrl";
+import BookingLinkQrDialog from "../BookingLinkQrDialog";
 
 const SANS  = "'DM Sans', sans-serif";
 const SERIF = "'Playfair Display', serif";
@@ -31,6 +34,7 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
   const [queue,  setQueue]  = useState([]);
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [copied, setCopied] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const tid = barber?.uid;
 
   const queueUrl = `${SITE_URL}/queue/${tid}`;
@@ -71,6 +75,24 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
     const next = queue.find(e => e.status === "waiting");
     if (!next) return;
     await updateDoc(doc(db, "barbers", tid, "liveQueue", next.id), { status: "called" });
+
+    // Best-effort — the queue entry only gets a pushSubscription if that
+    // customer opted in on the join page, so silently skip if it fails.
+    try {
+      const idToken = await getAuth().currentUser?.getIdToken();
+      await fetch("/api/send-queue-push", {
+        method:  "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { "Authorization": `Bearer ${idToken}` } : {}),
+        },
+        body: JSON.stringify({
+          shopId: tid,
+          entryId: next.id,
+          payload: { title: "You're up!", body: "Please head to the shop now — it's your turn.", url: queueUrl },
+        }),
+      });
+    } catch {}
   }
 
   async function markDone(id) {
@@ -137,8 +159,25 @@ export default function QueueManagementTab({ barber, brandColor = "#2563EB" }) {
           >
             Open client view
           </Button>
+          <Button
+            size="small" startIcon={<QrCode2Icon sx={{ fontSize: 15 }} />}
+            onClick={() => setQrOpen(true)}
+            sx={{ color: "#344054", border: "1px solid #D0D5DD", bgcolor: "#fff", textTransform: "none", fontWeight: 700 }}
+          >
+            QR code
+          </Button>
         </Stack>
       </Box>
+
+      <BookingLinkQrDialog
+        open={qrOpen}
+        onClose={() => setQrOpen(false)}
+        url={queueUrl}
+        brandColor={brandColor}
+        title="Your live queue QR code"
+        description={`Scan to join the queue at ${queueUrl.replace(/^https:\/\//, "")}. Use this on a door sign, window sticker, or counter card.`}
+        filename={`bookrightly-${tid}-queue-qr`}
+      />
 
       {/* ── Config strip ── */}
       <Box sx={{

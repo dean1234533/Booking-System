@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Grid } from "@mui/material";
-import { SEOHero, Section, SectionHead, FeatureCard, StepCard, BottomCTA, FAQSection, DARK, SANS } from "./shared";
+import { SEOHero, Section, SectionHead, FeatureCard, StepCard, BottomCTA, FAQSection, DARK, SANS, PricingTiers } from "./shared";
 
 const FAQS = [
   { q: "Is Bookrightly free for decorators?", a: "Yes — 90-day free trial with no credit card required. After that it's £10/month with no commission on any booking or enquiry." },
@@ -57,6 +57,11 @@ export default function DecoratorSoftwarePage() {
             </Grid>
           ))}
         </Grid>
+      </Section>
+
+      <Section>
+        <SectionHead eyebrow="More options" title="Just want an embeddable widget?" sub="If you already have a website, the Widget plan drops booking straight into it for £5/month." />
+        <PricingTiers />
       </Section>
 
       <Section dark>

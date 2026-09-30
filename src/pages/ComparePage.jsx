@@ -62,7 +62,7 @@ export default function ComparePage() {
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: ".78fr 1.22fr" }, border: "1px solid #ffffff1c", borderRadius: { xs: 4, md: 7 }, overflow: "hidden" }}>
             <Box sx={{ p: { xs: 3, md: 5 }, bgcolor: "#2563EB", display: "flex", flexDirection: "column", minHeight: { xs: 280, md: 370 } }}>
               <Typography sx={{ fontSize: ".68rem", fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase", opacity: .65 }}>Bookrightly</Typography>
-              <Typography sx={{ fontSize: { xs: "3.5rem", md: "5.2rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .85, mt: "auto" }}>£10–15</Typography>
+              <Typography sx={{ fontSize: { xs: "3.5rem", md: "5.2rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .85, mt: "auto" }}>£10</Typography>
               <Typography sx={{ fontWeight: 850, mt: 1 }}>/month • flat subscription</Typography>
               <Typography sx={{ color: "#ffffffaa", mt: 3, lineHeight: 1.65 }}>Your branded page, purpose-built workspace and 90-day trial are included.</Typography>
             </Box>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Box, Typography, Button, CircularProgress, Paper, Alert } from "@mui/material";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { getBooking, cancelBooking, createNotification } from "../firebase/firestore";
+import { getBooking, createNotification } from "../firebase/firestore";
 import { db } from "../firebase/config"; 
 import { doc, getDoc } from "firebase/firestore";
 
@@ -70,9 +70,16 @@ export default function CancelBooking() {
           return;
         }
 
-        if (typeof cancelBooking === 'function') {
-            await cancelBooking(bookingId, booking.slotId, bId);
-        }
+        // An anonymous customer (no Firebase Auth session) can't write to
+        // bookings/slots directly — firestore.rules requires request.auth
+        // for both — so this goes through the same admin-token path every
+        // other unauthenticated customer write in this app uses.
+        const cancelRes = await fetch('/api/cancel-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId }),
+        });
+        if (!cancelRes.ok) throw new Error('Server rejected the cancellation');
 
         const pId = booking.paymentIntentId || booking.stripePaymentIntentId;
         const dateVal = booking.date || booking.slotDate;

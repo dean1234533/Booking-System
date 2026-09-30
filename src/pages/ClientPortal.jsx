@@ -602,7 +602,7 @@ export default function ClientPortal() {
     <Box sx={{ minHeight: "100vh", bgcolor: "#0d0d0d", fontFamily: SANS }}>
 
       {/* ── Header ── */}
-      <Box sx={{ borderBottom: "1px solid rgba(255,255,255,0.07)", bgcolor: "#111", position: "sticky", top: 0, zIndex: 100 }}>
+      <Box sx={{ borderBottom: "1px solid rgba(255,255,255,0.07)", bgcolor: "#111", position: "sticky", top: 0, zIndex: 100, pt: "env(safe-area-inset-top, 0px)" }}>
         <Container maxWidth="lg">
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
             <Stack direction="row" spacing={1.5} alignItems="center">

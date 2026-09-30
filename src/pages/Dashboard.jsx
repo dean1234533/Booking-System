@@ -60,6 +60,7 @@ import ScheduleTab  from "../components/dashboard/tabs/ScheduleTab";
 import BookingsTab  from "../components/dashboard/tabs/BookingsTab";
 import ProfileTab   from "../components/dashboard/tabs/ProfileTab";
 import EditPageTab  from "../components/dashboard/tabs/EditPageTab";
+import MiniPageTab  from "../components/dashboard/tabs/MiniPageTab";
 import ServicesTab  from "../components/dashboard/tabs/ServicesTab";
 import StaffTab     from "../components/dashboard/tabs/StaffTab";
 import FinanceTab   from "../components/dashboard/tabs/FinanceTab";
@@ -75,6 +76,7 @@ import QuoteTab            from "../components/dashboard/tabs/QuoteTab";
 import DayPlannerTab       from "../components/dashboard/tabs/DayPlannerTab";
 import QueueManagementTab  from "../components/dashboard/tabs/QueueManagementTab";
 import HaircutTab          from "../components/dashboard/tabs/HaircutTab";
+import ClientHistoryTab    from "../components/dashboard/tabs/ClientHistoryTab";
 // ── Plumber-specific tabs ──
 import EnquiriesTab         from "../components/dashboard/tabs/EnquiriesTab";
 import ChargesTab           from "../components/dashboard/tabs/ChargesTab";
@@ -83,6 +85,7 @@ import PlumberInvoiceTab    from "../components/dashboard/tabs/PlumberInvoiceTab
 import InvoiceTab               from "../components/dashboard/tabs/InvoiceTab";
 import PTInvoiceTab             from "../components/dashboard/tabs/PTInvoiceTab";
 import NotificationSettingsTab  from "../components/dashboard/tabs/NotificationSettingsTab";
+import RemindersTab            from "../components/dashboard/tabs/RemindersTab";
 import PTAvailabilityTab        from "../components/dashboard/tabs/PTAvailabilityTab";
 import IntegrationsTab          from "../components/dashboard/tabs/IntegrationsTab";
 import { checkOutlookAvailability, getOutlookTokens } from "../firebase/outlook";
@@ -165,6 +168,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
   const [reviews,     setReviews]     = useState([]);
   const [bookings,    setBookings]    = useState([]);
+  const [reminderLogs, setReminderLogs] = useState([]);
   const [slots,        setSlots]       = useState([]);
   const [newSlot,      setNewSlot]     = useState({
     date: new Date().toISOString().split("T")[0], time: "", repeat: "none"
@@ -249,9 +253,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     if (!tabParam) return;
     const knownSections = [
       "overview", "schedule", "bookings", "edit-page", "services", "finance",
-      "reviews", "design", "domain", "pay", "notifications", "integrations",
+      "reviews", "design", "domain", "pay", "notifications", "reminders", "integrations",
       "pt-invoices", "clients", "colourapproval", "quote", "dayplanner",
-      "dec-invoices", "hd-invoices", "queue", "haircut", "bar-invoices",
+      "dec-invoices", "hd-invoices", "client-history", "queue", "haircut", "bar-invoices",
     ];
     setTab(knownSections.includes(tabParam) ? tabParam : "overview");
   }, [dataLoading]);
@@ -302,6 +306,13 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       const allB = bSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setBookings(allB.filter(b => b.status !== "completed" && b.status !== "cancelled"));
 
+      // Reminder outcomes for the per-booking status chips (owner-readable by rules).
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const rSnap = await getDocs(query(collection(db, "reminderLogs"), where("businessId", "==", barber.uid), where("apptDate", ">=", today)));
+        setReminderLogs(rSnap.docs.map(d => d.data()));
+      } catch { /* index still building or rules not deployed — chips just don't show */ }
+
       const mySlots = await getProfessionalSlots(barber.uid);
       setSlots(mySlots || []);
 
@@ -322,15 +333,19 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     )) return;
     try {
       setDataLoading(true);
-      await deleteBarberAccountData(barber.uid);
-      setToast("Account and all associated data successfully wiped.");
+      // Only throws if the main account doc itself couldn't be deleted —
+      // everything else (auth login, custom domain, subcollections) is
+      // best-effort, so by the time this resolves the account is already
+      // gone from cards and its slug is free, regardless of authDeleted.
+      const { authDeleted } = await deleteBarberAccountData(barber.uid);
+      setToast(
+        authDeleted
+          ? "Account and all associated data successfully wiped."
+          : "Account and data deleted. Log out and back in, then delete once more to fully remove your login."
+      );
       navigate("/");
     } catch (err) {
-      setToast(
-        err.code === "auth/requires-recent-login"
-          ? "Security: Please log out and back in before deleting your account."
-          : "Failed to delete profile: " + err.message
-      );
+      setToast("Failed to delete profile: " + err.message);
     } finally { setDataLoading(false); }
   };
 
@@ -433,20 +448,57 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     } catch { setToast("Failed to add slot"); }
   }
 
+  // Shared by handleCancelBooking below and the two slot-side actions that
+  // follow — marks the booking cancelled and refunds any Stripe deposit.
+  // Deleting or reopening a slot that still had an active booking against
+  // it used to leave that booking dangling (still "confirmed", still
+  // showing in Appointments) with no slot left to point to.
+  async function cancelBookingRecord(booking) {
+    if (booking.paymentIntentId) {
+      try {
+        const r = await fetch("/api/cancel-refund", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentIntentId: booking.paymentIntentId,
+            stripeAccountId: userRole.shopId || booking.stripeAccountId || barber.uid,
+            date: booking.date,
+            time: booking.time,
+          }),
+        });
+        const result = await r.json();
+        if (!r.ok) setToast(`Stripe Refund Warning: ${result.error || "Failed to process automatic refund."}`);
+      } catch (e) { console.error("[cancelBookingRecord] Stripe error:", e); }
+    }
+    await updateDoc(doc(db, "bookings", booking.id), { status: "cancelled" });
+  }
+
   async function handleDeleteSlot(slotId) {
     if (!barber?.uid) return;
+    const linkedBooking = bookings.find(b => b.slotId === slotId);
+    if (linkedBooking?.paymentIntentId && !window.confirm(
+      `${linkedBooking.customerName || "A client"} has a paid booking on this slot. Deleting it will cancel their booking and refund their deposit. Continue?`
+    )) return;
     try {
+      if (linkedBooking) await cancelBookingRecord(linkedBooking);
       await deleteSlot(barber.uid, slotId);
       setToast("Slot removed");
       setSlots(await getProfessionalSlots(barber.uid) || []);
+      if (linkedBooking) await loadData();
     } catch { setToast("Failed to remove slot"); }
   }
 
   async function handleRestoreSlot(slotId) {
+    const linkedBooking = bookings.find(b => b.slotId === slotId);
+    if (linkedBooking?.paymentIntentId && !window.confirm(
+      `${linkedBooking.customerName || "A client"} has a paid booking on this slot. Reopening it will cancel their booking and refund their deposit. Continue?`
+    )) return;
     try {
+      if (linkedBooking) await cancelBookingRecord(linkedBooking);
       await updateDoc(doc(db, "slots", slotId), { isBooked: false, status: "open" });
       setToast("Slot restored!");
       setSlots(await getProfessionalSlots(barber.uid) || []);
+      if (linkedBooking) await loadData();
     } catch { setToast("Failed to restore slot"); }
   }
 
@@ -473,23 +525,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     )) return;
     try {
       setDataLoading(true);
-      if (booking.paymentIntentId) {
-        try {
-          const r = await fetch("/api/cancel-refund", {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              paymentIntentId: booking.paymentIntentId,
-              stripeAccountId: userRole.shopId || booking.stripeAccountId || barber.uid,
-              date: booking.date,
-              time: booking.time,
-            }),
-          });
-          const result = await r.json();
-          if (!r.ok) setToast(`Stripe Refund Warning: ${result.error || "Failed to process automatic refund."}`);
-        } catch (e) { console.error("[handleCancelBooking] Stripe error:", e); }
-      }
-      await updateDoc(doc(db, "bookings", booking.id), { status: "cancelled" });
+      await cancelBookingRecord(booking);
       if (booking.slotId) {
         try { await deleteDoc(doc(db, "slots", booking.slotId)); } catch {}
       }
@@ -623,7 +659,14 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const subStatus   = profile.subscriptionStatus || "trialing";
   const trialEndDate = toDateDash(profile.trialEndsAt);
   const isExpiredTrial = subStatus === "trialing" && trialEndDate && trialEndDate < new Date();
-  const isBlocked   = !profile.freeForever && (isExpiredTrial || subStatus === "past_due" || subStatus === "canceled");
+  // An expired trial NEVER blocks the dashboard — worker.js's
+  // handleTrialLifecycle downgrades it to the Free plan (page stays live,
+  // owner keeps a working dashboard), it just runs on the same daily cron
+  // as everything else so there can be a short gap before `plan` actually
+  // flips to "free" in Firestore. isBlocked is reserved for a genuine
+  // payment failure/cancellation on an existing PAID subscription — not
+  // for a trial that simply ran out.
+  const isBlocked   = !profile.freeForever && profile.plan !== "free" && (subStatus === "past_due" || subStatus === "canceled");
 
   // ── Tab config ────────────────────────────────────────────────────────────
   // NOTE: Domain tab is intentionally excluded for staff — only owners see it.
@@ -633,6 +676,20 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   const isHairdresser   = profile.businessType === "hairdresser";
   const isPlumber       = profile.businessType === "plumber";
   const isBarber        = !profile.businessType || profile.businessType === "barber";
+  // Widget-only accounts already have their own website and only embed
+  // booking/queue tools on it — they don't need the tabs for managing a
+  // Bookrightly-hosted page (Profile content, Design, a custom Domain for
+  // it), so those are hidden rather than shown unused.
+  const isWidgetPlan    = profile.plan === "widget";
+  // Basic-plan accounts get a bare booking page (no hosted marketing site,
+  // no dashboard tools beyond taking and seeing bookings) at a lower price —
+  // see MinimalBookingPage.jsx and App.jsx's renderTenantHome.
+  const isBasicPlan     = profile.plan === "basic";
+  // Free-plan accounts (£0) are even barer than Basic — no hosted
+  // profile at all beyond a logo, no services, no team, no reviews. The
+  // dashboard only does two things: manage bookings and upload a logo.
+  // See MiniBookingPage.jsx / MiniPageTab.jsx.
+  const isFreePlan      = profile.plan === "free";
   const businessTypeLabel = isTrainer ? "Personal Trainer"
     : isDecorator ? "Decorator"
     : isHairdresser ? "Hairdresser"
@@ -707,6 +764,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
   ] : [];
 
   const hairdresserTabs = isHairdresser ? [
+    { key: "client-history", label: "Client History", icon: <ColorLensIcon /> },
     { key: "hd-invoices", label: "Invoices", icon: <ReceiptLongIcon /> },
   ] : [];
 
@@ -728,23 +786,33 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     { key: "overview",      label: "Today", icon: <DashboardIcon /> },
     { key: "schedule",      label: "Schedule", icon: <AccessTimeIcon /> },
     { key: "bookings",      label: "Bookings", icon: <StoreIcon /> },
-    { key: "edit-page",     label: "Profile",  icon: <PersonIcon /> },
-    ...(!isTrainer ? [{ key: "services", label: "Services", icon: <ListIcon /> }] : []),
-    ...(userRole.isOwner ? [{ key: "staff", label: "Team", icon: <PeopleIcon /> }] : []),
+    // Unlike Widget-plan accounts (no Bookrightly-hosted page at all), Basic
+    // accounts DO have one — MinimalBookingPage.jsx — and it shows logoUrl,
+    // brandColor, heroTagline, a services list, and the social links, all of
+    // which live in Profile/Design/Services (EditPageTab.jsx hides the
+    // gallery/team/copy sections that genuinely don't apply to Basic).
+    // Mini accounts get their own dedicated "Page" tab instead (below) —
+    // MiniBookingPage.jsx only ever shows a logo/colour/tagline/city, a
+    // small fraction of what Profile/Design expose.
+    ...(!isWidgetPlan && !isFreePlan ? [{ key: "edit-page", label: "Profile", icon: <PersonIcon /> }] : []),
+    ...(isFreePlan ? [{ key: "free-page", label: "Page", icon: <PersonIcon /> }] : []),
+    ...(!isTrainer && !isFreePlan ? [{ key: "services", label: "Services", icon: <ListIcon /> }] : []),
+    ...(userRole.isOwner && !isBasicPlan && !isFreePlan ? [{ key: "staff", label: "Team", icon: <PeopleIcon /> }] : []),
     ...(userRole.isOwner ? [{ key: "finance", label: "Finance", icon: <PaymentsIcon /> }] : []),
     // Barber staff rent their own chair, so they get their own review link
     // and their own reviews too — owners of every business type keep theirs.
-    ...(userRole.isOwner || isBarber ? [{ key: "reviews", label: "Reviews", icon: <ReviewsIcon /> }]  : []),
-    ...(userRole.isOwner ? [{ key: "design",    label: "Design",    icon: <PaletteIcon /> }]  : []),
-    ...(userRole.isOwner && !initialTenant ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
-    { key: "pay",           label: "Pay",      icon: <NfcIcon /> },
+    ...(!isBasicPlan && !isFreePlan && (userRole.isOwner || isBarber) ? [{ key: "reviews", label: "Reviews", icon: <ReviewsIcon /> }]  : []),
+    ...(userRole.isOwner && !isWidgetPlan && !isFreePlan ? [{ key: "design", label: "Design", icon: <PaletteIcon /> }] : []),
+    ...(userRole.isOwner && !initialTenant && !isWidgetPlan && !isBasicPlan && !isFreePlan ? [{ key: "domain", label: "Domain", icon: <LanguageIcon /> }] : []),
+    ...(!isBasicPlan && !isFreePlan ? [{ key: "pay", label: "Pay", icon: <NfcIcon /> }] : []),
     { key: "notifications",  label: "Notifications",  icon: <Badge badgeContent={unreadNotifs} color="error" max={99}><NotificationsActiveIcon /></Badge> },
-    { key: "integrations",   label: "Integrations",   icon: <ExtensionIcon /> },
-    ...trainerTabs,
-    ...decoratorTabs,
-    ...hairdresserTabs,
-    ...barberTabs,
-    ...plumberTabs,
+    { key: "reminders", label: "Reminders", icon: <NotificationsActiveIcon /> },
+    ...(!isBasicPlan && !isFreePlan ? [{ key: "integrations", label: "Integrations", icon: <ExtensionIcon /> }] : []),
+    ...(!isBasicPlan && !isFreePlan ? trainerTabs : []),
+    ...(!isBasicPlan && !isFreePlan ? decoratorTabs : []),
+    ...(!isBasicPlan && !isFreePlan ? hairdresserTabs : []),
+    ...(!isBasicPlan && !isFreePlan ? barberTabs : []),
+    ...(!isBasicPlan && !isFreePlan ? plumberTabs : []),
   ];
   const tabIdx = (key) => tabs.some((t) => t.key === key) ? key : null;
 
@@ -801,11 +869,12 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     ]),
   }] : isHairdresser ? [{
     label: "Salon diary",
-    description: "Appointments and availability",
+    description: "Appointments, availability and client history",
     icon: <ContentCutIcon />,
     items: filterItems([
       { label: "Diary", icon: <AccessTimeIcon />, index: "schedule" },
       { label: "Appointments", icon: <StoreIcon />, index: "bookings" },
+      { label: "Client history", icon: <ColorLensIcon />, index: tabIdx("client-history") },
     ]),
   }] : [{
     label: "Workday",
@@ -833,6 +902,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       icon: <LanguageIcon />,
       items: filterItems([
         { label: "Profile",  icon: <PersonIcon />,  index: tabIdx("edit-page") },
+        ...(isFreePlan ? [{ label: "Page", icon: <PersonIcon />, index: tabIdx("free-page") }] : []),
         ...(!isTrainer ? [{ label: "Services", icon: <ListIcon />, index: tabIdx("services") }] : []),
         ...(userRole.isOwner ? [{ label: "Team", icon: <PeopleIcon />, index: IDX_STAFF }] : []),
         ...(userRole.isOwner || isBarber ? [{ label: "Reviews", icon: <ReviewsIcon />, index: IDX_REVIEWS }] : []),
@@ -867,6 +937,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       icon: <NotificationsActiveIcon />,
       items: filterItems([
         { label: "Notifications", icon: <NotificationsActiveIcon />, index: tabIdx("notifications") },
+        { label: "Reminders",     icon: <NotificationsActiveIcon />, index: tabIdx("reminders") },
         { label: "Integrations",  icon: <ExtensionIcon />,           index: tabIdx("integrations") },
       ]),
     },
@@ -874,7 +945,18 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
   const sectionMeta = tabs.find(item => item.key === tab) || tabs[0];
   const activeGroupMeta = tabGroups.find(group => group.items.some(item => item.index === tab));
-  const mobileItems = [
+  // Mini-plan's tab set doesn't include most of the businessType-specific
+  // keys the general case below assumes (queue/haircut/etc are all hidden
+  // for this tier) — without its own branch, a Mini-plan barber's mobile
+  // bar would silently drop to 2 working shortcuts instead of 4.
+  const mobileItems = isFreePlan
+    ? [
+        tabs.find(item => item.key === "overview"),
+        tabs.find(item => item.key === "schedule"),
+        tabs.find(item => item.key === "bookings"),
+        tabs.find(item => item.key === "free-page"),
+      ].filter(Boolean).map(item => ({ label: item.label, icon: item.icon, index: item.key }))
+    : [
     tabs.find(item => item.key === "overview"),
     tabs.find(item => item.key === (isTrainer ? "clients" : isDecorator ? "dayplanner" : isPlumber ? "enquiries" : isBarber ? "queue" : "schedule")),
     tabs.find(item => item.key === (isTrainer ? "schedule" : isDecorator ? "quote" : isPlumber ? "dayplanner" : "bookings")),
@@ -885,6 +967,12 @@ export default function Dashboard({ tenant: initialTenant = null }) {
     if (!tabs.some(item => item.key === key)) return;
     setTab(key);
     window.history.replaceState({}, "", key === "overview" ? "/dashboard" : `/dashboard?tab=${key}`);
+    // Switching tabs swaps the content under whatever scroll position the
+    // previous tab was left at, instead of starting each tab at its own top —
+    // e.g. scrolling partway down "Today" then tapping "Search traffic" landed
+    // mid-page in Domain, not at its heading. sessionStorage's own scroll-to
+    // (br_scrollTo, in DomainTab) runs after this on the next frame and wins.
+    window.scrollTo(0, 0);
   };
 
   useEffect(() => {
@@ -940,6 +1028,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             barberId:     barber.uid,
             email:        barber.email,
             businessType: profile.businessType || "barber",
+            plan:         profile.plan || "full",
           }),
         });
         const data = await res.json();
@@ -1102,7 +1191,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         uploading={uploading}
         handleLogout={handleLogout}
         handleSaveProfile={handleSaveProfile}
-        showSave={["edit-page", "services", "design"].includes(tab)}
+        showSave={["edit-page", "services", "design", "finance", "free-page"].includes(tab)}
       />
 
       <OfflineIndicator />
@@ -1166,6 +1255,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         <TabPanel value={tab} index="bookings">
           <BookingsTab
             bookings={bookings} isMobile={isMobile} brandColor={brandColor}
+            reminderLogs={reminderLogs} businessProfile={profile}
             handleCompleteBooking={handleCompleteBooking}
             handleCancelBooking={handleCancelBooking}
           />
@@ -1183,6 +1273,18 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             businessType={profile.businessType}
           />
         </TabPanel>
+
+        {/* ── Mini-plan "Page" (logo/colour/tagline/city only) ── */}
+        {isFreePlan && (
+          <TabPanel value={tab} index={tabIdx("free-page")}>
+            <MiniPageTab
+              profile={profile} setProfile={setProfile}
+              logoPreview={logoPreview} setLogoFile={setLogoFile} setLogoPreview={setLogoPreview}
+              handleImageChange={handleImageChange}
+              handleDeleteProfile={handleDeleteProfile}
+            />
+          </TabPanel>
+        )}
 
         {/* ── Team (owner only, all business types) ── */}
         {userRole.isOwner && (
@@ -1223,6 +1325,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
               profile={profile} setProfile={setProfile} userRole={userRole}
               barber={barber}
               stripeLoading={stripeLoading} handleConnectStripe={handleConnectStripe}
+              hidePayments={isFreePlan}
             />
           </TabPanel>
         )}
@@ -1271,6 +1374,11 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         {/* ── Notifications settings ── */}
         <TabPanel value={tab} index={tabIdx("notifications")}>
           <NotificationSettingsTab barber={barber} brandColor={brandColor} />
+        </TabPanel>
+
+        {/* ── Client reminders (all plans; Free = push only) ── */}
+        <TabPanel value={tab} index={tabIdx("reminders")}>
+          <RemindersTab barber={barber} profile={profile} brandColor={brandColor} onNavigate={handleSectionChange} />
         </TabPanel>
 
         {/* ── Trainer-only tabs ── */}
@@ -1342,6 +1450,9 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         {/* ── Hairdresser-only tabs ── */}
         {isHairdresser && (
           <>
+            <TabPanel value={tab} index={tabIdx("client-history")}>
+              <ClientHistoryTab barber={barber} brandColor={brandColor} />
+            </TabPanel>
             <TabPanel value={tab} index={tabIdx("hd-invoices")}>
               <InvoiceTab barber={barber} profile={profile} brandColor={brandColor} />
             </TabPanel>
@@ -1365,7 +1476,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
         {/* Integrations — all business types */}
         <TabPanel value={tab} index={tabIdx("integrations")}>
-          <IntegrationsTab barber={barber} brandColor={brandColor} />
+          <IntegrationsTab barber={barber} brandColor={brandColor} isBarber={isBarber} plan={profile.plan || "full"} handleDeleteProfile={handleDeleteProfile} />
         </TabPanel>
 
         </Box>
@@ -1379,7 +1490,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
         rel="noopener noreferrer"
         sx={{
           position: "fixed",
-          bottom: isMobile ? 90 : 24,
+          bottom: isMobile ? "calc(90px + env(safe-area-inset-bottom, 0px))" : 24,
           right: 20,
           zIndex: 1300,
           width: 52,

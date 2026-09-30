@@ -10,9 +10,31 @@ service cloud.firestore {
 
     // ── Top-level bookings (Dashboard queries these filtered by barberId) ──────
     match /bookings/{bookingId} {
-      allow read: if request.auth != null && resource.data.barberId == request.auth.uid;
+      // `get` (fetch by exact ID) is public — the anonymous customer who just
+      // made this booking has no auth session at all, and needs to read it
+      // back on the Confirmation/CancelBooking pages. The random Firestore
+      // doc ID is an unguessable capability token here, same trust model as
+      // the public quote-view links. `list` (querying/filtering the whole
+      // collection, e.g. the dashboard's Bookings tab) stays owner-only.
+      allow get: if true;
+      allow list: if request.auth != null && resource.data.barberId == request.auth.uid;
       allow create: if true;
       allow update, delete: if request.auth != null && resource.data.barberId == request.auth.uid;
+    }
+
+    // ── Client reminder system (all writes are Worker/admin-SDK only) ──────────
+    // Owners can read their own reminder logs (dashboard per-booking status +
+    // monthly summary). Push subscriptions hold client contact details and
+    // endpoints — never client-readable. Email suppressions are Worker-only.
+    match /reminderLogs/{logId} {
+      allow read: if request.auth != null && resource.data.businessId == request.auth.uid;
+      allow write: if false;
+    }
+    match /pushSubscriptions/{subId} {
+      allow read, write: if false;
+    }
+    match /emailSuppressions/{hash} {
+      allow read, write: if false;
     }
 
     // ── Booking-link slug uniqueness index (bookrightly.co.uk/{slug}) ──────────
@@ -42,6 +64,19 @@ service cloud.firestore {
       allow read: if true;
       // Only the authenticated owner can write their own document
       allow write: if request.auth != null && request.auth.uid == barberId;
+
+      // ── Monthly reminder usage counters (Worker increments; owner reads) ──
+      match /reminderUsage/{month} {
+        allow read: if request.auth != null && request.auth.uid == barberId;
+        allow write: if false;
+      }
+
+      // ── Churn feedback (why a business cancelled) — Worker/admin-SDK only.
+      // Not even the owner can read their own; this is product feedback for
+      // the platform, saved from the Stripe cancellation-reason survey.
+      match /churnFeedback/{subId} {
+        allow read, write: if false;
+      }
 
       // ── Reviews — anyone can post, only owner can delete ─────────────────
       match /reviews/{reviewId} {
@@ -137,6 +172,13 @@ service cloud.firestore {
         allow update, delete: if request.auth != null && request.auth.uid == barberId;
       }
 
+      // ── Client history (hairdresser colour/style records) — owner reads/writes ──
+      match /clientHistory/{phoneKey}/visits/{visitId} {
+        allow read: if request.auth != null && request.auth.uid == barberId;
+        allow create: if true;
+        allow update, delete: if request.auth != null && request.auth.uid == barberId;
+      }
+
       // ── Colour palettes — public read, owner writes ───────────────────────
       match /colourPalettes/{paletteId} {
         allow read: if true;
@@ -205,11 +247,6 @@ service cloud.firestore {
 
       // ── Invoices (Tax & Finance Tab) — owner only ──────────────────────────
       match /invoices/{invoiceId} {
-        allow read, write: if request.auth != null && request.auth.uid == barberId;
-      }
-
-      // ── Calendar Settings (Google Calendar sync) — owner only ──────────────
-      match /calendarSettings/{settingsId} {
         allow read, write: if request.auth != null && request.auth.uid == barberId;
       }
 

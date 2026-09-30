@@ -14,6 +14,8 @@ import TagIcon from "@mui/icons-material/Tag";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { getBooking, getBarber } from "../firebase/firestore";
 import { formatDate, formatTime, formatCurrency } from "../stripe/formatters";
+import PWAInstallBanner from "../components/dashboard/PWAInstallBanner";
+import ReminderOptInCard from "../components/ReminderOptInCard";
 
 export default function Confirmation() {
   const { bookingId } = useParams();
@@ -55,7 +57,7 @@ export default function Confirmation() {
   if (error) return (
     <Container maxWidth="sm" sx={{ py: 8 }}>
       <Alert severity="error">{error}</Alert>
-      <Button component={Link} to="/" sx={{ mt: 2 }}>Return Home</Button>
+      <Button component={Link} to={barber?.bookingSlug ? `/${barber.bookingSlug}` : "/"} sx={{ mt: 2 }}>Return Home</Button>
     </Container>
   );
 
@@ -174,7 +176,7 @@ export default function Confirmation() {
 
       <Button
         component={Link}
-        to="/"
+        to={barber?.bookingSlug ? `/${barber.bookingSlug}` : "/"}
         variant="contained"
         fullWidth
         size="large"
@@ -189,6 +191,16 @@ export default function Confirmation() {
       >
         DONE
       </Button>
+
+      {/* Push is the cheapest reminder channel and the ONLY one on the Free plan. */}
+      <ReminderOptInCard bookingId={bookingId} barber={barber} brandColor={brandColor} />
+
+      {/* Right after booking is the moment a customer is most likely to
+          want the app — offers a way to get a reminder before the
+          appointment, not just this one-off confirmation. */}
+      <Box sx={{ mt: 3 }}>
+        <PWAInstallBanner brandColor={brandColor} />
+      </Box>
     </Container>
   );
 }

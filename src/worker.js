@@ -6,11 +6,24 @@
  */
 
 import Stripe from "stripe";
+import { Resend } from "resend";
+import { arrayBufferToBase64, createSquareFaviconSvg } from "./utils/favicon";
+import { BLOG_POSTS } from "./pages/blog/posts.js";
+import { getPlan, normalizePlanId } from "./config/plans.js";
+import {
+  runReminderCron, handleClientPushSubscribe, handleClientPushStatus,
+  handleReminderTest, handleResendWebhook,
+} from "./reminders/service.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SUPPORTED_TLDS  = ["com", "co.uk", "uk", "net", "org", "io", "shop", "store"];
 const PLATFORM_MARKUP = 9;
+
+// Endpoints the embeddable booking widget calls from arbitrary third-party
+// origins — see the CORS preflight handler below for why these specifically
+// are opened to any origin instead of the platform's fixed allowlist.
+const WIDGET_CORS_PATHS = new Set(["/api/create-intent", "/api/finalize-booking", "/api/finalize-booking-no-payment"]);
 
 const ESTIMATED_PRICES_USD = {
   "com":    11.08,
@@ -198,7 +211,7 @@ async function encryptPush(subscription, payloadObj) {
   return concat(salt, rs, new Uint8Array([65]), asPubBytes, encrypted);
 }
 
-async function sendWebPush(subscription, payload, env) {
+async function sendWebPush(subscription, payload, env, opts = {}) {
   const privateJwk = JSON.parse(env.VAPID_PRIVATE_JWK);
   const pubKey     = env.VAPID_PUBLIC_KEY;
   const subject    = env.VAPID_SUBJECT || "mailto:noreply@bookrightly.co.uk";
@@ -217,13 +230,57 @@ async function sendWebPush(subscription, payload, env) {
       "TTL":              "86400",
     },
     body,
+    signal: opts.signal,
   });
 
   if (!res.ok && res.status !== 201) {
     const txt = await res.text().catch(() => "");
-    throw new Error(`Push service returned ${res.status}: ${txt}`);
+    const err = new Error(`Push service returned ${res.status}: ${txt}`);
+    err.status = res.status; // 404/410 = subscription is dead (reminder engine deletes it)
+    throw err;
   }
   return res;
+}
+
+// Looks up a barber's stored push subscription in Firestore and sends them a
+// push. Used both by the manual test button (via handleSendPush, which adds
+// auth) and internally by trusted server-side flows (new bookings) that
+// already know the barberId and don't need the caller-identity check.
+// Silently no-ops if VAPID isn't configured or the barber never subscribed —
+// push is a best-effort enhancement, never something a booking should fail on.
+async function sendBarberPush(barberId, payload, env) {
+  if (!env.VAPID_PRIVATE_JWK) return;
+  try {
+    const base  = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+    const fbRes = await fetch(`${base}/barbers/${barberId}`);
+    if (!fbRes.ok) return;
+
+    const fbData   = await fbRes.json();
+    const subField = fbData.fields?.pushSubscription;
+    if (!subField) return;
+
+    const subFields  = subField.mapValue?.fields ?? {};
+    const keysFields = subFields.keys?.mapValue?.fields ?? {};
+    const subscription = {
+      endpoint: subFields.endpoint?.stringValue,
+      keys: {
+        p256dh: keysFields.p256dh?.stringValue,
+        auth:   keysFields.auth?.stringValue,
+      },
+    };
+    if (!subscription.endpoint || !subscription.keys.p256dh) return;
+
+    const prefsFields = fbData.fields?.notificationPrefs?.mapValue?.fields ?? {};
+    const mergedPayload = {
+      sound:   prefsFields.sound?.booleanValue   !== false,
+      vibrate: prefsFields.vibrate?.booleanValue !== false,
+      ...payload,
+    };
+
+    await sendWebPush(subscription, mergedPayload, env);
+  } catch (err) {
+    console.error("[sendBarberPush]", err);
+  }
 }
 
 // POST /api/create-invoice
@@ -687,6 +744,149 @@ async function handleSendQueuePush(request, env) {
   }
 }
 
+// POST /api/send-welcome-email
+// Fires once, right after signup, only for accounts that ticked "Send me
+// useful product updates and tips" on the signup form. Reads the account's
+// own stored email/opt-in/business info from Firestore server-side (rather
+// than trusting whatever the request body claims) so this can't be used to
+// email arbitrary addresses — it only ever sends to the account's own
+// registered email, and only if marketingOptIn is actually true in the DB.
+async function handleSendWelcomeEmail(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON" }, 400); }
+
+  const { uid } = body ?? {};
+  if (!uid) return json({ error: "Missing uid" }, 400);
+
+  if (!env.RESEND_API_KEY) return json({ error: "Email not configured" }, 500);
+
+  try {
+    const base  = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+    const fbRes = await fetch(`${base}/barbers/${uid}`);
+    if (!fbRes.ok) return json({ error: "Account not found" }, 404);
+
+    const fbData = await fbRes.json();
+    const f = fbData.fields || {};
+    if (!f.marketingOptIn?.booleanValue) return json({ ok: true, skipped: "not opted in" });
+
+    const email       = f.email?.stringValue;
+    const name        = f.name?.stringValue || "there";
+    const businessName = f.businessName?.stringValue || name;
+    const brandColor   = f.brandColor?.stringValue || "#2563EB";
+    const businessType = f.businessType?.stringValue || "barber";
+    if (!email) return json({ error: "No email on file" }, 400);
+
+    const TIPS = {
+      barber:      ["Add your services with real prices so deposits calculate correctly.", "Turn on the Live Queue if you take walk-ins — customers can join remotely and get notified when it's their turn.", "Upload your own hero photo from Profile so your page shows your shop, not the placeholder."],
+      hairdresser: ["Add your services and pricing so clients know what to expect before booking.", "Upload a hero photo of your salon or your work.", "Connect a custom domain from the Domain tab for a more professional link than a shared one."],
+      decorator:   ["Add your standard services so quotes go out faster.", "Upload before/after photos to your gallery to show off finished work.", "Job enquiries land straight in your dashboard — check that tab regularly."],
+      trainer:     ["Add your session types and pricing.", "Upload a hero photo and any client transformation photos.", "Set your availability so clients can book straight away."],
+      plumber:     ["Add your service categories and standard charges.", "Set your service areas so the right local customers find you.", "Job enquiries support photo uploads — great for faster, more accurate quotes."],
+    };
+    const tips = TIPS[businessType] || TIPS.barber;
+
+    const resend = new Resend(env.RESEND_API_KEY);
+    const { error } = await resend.emails.send({
+      from: "Bookrightly <info@bookrightly.co.uk>",
+      to: [email],
+      subject: `Welcome to Bookrightly, ${name.split(" ")[0]} — a few quick tips`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #eee; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+          <div style="background: ${brandColor}; padding: 32px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 900;">Bookrightly</h1>
+            <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 13px; letter-spacing: 0.05em;">WELCOME</p>
+          </div>
+          <div style="padding: 32px;">
+            <h2 style="margin-top: 0; color: #1a1a1a; font-size: 22px; font-weight: 800;">Welcome, ${businessName}! 👋</h2>
+            <p style="color: #444; line-height: 1.6;">Thanks for setting up on Bookrightly. A few quick things worth doing first to get your page ready for real customers:</p>
+            <ul style="color: #444; line-height: 1.9; padding-left: 20px;">
+              ${tips.map(t => `<li>${t}</li>`).join("")}
+            </ul>
+            <div style="text-align: center; margin-top: 32px;">
+              <a href="https://bookrightly.co.uk/dashboard" style="display: inline-block; background: ${brandColor}; color: #ffffff; padding: 16px 36px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px;">
+                Go to your dashboard
+              </a>
+            </div>
+            <footer style="margin-top: 40px; padding-top: 24px; border-top: 1px solid #eee; font-size: 11px; color: #bbb; text-align: center; line-height: 1.8;">
+              You're receiving this because you opted in to product updates and tips when you signed up.<br/>
+              Reply to this email any time to opt out.
+            </footer>
+          </div>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[send-welcome-email]", error);
+      return json({ error: error.message || "Send failed" }, 500);
+    }
+    return json({ ok: true });
+  } catch (err) {
+    console.error("[send-welcome-email]", err);
+    return json({ error: err.message }, 500);
+  }
+}
+
+// POST /api/admin-send-account-email
+// Sends the "your booking page is ready" email for accounts created via the
+// internal /admin/create-account tool (adminCreateAccount Cloud Function).
+// Routed through the Worker rather than sent directly from that function
+// because Resend + the verified bookrightly.co.uk sending domain are only
+// configured here — the alternative was the function falling back to Gmail
+// SMTP, which sends as Dean's personal address instead of a real Bookrightly
+// one. Gated by the same ADMIN_ACCESS_KEY value already used to gate the
+// Cloud Function itself (set separately here via `wrangler secret put`,
+// same literal value, since Worker and Functions secrets are separate
+// systems with no shared store).
+async function handleAdminSendAccountEmail(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (!env.RESEND_API_KEY) return json({ error: "Email not configured" }, 500);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON" }, 400); }
+
+  const { adminKey, email, businessName, slug } = body ?? {};
+  if (!env.ADMIN_ACCESS_KEY || adminKey !== env.ADMIN_ACCESS_KEY) {
+    return json({ error: "Invalid admin key" }, 403);
+  }
+  if (!email || !slug) return json({ error: "email and slug are required" }, 400);
+
+  try {
+    const resend = new Resend(env.RESEND_API_KEY);
+    const { error } = await resend.emails.send({
+      from: "Bookrightly <info@bookrightly.co.uk>",
+      to: [email],
+      subject: "Your Bookrightly booking page is ready",
+      html: `
+        <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #eee; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+          <div style="background: #2563EB; padding: 32px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 900;">Bookrightly</h1>
+          </div>
+          <div style="padding: 32px;">
+            <p style="color: #444; line-height: 1.6;">Hi,</p>
+            <p style="color: #444; line-height: 1.6;">Your Bookrightly booking page for <strong>${businessName || "your business"}</strong> is already set up and live at <strong>bookrightly.co.uk/${slug}</strong>.</p>
+            <p style="color: #444; line-height: 1.6;">Check your inbox for a separate email from Firebase titled "Reset your password" — that link sets your password and gets you into your dashboard.</p>
+            <p style="color: #444; line-height: 1.6;">You've got a 90-day free trial, no card needed.</p>
+          </div>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[admin-send-account-email]", error);
+      return json({ error: error.message || "Send failed" }, 500);
+    }
+    return json({ ok: true });
+  } catch (err) {
+    console.error("[admin-send-account-email]", err);
+    return json({ error: err.message }, 500);
+  }
+}
+
 // ── Route handlers ────────────────────────────────────────────────────────────
 
 // POST /api/connect
@@ -1096,6 +1296,18 @@ async function handleCreateIntent(request, env) {
     const shopId    = fields.shopId?.stringValue;
     const accountId = (shopId && shopId !== "self") ? shopId : barberId;
 
+    // Deposits are a paid-plan feature (see src/config/plans.js) — plan
+    // lives on the shop doc, not a staff sub-doc, so re-fetch it there when
+    // this booking belongs to staff rather than trusting the client to
+    // never call this endpoint for a Free-plan business.
+    const planFields = (accountId === barberId)
+      ? fields
+      : (await fetch(`${base}/barbers/${accountId}`).then(r => r.ok ? r.json() : null).catch(() => null))?.fields || {};
+    const shopPlan = planFields.plan?.stringValue || "full";
+    if (!getPlan(shopPlan).features.deposits) {
+      return json({ error: "This business's plan doesn't include online deposits." }, 403);
+    }
+
     const stripe = new Stripe(env.STRIPE_SECRET_KEY);
     const paymentIntent = await stripe.paymentIntents.create({
       amount: customerPays,
@@ -1165,6 +1377,701 @@ async function handleFinalizeBooking(request, env) {
 // Shared by handleFinalizeBooking (synchronous, primary path) and the
 // payment_intent.succeeded webhook (reconciliation safety net) — idempotent
 // via the paymentIntentId existence check, so it's safe for both to race.
+// Sends the customer-facing booking confirmation email — reuses the same
+// Resend + verified bookrightly.co.uk sending domain already proven in
+// handleSendWelcomeEmail/handleAdminSendAccountEmail above. Best-effort and
+// fire-and-forget, same treatment as the sendBarberPush calls right next to
+// where this is invoked — an email failure should never fail the booking.
+async function sendBookingConfirmationEmail(env, { bookingId, customerEmail, customerName, businessName, brandColor, date, time, service, location, depositPounds }) {
+  if (!env.RESEND_API_KEY || !customerEmail) return;
+  try {
+    const resend = new Resend(env.RESEND_API_KEY);
+    // /manage-booking has both Cancel and Reschedule — /cancel-booking only
+    // cancels (and does so the moment it loads), so it can't back a link
+    // that promises "cancel or change your booking".
+    const manageUrl = `https://bookrightly.co.uk/manage-booking/${bookingId}`;
+    const color = brandColor || "#2563EB";
+    const depositRow = depositPounds && Number(depositPounds) > 0
+      ? `<tr><td style="padding: 8px 0; color: #888; font-size: 13px;">Deposit paid</td><td style="padding: 8px 0; text-align: right; font-weight: 700; color: #1a1a1a;">£${Number(depositPounds).toFixed(2)}</td></tr>`
+      : "";
+    const { error } = await resend.emails.send({
+      from: "Bookrightly <info@bookrightly.co.uk>",
+      to: [customerEmail],
+      subject: `Booking confirmed with ${businessName}${date ? ` — ${date}` : ""}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #eee; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+          <div style="background: ${color}; padding: 32px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900;">You're booked!</h1>
+          </div>
+          <div style="padding: 32px;">
+            <p style="color: #444; line-height: 1.6;">Hi ${customerName || "there"}, your appointment with <strong>${businessName}</strong> is confirmed.</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 24px 0;">
+              ${date ? `<tr><td style="padding: 8px 0; color: #888; font-size: 13px;">Date</td><td style="padding: 8px 0; text-align: right; font-weight: 700; color: #1a1a1a;">${date}</td></tr>` : ""}
+              ${time ? `<tr><td style="padding: 8px 0; color: #888; font-size: 13px;">Time</td><td style="padding: 8px 0; text-align: right; font-weight: 700; color: #1a1a1a;">${time}</td></tr>` : ""}
+              ${service ? `<tr><td style="padding: 8px 0; color: #888; font-size: 13px;">Service</td><td style="padding: 8px 0; text-align: right; font-weight: 700; color: #1a1a1a;">${service}</td></tr>` : ""}
+              ${location ? `<tr><td style="padding: 8px 0; color: #888; font-size: 13px;">Location</td><td style="padding: 8px 0; text-align: right; font-weight: 700; color: #1a1a1a;">${location}</td></tr>` : ""}
+              ${depositRow}
+            </table>
+            <div style="text-align: center; margin-top: 8px;">
+              <a href="${manageUrl}" style="color: ${color}; font-size: 13px; text-decoration: underline;">Need to cancel or change your booking?</a>
+            </div>
+            <footer style="margin-top: 40px; padding-top: 24px; border-top: 1px solid #eee; font-size: 11px; color: #bbb; text-align: center;">
+              Sent by Bookrightly on behalf of ${businessName}.
+            </footer>
+          </div>
+        </div>
+      `,
+    });
+    if (error) console.error("[booking-confirmation-email]", error);
+  } catch (err) {
+    console.error("[booking-confirmation-email]", err);
+  }
+}
+
+// Client reminders (push -> email -> SMS chain) live in src/reminders/. The
+// engine runs from the 5-minute cron in scheduled() below; these are the
+// Worker-side helpers it needs, injected so the module has no circular import.
+const reminderDeps = () => ({ json, verifyFirebaseUid, getFirebaseAdminToken, firestoreBase, sendWebPush, Resend });
+
+// POST /api/admin-run-reminders — runs the reminder engine on demand (Cron
+// Triggers can't be fired from outside the dashboard), gated by the same
+// ADMIN_ACCESS_KEY as the account-setup email tool. Body: { adminKey,
+// dryRun?: true } — dryRun logs/returns every chain decision and sends nothing.
+async function handleAdminRunReminders(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  let body;
+  try { body = await request.json(); }
+  catch { body = {}; }
+  if (!env.ADMIN_ACCESS_KEY || body.adminKey !== env.ADMIN_ACCESS_KEY) {
+    return json({ error: "Invalid admin key" }, 403);
+  }
+  const result = await runReminderCron(env, reminderDeps(), { dryRun: body.dryRun === true });
+  return json(result);
+}
+
+// ── Trial lifecycle: day 60/83/89 warning emails + downgrade to Free ────────
+// Replaces functions/index.js's old checkTrialExpiry Cloud Function, which
+// flipped subscriptionStatus to "past_due" on trial end — that took the
+// public page offline the moment a trial lapsed. Bookrightly now never locks
+// a business out: an unconverted trial becomes the Free plan instead, with
+// the page staying live throughout. checkTrialExpiry has been neutered (see
+// functions/index.js) so only this cron drives trial-end behaviour.
+const TRIAL_WARNING_DAYS = [
+  { day: 60, field: "trialEmail60Sent" },
+  { day: 83, field: "trialEmail83Sent" },
+  { day: 89, field: "trialEmail89Sent" },
+];
+
+async function sendTrialEndingEmail(env, { toEmail, businessName, planName, daysLeft, features }) {
+  if (!env.RESEND_API_KEY || !toEmail) return;
+  try {
+    const resend = new Resend(env.RESEND_API_KEY);
+    const subscribeUrl = "https://bookrightly.co.uk/dashboard?tab=finance";
+    const { error } = await resend.emails.send({
+      from: "Bookrightly <info@bookrightly.co.uk>",
+      to: [toEmail],
+      subject: `${daysLeft} day${daysLeft === 1 ? "" : "s"} left on your Bookrightly trial`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #eee; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+          <div style="background: #111116; padding: 32px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900;">${daysLeft} day${daysLeft === 1 ? "" : "s"} left</h1>
+          </div>
+          <div style="padding: 32px;">
+            <p style="color: #444; line-height: 1.6;">Hi ${businessName}, your 90-day free trial of the <strong>${planName}</strong> plan ends in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.</p>
+            <p style="color: #444; line-height: 1.6;">If you don't subscribe, you won't lose your page — you'll automatically move to the <strong>Free</strong> plan instead. But you'll lose:</p>
+            <ul style="color: #444; line-height: 1.8;">
+              ${features.map(f => `<li>${f}</li>`).join("")}
+            </ul>
+            <div style="text-align: center; margin-top: 28px;">
+              <a href="${subscribeUrl}" style="background: #2563EB; color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 800; display: inline-block;">Subscribe now</a>
+            </div>
+            <footer style="margin-top: 40px; padding-top: 24px; border-top: 1px solid #eee; font-size: 11px; color: #bbb; text-align: center;">
+              Bookrightly — bookrightly.co.uk
+            </footer>
+          </div>
+        </div>
+      `,
+    });
+    if (error) console.error("[trial-ending-email]", error);
+  } catch (err) {
+    console.error("[trial-ending-email]", err);
+  }
+}
+
+async function sendMovedToFreeEmail(env, { toEmail, businessName }) {
+  if (!env.RESEND_API_KEY || !toEmail) return;
+  try {
+    const resend = new Resend(env.RESEND_API_KEY);
+    const subscribeUrl = "https://bookrightly.co.uk/dashboard?tab=finance";
+    const { error } = await resend.emails.send({
+      from: "Bookrightly <info@bookrightly.co.uk>",
+      to: [toEmail],
+      subject: "Your trial has ended — you're now on the Free plan",
+      html: `
+        <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #eee; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+          <div style="background: #2563EB; padding: 32px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900;">You're on the Free plan now</h1>
+          </div>
+          <div style="padding: 32px;">
+            <p style="color: #444; line-height: 1.6;">Hi ${businessName}, your 90-day trial has ended. You haven't lost anything — your booking page is still live and all your data (services, settings, everything) is saved. You've just moved to the Free plan, which turns off deposits and reminder emails until you subscribe again.</p>
+            <div style="text-align: center; margin-top: 28px;">
+              <a href="${subscribeUrl}" style="background: #2563EB; color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 800; display: inline-block;">Upgrade any time</a>
+            </div>
+            <footer style="margin-top: 40px; padding-top: 24px; border-top: 1px solid #eee; font-size: 11px; color: #bbb; text-align: center;">
+              Bookrightly — bookrightly.co.uk
+            </footer>
+          </div>
+        </div>
+      `,
+    });
+    if (error) console.error("[moved-to-free-email]", error);
+  } catch (err) {
+    console.error("[moved-to-free-email]", err);
+  }
+}
+
+const TRIAL_LOSS_FEATURES = {
+  basic: ["Online deposits", "Customer reminder emails"],
+  widget: ["Online deposits", "Customer reminder emails", "Live queue widget"],
+  full: ["Online deposits", "Customer reminder emails", "Your portfolio and reviews", "Your full branded website"],
+};
+
+async function handleTrialLifecycle(env) {
+  const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+  const adminToken = await getFirebaseAdminToken(env);
+  const now = new Date();
+
+  const results = await fetch(`${base}:runQuery`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "barbers" }],
+        where: { fieldFilter: { field: { fieldPath: "subscriptionStatus" }, op: "EQUAL", value: { stringValue: "trialing" } } },
+      },
+    }),
+  }).then(r => r.json()).catch(err => { console.error("[trial-lifecycle] query failed:", err.message); return []; });
+
+  if (!Array.isArray(results)) {
+    console.error("[trial-lifecycle] unexpected query response:", JSON.stringify(results));
+    return { checked: 0, warned: 0, downgraded: 0 };
+  }
+
+  let warned = 0, downgraded = 0;
+  const rows = results.filter(r => r.document);
+
+  for (const row of rows) {
+    const barberId = row.document.name.split("/").pop();
+    const f = row.document.fields || {};
+    const planId = normalizePlanId(f.plan?.stringValue || "full");
+    const plan = getPlan(planId);
+    const trialEndsIso = f.trialEndsAt?.timestampValue;
+    if (!trialEndsIso) continue;
+    const trialEndsAt = new Date(trialEndsIso);
+    const daysElapsed = plan.trialDays - Math.ceil((trialEndsAt - now) / 86400000);
+    const email = f.email?.stringValue || f.businessEmail?.stringValue;
+    const businessName = f.businessName?.stringValue || f.name?.stringValue || "there";
+
+    if (trialEndsAt <= now) {
+      // Trial over, never subscribed — downgrade to Free rather than lock
+      // the page. Data (services, portfolio, settings) is left untouched in
+      // Firestore; only the plan field changes, so it all comes back the
+      // instant they upgrade again.
+      await fetch(`${base}/barbers/${barberId}?updateMask.fieldPaths=plan&updateMask.fieldPaths=subscriptionStatus`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: toFirestoreFields({ plan: "free", subscriptionStatus: "free" }) }),
+      });
+      await sendMovedToFreeEmail(env, { toEmail: email, businessName });
+      downgraded++;
+      continue;
+    }
+
+    for (const { day, field } of TRIAL_WARNING_DAYS) {
+      if (daysElapsed === day && !f[field]?.booleanValue) {
+        await sendTrialEndingEmail(env, {
+          toEmail: email,
+          businessName,
+          planName: plan.name,
+          daysLeft: plan.trialDays - day,
+          features: TRIAL_LOSS_FEATURES[planId] || TRIAL_LOSS_FEATURES.full,
+        });
+        await fetch(`${base}/barbers/${barberId}?updateMask.fieldPaths=${field}`, {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ fields: toFirestoreFields({ [field]: true }) }),
+        });
+        warned++;
+      }
+    }
+  }
+
+  console.log(`[trial-lifecycle] checked ${rows.length}, warned ${warned}, downgraded ${downgraded}`);
+  return { checked: rows.length, warned, downgraded };
+}
+
+async function handleAdminRunTrialLifecycle(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  let body;
+  try { body = await request.json(); }
+  catch { body = {}; }
+  if (!env.ADMIN_ACCESS_KEY || body.adminKey !== env.ADMIN_ACCESS_KEY) {
+    return json({ error: "Invalid admin key" }, 403);
+  }
+  const result = await handleTrialLifecycle(env);
+  return json(result);
+}
+
+// POST /api/admin-churn-feedback — lists why businesses have cancelled
+// (Stripe's Billing Portal cancellation-reason survey, saved by
+// saveChurnFeedback in handleStripeWebhook). Body: { adminKey, limit? }.
+async function handleAdminChurnFeedback(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  let body;
+  try { body = await request.json(); }
+  catch { body = {}; }
+  if (!env.ADMIN_ACCESS_KEY || body.adminKey !== env.ADMIN_ACCESS_KEY) {
+    return json({ error: "Invalid admin key" }, 403);
+  }
+
+  const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+  const adminToken = await getFirebaseAdminToken(env);
+  const results = await fetch(`${base}:runQuery`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "churnFeedback", allDescendants: true }],
+        orderBy: [{ field: { fieldPath: "updatedAt" }, direction: "DESCENDING" }],
+        limit: Math.min(Number(body.limit) || 100, 500),
+      },
+    }),
+  }).then(r => r.json()).catch(() => []);
+
+  const feedback = (results || [])
+    .filter(r => r.document)
+    .map(r => {
+      const f = r.document.fields || {};
+      return {
+        businessName: f.businessName?.stringValue || null,
+        barberId: f.barberId?.stringValue || null,
+        plan: f.plan?.stringValue || null,
+        reason: f.reason?.stringValue || null,
+        comment: f.comment?.stringValue || null,
+        status: f.status?.stringValue || null, // "scheduled" (cancel-at-period-end submitted) or "canceled" (final)
+        updatedAt: f.updatedAt?.stringValue || null,
+      };
+    });
+
+  // Quick tally so a busy day doesn't require reading every row.
+  const byReason = {};
+  for (const f of feedback) byReason[f.reason || "(no reason picked)"] = (byReason[f.reason || "(no reason picked)"] || 0) + 1;
+
+  return json({ count: feedback.length, byReason, feedback });
+}
+
+// POST /api/cancel-booking — the customer-facing cancel page's write done
+// server-side: an anonymous customer visiting /cancel-booking/{id} from an
+// email link has no Firebase Auth session, so the direct client-side
+// updateDoc() this used to call was always rejected by firestore.rules
+// (bookings/slots both require request.auth != null to write) — this
+// endpoint is the trusted, admin-token path around that, matching every
+// other unauthenticated-customer write in this file (finalize-booking-*,
+// subscribe-booking-reminder). Idempotent: cancelling an already-cancelled
+// booking just returns it, rather than erroring.
+async function handleCancelBookingRequest(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON body" }, 400); }
+
+  const { bookingId } = body ?? {};
+  if (!bookingId) return json({ error: "Missing bookingId" }, 400);
+
+  const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+  try {
+    const bookingRes = await fetch(`${base}/bookings/${bookingId}`);
+    if (!bookingRes.ok) return json({ error: "Booking not found" }, 404);
+    const f = (await bookingRes.json()).fields || {};
+    const booking = {
+      barberId: f.barberId?.stringValue || "",
+      slotId: f.slotId?.stringValue || "",
+      name: f.name?.stringValue || f.customerName?.stringValue || "",
+      email: f.email?.stringValue || f.clientEmail?.stringValue || "",
+      haircutStyle: f.haircutStyle?.stringValue || f.serviceName?.stringValue || "",
+      date: f.date?.stringValue || f.slotDate?.stringValue || "",
+      time: f.time?.stringValue || f.slotTime?.stringValue || "",
+      paymentIntentId: f.paymentIntentId?.stringValue || f.stripePaymentIntentId?.stringValue || "",
+      status: f.status?.stringValue || "",
+    };
+
+    if (booking.status === "cancelled") {
+      return json({ ok: true, alreadyCancelled: true, booking });
+    }
+
+    const adminToken = await getFirebaseAdminToken(env);
+    await fetch(`${base}/bookings/${bookingId}?updateMask.fieldPaths=status&updateMask.fieldPaths=cancelledAt`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: toFirestoreFields({ status: "cancelled", cancelledAt: new Date().toISOString() }) }),
+    });
+
+    if (booking.slotId) {
+      await fetch(`${base}/slots/${booking.slotId}?updateMask.fieldPaths=isBooked&updateMask.fieldPaths=status`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: toFirestoreFields({ isBooked: false, status: "open" }) }),
+      }).catch(err => console.error("[cancel-booking] Failed to reopen slot:", err.message));
+    }
+
+    return json({ ok: true, booking });
+  } catch (err) {
+    console.error("[cancel-booking] Error:", err.message);
+    return json({ error: err.message }, 500);
+  }
+}
+
+// POST /api/cancel-refund — was dead code (src/api/cancel-refund.js, a
+// leftover Pages-Functions-style file that never had a case in this Worker's
+// routing, same class of bug as the old missing create-subscription route).
+// CancelBooking.jsx calls this best-effort after cancelling; a failure here
+// never blocks the cancellation itself, which has already succeeded via
+// /api/cancel-booking by the time this runs.
+// Body: { paymentIntentId, date, time }. Non-refundable inside 24h of the
+// appointment (matches the cancellation-policy text shown on Confirmation.jsx
+// and in the reminder/confirmation emails).
+async function handleCancelRefund(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (!env.STRIPE_SECRET_KEY) return json({ error: "Server not configured" }, 500);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON body" }, 400); }
+
+  const { paymentIntentId, date, time } = body ?? {};
+  if (!paymentIntentId || !date || !time) {
+    return json({ error: "Missing paymentIntentId, date or time" }, 400);
+  }
+
+  const slot = new Date(`${date}T${time}:00`);
+  if (isNaN(slot.getTime())) return json({ error: "Invalid date or time format" }, 400);
+
+  const hoursUntilSlot = (slot.getTime() - Date.now()) / (1000 * 60 * 60);
+  if (hoursUntilSlot <= 24) {
+    return json({ refunded: false, reason: "Non-refundable (within 24h)." });
+  }
+
+  try {
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (intent.status !== "succeeded") {
+      return json({ refunded: false, reason: `Cannot refund a payment with status: ${intent.status}` }, 400);
+    }
+
+    // This deposit was taken as a destination charge (transfer_data.destination
+    // in handleCreateIntent) — the PaymentIntent lives on the platform account,
+    // so the refund is created here too, and reverse_transfer claws the money
+    // back from the connected account. The old dead code only reversed the
+    // transfer in live mode (`reverse_transfer: isLiveMode`), which would have
+    // silently left the connected account holding funds for a refunded booking
+    // in test mode — always attempt the reversal instead; an insufficient-funds
+    // error (the connected account's already paid it out) is caught below and
+    // reported clearly rather than silently skipped.
+    const refund = await stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      reason: "requested_by_customer",
+      refund_application_fee: false,
+      reverse_transfer: true,
+    });
+
+    console.log(`[cancel-refund] Refunded ...${paymentIntentId.slice(-6)}: ${refund.id}`);
+    return json({ refunded: true, refundId: refund.id });
+  } catch (err) {
+    console.error("[cancel-refund] Error:", err.message);
+    if (/insufficient/i.test(err.message || "")) {
+      return json({
+        error: "The business's Stripe balance doesn't cover this refund yet. Please contact them directly.",
+        code: "insufficient_funds",
+      }, 400);
+    }
+    return json({ error: err.message || "Refund failed" }, 500);
+  }
+}
+
+// ── Demo account slot maintenance ────────────────────────────────────────────
+// The demo accounts (Fade Factory, Luxe Hair Studio, DB Fitness) aren't real
+// businesses adding availability over time, so their bookable slots would
+// eventually run out and every demo booking page would show "no times
+// available" — SlotPicker.jsx filters out anything before "now", and nothing
+// was ever adding new future slots to replace what aged out. Runs daily
+// (see the "0 9 * * *" cron in wrangler.jsonc) alongside the reminder job,
+// topping each demo account back up to a rolling 28-weekday window forever
+// — checking each one's latest existing future slot and only adding what's
+// missing beyond it, so this is a no-op on days nothing needs topping up.
+const DEMO_SLOT_ACCOUNTS = {
+  barber:      "S5s1FWMaz1XuAEo8gDSTTIqlqgL2", // Fade Factory
+  hairdresser: "xyPHCqfFgoYympmcqUAzNS37URG3", // Luxe Hair Studio
+  trainer:     "Ih8OFcRzvuS3QbwtsYPeUFCnUEo1", // DB Fitness
+  // Premier Painters (decorator) has no slot picker on its public page at
+  // all — nothing to keep topped up.
+};
+const DEMO_SLOT_WINDOW_DAYS = 28;
+const DEMO_BARBER_SLOT_TIMES = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00"];
+const DEMO_PT_SLOT_TIMES     = ["07:00", "08:00", "09:00", "10:00", "17:00", "18:00", "19:00"];
+
+// Every weekday strictly between `afterDate` (exclusive, or today if
+// omitted) and `today + DEMO_SLOT_WINDOW_DAYS` calendar days (the fixed
+// rolling window edge, always anchored to today at call time rather than to
+// afterDate) — so topping up never lets the window creep further out on
+// each run than a fresh seed would.
+function weekdaysInRollingWindow(today, afterDate) {
+  const windowEnd = new Date(`${today}T00:00:00Z`);
+  windowEnd.setUTCDate(windowEnd.getUTCDate() + DEMO_SLOT_WINDOW_DAYS);
+
+  const start = new Date(`${afterDate || today}T00:00:00Z`);
+  if (afterDate) start.setUTCDate(start.getUTCDate() + 1);
+
+  const dates = [];
+  for (const d = start; d <= windowEnd; d.setUTCDate(d.getUTCDate() + 1)) {
+    const weekday = d.getUTCDay();
+    if (weekday !== 0 && weekday !== 6) dates.push(d.toISOString().split("T")[0]);
+  }
+  return dates;
+}
+
+async function getLatestFutureSlotDate(base, adminToken, barberId, today) {
+  // Filtering on isBooked too isn't just correctness (only open slots count
+  // as "still have availability") — it also matches useSlots.js's existing
+  // barberId+isBooked+date+time composite index. Without it, this exact
+  // combination of an equality (barberId) and inequality (date) filter on
+  // two different fields has no matching index and Firestore returns a 400
+  // FAILED_PRECONDITION, which the .catch below only masks by returning an
+  // empty array rather than surfacing the real problem.
+  const rows = await fetch(`${base}:runQuery`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "slots" }],
+        where: { compositeFilter: { op: "AND", filters: [
+          { fieldFilter: { field: { fieldPath: "barberId" }, op: "EQUAL", value: { stringValue: barberId } } },
+          { fieldFilter: { field: { fieldPath: "isBooked" }, op: "EQUAL", value: { booleanValue: false } } },
+          { fieldFilter: { field: { fieldPath: "date" }, op: "GREATER_THAN_OR_EQUAL", value: { stringValue: today } } },
+        ] } },
+        orderBy: [{ field: { fieldPath: "date" }, direction: "DESCENDING" }],
+        limit: 1,
+      },
+    }),
+  }).then(r => r.json()).catch(err => { console.error("[maintain-demo-slots] query failed:", err.message); return []; });
+  if (!Array.isArray(rows)) {
+    console.error("[maintain-demo-slots] unexpected query response:", JSON.stringify(rows));
+    return null;
+  }
+  const doc = rows.find(r => r.document);
+  return doc?.document?.fields?.date?.stringValue || null;
+}
+
+async function seedSlotsForDates(base, adminToken, dates, times, { barberId, shopId, isStaff }) {
+  let count = 0;
+  for (const date of dates) {
+    for (const time of times) {
+      await fetch(`${base}/slots`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: toFirestoreFields({
+          barberId, shopId, date, time, isBooked: false, status: "open", isStaff,
+          createdAt: new Date().toISOString(),
+        }) }),
+      });
+      count++;
+    }
+  }
+  return count;
+}
+
+async function topUpShopSlots(base, adminToken, today, shopUid) {
+  const targets = [{ id: shopUid, isStaff: false }];
+
+  const staffRes = await fetch(`${base}/barbers/${shopUid}/staff`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  }).then(r => r.json()).catch(() => ({}));
+  for (const doc of staffRes.documents || []) {
+    targets.push({ id: doc.name.split("/").pop(), isStaff: true });
+  }
+
+  let totalAdded = 0;
+  for (const t of targets) {
+    const latestDate = await getLatestFutureSlotDate(base, adminToken, t.id, today);
+    const missingDates = weekdaysInRollingWindow(today, latestDate);
+    if (missingDates.length) {
+      totalAdded += await seedSlotsForDates(base, adminToken, missingDates, DEMO_BARBER_SLOT_TIMES, { barberId: t.id, shopId: shopUid, isStaff: t.isStaff });
+    }
+  }
+  return totalAdded;
+}
+
+async function topUpPTSlots(base, adminToken, today, ptUid) {
+  const res = await fetch(`${base}/barbers/${ptUid}/ptSlots`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  }).then(r => r.json()).catch(() => ({}));
+  const existingDates = (res.documents || [])
+    .map(d => d.fields?.date?.stringValue)
+    .filter(d => d && d >= today);
+  const latestDate = existingDates.length ? existingDates.sort().pop() : null;
+
+  const datesToAdd = weekdaysInRollingWindow(today, latestDate);
+  if (!datesToAdd.length) return 0;
+
+  let count = 0;
+  for (const date of datesToAdd) {
+    for (const time of DEMO_PT_SLOT_TIMES) {
+      await fetch(`${base}/barbers/${ptUid}/ptSlots`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: toFirestoreFields({
+          date, time, duration: 60, price: 65, status: "available",
+        }) }),
+      });
+      count++;
+    }
+  }
+  return count;
+}
+
+async function handleMaintainDemoSlots(env) {
+  try {
+    const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+    const adminToken = await getFirebaseAdminToken(env);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const added = {
+      barber:      await topUpShopSlots(base, adminToken, today, DEMO_SLOT_ACCOUNTS.barber),
+      hairdresser: await topUpShopSlots(base, adminToken, today, DEMO_SLOT_ACCOUNTS.hairdresser),
+      trainer:     await topUpPTSlots(base, adminToken, today, DEMO_SLOT_ACCOUNTS.trainer),
+    };
+    console.log("[maintain-demo-slots] done:", JSON.stringify(added));
+    return { added };
+  } catch (err) {
+    // scheduled() runs this via ctx.waitUntil — an uncaught rejection there
+    // fails silently with no way to tell it ever ran. Logging here is the
+    // only way to see it in `wrangler tail` after the fact.
+    console.error("[maintain-demo-slots] failed:", err.message);
+    return { error: err.message };
+  }
+}
+
+// Manual trigger for the above, mirroring handleAdminRunReminders.
+async function handleAdminMaintainDemoSlots(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  let body;
+  try { body = await request.json(); }
+  catch { body = {}; }
+  if (!env.ADMIN_ACCESS_KEY || body.adminKey !== env.ADMIN_ACCESS_KEY) {
+    return json({ error: "Invalid admin key" }, 403);
+  }
+  const result = await handleMaintainDemoSlots(env);
+  return json(result);
+}
+
+// ── Homepage chatbot ──────────────────────────────────────────────────────────
+// Cloudflare Workers AI (free tier: 10,000 neurons/day) with a hardcoded
+// keyword-matched fallback for when the free quota runs out or the model
+// call fails for any other reason — Workers AI's own error handling is a
+// plain try/catch with no distinct "quota exceeded" code to special-case,
+// so a broad catch is the correct, idiomatic way to trigger the fallback.
+
+const CHAT_SYSTEM_PROMPT = `You are the help assistant on the Bookrightly homepage (bookrightly.co.uk), a UK booking SaaS for barbers, hairdressers, personal trainers, decorators, and plumbing/heating/electrical trades.
+
+Plans:
+- Full (£10/month) — any business type. Full branded website, dashboard, services, deposits via Stripe, reviews, PWA.
+- Widget (£5/month) — any business type. Embed booking and live queue tools on your own existing website, no hosted page.
+- Basic (£5/month) — any business type. A simple booking page with services, prices, and a link to your Instagram. Includes confirmation emails and reminders.
+- Free (£0, forever) — any business type. The cheapest option: a bare page with your logo and booking slots, on-screen confirmation only, no deposits, no reminders. No card, no trial needed.
+
+Every paid plan (Basic, Widget, Full) starts with a 90-day free trial, no credit card required. Free needs no trial — it's free forever from day one. No commission is ever taken on bookings — the only cost is Stripe's own card processing fee (~1.5%+20p), never marked up by Bookrightly. No setup fees, no contract, cancel anytime. If a paid trial ends without subscribing, the business is never locked out — their page just moves to the Free plan automatically, keeping their booking link and all their data. Setup typically takes under 15 minutes: add your business details and services, set your availability, and share your booking link.
+
+Answer briefly, like a chat bubble, not an essay. Stay on topic — if asked something unrelated to Bookrightly or booking software, politely redirect back to what Bookrightly does. If you don't know the answer, say so and point to bookrightly.co.uk/pricing or suggest contacting support rather than guessing.
+
+Reply in plain conversational text only, like a person typing a message — no markdown, no asterisks, no bullet points, no headings, no bold or italics.`;
+
+// Strips markdown formatting the model sometimes adds despite being told not
+// to (Workers AI's instruction-following on this is inconsistent) — the chat
+// UI renders plain text, so unstripped "**bold**"/"# heading" markers would
+// show up as literal asterisks/hashes instead of being rendered as styling.
+function stripMarkdown(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^[-*]\s+/gm, "")
+    .replace(/`{1,3}([^`]*)`{1,3}/g, "$1");
+}
+
+// Keyword-matched canned answers, used only when the AI call fails (quota
+// exhausted, model error, etc.) — pulled from the same FAQ copy already on
+// the pricing/marketing pages so the bot never contradicts the rest of the site.
+const CHAT_FALLBACK_ANSWERS = [
+  { keywords: ["price", "pricing", "cost", "how much", "fee", "fees"], answer: "Full plan is £10/month for a complete branded website and dashboard. Cheaper options: Widget £5/month (embed on your own site), Basic £5/month, and Free — £0 forever. Paid plans have a 90-day free trial. Full breakdown at bookrightly.co.uk/pricing." },
+  { keywords: ["trial", "free", "card", "credit card"], answer: "Every paid plan includes a 90-day free trial with no credit card required. The Free plan needs no trial — it's free forever." },
+  { keywords: ["commission", "cut", "percentage", "take"], answer: "No commission, ever — not on a single booking. The only cost is Stripe's own card processing fee, which we never mark up." },
+  { keywords: ["contract", "cancel", "cancellation", "lock", "lock-in", "tie"], answer: "No contract — pay month to month and cancel whenever you need to. If a trial ends without subscribing, you're never locked out either — your page just moves to the Free plan." },
+  { keywords: ["setup", "set up", "onboarding", "how long", "get started"], answer: "Setup takes under 15 minutes — add your business details and services, set your availability, and share your booking link." },
+  { keywords: ["business type", "industry", "barber", "hairdresser", "salon", "trainer", "pt", "decorator", "plumber", "plumbing", "electrician", "heating"], answer: "Bookrightly supports barbers, hairdressers, personal trainers, decorators, and plumbing/heating/electrical trades — each with their own tailored booking page." },
+  { keywords: ["deposit", "payment", "stripe", "pay"], answer: "Deposits and payments are collected securely through Stripe, paid directly to your own account minus Stripe's standard processing fee. Deposits are available on Basic, Widget and Full — not on the Free plan." },
+  { keywords: ["free plan", "cheapest", "cheap", "no cost"], answer: "The Free plan is £0, forever — no card, no trial needed. A bare page with your logo and booking slots, on-screen confirmation only, no deposits, no reminders." },
+  { keywords: ["basic"], answer: "Basic is £5/month, any business type. A simple booking page with your services, prices, and a link to your Instagram, including confirmation emails and reminders." },
+  { keywords: ["widget", "embed", "own website", "existing website"], answer: "The Widget plan (£5/month, any business type) lets you embed booking and live queue tools directly into a website you already have." },
+  { keywords: ["app", "download", "install", "pwa"], answer: "Bookrightly works as an installable PWA — clients and business owners can add it to their home screen like a native app, no app store needed." },
+];
+
+function matchFallbackAnswer(message) {
+  const words = message.toLowerCase();
+  let best = null;
+  let bestScore = 0;
+  for (const entry of CHAT_FALLBACK_ANSWERS) {
+    const score = entry.keywords.reduce((acc, kw) => acc + (words.includes(kw) ? 1 : 0), 0);
+    if (score > bestScore) { bestScore = score; best = entry; }
+  }
+  return best
+    ? best.answer
+    : "I'm not totally sure on that one — check bookrightly.co.uk/pricing for the full details, or reach out to support and we'll help directly.";
+}
+
+// POST /api/chat — { message, history }. history is the prior turns of this
+// conversation (already capped client-side), replayed to the model for
+// context; capped again here as a defensive limit.
+async function handleChat(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON body" }, 400); }
+
+  const message = (body?.message || "").toString().trim();
+  const history = Array.isArray(body?.history) ? body.history.slice(-6) : [];
+
+  if (!message) return json({ error: "Missing message" }, 400);
+  if (message.length > 500) {
+    return json({ reply: "That message is a bit long for the chat — try asking in a shorter sentence, or email support directly.", source: "fallback" });
+  }
+
+  try {
+    const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8", {
+      messages: [
+        { role: "system", content: CHAT_SYSTEM_PROMPT },
+        ...history.filter(m => m?.role && m?.content).map(m => ({ role: m.role, content: String(m.content).slice(0, 500) })),
+        { role: "user", content: message },
+      ],
+    });
+    const reply = stripMarkdown(result?.response?.trim() || "");
+    if (!reply) throw new Error("Empty response from model");
+    return json({ reply, source: "ai" });
+  } catch (err) {
+    console.error("[chat] falling back:", err.message);
+    return json({ reply: matchFallbackAnswer(message), source: "fallback" });
+  }
+}
+
 async function finalizeBookingRecords({ env, paymentIntentId, slotId, barberId, formData, date, time, intent }) {
   const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
   // bookings (read) and slots (write) both require an authenticated
@@ -1233,21 +2140,189 @@ async function finalizeBookingRecords({ env, paymentIntentId, slotId, barberId, 
     }).catch(() => {});
   }
 
+  const notifTitle = "New Booking!";
+  const notifBody  = `${formData.name || meta.customerName || "A client"} booked ${formData.haircutStyle || meta.serviceName || "an appointment"} on ${date || ""} at ${time || ""}`;
+
   await fetch(`${base}/barbers/${barberId}/notifications`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       fields: toFirestoreFields({
         type: "booking",
-        title: "New Booking!",
-        body: `${formData.name || meta.customerName || "A client"} booked ${formData.haircutStyle || meta.serviceName || "an appointment"} on ${date || ""} at ${time || ""}`,
+        title: notifTitle,
+        body: notifBody,
         read: false,
         createdAt: new Date().toISOString(),
       }),
     }),
   }).catch(() => {});
 
+  await sendBarberPush(barberId, { title: notifTitle, body: notifBody }, env);
+
+  const barberRes = await fetch(`${base}/barbers/${barberId}`).catch(() => null);
+  const barberFields = barberRes?.ok ? (await barberRes.json()).fields || {} : {};
+  // Free-plan accounts are on-screen-confirmation-only by design — no email
+  // or reminder ever goes to the customer. (This path is deposit-only, so
+  // Free shouldn't reach it at all, but the check stays for defense in depth.)
+  if (getPlan(barberFields.plan?.stringValue).features.customerConfirmationEmail) {
+    await sendBookingConfirmationEmail(env, {
+      bookingId,
+      customerEmail: formData.email,
+      customerName:  formData.name || meta.customerName,
+      businessName:  barberFields.businessName?.stringValue || barberFields.name?.stringValue || "your business",
+      brandColor:    barberFields.brandColor?.stringValue,
+      date, time,
+      service: formData.haircutStyle || meta.serviceName,
+      location: barberFields.address?.stringValue || barberFields.city?.stringValue || barberFields.location?.stringValue,
+      depositPounds: meta.depositPounds,
+    });
+  }
+
   return bookingId;
+}
+
+// POST /api/finalize-booking-no-payment — for businesses with no Stripe
+// Connect account, covering two cases: they've pasted their own external
+// payment link (Stripe Payment Link, PayPal.me, etc. — paymentMethod
+// "external_link", confirmed the moment the customer clicks through, with
+// no way for us to verify the payment actually happened, same trust level
+// as a business currently taking bank transfers over DM) or they take no
+// deposit at all (paymentMethod "none" — a normal, free-to-book
+// appointment). Either way the booking write itself still has to happen
+// here rather than client-side, for the same firestore.rules reason
+// handleFinalizeBooking does — an anonymous public visitor has no Firebase
+// Auth session to write bookings/slots with.
+async function handleFinalizeBookingNoPayment(request, env) {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Invalid JSON body" }, 400); }
+
+  const { barberId, slotId, formData, date, time, paymentMethod } = body ?? {};
+  if (!barberId || !slotId) {
+    return json({ error: "Missing barberId or slotId" }, 400);
+  }
+  if (paymentMethod !== "external_link" && paymentMethod !== "none") {
+    return json({ error: "Invalid paymentMethod" }, 400);
+  }
+
+  const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
+
+  try {
+    // Re-verify server-side rather than trusting the client's claim that
+    // this business actually has no Stripe Connect — mirrors every other
+    // handler here that re-derives state from the barber doc instead of
+    // the request body.
+    const barberRes = await fetch(`${base}/barbers/${barberId}`);
+    if (!barberRes.ok) return json({ error: "Barber not found" }, 404);
+    const barberFields = (await barberRes.json()).fields || {};
+    // stripeAccountId alone doesn't mean payments actually work — Stripe
+    // assigns that ID the moment Connect onboarding starts and it stays set
+    // even if onboarding was abandoned. stripeConnected is the only field
+    // that's re-verified against Stripe's own API (see handleCheckStripe),
+    // so it's the only one trusted here — otherwise a business with an
+    // incomplete Stripe attempt could never use their payment link at all.
+    const stripeConnected = Boolean(barberFields.stripeConnected?.booleanValue);
+    if (stripeConnected) {
+      return json({ error: "This business has online payments enabled — use the normal booking flow." }, 400);
+    }
+    if (paymentMethod === "external_link" && !barberFields.externalPaymentLink?.stringValue) {
+      return json({ error: "This business hasn't set up a payment link." }, 400);
+    }
+
+    const adminToken = await getFirebaseAdminToken(env);
+
+    // Idempotency guard keyed on slotId rather than a paymentIntentId (there
+    // isn't one here) — a slot can only ever be booked once, so this is the
+    // natural uniqueness key for this path.
+    const existingQuery = await fetch(`${base}:runQuery`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: "bookings" }],
+          where: { fieldFilter: { field: { fieldPath: "slotId" }, op: "EQUAL", value: { stringValue: slotId } } },
+          limit: 1,
+        },
+      }),
+    }).then(r => r.json()).catch(() => []);
+    const existing = (existingQuery || []).find(r => r.document);
+    if (existing) {
+      return json({ bookingId: existing.document.name.split("/").pop() });
+    }
+
+    const fd = formData || {};
+    const bookingFields = toFirestoreFields({
+      barberId,
+      slotId,
+      name:  fd.name  || "",
+      email: fd.email || "",
+      phone: fd.phone || "",
+      haircutStyle: fd.haircutStyle || "",
+      depositAmount: "",
+      bookingFee: "",
+      paymentIntentId: "",
+      paymentMethod,
+      date: date || "",
+      time: time || "",
+      status: "confirmed",
+      createdAt: new Date().toISOString(),
+    });
+
+    const createRes = await fetch(`${base}/bookings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: bookingFields }),
+    });
+    const createdDoc = await createRes.json();
+    const bookingId  = createdDoc.name.split("/").pop();
+
+    await fetch(`${base}/slots/${slotId}?updateMask.fieldPaths=status&updateMask.fieldPaths=isBooked`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: toFirestoreFields({ status: "booked", isBooked: true }) }),
+    }).catch(() => {});
+
+    const notifTitle = "New Booking!";
+    const notifBody  = `${fd.name || "A client"} booked ${fd.haircutStyle || "an appointment"} on ${date || ""} at ${time || ""}`;
+
+    await fetch(`${base}/barbers/${barberId}/notifications`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fields: toFirestoreFields({
+          type: "booking",
+          title: notifTitle,
+          body: notifBody,
+          read: false,
+          createdAt: new Date().toISOString(),
+        }),
+      }),
+    }).catch(() => {});
+
+    await sendBarberPush(barberId, { title: notifTitle, body: notifBody }, env);
+
+    // Free-plan accounts are on-screen-confirmation-only by design — no
+    // email or reminder ever goes to the customer.
+    if (getPlan(barberFields.plan?.stringValue).features.customerConfirmationEmail) {
+      await sendBookingConfirmationEmail(env, {
+        bookingId,
+        customerEmail: fd.email,
+        customerName:  fd.name,
+        businessName:  barberFields.businessName?.stringValue || barberFields.name?.stringValue || "your business",
+        brandColor:    barberFields.brandColor?.stringValue,
+        date, time,
+        service: fd.haircutStyle,
+        location: barberFields.address?.stringValue || barberFields.city?.stringValue || barberFields.location?.stringValue,
+      });
+    }
+
+    return json({ bookingId });
+  } catch (err) {
+    console.error("[finalize-booking-no-payment] Error:", err.message);
+    return json({ error: err.message }, 500);
+  }
 }
 
 async function handleStripeWebhook(request, env) {
@@ -1285,6 +2360,36 @@ async function handleStripeWebhook(request, env) {
     });
   }
 
+  // Persists the reason a business gave when cancelling on Stripe's Billing
+  // Portal (see twa/setup-billing-portal.cjs — that's what actually shows
+  // them the "why are you leaving?" form; there's no custom cancel UI in
+  // this app to add one to, since cancellation happens entirely on Stripe's
+  // hosted page). Keyed on the Stripe subscription id via PATCH, so the
+  // "scheduled" write (fires as soon as they submit the form, well before
+  // the billing period ends) and the final "canceled" write merge into one
+  // record instead of creating two.
+  async function saveChurnFeedback(barberId, sub, status) {
+    const barberRes = await fetch(`${FIRESTORE_BASE}/barbers/${barberId}`);
+    const businessName = barberRes.ok
+      ? (await barberRes.json()).fields?.businessName?.stringValue || null
+      : null;
+    const fields = {
+      barberId, businessName, status,
+      plan: sub.metadata?.plan || null,
+      reason: sub.cancellation_details?.feedback || null,
+      comment: sub.cancellation_details?.comment || null,
+      subscriptionId: sub.id,
+      updatedAt: new Date().toISOString(),
+    };
+    const fieldPaths = Object.keys(fields).map(k => `updateMask.fieldPaths=${k}`).join("&");
+    await fetch(`${FIRESTORE_BASE}/barbers/${barberId}/churnFeedback/${sub.id}?${fieldPaths}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: toFirestoreFields(fields) }),
+    });
+    console.log(`[stripe-webhook] Saved churn feedback for ${barberId}: ${fields.reason || "(no reason picked)"}`);
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     const meta    = session.metadata ?? {};
@@ -1308,8 +2413,13 @@ async function handleStripeWebhook(request, env) {
         await updateBarberStatus(meta.barberId, {
           subscriptionStatus: "active",
           stripeCustomerId:   session.customer,
+          // meta.plan is only present on sessions created after this field
+          // was added — omitting it here for an older in-flight checkout
+          // just leaves the account's existing plan value untouched, which
+          // is exactly the old (correct, pre-Free) behaviour.
+          ...(meta.plan ? { plan: meta.plan } : {}),
         });
-        console.log(`[stripe-webhook] Subscription activated for ${meta.barberId}`);
+        console.log(`[stripe-webhook] Subscription activated for ${meta.barberId}${meta.plan ? ` (plan: ${meta.plan})` : ""}`);
       } catch (err) {
         console.error("[stripe-webhook] Failed to activate subscription:", err.message);
       }
@@ -1390,6 +2500,16 @@ async function handleStripeWebhook(request, env) {
       } catch (err) {
         console.error("[stripe-webhook] Failed to sync subscription status:", err.message);
       }
+      // The portal's "why are you cancelling?" survey (see
+      // twa/setup-billing-portal.cjs) fills cancellation_details the moment
+      // someone schedules a cancel-at-period-end, well before the
+      // subscription is actually deleted — capture it here too so a reason
+      // isn't lost if they never generate a .deleted event (e.g. they
+      // re-subscribe before the period ends).
+      if (sub.cancel_at_period_end && sub.cancellation_details?.feedback) {
+        await saveChurnFeedback(barberId, sub, "scheduled").catch(err =>
+          console.error("[stripe-webhook] Failed to save churn feedback (scheduled):", err.message));
+      }
     }
   }
 
@@ -1406,6 +2526,11 @@ async function handleStripeWebhook(request, env) {
       console.log(`[stripe-webhook] Subscription canceled for ${barberId}`);
     } catch (err) {
       console.error("[stripe-webhook] Failed to mark canceled:", err.message);
+    }
+
+    if (sub.cancellation_details?.feedback || sub.cancellation_details?.comment) {
+      await saveChurnFeedback(barberId, sub, "canceled").catch(err =>
+        console.error("[stripe-webhook] Failed to save churn feedback:", err.message));
     }
 
     // Auto-refund if the most recent payment was within 14 days
@@ -1439,11 +2564,12 @@ async function handleStripeWebhook(request, env) {
 // Creates the actual Stripe subscription checkout — this route never existed
 // in the live Worker (Dashboard.jsx and FinanceTab.jsx both call
 // /api/create-subscription, but only a dead Pages-Functions-style file at
-// src/api/create-subscription.js implemented it, which this deployment never
-// routes to). Found while investigating low conversion: nobody could
-// actually convert from trial to paying customer, ever, even if they tried.
-// Uses inline price_data (no pre-created Stripe Price object/env var needed,
-// since none exist yet) so this works with zero extra Stripe Dashboard setup.
+// src/api/create-subscription.js implemented it, and this deployment never
+// routed to it — that file has since been deleted). Found while investigating
+// low conversion: nobody could actually convert from trial to paying
+// customer, ever, even if they tried. Uses inline price_data (no
+// pre-created Stripe Price object/env var needed, since none exist yet) so
+// this works with zero extra Stripe Dashboard setup.
 async function handleCreateSubscription(request, env) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -1456,7 +2582,7 @@ async function handleCreateSubscription(request, env) {
   try { body = await request.json(); }
   catch { return json({ error: "Invalid JSON body" }, 400); }
 
-  const { barberId, email, businessType } = body ?? {};
+  const { barberId, email, plan } = body ?? {};
   if (!barberId || !email) {
     return json({ error: "barberId and email are required" }, 400);
   }
@@ -1466,9 +2592,13 @@ async function handleCreateSubscription(request, env) {
     return json({ error: "Unauthorized" }, 401);
   }
 
-  const isTrainer  = businessType === "trainer";
-  const unitAmount = isTrainer ? 1500 : 1000; // £15 or £10/month, in pence
-  const planName   = isTrainer ? "Bookrightly — Personal Trainer Plan" : "Bookrightly — Subscription";
+  // Free plan has no paid subscription at all — nothing to check out.
+  const planConfig = getPlan(plan);
+  if (planConfig.id === "free") {
+    return json({ error: "The Free plan doesn't require a subscription." }, 400);
+  }
+  const unitAmount = Math.round(planConfig.priceGBP * 100); // pence
+  const planName   = `Bookrightly — ${planConfig.name} Plan`;
   const host       = request.headers.get("host") || "bookrightly.co.uk";
   const origin     = host.startsWith("localhost") ? `http://${host}` : `https://${host}`;
 
@@ -1497,9 +2627,16 @@ async function handleCreateSubscription(request, env) {
       // Session metadata drives the checkout.session.completed handler
       // below; subscription_data.metadata carries barberId onto the
       // resulting Subscription object itself, which is what the
-      // customer.subscription.updated/deleted handlers read.
-      metadata:          { type: "platform_subscription", barberId },
-      subscription_data: { metadata: { barberId } },
+      // customer.subscription.updated/deleted handlers read. plan is
+      // included so the webhook can actually change a Free-plan account's
+      // stored plan on successful payment — this endpoint only ever used to
+      // be called to start billing for whatever plan was already on the
+      // account (Basic/Widget/Full's own "Subscribe early" button), so
+      // nothing previously wrote `plan` here at all; that broke the moment
+      // Free added an "Upgrade" button that needs the plan to actually
+      // change as part of checkout completing.
+      metadata:          { type: "platform_subscription", barberId, plan: planConfig.id },
+      subscription_data: { metadata: { barberId, plan: planConfig.id } },
       success_url: `${origin}/dashboard?subscribed=true`,
       cancel_url:  `${origin}/dashboard`,
     });
@@ -1747,7 +2884,7 @@ const BUSINESS_ROUTE_RE = /^\/(barber|shop|pt-book|pt-booking|hairdresser|decora
 // triggers a wasted Firestore round-trip looking it up as a booking slug.
 const RESERVED_SLUGS_WORKER = new Set([
   "shop", "pt-booking", "decorator", "hairdresser", "barber", "book",
-  "confirmation", "auth", "review", "login", "signup", "cancel-booking",
+  "confirmation", "auth", "review", "login", "signup", "cancel-booking", "manage-booking", "m",
   "website-design", "compare", "fresha-alternative", "treatwell-alternative",
   "booking-software", "pricing", "how-it-works", "blog", "tools", "terms",
   "privacy", "contact", "workout", "food-diary", "check-in", "par-q",
@@ -1775,12 +2912,16 @@ async function fetchBarberSEOBySlug(slug, projectId) {
     const match = (results || []).find(r => r.document);
     if (!match) return null;
     const f = match.document.fields ?? {};
+    const logoImage = f.businessLogo?.stringValue || f.logoUrl?.stringValue || f.logo?.stringValue || "";
     return {
+      id:        match.document.name.split("/").pop(),
       name:      f.businessName?.stringValue || f.name?.stringValue || "Bookrightly Professional",
       specialty: f.specialty?.stringValue || f.bio?.stringValue || "",
       type:      BUSINESS_TYPE_LABEL[f.businessType?.stringValue] || f.businessType?.stringValue || "",
       city:      f.city?.stringValue || f.location?.stringValue || "",
-      image:     f.profileImage?.stringValue || f.logoUrl?.stringValue || "",
+      image:     f.profileImage?.stringValue || f.profilePic?.stringValue || logoImage,
+      logoImage,
+      brandColor: f.brandColor?.stringValue || "",
       customDomain: f.customDomain?.stringValue || "",
     };
   } catch {
@@ -1812,12 +2953,14 @@ async function fetchBarberByCustomDomain(hostname, projectId) {
     const match = (results || []).find(r => r.document);
     if (!match) return null;
     const f = match.document.fields ?? {};
+    const logoImage = f.businessLogo?.stringValue || f.logoUrl?.stringValue || f.logo?.stringValue || "";
     return {
       name:       f.businessName?.stringValue || f.name?.stringValue || "Bookrightly",
       specialty:  f.specialty?.stringValue || f.bio?.stringValue || "",
       type:       BUSINESS_TYPE_LABEL[f.businessType?.stringValue] || f.businessType?.stringValue || "",
       city:       f.city?.stringValue || f.location?.stringValue || "",
-      image:      f.profileImage?.stringValue || f.logoUrl?.stringValue || "",
+      image:      f.profileImage?.stringValue || f.profilePic?.stringValue || logoImage,
+      logoImage,
       brandColor: f.brandColor?.stringValue || "#2563EB",
     };
   } catch {
@@ -1831,12 +2974,15 @@ async function fetchBarberSEO(barberId, projectId) {
     if (!res.ok) return null;
     const doc = await res.json();
     const f   = doc.fields ?? {};
+    const logoImage = f.businessLogo?.stringValue || f.logoUrl?.stringValue || f.logo?.stringValue || "";
     return {
       name:      f.businessName?.stringValue || f.name?.stringValue || "Bookrightly Professional",
       specialty: f.specialty?.stringValue || f.bio?.stringValue || "",
       type:      BUSINESS_TYPE_LABEL[f.businessType?.stringValue] || f.businessType?.stringValue || "",
       city:      f.city?.stringValue || f.location?.stringValue || "",
-      image:     f.profileImage?.stringValue || f.logoUrl?.stringValue || "",
+      image:     f.profileImage?.stringValue || f.profilePic?.stringValue || logoImage,
+      logoImage,
+      brandColor: f.brandColor?.stringValue || "",
       customDomain: f.customDomain?.stringValue || "",
     };
   } catch {
@@ -1876,7 +3022,7 @@ async function fetchStaffSEO(shopId, staffId, projectId) {
   }
 }
 
-function injectBusinessSEO(response, { name, specialty, type, city, image, canonicalUrl }) {
+function injectBusinessSEO(response, { name, specialty, type, city, image, canonicalUrl, faviconUrl = image }, nonce) {
   const typeLabel = type || "Professional";
   const title     = city
     ? `${name} – ${typeLabel} in ${city} | Bookrightly`
@@ -1884,6 +3030,7 @@ function injectBusinessSEO(response, { name, specialty, type, city, image, canon
   const desc = specialty
     ? `${specialty}. Book with ${name} online via Bookrightly.`
     : `Book with ${name}${city ? ` in ${city}` : ""}. Professional ${typeLabel.toLowerCase()} services. Easy online booking via Bookrightly.`;
+  const faviconIsSvg = faviconUrl?.endsWith(".svg");
 
   const ldJson = JSON.stringify({
     "@context": "https://schema.org",
@@ -1904,20 +3051,12 @@ function injectBusinessSEO(response, { name, specialty, type, city, image, canon
     .on('meta[property="og:image"]',       { element: el => { if (image) el.setAttribute("content", image); } })
     .on('meta[name="twitter:title"]',      { element: el => el.setAttribute("content", title) })
     .on('meta[name="twitter:description"]',{ element: el => el.setAttribute("content", desc) })
-    // Browser-tab favicon per business: index.html hardcodes the generic
-    // Bookrightly icon, which is correct for every platform page but wrong
-    // for an individual business's own page — swap it to their logo when one
-    // exists. rel="icon" and rel="apple-touch-icon" both need updating since
-    // browsers pick whichever is more specific; leaving apple-touch-icon
-    // pointed at the old file would show the wrong icon on iOS "Add to Home
-    // Screen" while the tab favicon was already correct.
-    // No type= override: index.html's static tag hardcodes type="image/png",
-    // but a business's uploaded logo can be any format (this one's a JPEG) —
-    // leaving a stale "image/png" on a JPEG href makes some browsers
-    // silently discard the icon as a type mismatch and keep the default.
-    // Removing it lets the browser sniff the real content type instead.
-    .on('link[rel="icon"]',            { element: el => { if (image) { el.setAttribute("href", image); el.removeAttribute("type"); } } })
-    .on('link[rel="apple-touch-icon"]',{ element: el => { if (image) el.setAttribute("href", image); } })
+    // Custom domains use a stable, square SVG endpoint. Uploaded logos may be
+    // wide JPEGs (or another arbitrary format), which Google can reject as a
+    // favicon even though browsers display them. The endpoint wraps the whole
+    // logo in a 1:1 512px canvas and serves the correct MIME type.
+    .on('link[rel="icon"]',            { element: el => { if (faviconUrl) { el.setAttribute("href", faviconUrl); if (faviconIsSvg) { el.setAttribute("type", "image/svg+xml"); el.setAttribute("sizes", "any"); } else { el.removeAttribute("type"); el.removeAttribute("sizes"); } } } })
+    .on('link[rel="apple-touch-icon"]',{ element: el => { if (faviconUrl) { el.setAttribute("href", faviconUrl); el.removeAttribute("sizes"); } } })
     // index.html already hardcodes a canonical tag pointed at bookrightly.co.uk/
     // — update that existing tag's href rather than appending a second one.
     // Two rel="canonical" tags on the same page is an invalid, ambiguous
@@ -1925,7 +3064,7 @@ function injectBusinessSEO(response, { name, specialty, type, city, image, canon
     .on('link[rel="canonical"]', { element: el => el.setAttribute("href", canonicalUrl) })
     .on("head", {
       element: el => el.append(
-        `<script type="application/ld+json">${ldJson}</script>`,
+        `<script type="application/ld+json" nonce="${nonce}">${ldJson}</script>`,
         { html: true }
       ),
     })
@@ -1936,6 +3075,55 @@ const PLATFORM_HOSTS = new Set([
   "bookrightly.co.uk", "www.bookrightly.co.uk",
   "booking-system-cdce0.web.app", "booking-system.deanburt1308.workers.dev",
 ]);
+
+const TENANT_FAVICON_PATH = "/favicon.svg";
+const MAX_TENANT_LOGO_BYTES = 1024 * 1024;
+
+async function handleTenantFavicon(business) {
+  if (!business?.logoImage) return new Response("Business logo not found", { status: 404 });
+
+  try {
+    const logoUrl = new URL(business.logoImage);
+    if (logoUrl.protocol !== "https:") throw new Error("Logo URL must use HTTPS");
+
+    const logoResponse = await fetch(logoUrl.toString());
+    const contentType = (logoResponse.headers.get("content-type") || "").split(";", 1)[0].trim().toLowerCase();
+    const declaredSize = Number(logoResponse.headers.get("content-length") || 0);
+
+    if (!logoResponse.ok || !contentType.startsWith("image/")) {
+      throw new Error("Logo response is not a valid image");
+    }
+    if (declaredSize > MAX_TENANT_LOGO_BYTES) {
+      throw new Error("Logo is too large to use as a favicon");
+    }
+
+    const logoBytes = await logoResponse.arrayBuffer();
+    if (logoBytes.byteLength > MAX_TENANT_LOGO_BYTES) {
+      throw new Error("Logo is too large to use as a favicon");
+    }
+
+    const imageDataUrl = `data:${contentType};base64,${arrayBufferToBase64(logoBytes)}`;
+    const svg = createSquareFaviconSvg({
+      imageDataUrl,
+      backgroundColor: business.brandColor === "#ffffff" ? "#f5f3ed" : "#ffffff",
+    });
+
+    return new Response(svg, {
+      headers: {
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch (error) {
+    console.error(JSON.stringify({
+      message: "tenant favicon generation failed",
+      business: business?.name || "unknown",
+      error: error instanceof Error ? error.message : String(error),
+    }));
+    return new Response("Business favicon unavailable", { status: 502 });
+  }
+}
 
 // A business's own custom domain (mpowerelectrics.co.uk etc.) was getting
 // served the exact same sitemap as bookrightly.co.uk — a list entirely of
@@ -1964,6 +3152,7 @@ Disallow: /dashboard
 Disallow: /dashboard/
 Disallow: /onboarding
 Disallow: /cancel-booking/
+Disallow: /manage-booking/
 Disallow: /confirmation/
 Disallow: /book/
 Disallow: /client-portal/
@@ -1986,19 +3175,16 @@ async function handleDynamicSitemap(env) {
     "/fresha-alternative", "/treatwell-alternative",
     "/booking-software/barbers", "/booking-software/salons",
     "/booking-software/personal-trainers", "/booking-software/decorators",
-    "/tools/no-show-calculator",
+    "/tools", "/tools/no-show-calculator", "/tools/revenue-calculator",
+    "/tools/pt-rate-calculator", "/tools/service-pricing-calculator",
+    "/contact",
   ].map(p => `\n  <url><loc>${base}${p}</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`).join("");
 
-  const blogSlugs = [
-    "how-to-reduce-no-shows-barber",
-    "should-personal-trainers-charge-upfront",
-    "how-to-get-more-bookings-instagram-barber",
-    "true-cost-of-phone-only-booking-salon",
-    "how-online-booking-helps-decorators-win-more-jobs",
-    "instagram-tiktok-x-which-platform-for-service-business",
-    "when-does-a-small-service-business-outgrow-a-spreadsheet",
-    "how-to-actually-price-a-job-uk-tradesperson-freelancer",
-  ];
+  // Derived from the real post list rather than hand-maintained — a
+  // hardcoded copy here silently drifted out of date twice (two live posts
+  // missing from the sitemap before this fix) since nothing forced it to
+  // stay in sync with src/pages/blog/posts.js.
+  const blogSlugs = BLOG_POSTS.map(p => p.slug);
   const blogUrls = blogSlugs.map(s => `\n  <url><loc>${base}/blog/${s}</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>`).join("");
 
   let businessUrls = "";
@@ -2041,12 +3227,38 @@ async function handleDynamicSitemap(env) {
   });
 }
 
-async function handleFetch(request, env, ctx) {
+async function handleFetch(request, env, ctx, nonce) {
     const url = new URL(request.url);
+
+    // Short manage-booking link used in reminder SMS: /m/{bookingId}
+    const shortManage = url.pathname.match(/^\/m\/([A-Za-z0-9_-]{6,64})\/?$/);
+    if (shortManage) return Response.redirect(`${url.origin}/manage-booking/${shortManage[1]}`, 302);
 
     // 1. Global CORS Preflight
     if (request.method === "OPTIONS") {
       const requestOrigin = request.headers.get("Origin") || "";
+
+      // The embeddable booking widget (src/widget/) runs on arbitrary
+      // third-party sites (a customer's own WordPress/Wix/etc. domain), so
+      // the fixed origin allowlist below — meant for the platform's own
+      // pages — would block its preflight before the request ever reaches
+      // handleCreateIntent/handleFinalizeBooking. Those two handlers already
+      // require no auth token and re-verify everything server-side against
+      // Firestore/Stripe (keyed only on barberId/slotId in the body), so
+      // opening just these two specifically to any origin doesn't weaken
+      // anything — it matches the wildcard Access-Control-Allow-Origin their
+      // actual JSON responses already send via the shared json() helper.
+      if (WIDGET_CORS_PATHS.has(url.pathname)) {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "Access-Control-Allow-Origin":  "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+          },
+        });
+      }
+
       const isAllowedOrigin =
         requestOrigin === "https://bookrightly.co.uk" ||
         requestOrigin.endsWith(".bookrightly.co.uk") ||
@@ -2089,12 +3301,41 @@ async function handleFetch(request, env, ctx) {
         return handleCreateIntent(request, env);
       case "/api/finalize-booking":
         return handleFinalizeBooking(request, env);
+      case "/api/finalize-booking-no-payment":
+        return handleFinalizeBookingNoPayment(request, env);
+      case "/api/client-push-subscribe":
+      case "/api/subscribe-booking-reminder": // legacy path — old cached bundles still call it
+        return handleClientPushSubscribe(request, env, reminderDeps());
+      case "/api/client-push-status":
+        return handleClientPushStatus(request, env, reminderDeps());
+      case "/api/reminders/test":
+        return handleReminderTest(request, env, reminderDeps());
+      case "/api/resend-webhook":
+        return handleResendWebhook(request, env, reminderDeps());
+      case "/api/admin-run-reminders":
+        return handleAdminRunReminders(request, env);
+      case "/api/admin-run-trial-lifecycle":
+        return handleAdminRunTrialLifecycle(request, env);
+      case "/api/admin-churn-feedback":
+        return handleAdminChurnFeedback(request, env);
+      case "/api/cancel-booking":
+        return handleCancelBookingRequest(request, env);
+      case "/api/cancel-refund":
+        return handleCancelRefund(request, env);
+      case "/api/admin-maintain-demo-slots":
+        return handleAdminMaintainDemoSlots(request, env);
+      case "/api/chat":
+        return handleChat(request, env);
       case "/api/stripe-webhook":
         return handleStripeWebhook(request, env);
       case "/api/send-push":
         return handleSendPush(request, env);
       case "/api/send-queue-push":
         return handleSendQueuePush(request, env);
+      case "/api/send-welcome-email":
+        return handleSendWelcomeEmail(request, env);
+      case "/api/admin-send-account-email":
+        return handleAdminSendAccountEmail(request, env);
       case "/api/billing-portal":
         return handleBillingPortal(request, env);
       case "/api/create-subscription":
@@ -2119,7 +3360,7 @@ async function handleFetch(request, env, ctx) {
       case "/llms.txt":
         return new Response(`# Bookrightly
 
-> Bookrightly is a UK booking SaaS for independent service professionals — barbers, hairdressers, personal trainers, and decorators. Each business gets their own branded public profile page, online slot booking, Stripe deposit payments, and a client dashboard. Flat monthly fee, no commission.
+> Bookrightly is a UK booking SaaS for independent service professionals — barbers, hairdressers, personal trainers, and decorators. Each business gets their own branded public profile page, online slot booking, Stripe deposit payments, and a client dashboard. Free plan available, no commission ever.
 
 ## Product
 
@@ -2134,13 +3375,14 @@ async function handleFetch(request, env, ctx) {
 - Hairdressers and salons
 - Personal trainers and fitness coaches
 - Painters and decorators
+- Plumbing, heating and electrical trades
 - Any UK service professional (new industries available on request)
 
 ## Key features
 
 - Branded booking page at bookrightly.co.uk/your-name
 - Real-time slot availability and booking
-- Stripe deposit payments (no commission, flat £10–15/month subscription)
+- Stripe deposit payments (no commission ever). Plans: Free forever, Basic or Widget from £5/month, full branded website from £10/month — 90-day free trial on paid plans
 - Client portal: PAR-Q forms, food diary, check-ins, colour approval
 - Push notifications and installable PWA (works offline)
 - Dashboard with day planner, client profiles, notifications
@@ -2161,6 +3403,8 @@ async function handleFetch(request, env, ctx) {
 - [How to get more bookings from Instagram](https://bookrightly.co.uk/blog/how-to-get-more-bookings-instagram-barber)
 - [The true cost of phone-only booking for salons](https://bookrightly.co.uk/blog/true-cost-of-phone-only-booking-salon)
 - [How online booking helps decorators win more jobs](https://bookrightly.co.uk/blog/how-online-booking-helps-decorators-win-more-jobs)
+- [The free business starter pack: Google, directories & tracking your traffic](https://bookrightly.co.uk/blog/free-business-starter-pack-google-directories-search-console)
+- [How barbers, stylists and personal trainers should write a CV in 2026](https://bookrightly.co.uk/blog/cv-guide-barbers-stylists-personal-trainers-2026)
 
 ## Tools
 
@@ -2216,6 +3460,32 @@ async function handleFetch(request, env, ctx) {
           return new Response("Payment link not found or expired.", { status: 404 });
         }
 
+        // Google supports one favicon per hostname and requires it to be a
+        // square. Custom-domain businesses therefore get a stable hostname-
+        // local SVG that embeds their uploaded logo in a 512x512 canvas. This
+        // works for existing tenants too, including wide/rectangular logos.
+        if (
+          url.pathname === TENANT_FAVICON_PATH &&
+          !PLATFORM_HOSTS.has(url.hostname) &&
+          env.VITE_FIREBASE_PROJECT_ID
+        ) {
+          const business = await fetchBarberByCustomDomain(url.hostname, env.VITE_FIREBASE_PROJECT_ID);
+          return handleTenantFavicon(business);
+        }
+
+        // Same square-canvas treatment for businesses on the shared platform
+        // domain (bookrightly.co.uk/{slug}, /barber/:id, etc). The hostname
+        // alone can't identify which business's favicon is wanted here (every
+        // business shares bookrightly.co.uk), so injectBusinessSEO points
+        // <link rel="icon"> at this same path with a ?biz= id instead of the
+        // raw uploaded logo URL — otherwise a non-square logo (the common
+        // case — most uploads are photos, not pre-cropped square marks) could
+        // display fine in a browser tab but fail Google's favicon requirement.
+        if (url.pathname === TENANT_FAVICON_PATH && url.searchParams.get("biz") && env.VITE_FIREBASE_PROJECT_ID) {
+          const business = await fetchBarberSEO(url.searchParams.get("biz"), env.VITE_FIREBASE_PROJECT_ID);
+          return handleTenantFavicon(business);
+        }
+
         // 3b. Per-business PWA manifest for custom domains. index.html links
         // to the same static /manifest.json everywhere, so "Add to Home
         // Screen" on a business's own custom domain was installing an app
@@ -2229,7 +3499,7 @@ async function handleFetch(request, env, ctx) {
           env.VITE_FIREBASE_PROJECT_ID
         ) {
           const business = await fetchBarberByCustomDomain(url.hostname, env.VITE_FIREBASE_PROJECT_ID);
-          if (business?.image) {
+          if (business?.logoImage) {
             const dynamicManifest = {
               name: business.name,
               short_name: business.name,
@@ -2239,13 +3509,9 @@ async function handleFetch(request, env, ctx) {
               orientation: "portrait",
               background_color: "#F5F3ED",
               theme_color: business.brandColor,
-              // No `type` — a business's uploaded logo can be any format (JPEG,
-              // etc.), and declaring a wrong one (e.g. hardcoding image/png)
-              // makes some browsers silently discard the icon as a type
-              // mismatch. Same lesson as the favicon fix above.
               icons: [
-                { src: business.image, sizes: "512x512", purpose: "any" },
-                { src: business.image, sizes: "512x512", purpose: "maskable" },
+                { src: TENANT_FAVICON_PATH, sizes: "any", type: "image/svg+xml", purpose: "any" },
+                { src: TENANT_FAVICON_PATH, sizes: "any", type: "image/svg+xml", purpose: "maskable" },
               ],
             };
             return new Response(JSON.stringify(dynamicManifest), {
@@ -2331,7 +3597,8 @@ async function handleFetch(request, env, ctx) {
             ctx.waitUntil(caches.default.delete(request).catch(() => {}));
             return injectBusinessSEO(
               new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }),
-              { ...business, canonicalUrl: `https://${url.hostname}${url.pathname}` }
+              { ...business, canonicalUrl: `https://${url.hostname}${url.pathname}`, faviconUrl: TENANT_FAVICON_PATH },
+              nonce
             );
           }
         }
@@ -2362,7 +3629,8 @@ async function handleFetch(request, env, ctx) {
             // two "canonical" pages.
             return injectBusinessSEO(
               new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }),
-              { ...seoData, type: seoData.type || fallbackType, canonicalUrl: seoData.customDomain ? `https://${seoData.customDomain}/` : `https://bookrightly.co.uk${url.pathname}` }
+              { ...seoData, type: seoData.type || fallbackType, faviconUrl: seoData.logoImage ? `${TENANT_FAVICON_PATH}?biz=${businessId}` : (seoData.image || undefined), canonicalUrl: seoData.customDomain ? `https://${seoData.customDomain}/` : `https://bookrightly.co.uk${url.pathname}` },
+              nonce
             );
           }
         }
@@ -2387,6 +3655,40 @@ async function handleFetch(request, env, ctx) {
           const noCache = new Headers(response.headers);
           noCache.set("Cache-Control", "no-store, no-cache, must-revalidate");
           ctx.waitUntil(caches.default.delete(request).catch(() => {}));
+          // Organization + SoftwareApplication facts for AI answer engines and
+          // Google's own AI Overviews — same reasoning as the llms.txt route
+          // below: a crawler that doesn't execute JavaScript never sees
+          // anything React renders, so the platform-level facts (what this
+          // is, who it's by, what it costs to start) need to exist directly
+          // in the raw HTML, not just after the app mounts.
+          const orgLdJson = JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "Organization",
+                "@id": "https://bookrightly.co.uk/#organization",
+                name: "Bookrightly",
+                url: "https://bookrightly.co.uk",
+                logo: "https://bookrightly.co.uk/images/icon-512.png",
+                description: "Bookrightly is a UK booking SaaS for independent service professionals — barbers, hairdressers, personal trainers, decorators, and plumbing/heating/electrical trades.",
+              },
+              {
+                "@type": "SoftwareApplication",
+                name: "Bookrightly",
+                url: "https://bookrightly.co.uk",
+                applicationCategory: "BusinessApplication",
+                operatingSystem: "Web",
+                description: "Online booking, Stripe deposit payments, and a client dashboard for UK barbers, hairdressers, personal trainers, decorators, and trades. Free plan available, no commission ever.",
+                offers: {
+                  "@type": "Offer",
+                  price: "0",
+                  priceCurrency: "GBP",
+                  description: "Free plan available; paid plans from £5/month with a 90-day free trial.",
+                },
+                publisher: { "@id": "https://bookrightly.co.uk/#organization" },
+              },
+            ],
+          });
           return new HTMLRewriter()
             .on("body", {
               element: el => el.append(
@@ -2394,13 +3696,14 @@ async function handleFetch(request, env, ctx) {
                 { html: true },
               ),
             })
+            .on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${orgLdJson}</script>`, { html: true }) })
             .transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
         }
 
         // 6b. Compare page SEO injection
         if (url.pathname === "/compare" && response.headers.get("content-type")?.includes("text/html")) {
           const title = "Bookrightly vs Fresha, Treatwell & Bark — Why UK Professionals Switch";
-          const desc  = "Honest comparison: Bookrightly vs Fresha, Treatwell, Bark.com, and Mindbody. Flat £10–15/month, no commission, your own branded page, and a 90-day free trial.";
+          const desc  = "Honest comparison: Bookrightly vs Fresha, Treatwell, Bark.com, and Mindbody. From free, no commission ever, your own branded page, and a 90-day free trial on paid plans.";
           const canon = "https://bookrightly.co.uk/compare";
           const ldJson = JSON.stringify({
             "@context": "https://schema.org",
@@ -2423,7 +3726,7 @@ async function handleFetch(request, env, ctx) {
             // index.html hardcodes a canonical tag pointed at bookrightly.co.uk/
             // — update it rather than appending a second, conflicting one.
             .on('link[rel="canonical"]', { element: el => el.setAttribute("href", canon) })
-            .on("head", { element: el => el.append(`<script type="application/ld+json">${ldJson}</script>`, { html: true }) })
+            .on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${ldJson}</script>`, { html: true }) })
             .transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
         }
 
@@ -2431,27 +3734,38 @@ async function handleFetch(request, env, ctx) {
         const seoPages = {
           "/fresha-alternative": {
             title: "Fresha Alternative UK — Bookrightly | Keep 100% of Your Earnings",
-            desc:  "Tired of Fresha's marketplace fees? Bookrightly is the Fresha alternative that gives UK professionals a branded booking page for a flat £10/month — no commission ever.",
+            desc:  "Tired of Fresha's marketplace fees? Bookrightly is the Fresha alternative that gives UK professionals a branded booking page from £10/month, or a free plan to start — no commission ever.",
           },
           "/treatwell-alternative": {
             title: "Treatwell Alternative UK — Stop Giving Away 30% | Bookrightly",
-            desc:  "Treatwell takes 20–30% of every booking. Bookrightly charges a flat £10/month with no commission. Switch today and keep what you earn. 90-day free trial.",
+            desc:  "Treatwell takes 20–30% of every booking. Bookrightly charges from £10/month with no commission, or start free. Switch today and keep what you earn. 90-day free trial on paid plans.",
           },
           "/booking-software/barbers": {
             title: "Barber Booking Software UK — Online Booking for Barbers | Bookrightly",
-            desc:  "The best online booking system for UK barbers. Custom profile, Stripe deposits, real-time slots, and client reviews — all for £10/month. 90-day free trial.",
+            desc:  "The best online booking system for UK barbers. Custom profile, Stripe deposits, real-time slots, and client reviews — from £10/month, or free to start. 90-day free trial on paid plans.",
           },
           "/booking-software/salons": {
             title: "Salon Booking Software UK — Online Booking for Hair Salons | Bookrightly",
-            desc:  "Online booking software for UK hair salons. Branded page, treatment menu, Stripe deposits, before & after portfolio — flat £10/month, no commission.",
+            desc:  "Online booking software for UK hair salons. Branded page, treatment menu, Stripe deposits, before & after portfolio — from £10/month, or start free. No commission.",
           },
           "/booking-software/personal-trainers": {
             title: "Personal Trainer Booking Software UK — PAR-Q, Plans & Payments | Bookrightly",
-            desc:  "Booking and client management for UK PTs. PAR-Q forms, food diary, check-ins, workout plans, Stripe payments — all for £15/month. 90-day free trial.",
+            desc:  "Booking and client management for UK PTs. PAR-Q forms, food diary, check-ins, workout plans, Stripe payments — from £10/month, or free to start. 90-day free trial on paid plans.",
           },
           "/pricing": {
-            title: "Bookrightly Pricing — Flat Monthly Fee, No Commission | UK Booking Software",
-            desc:  "Simple pricing for UK professionals. £10/month for barbers, hairdressers, and decorators. £15/month for personal trainers. 90-day free trial, no card needed.",
+            title: "Bookrightly Pricing — Free Plan, No Commission | UK Booking Software",
+            desc:  "Simple pricing for UK professionals: Free forever, Basic or Widget from £5/month, or a full branded website from £10/month. No commission, ever. 90-day free trial on paid plans, no card needed.",
+            // Word-for-word the same FAQS array shown on the page itself
+            // (src/pages/seo/PricingPageSEO.jsx) — FAQPage schema is one of
+            // the strongest signals for AI answer engines pulling a direct
+            // answer, but only if it matches what a human actually sees.
+            faq: [
+              { q: "Is there a free trial?", a: "Yes. Every paid plan includes a 90-day free trial with no credit card required. The Free plan doesn't need one — it's free forever." },
+              { q: "Is there a contract?", a: "No. Pay month to month and cancel whenever you need to." },
+              { q: "Does Bookrightly take commission?", a: "No commission, ever — not on a single booking. The only thing added at checkout is Stripe's own real card processing cost, which we don't mark up." },
+              { q: "What happens after the trial?", a: "You're never locked out. If you don't subscribe, your dashboard and booking page simply move to the Free plan — you keep your page, your data and your booking link, you just lose paid features like deposits and reminder emails until you upgrade again." },
+              { q: "Are there setup fees?", a: "No setup, onboarding or cancellation fees." },
+            ],
           },
           "/how-it-works": {
             title: "How Bookrightly Works — Online Booking for UK Professionals",
@@ -2459,7 +3773,7 @@ async function handleFetch(request, env, ctx) {
           },
           "/booking-software/decorators": {
             title: "Decorator Booking Software UK — Quotes, Portfolio & Site Visits | Bookrightly",
-            desc:  "Online booking software for UK decorators and tradespeople. Portfolio page, quote request form, site visit booking, colour approval — flat £10/month, no commission.",
+            desc:  "Online booking software for UK decorators and tradespeople. Portfolio page, quote request form, site visit booking, colour approval — from £10/month, or free to start. No commission.",
           },
           "/blog": {
             title: "Bookrightly Blog — Advice for UK Service Professionals",
@@ -2480,13 +3794,17 @@ async function handleFetch(request, env, ctx) {
           "instagram-tiktok-x-which-platform-for-service-business": { title: "Instagram, TikTok, or X? Where UK Service Businesses Should Post | Bookrightly", desc: "Not every platform is worth your time. A practical breakdown of where barbers, trainers, and tradespeople actually get bookings from." },
           "when-does-a-small-service-business-outgrow-a-spreadsheet": { title: "When Does a Small Service Business Outgrow a Spreadsheet? | Bookrightly", desc: "A spreadsheet is a perfectly good place to start. Here's the honest signal that tells you it's time to move on — and what to move on to." },
           "how-to-actually-price-a-job-uk-tradesperson-freelancer": { title: "How to Actually Price a Job as a UK Tradesperson or Freelancer | Bookrightly", desc: "Most undercharging isn't a confidence problem — it's a maths problem. Here's how to work out a number that actually covers what the job costs you." },
+          "free-business-starter-pack-google-directories-search-console": { title: "The Free Business Starter Pack: Google, Directories & Tracking Your Traffic | Bookrightly", desc: "How to set up Google Business Profile, which free directories to list your business on, and how to track your traffic with Google Search Console once you have a custom domain." },
+          "cv-guide-barbers-stylists-personal-trainers-2026": { title: "How Barbers, Stylists and Personal Trainers Should Write a CV in 2026 | Bookrightly", desc: "A practical UK CV guide for barbers, stylists and personal trainers, covering measurable results, ATS-friendly formatting, tailoring and cover notes.", author: { name: "RankResume", url: "https://rankresume.io/" } },
+          "turning-instagram-comments-into-bookings": { title: "Turning Instagram Comments Into Booked Appointments | Bookrightly", desc: "\"How much for this?\" and \"DM me\" comments are enquiries, not bookings. Here's how to stop losing them between the comment and the calendar." },
+          "add-online-booking-to-existing-website-without-rebuilding": { title: "You Already Have a Website — Add Booking Without Rebuilding It | Bookrightly", desc: "Rebuilding a WordPress or Wix site just to get booking software isn't necessary. Here's how to add live booking, and a live queue, to a website you already have." },
         };
         if (url.pathname.startsWith("/blog/") && response.headers.get("content-type")?.includes("text/html")) {
           const slug = url.pathname.replace("/blog/", "");
           const postMeta = blogPostMeta[slug];
           if (postMeta) {
             const canon = `https://bookrightly.co.uk${url.pathname}`;
-            const ldJson = JSON.stringify({ "@context": "https://schema.org", "@type": "Article", headline: postMeta.title, description: postMeta.desc, url: canon, publisher: { "@type": "Organization", name: "Bookrightly", url: "https://bookrightly.co.uk" } });
+            const ldJson = JSON.stringify({ "@context": "https://schema.org", "@type": "Article", headline: postMeta.title, description: postMeta.desc, url: canon, ...(postMeta.author ? { author: { "@type": "Organization", ...postMeta.author } } : {}), publisher: { "@type": "Organization", name: "Bookrightly", url: "https://bookrightly.co.uk" } });
             const noCache = new Headers(response.headers);
             noCache.set("Cache-Control", "no-store, no-cache, must-revalidate");
             const rewriter = new HTMLRewriter()
@@ -2500,7 +3818,7 @@ async function handleFetch(request, env, ctx) {
               // index.html hardcodes a canonical tag pointed at bookrightly.co.uk/
             // — update it rather than appending a second, conflicting one.
             .on('link[rel="canonical"]', { element: el => el.setAttribute("href", canon) })
-            .on("head", { element: el => el.append(`<script type="application/ld+json">${ldJson}</script>`, { html: true }) });
+            .on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${ldJson}</script>`, { html: true }) });
             // This post's body genuinely contains a link to climbx.so (a real
             // mention, in real content — see posts.js), but like the Launchpadly
             // badge it only exists after React renders, so a no-JS fetch (link
@@ -2576,13 +3894,51 @@ async function handleFetch(request, env, ctx) {
                 ),
               });
             }
+            // Same reasoning as the ClimbX/Linkos/SpreadsheetsHub/CalculatorAI
+            // mirrors above — the RapidDM mention lives partway through this
+            // post's body, so a no-JS fetch (link exchange verifiers included)
+            // otherwise sees none of it. Word-for-word what's actually on the
+            // page (see posts.js), not invented filler.
+            if (slug === "turning-instagram-comments-into-bookings") {
+              rewriter.on("body", {
+                element: el => el.append(
+                  `<div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);">` +
+                  `<p>Someone comments "how much for this?" under your latest fade, colour, or before-and-after photo. You reply "DM me for prices!", they message, you reply a few hours later when you're between clients, and by then they've already booked with whoever answered first. That's not a marketing problem — it's a response-time problem, and it's costing you real bookings every week.</p>` +
+                  `<h3>The comment-to-booking gap is where enquiries actually die</h3>` +
+                  `<p>Instagram comments and DMs are some of the highest-intent enquiries a service business gets — someone looked at your work and asked about it directly. But they arrive at random times, scattered across comments, story replies and DMs, and if you're mid-appointment when they land, the reply waits. Most people asking "how much?" are also asking two or three other businesses the same question. Whoever replies first, with a clear next step, usually gets the booking.</p>` +
+                  `<h3>Automating the first reply, not the relationship</h3>` +
+                  `<p>The fix isn't to be glued to your phone all day — it's to automate the first response so nobody waits hours for a price and a link. Tools like <a href="https://rapiddm.com/?utm_source=bookrightly.co.uk&utm_medium=referral&utm_campaign=link_exchange" target="_blank" rel="noopener">RapidDM</a> watch for keyword comments ("price", "how much", "DM") and story reply interactions, then send an instant automated DM back — so the person asking gets a reply in seconds instead of whenever you next check your phone, without you manually typing the same answer fifty times a week.</p>` +
+                  `<p>The automation's only job is the first touch: acknowledge the enquiry and hand them somewhere to actually book. Everything after that — answering follow-up questions, chasing a deposit, confirming the slot — still needs a real booking system behind it, or you've just made the reply faster without closing the gap.</p>` +
+                  `<h3>Give the automated reply somewhere real to send people</h3>` +
+                  `<p>This is where most DIY setups fall apart: the auto-reply says "Book here!" and links to... a phone number, or a DM thread that still needs a human to check availability and go back and forth. If the very next step after the instant reply is still manual, you've only moved the bottleneck, not removed it.</p>` +
+                  `<p>A booking link that shows live availability, takes a deposit, and confirms automatically closes the loop properly: comment → instant DM → live booking link → confirmed appointment, with no message left unanswered overnight and no slot held on trust. The faster that whole chain runs, the fewer "how much?" comments quietly go to a competitor instead.</p>` +
+                  `</div>`,
+                  { html: true },
+                ),
+              });
+            }
+            // Same reasoning as the mirrors above — the OpsMavix mention
+            // lives in the final section of this post, added after their
+            // reciprocal mention of Bookrightly on their own salon no-shows
+            // guide. Word-for-word what's actually on the page (see posts.js).
+            if (slug === "how-to-reduce-no-shows-barber") {
+              rewriter.on("body", {
+                element: el => el.append(
+                  `<div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);">` +
+                  `<h3>Deposits handle the money side — the process still matters</h3>` +
+                  `<p>A deposit fixes the incentive problem, but it doesn't fix a confirmation message clients can't find or a reminder sent too close to your cancellation deadline to actually act on. For the operational side — how to word a booking confirmation, when exactly to time a reminder against your notice period, and how to actually measure your no-show rate before and after you change anything — <a href="https://opsmavix.com/blog/how-to-reduce-salon-no-shows/" target="_blank" rel="noopener">OpsMavix's guide to reducing salon no-shows</a> covers it well, with message templates you can adapt directly.</p>` +
+                  `</div>`,
+                  { html: true },
+                ),
+              });
+            }
             return rewriter.transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
           }
         }
 
         const seoPageData = seoPages[url.pathname];
         if (seoPageData && response.headers.get("content-type")?.includes("text/html")) {
-          const { title, desc } = seoPageData;
+          const { title, desc, faq } = seoPageData;
           const canon  = `https://bookrightly.co.uk${url.pathname}`;
           const ldJson = JSON.stringify({
             "@context": "https://schema.org",
@@ -2590,9 +3946,17 @@ async function handleFetch(request, env, ctx) {
             name: title, description: desc, url: canon,
             publisher: { "@type": "Organization", name: "Bookrightly", url: "https://bookrightly.co.uk" },
           });
+          const faqLdJson = faq ? JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: faq.map(({ q, a }) => ({
+              "@type": "Question", name: q,
+              acceptedAnswer: { "@type": "Answer", text: a },
+            })),
+          }) : null;
           const noCache = new Headers(response.headers);
           noCache.set("Cache-Control", "no-store, no-cache, must-revalidate");
-          return new HTMLRewriter()
+          const rewriter = new HTMLRewriter()
             .on("title", { element: el => el.setInnerContent(title) })
             .on('meta[name="description"]',        { element: el => el.setAttribute("content", desc) })
             .on('meta[property="og:title"]',       { element: el => el.setAttribute("content", title) })
@@ -2603,8 +3967,23 @@ async function handleFetch(request, env, ctx) {
             // index.html hardcodes a canonical tag pointed at bookrightly.co.uk/
             // — update it rather than appending a second, conflicting one.
             .on('link[rel="canonical"]', { element: el => el.setAttribute("href", canon) })
-            .on("head", { element: el => el.append(`<script type="application/ld+json">${ldJson}</script>`, { html: true }) })
-            .transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
+            .on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${ldJson}</script>`, { html: true }) });
+          if (faqLdJson) rewriter.on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${faqLdJson}</script>`, { html: true }) });
+          return rewriter.transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
+        }
+
+        // 6c-2. Swap in the dedicated admin manifest server-side, in the raw
+        // HTML itself — a client-side swap (setAttribute after mount) is too
+        // late for Chrome/Android's installability check and iOS's Add to
+        // Home Screen to reliably pick up, since both evaluate the manifest
+        // link present at initial page load, not a later DOM mutation. Also
+        // marked noindex — this is an internal tool, not a page to surface
+        // in search results.
+        if (url.pathname === "/admin/create-account" && response.headers.get("content-type")?.includes("text/html")) {
+          return new HTMLRewriter()
+            .on('link[rel="manifest"]', { element: el => el.setAttribute("href", "/admin-manifest.json") })
+            .on("head", { element: el => el.append('<meta name="robots" content="noindex, nofollow">', { html: true }) })
+            .transform(response);
         }
 
         // 6d. SEO injection for Bookrightly-hosted vanity booking URLs
@@ -2628,7 +4007,8 @@ async function handleFetch(request, env, ctx) {
             ctx.waitUntil(caches.default.delete(request).catch(() => {}));
             return injectBusinessSEO(
               new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }),
-              { ...seoData, type: seoData.type || "Professional", canonicalUrl: seoData.customDomain ? `https://${seoData.customDomain}/` : `https://bookrightly.co.uk${url.pathname}` }
+              { ...seoData, type: seoData.type || "Professional", faviconUrl: seoData.logoImage ? `${TENANT_FAVICON_PATH}?biz=${seoData.id}` : (seoData.image || undefined), canonicalUrl: seoData.customDomain ? `https://${seoData.customDomain}/` : `https://bookrightly.co.uk${url.pathname}` },
+              nonce
             );
           }
         }
@@ -2695,35 +4075,77 @@ async function handleFetch(request, env, ctx) {
 //    used by the marketplace search's "Use my location" and distance-sort
 //    feature (src/utils/geocode.js), and by the dashboard's profile save to
 //    geocode a business's own address on save.
-const CSP =
-  "default-src 'self'; " +
-  "script-src 'self' https://js.stripe.com 'sha256-/l4ajQ/L5o91xPlHq4mEOMH1ogoGzmHPkFKthjI+yCE=' 'sha256-9ejfpz7uMUXlOkkTvGSw4HuN9GzhSn7q8XoX0+rR/j4='; " +
-  "style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com; " +
-  "font-src 'self' https://fonts.bunny.net https://fonts.gstatic.com data:; " +
-  "img-src 'self' data: blob: https:; " +
-  "worker-src 'self' blob:; " +
-  "connect-src 'self' https://*.googleapis.com https://firebasestorage.googleapis.com https://api.stripe.com https://m.stripe.network https://q.stripe.com https://us-central1-booking-system-cdce0.cloudfunctions.net https://*.a.run.app https://nominatim.openstreetmap.org; " +
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://*.firebaseapp.com; " +
-  "object-src 'none'; " +
-  "base-uri 'self'; " +
-  "form-action 'self'";
+//  - b.sf-syn.com (script-src): SourceForge's review-badge loader, homepage
+//    only (see Footer.jsx). Their own embed snippet is an inline <script>
+//    that would need its own sha256 hash here — instead Footer.jsx injects
+//    the same <script src="https://b.sf-syn.com/badge_js?..."> itself via
+//    a 'self'-origin script (already allowed), so only the external src's
+//    origin needs allowlisting, not an inline-script hash.
+//  - *.clarity.ms (script-src + connect-src): Microsoft Clarity session
+//    recording/heatmaps, loaded site-wide from main.jsx using the same
+//    self-origin-loader trick as the SourceForge badge above (avoids
+//    needing a hash for Clarity's own inline snippet). Wildcarded because
+//    the www.clarity.ms loader script itself fetches the real tracking
+//    payload from a second, different subdomain (scripts.clarity.ms) —
+//    confirmed via a live CSP-violation check, same as the fonts.bunny.net
+//    provider mix-up noted elsewhere in this file. connect-src is also
+//    needed since the loaded script sends its recording data as
+//    beacon/XHR calls back to Clarity's own hosts.
+// script-src carries both a per-request nonce (for the dynamic
+// application/ld+json blocks injected above — their content varies by
+// business/page, so a fixed hash can only ever match one exact payload;
+// this broke for every business whose name/description didn't happen to
+// match the one that generated the second hash below) and two fixed
+// hashes for content that's genuinely static across every request.
+function buildCSP(nonce) {
+  return (
+    "default-src 'self'; " +
+    `script-src 'self' https://js.stripe.com https://b.sf-syn.com https://*.clarity.ms https://connect.facebook.net 'nonce-${nonce}' 'sha256-/l4ajQ/L5o91xPlHq4mEOMH1ogoGzmHPkFKthjI+yCE=' 'sha256-9ejfpz7uMUXlOkkTvGSw4HuN9GzhSn7q8XoX0+rR/j4=' 'sha256-zMH4XD4SvoLiCWQsz2yH2Q8M6Gh8IY7eXEWOH+1C5zs='; ` +
+    "style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.bunny.net https://fonts.gstatic.com data:; " +
+    "img-src 'self' data: blob: https:; " +
+    "worker-src 'self' blob:; " +
+    "connect-src 'self' https://*.googleapis.com https://firebasestorage.googleapis.com https://api.stripe.com https://m.stripe.network https://q.stripe.com https://us-central1-booking-system-cdce0.cloudfunctions.net https://*.a.run.app https://nominatim.openstreetmap.org https://*.clarity.ms https://www.facebook.com https://connect.facebook.net; " +
+    "frame-src https://js.stripe.com https://hooks.stripe.com https://*.firebaseapp.com; " +
+    "object-src 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'"
+  );
+}
 
-const SECURITY_HEADERS = {
+const STATIC_SECURITY_HEADERS = {
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-  "Content-Security-Policy": CSP,
 };
 
 export default {
   async fetch(request, env, ctx) {
-    const response = await handleFetch(request, env, ctx);
+    // One random nonce per request, threaded into handleFetch so every
+    // dynamic inline script it injects can carry the same value that goes
+    // into this response's CSP header below.
+    const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
+    const response = await handleFetch(request, env, ctx, nonce);
     const headers = new Headers(response.headers);
-    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    for (const [key, value] of Object.entries(STATIC_SECURITY_HEADERS)) {
       if (!headers.has(key)) headers.set(key, value);
     }
+    if (!headers.has("Content-Security-Policy")) headers.set("Content-Security-Policy", buildCSP(nonce));
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  },
+
+  // Cron Trigger — see "triggers.crons" in wrangler.jsonc.
+  async scheduled(event, env, ctx) {
+    // ONE cron trigger (*/5): the Workers Free plan caps an account at 5
+    // cron triggers in total, so the daily jobs piggy-back on the run that
+    // lands in the 09:00 UTC slot instead of having their own schedule.
+    ctx.waitUntil(runReminderCron(env, reminderDeps()).catch(err => console.error("[reminders] cron failed:", err)));
+    const at = new Date(event.scheduledTime ?? Date.now());
+    if (at.getUTCHours() !== 9 || at.getUTCMinutes() >= 5) return;
+    // Daily (09:00 UTC): housekeeping.
+    ctx.waitUntil(handleMaintainDemoSlots(env));
+    ctx.waitUntil(handleTrialLifecycle(env));
   },
 };

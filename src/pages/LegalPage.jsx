@@ -82,9 +82,11 @@ const PRIVACY = {
       `Cloudflare — content delivery, DDoS protection and DNS. Data shared: IP addresses and request metadata. Privacy: cloudflare.com/privacypolicy`,
       `Resend — used to send transactional booking confirmation emails. Data shared: client name, email, appointment details. Privacy: resend.com/privacy`,
       `Google Calendar API — used when professionals connect their Google Calendar to sync appointments. Data shared: client name, email, appointment date/time, and service type.`,
+      `Google Search Console API — used only when a professional chooses to connect their own Google account to view their website's search traffic (clicks, impressions, ranking) inside their Bookrightly dashboard. We access only read-only search performance data for the domain they've connected, and never post, modify or delete anything on their behalf. This data is shown to that professional in their own dashboard and is not used for any other purpose, not combined with data from other sources, and not shared with anyone else.`,
       `Bunny Fonts — used to load website fonts. Privacy-preserving CDN, no personal data collected. privacy.bunny.net`,
       `When you make a booking, relevant details are shared with the professional (or customer) you are transacting with, so the appointment can be fulfilled.`,
       `We do not sell your personal data.`,
+      `Bookrightly's use and transfer of information received from Google APIs to any other app will adhere to the Google API Services User Data Policy, including the Limited Use requirements.`,
     ]},
     { h: "5. Data retention", b: [
       `We keep personal data only for as long as needed to provide the Service and to meet legal, accounting and reporting obligations. You can request deletion of your account at any time.`,

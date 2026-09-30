@@ -1,9 +1,9 @@
 import React from "react";
 import { Box, Grid } from "@mui/material";
-import { SEOHero, Section, SectionHead, FeatureCard, StepCard, BottomCTA, FAQSection, DARK, SANS , InternalLinks } from "./shared";
+import { SEOHero, Section, SectionHead, FeatureCard, StepCard, BottomCTA, FAQSection, DARK, SANS , InternalLinks, PricingTiers } from "./shared";
 
 const FAQS = [
-  { q: "Is this booking software free for hair salons?", a: "Yes — 90-day free trial with no credit card required. After that, it's £10/month with no commission on any booking." },
+  { q: "Is this booking software free for hair salons?", a: "Yes — there's a genuinely free plan with no time limit. The full branded website with deposits, treatment menu and portfolio is £10/month after a 90-day free trial, no commission ever either way." },
   { q: "Can I list all my salon treatments and prices?", a: "Yes. Add every treatment — cuts, colours, balayage, keratin, blowdrys — each with their own price, duration, and description." },
   { q: "Do clients need an account to book?", a: "No. Clients book directly on your public salon page — no sign-up required on their end." },
   { q: "Can I collect a deposit to reduce no-shows?", a: "Yes. Stripe is built in. You set the deposit amount per service, and clients pay it at the point of booking." },
@@ -57,6 +57,11 @@ export default function SalonSoftwarePage() {
             </Grid>
           ))}
         </Grid>
+      </Section>
+
+      <Section>
+        <SectionHead eyebrow="More options" title="Not ready for the full plan?" sub="Three lighter, cheaper ways to get started — all with a 90-day free trial." />
+        <PricingTiers />
       </Section>
 
       <Section dark>

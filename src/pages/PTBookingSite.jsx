@@ -8,7 +8,6 @@ import BeforeAfterSlider from "../components/BeforeAfterSlider";
 import { Box, Container, Typography, Paper, Stack, Avatar, Divider, Button, useMediaQuery } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import RateReviewIcon from '@mui/icons-material/RateReview';
-import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import { getWhatsAppBookingUrl } from '../utils/whatsapp';
 import AppIcon from '../components/AppIcon';
@@ -615,7 +614,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
   /* ── Resolved values ── */
   const businessName = barber?.businessName || barber?.shopName || barber?.name || 'DB FITNESS';
   const brandColor   = profile?.brandColor || '#dc2626';
-  const whatsappUrl = !profile?.stripeConnected
+  const whatsappUrl = profile?.whatsappBookingEnabled !== false
     ? getWhatsAppBookingUrl(profile?.whatsappNumber, businessName)
     : null;
   const logo         = profile?.logoUrl    || null;
@@ -663,7 +662,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
     isMobile ? 'heroBgImageMobile' : 'heroBgImage',
   )
     || 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1920';
-  const coachHeroImage   = heroForProfile(profile, profile?.heroImage)
+  const coachHeroImage   = heroForProfile(profile, profile?.heroImage || profile?.logoUrl || profile?.profilePic)
     || 'https://images.unsplash.com/photo-1594882645126-14020914d58d?q=80&w=800';
 
   const navLinks = [
@@ -680,7 +679,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
       <style>{`.stat-num { font-family: ${displayFont}; }`}</style>
 
       {/* ══════════ NAV ══════════ */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--mid)' }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--mid)', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 68 }}>
           <a href="#" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
             {logo && <img src={logo} alt="logo" style={{ height: 36, borderRadius: '50%', objectFit: 'cover' }} />}
@@ -950,16 +949,21 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: brandColor, marginBottom: 8 }}>Ready to Start?</p>
             <h2 style={{ fontFamily: displayFont, fontSize: 'clamp(36px,6vw,52px)', letterSpacing: '0.04em', marginBottom: 8 }}>Claim Your Slot</h2>
             <p style={{ color: 'var(--ink-soft)', fontWeight: 300, marginBottom: 40, fontSize: 15 }}>Choose a time that works for you and let's get to work.</p>
-            {whatsappUrl && (
-              <Button
-                component="a" href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-                variant="outlined" size="small" startIcon={<WhatsAppIcon />}
-                sx={{ mb: 4, color: "#25D366", borderColor: "#25D36680", "&:hover": { borderColor: "#25D366", bgcolor: "#25D36610" } }}
-              >
-                Or enquire via WhatsApp
-              </Button>
-            )}
             <SlotPicker slots={slots} error={slotsError} brandColor={brandColor} onSelect={slot => setConsultationSlot(slot)} />
+            {whatsappUrl && (
+              <div style={{ textAlign: 'center', marginTop: 24 }}>
+                <a
+                  href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '12px 24px', border: '1px solid #25D36680', borderRadius: 4,
+                    color: '#25D366', fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                  }}
+                >
+                  Or book via WhatsApp
+                </a>
+              </div>
+            )}
           </div>
         </section>
       </FadeIn>

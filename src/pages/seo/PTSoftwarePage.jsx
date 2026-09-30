@@ -1,15 +1,15 @@
 import React from "react";
 import { Box, Grid } from "@mui/material";
-import { SEOHero, Section, SectionHead, FeatureCard, StepCard, BottomCTA, FAQSection, DARK, SANS , InternalLinks } from "./shared";
+import { SEOHero, Section, SectionHead, FeatureCard, StepCard, BottomCTA, FAQSection, DARK, SANS , InternalLinks, PricingTiers } from "./shared";
 
 const FAQS = [
-  { q: "Is Bookrightly free for personal trainers?", a: "Yes — 90-day free trial, no card required. The PT plan is £15/month after that, which includes all the client management features barbers and salons don't need." },
+  { q: "Is Bookrightly free for personal trainers?", a: "Yes — 90-day free trial, no card required. It's £10/month after that — same flat price as every other business type, and it includes all the client management features barbers and salons don't need." },
   { q: "Does Bookrightly support PAR-Q forms?", a: "Yes. Clients fill in a digital PAR-Q health screening form before their first session. Submissions are saved in your client dashboard." },
   { q: "Can I create workout plans for clients?", a: "Yes. Build and assign custom workout plans to individual clients. Clients access them through their own portal." },
   { q: "Can I track client check-ins and progress?", a: "Yes. Clients log check-ins, body stats, and progress notes. You see everything in your dashboard." },
   { q: "Does it have a food diary feature?", a: "Yes. Clients can log daily food entries which you can review and comment on as part of their programme." },
   { q: "Can I take payment for PT sessions?", a: "Yes. Bookrightly uses Stripe for deposits and session payments. Clients pay when they book a slot through your PT booking page." },
-  { q: "How is this different from Mindbody?", a: "Mindbody costs £100–400+/month and is primarily designed for large US gym businesses. Bookrightly is £15/month, built for UK PTs, and includes every feature a solo or small-team trainer needs." },
+  { q: "How is this different from Mindbody?", a: "Mindbody costs £100–400+/month and is primarily designed for large US gym businesses. Bookrightly is £10/month, built for UK PTs, and includes every feature a solo or small-team trainer needs." },
 ];
 
 export default function PTSoftwarePage() {
@@ -18,7 +18,7 @@ export default function PTSoftwarePage() {
       <SEOHero
         eyebrow="Personal Trainer Booking Software UK"
         title="Booking and client management software for UK personal trainers"
-        subtitle="PAR-Q forms, workout plans, food diary, client check-ins, Stripe payments, and a public PT profile — all for £15/month. No other platform at this price comes close."
+        subtitle="PAR-Q forms, workout plans, food diary, client check-ins, Stripe payments, and a public PT profile — all for £10/month. No other platform at this price comes close."
         cta="Start free for 90 days"
       />
 
@@ -61,7 +61,7 @@ export default function PTSoftwarePage() {
       </Section>
 
       <Section dark>
-        <SectionHead eyebrow="Pricing" title="£15/month for the full PT suite" sub="No other platform gives you this much for this price." />
+        <SectionHead eyebrow="Pricing" title="£10/month for the full PT suite" sub="No other platform gives you this much for this price." />
         <Box sx={{ maxWidth: 500, mx: "auto", bgcolor: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.25)", p: 4, textAlign: "center" }}>
           {[
             "Public PT profile with booking page",
@@ -84,6 +84,11 @@ export default function PTSoftwarePage() {
       </Section>
 
       <Section>
+        <SectionHead eyebrow="More options" title="Just want an embeddable widget?" sub="If you already have a website, the Widget plan drops booking straight into it for £5/month." />
+        <PricingTiers />
+      </Section>
+
+      <Section dark>
         <SectionHead eyebrow="FAQ" title="Questions about PT booking software" />
         <Box sx={{ maxWidth: 700, mx: "auto" }}>
           <FAQSection faqs={FAQS} />
@@ -93,7 +98,7 @@ export default function PTSoftwarePage() {
       <InternalLinks current="/booking-software/personal-trainers" />
       <BottomCTA
         title="The complete toolkit for serious UK personal trainers"
-        sub="PAR-Q, food diary, workout plans, bookings, and payments — all in one platform at £15/month. 90 days free to start."
+        sub="PAR-Q, food diary, workout plans, bookings, and payments — all in one platform at £10/month. 90 days free to start."
       />
     </Box>
   );

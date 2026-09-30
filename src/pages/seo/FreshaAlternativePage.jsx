@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Grid } from "@mui/material";
-import { SEOHero, Section, SectionHead, FeatureCard, BottomCTA, FAQSection, DARK, SERIF, SANS, GOLD , InternalLinks } from "./shared";
+import { SEOHero, Section, SectionHead, FeatureCard, BottomCTA, FAQSection, DARK, SERIF, SANS, GOLD , InternalLinks, PricingTiers } from "./shared";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import { Typography, Stack } from "@mui/material";
@@ -20,7 +20,7 @@ const COMPARE = [
 
 const FAQS = [
   { q: "Is Bookrightly really free for 90 days?", a: "Yes. No credit card required. You get full access to every feature for 90 days before you pay anything." },
-  { q: "Does Bookrightly take a cut of my bookings?", a: "No. Bookrightly charges a flat monthly subscription of £10–15. The only transaction fee is the standard Stripe processing fee (which your client pays on top at checkout)." },
+  { q: "Does Bookrightly take a cut of my bookings?", a: "No, never — not on any plan, including the Free plan. Paid plans (from £5/month, or £10/month for a full branded website) just add the standard Stripe processing fee your client pays on top at checkout." },
   { q: "Can I migrate from Fresha to Bookrightly?", a: "Yes. You can set up your Bookrightly profile in under 15 minutes. Your existing clients can rebook directly through your new branded page." },
   { q: "Does Bookrightly work for beauty businesses?", a: "Yes — hairdressers and barbers are fully supported with service menus, slot availability, deposit booking, and a public profile page." },
   { q: "What industries does Bookrightly support?", a: "Barbers, hairdressers, personal trainers, and decorators — all with industry-specific pages and features." },
@@ -32,7 +32,7 @@ export default function FreshaAlternativePage() {
       <SEOHero
         eyebrow="Fresha Alternative UK"
         title="The Fresha alternative that keeps your earnings yours"
-        subtitle="Fresha's 'free' plan charges a commission on every online payment. Bookrightly charges £10–15/month flat — no cuts, no surprises, no race to the bottom on price."
+        subtitle="Fresha's 'free' plan charges a commission on every online payment. Bookrightly has a genuinely free plan too — and paid plans are a flat fee from £10/month, never a cut of your earnings."
       />
 
       <Section dark>
@@ -82,7 +82,7 @@ export default function FreshaAlternativePage() {
         <Grid container spacing={3}>
           {[
             ["tag", "Your brand, your page", "bookrightly.co.uk/fade-factory is yours. Not Fresha's. Customers bookmark you, not the marketplace."],
-            ["money", "£10–15/month, nothing more", "That's the whole fee. Whether you take 5 bookings or 50 in a week, you pay the same. No percentage, no surcharges."],
+            ["money", "£10/month, nothing more", "That's the whole fee. Whether you take 5 bookings or 50 in a week, you pay the same. No percentage, no surcharges."],
             ["phone", "Installs like a real app", "Customers can add Bookrightly to their home screen — it works offline, sends push notifications, and feels like a native app."],
             ["assignment", "Client management built in", "PAR-Q forms, food diaries, check-ins, colour approvals — features no other platform at this price includes."],
           ].map(([icon, title, body]) => (
@@ -91,6 +91,11 @@ export default function FreshaAlternativePage() {
             </Grid>
           ))}
         </Grid>
+      </Section>
+
+      <Section dark>
+        <SectionHead eyebrow="More options" title="Not ready for the full plan?" sub="Three lighter, cheaper ways to get started — all with a 90-day free trial." />
+        <PricingTiers />
       </Section>
 
       <Section>

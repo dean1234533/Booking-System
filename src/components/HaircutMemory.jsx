@@ -13,10 +13,12 @@ import {
   collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import imageCompression from "browser-image-compression";
 import { db, storage } from "../firebase/config";
 
 const SANS  = "'DM Sans', sans-serif";
 const SERIF = "'Playfair Display', serif";
+const IMAGE_COMPRESSION_OPTIONS = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true };
 
 const GUARDS = [
   { key: "top",   label: "Top" },
@@ -83,8 +85,9 @@ export default function HaircutMemory({ shopId, brandColor = "#2563EB" }) {
     try {
       let photoUrl = "";
       if (photoFile) {
+        const compressed = await imageCompression(photoFile, IMAGE_COMPRESSION_OPTIONS);
         const sRef = ref(storage, `haircutMemory/${shopId}/${key}/${Date.now()}`);
-        await uploadBytes(sRef, photoFile);
+        await uploadBytes(sRef, compressed);
         photoUrl = await getDownloadURL(sRef);
       }
       const data = {
@@ -125,7 +128,7 @@ export default function HaircutMemory({ shopId, brandColor = "#2563EB" }) {
         onClick={() => setOpen(true)}
         size="medium"
         sx={{
-          position: "fixed", bottom: 24, right: 24, zIndex: 1200,
+          position: "fixed", bottom: "calc(24px + env(safe-area-inset-bottom, 0px))", right: 24, zIndex: 1200,
           bgcolor: brandColor, color: "#0d0d0d",
           boxShadow: `0 4px 20px ${brandColor}55`,
           fontFamily: SANS, fontWeight: 700, fontSize: "0.75rem",

@@ -63,6 +63,7 @@ self.addEventListener('push', (event) => {
     vibrate = true,
     url     = '/dashboard',
     tag     = 'bookrightly',
+    kind    = 'general',
   } = data;
 
   event.waitUntil(
@@ -72,7 +73,7 @@ self.addEventListener('push', (event) => {
       badge: '/images/icon-192.png',
       silent:  !sound,
       vibrate: vibrate ? [200, 100, 200, 100, 200] : undefined,
-      data:    { url },
+      data:    { url, kind },
       tag,
       renotify: true,
     })
@@ -82,13 +83,20 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || '/dashboard';
+  const isReminder = event.notification.data?.kind === 'reminder';
 
   event.waitUntil(
     clients
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then((list) => {
         for (const client of list) {
-          if ('focus' in client) return client.focus();
+          if ('focus' in client) {
+            // Client reminders must land on the manage-booking page even if the
+            // app is already open somewhere else; other notifications keep
+            // their old behaviour (just focus the open window).
+            if (isReminder && 'navigate' in client) return client.navigate(targetUrl).then(c => (c || client).focus()).catch(() => client.focus());
+            return client.focus();
+          }
         }
         return clients.openWindow(targetUrl);
       })

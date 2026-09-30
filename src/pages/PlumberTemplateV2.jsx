@@ -228,12 +228,12 @@ export default function PlumberTemplateV2({ tenantData = {} }) {
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${businessName} ${location}`.trim())}`;
   const heroImage = heroForProfile(
     tenantData,
-    LEGACY_IMAGE_UPGRADES[tenantData.heroImage || tenantData.heroImageDesktop] || tenantData.heroImage || tenantData.heroImageDesktop,
+    LEGACY_IMAGE_UPGRADES[tenantData.heroImage || tenantData.heroImageDesktop] || tenantData.heroImage || tenantData.heroImageDesktop
+      || tenantData.logoUrl || tenantData.profilePic,
   ) || "/images/plumber/plumber-hero-v2.jpg";
-  const whatsappUrl = getWhatsAppBookingUrl(
-    tenantData.whatsappNumber,
-    businessName,
-  );
+  const whatsappUrl = tenantData.whatsappBookingEnabled !== false
+    ? getWhatsAppBookingUrl(tenantData.whatsappNumber, businessName)
+    : null;
   const heroLine1 = tenantData.heroHeadingLine1 || "Local work.";
   const heroLine2 = tenantData.heroHeadingLine2 || "Done properly.";
   const heroSub =

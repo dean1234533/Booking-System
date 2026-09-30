@@ -15,6 +15,7 @@ const CATEGORY_COLOR = {
   Marketing: "#5b9bd5",
   Salons: "#e05c5c",
   Decorators: "#b07d4a",
+  Careers: "#9b7de3",
 };
 
 export default function BlogIndex() {
@@ -22,7 +23,7 @@ export default function BlogIndex() {
   return (
     <Box sx={{ bgcolor: DARK, color: "#fff", minHeight: "100vh", fontFamily: SANS }}>
       {/* Hero */}
-      <Box sx={{ pt: { xs: 10, md: 14 }, pb: { xs: 6, md: 8 }, px: { xs: 3, md: 5 }, textAlign: "center", position: "relative" }}>
+      <Box sx={{ pt: "var(--nav-height, 130px)", pb: { xs: 6, md: 8 }, px: { xs: 3, md: 5 }, textAlign: "center", position: "relative" }}>
         <Box sx={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(37,99,235,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
         <Typography sx={{ fontFamily: SANS, fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: GOLD, mb: 2 }}>
           Bookrightly Blog

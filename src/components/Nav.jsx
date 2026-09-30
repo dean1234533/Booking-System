@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { AppBar, Toolbar, Typography, Button, Box, IconButton, Drawer, Stack } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
@@ -45,9 +45,26 @@ export default function HomeNav() {
     document.getElementById("browse-section")?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Publish the bar's real rendered height (including the safe-area inset
+  // and however tall the two-line wordmark actually needs) as a CSS variable
+  // so pages that sit below it can clear it exactly, instead of guessing a
+  // fixed pixel offset that drifts out of sync whenever this bar's own
+  // content/height changes — that guessing is what kept landing pages'
+  // headings partly hidden behind it.
+  const barRef = useRef(null);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const setVar = () => document.documentElement.style.setProperty("--nav-height", `${el.offsetHeight}px`);
+    setVar();
+    const ro = new ResizeObserver(setVar);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <>
-      <AppBar position="fixed" elevation={0} sx={{ bgcolor: "#f4f1e9ee", color: "#111116", backdropFilter: "blur(18px)", borderBottom: "1px solid #d9d6ce" }}>
+      <AppBar ref={barRef} position="fixed" elevation={0} sx={{ bgcolor: "#f4f1e9ee", color: "#111116", backdropFilter: "blur(18px)", borderBottom: "1px solid #d9d6ce", pt: "env(safe-area-inset-top, 0px)" }}>
         <Toolbar sx={{ minHeight: { xs: 68, md: 76 }, px: { xs: 2, md: 4 } }}>
           <Box onClick={() => go("/")} sx={{ cursor: "pointer", flex: { md: 1 } }}><BrandMark /></Box>
           <Stack direction="row" spacing={.5} sx={{ display: { xs: "none", md: "flex" }, bgcolor: "#fff", border: "1px solid #dedbd3", p: .55, borderRadius: 99 }}>
@@ -73,7 +90,7 @@ export default function HomeNav() {
         </Toolbar>
       </AppBar>
 
-      <Drawer anchor="right" open={open} onClose={() => setOpen(false)} PaperProps={{ sx: { width: "min(92vw, 390px)", bgcolor: "#111116", color: "#fff", p: 2.5 } }}>
+      <Drawer anchor="right" open={open} onClose={() => setOpen(false)} PaperProps={{ sx: { width: "min(92vw, 390px)", bgcolor: "#111116", color: "#fff", p: 2.5, pt: "max(20px, env(safe-area-inset-top, 0px))", pb: "max(20px, env(safe-area-inset-bottom, 0px))" } }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><BrandMark inverse /><IconButton onClick={() => setOpen(false)} sx={{ color: "#fff", border: "1px solid #ffffff2b" }}><CloseRoundedIcon /></IconButton></Box>
         <Typography sx={{ color: "#ffffff55", fontSize: ".66rem", fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase", mt: 6, mb: 1.5 }}>Explore</Typography>
         {LINKS.map(([label, path], index) => <Box key={path} onClick={() => go(path)} sx={{ py: 2.1, borderBottom: "1px solid #ffffff17", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}><Typography sx={{ fontSize: "1.6rem", fontWeight: 900, letterSpacing: "-.04em" }}>{label}</Typography><Typography sx={{ color: "#ffffff44", fontSize: ".7rem" }}>0{index + 1}</Typography></Box>)}

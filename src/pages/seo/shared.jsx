@@ -148,6 +148,44 @@ export function InternalLinks({ current }) {
   );
 }
 
+// Every plan Bookrightly actually offers — shared across every landing page
+// so a visitor never has to reach /pricing just to learn cheaper tiers than
+// the one that page is pitching even exist. Kept as data here (not
+// duplicated per page) so a price change only needs updating in one place.
+export const TIERS = [
+  { name: "Full", price: "10", desc: "Your own branded website, full dashboard, every business tool — the complete product.", tag: "Any business type" },
+  { name: "Widget", price: "5", desc: "Already have a website? Embed booking and live queue tools on it — no hosted page needed.", tag: "Any business type" },
+  { name: "Basic", price: "5", desc: "No website — a simple booking page with your services, prices and a link back to your Instagram. Includes confirmation emails and reminders.", tag: "Any business type" },
+  { name: "Free", price: "0", desc: "The cheapest way to take bookings online — a bare page with your logo and slots. No deposits, no reminders — free forever.", tag: "Any business type" },
+];
+
+export function PricingTiers() {
+  const navigate = useNavigate();
+  return (
+    <Box>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 2 }}>
+        {TIERS.map(tier => (
+          <Box key={tier.name} sx={{ p: 3, borderRadius: "7px 24px 24px 24px", border: "1px solid #DEDDD8", bgcolor: "#fff", display: "flex", flexDirection: "column" }}>
+            <Typography sx={{ fontFamily: SANS, fontWeight: 900, fontSize: "0.85rem", color: "#111116" }}>{tier.name}</Typography>
+            <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5, mt: 1 }}>
+              <Typography sx={{ fontFamily: SERIF, fontSize: "2rem", fontWeight: 950, letterSpacing: "-.04em", color: "#111116" }}>£{tier.price}</Typography>
+              <Typography sx={{ fontSize: "0.78rem", color: "#8A8A91" }}>{tier.price === "0" ? "forever" : "/mo"}</Typography>
+            </Box>
+            <Typography sx={{ color: "#696A73", fontSize: "0.8rem", lineHeight: 1.65, mt: 1.5, flex: 1 }}>{tier.desc}</Typography>
+            <Typography sx={{ color: GOLD, fontSize: "0.68rem", fontWeight: 800, letterSpacing: "0.04em", mt: 2 }}>{tier.tag}</Typography>
+          </Box>
+        ))}
+      </Box>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ sm: "center" }} sx={{ mt: 3 }}>
+        <Typography sx={{ color: "#696A73", fontSize: "0.85rem" }}>Paid plans start with a 90-day free trial, Free is free forever — pick whichever fits when you sign up. After your trial, you keep a free booking page — you're never locked out.</Typography>
+        <Box component="span" onClick={() => navigate("/pricing")} sx={{ color: GOLD, fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3, whiteSpace: "nowrap" }}>
+          Full pricing breakdown →
+        </Box>
+      </Stack>
+    </Box>
+  );
+}
+
 export function FAQSection({ faqs }) {
   const [open, setOpen] = React.useState(null);
   return (

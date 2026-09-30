@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Avatar, Typography, IconButton, Button, CircularProgress, Tooltip } from "@mui/material";
-import { LogOut, Save } from "lucide-react";
+import { LogOut, Save, ExternalLink } from "lucide-react";
 
 function contrastColor(hex) {
   const r = parseInt(hex.slice(1, 3), 16) || 0;
@@ -21,6 +21,7 @@ export default function DashboardHeader({
       backdropFilter: "blur(12px)",
       borderBottom: "1px solid #E4E7EC",
       position: "sticky", top: 0, zIndex: 100,
+      pt: "env(safe-area-inset-top, 0px)",
     }}>
       <Box sx={{
         maxWidth: 1360, mx: "auto",
@@ -88,8 +89,29 @@ export default function DashboardHeader({
           )}
         </Box>
 
-        {/* ── Right: logout + save ── */}
+        {/* ── Right: preview + logout + save ── */}
         <Box sx={{ display: "flex", gap: { xs: 0.75, sm: 1 }, alignItems: "center" }}>
+          {profile.bookingSlug && (
+            <Tooltip title="Preview your live page" placement="bottom">
+              <IconButton
+                component="a"
+                href={`https://bookrightly.co.uk/${profile.bookingSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Preview your live page"
+                size="small"
+                sx={{
+                  color: "#667085", border: "1px solid transparent", bgcolor: "transparent",
+                  borderRadius: 2, p: 1,
+                  transition: "all .18s",
+                  "&:hover": { color: brandColor, bgcolor: `${brandColor}0F` },
+                }}
+              >
+                <ExternalLink size={18} strokeWidth={1.8} />
+              </IconButton>
+            </Tooltip>
+          )}
+
           <IconButton
             onClick={handleLogout}
             aria-label="Log out"

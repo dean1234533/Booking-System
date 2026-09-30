@@ -11,7 +11,10 @@ import SearchIcon            from "@mui/icons-material/Search";
 import AddIcon               from "@mui/icons-material/Add";
 import { collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import imageCompression from "browser-image-compression";
 import { db, storage } from "../../../firebase/config";
+
+const IMAGE_COMPRESSION_OPTIONS = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true };
 
 const SERIF = "'Playfair Display', serif";
 
@@ -82,8 +85,9 @@ export default function HaircutTab({ barber, brandColor }) {
     try {
       let photoUrl = "";
       if (photoFile) {
+        const compressed = await imageCompression(photoFile, IMAGE_COMPRESSION_OPTIONS);
         const sRef = ref(storage, `haircutMemory/${shopId}/${key}/${Date.now()}`);
-        await uploadBytes(sRef, photoFile);
+        await uploadBytes(sRef, compressed);
         photoUrl = await getDownloadURL(sRef);
       }
       const data = {
@@ -96,7 +100,7 @@ export default function HaircutTab({ barber, brandColor }) {
         createdAt: serverTimestamp(),
       };
       const added = await addDoc(cutsCol(), data);
-      setCuts(prev => [{ id: added.id, ...data, createdAt: { toMillis: () => Date.now() } }, ...prev]);
+      setCuts(prev => [{ id: added.id, ...data, createdAt: new Date() }, ...prev]);
       setForm(EMPTY_FORM); setPhoto(null); setPrev("");
       setView("history");
     } catch (e) { console.error(e); setError("Failed to save."); }

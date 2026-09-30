@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Box, Typography, Button, Stack } from "@mui/material";
 import { Link } from "react-router-dom";
 
@@ -12,6 +12,7 @@ const SANS = "'DM Sans', sans-serif";
 // to satisfy a scanner check — see the Privacy Policy for details.
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
+  const ref = useRef(null);
 
   useEffect(() => {
     try {
@@ -23,6 +24,26 @@ export default function CookieConsent() {
     }
   }, []);
 
+  // At zIndex 1400 this sits above every other fixed element on every page
+  // (the mobile dashboard nav at 1250, the WhatsApp FAB at 1300) — on a short
+  // page, or one whose primary action sits near the bottom of the viewport
+  // (e.g. /manage-booking, /cancel-booking), that means it can cover the
+  // exact button someone's trying to tap before they've dismissed it. Rather
+  // than guess a fixed height (the text wraps to 1 or 2 lines depending on
+  // viewport width) or pad every page individually, reserve its ACTUAL
+  // measured height in the document flow via a body padding, so nothing
+  // underneath is ever hidden behind it, on any page, at any width.
+  useLayoutEffect(() => {
+    if (!visible) return undefined;
+    const el = ref.current;
+    if (!el) return undefined;
+    const apply = () => { document.body.style.paddingBottom = `${el.offsetHeight}px`; };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => { ro.disconnect(); document.body.style.paddingBottom = ""; };
+  }, [visible]);
+
   function accept() {
     try { localStorage.setItem(STORAGE_KEY, "accepted"); } catch {}
     setVisible(false);
@@ -32,12 +53,13 @@ export default function CookieConsent() {
 
   return (
     <Box
+      ref={ref}
       role="dialog"
       aria-label="Cookie consent"
       sx={{
         position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 1400,
         bgcolor: G.dark, borderTop: "1px solid rgba(255,255,255,0.1)",
-        px: { xs: 2, md: 4 }, py: 2,
+        px: { xs: 2, md: 4 }, pt: 2, pb: "max(16px, env(safe-area-inset-bottom, 0px))",
         display: "flex", flexDirection: { xs: "column", sm: "row" },
         alignItems: "center", justifyContent: "center", gap: 2,
       }}

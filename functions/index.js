@@ -29,10 +29,18 @@ const GMAIL_USER = defineSecret("GMAIL_USER");
 const GMAIL_PASS = defineSecret("GMAIL_PASS");
 const PORKBUN_API_KEY = defineSecret("PORKBUN_API_KEY");
 const PORKBUN_SECRET_KEY = defineSecret("PORKBUN_SECRET_KEY");
+const GOOGLE_OAUTH_CLIENT_ID = defineSecret("GOOGLE_OAUTH_CLIENT_ID");
+const GOOGLE_OAUTH_CLIENT_SECRET = defineSecret("GOOGLE_OAUTH_CLIENT_SECRET");
+const ADMIN_ACCESS_KEY = defineSecret("ADMIN_ACCESS_KEY");
 
 const CF_API = "https://api.cloudflare.com/client/v4";
 const PORKBUN_API = "https://api.porkbun.com/api/json/v3";
 const APP_ORIGIN = "https://bookrightly.co.uk";
+const ADMIN_GOOGLE_REDIRECT_URI = "https://us-central1-booking-system-cdce0.cloudfunctions.net/adminGoogleOAuthCallback";
+// Full (not readonly) webmasters scope — sites.add, used to register a newly
+// verified domain as a Search Console property, is a write operation and
+// gets rejected as "insufficient authentication scopes" under .readonly.
+const GOOGLE_ADMIN_SCOPES = "https://www.googleapis.com/auth/webmasters https://www.googleapis.com/auth/siteverification.verify_only";
 // Cloudflare account that owns the zones + the booking Worker.
 const CF_ACCOUNT_ID = "74303e7cc790df1d034459f9cb1faf1e";
 const WORKER_SERVICE = "booking-system";
@@ -468,6 +476,412 @@ exports.checkDomainAuto = onCall(
     },
 );
 
+// ── Self-serve TXT records for auto-connected (nameserver-delegation) domains ─
+// Once a domain's nameservers point at us, its DNS lives entirely in our
+// Cloudflare account and the owner has no registrar panel of their own to add
+// records to — e.g. a Google Search Console or email (SPF/DKIM) verification
+// TXT record. These let an owner manage TXT records on their own zone only;
+// scoped to the caller's own barber doc → cfZoneId, so one account can never
+// touch another's zone. Restricted to TXT (not A/CNAME/etc.) so this can't be
+// used to break the Worker routing that already owns the domain's other records.
+
+async function requireDelegatedZone(uid) {
+  const snap = await admin.firestore().collection("barbers").doc(uid).get();
+  const data = snap.data();
+  if (!data || data.connectMethod !== "delegation" || !data.cfZoneId) {
+    throw new HttpsError("failed-precondition", "No auto-connected domain found for this account.");
+  }
+  return data;
+}
+
+exports.listDomainDnsRecords = onCall(
+    {secrets: [CF_API_TOKEN], invoker: "public"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+      const {cfZoneId} = await requireDelegatedZone(request.auth.uid);
+
+      try {
+        const res = await axios.get(
+            `${CF_API}/zones/${cfZoneId}/dns_records?type=TXT&per_page=100`,
+            {headers: cfAuthHeaders()},
+        );
+        return {records: (res.data.result || []).map((r) => ({id: r.id, name: r.name, content: r.content}))};
+      } catch (error) {
+        console.error("listDomainDnsRecords error:", error.response?.data || error.message);
+        throw new HttpsError("internal", "Failed to list DNS records.");
+      }
+    },
+);
+
+exports.addDomainDnsRecord = onCall(
+    {secrets: [CF_API_TOKEN], invoker: "public"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+
+      const name = String(request.data?.name || "").trim();
+      const content = String(request.data?.content || "").trim().replace(/^"+|"+$/g, "");
+      if (!name || !content) {
+        throw new HttpsError("invalid-argument", "name and content are required");
+      }
+      if (content.length > 2048) {
+        throw new HttpsError("invalid-argument", "TXT value is too long");
+      }
+
+      const {cfZoneId, customDomain} = await requireDelegatedZone(request.auth.uid);
+      const cleanName = name.toLowerCase().replace(/\.$/, "");
+      const isOwn = cleanName === "@" || cleanName === customDomain || cleanName.endsWith(`.${customDomain}`);
+      if (!isOwn) {
+        throw new HttpsError("invalid-argument", `Record name must be within ${customDomain}`);
+      }
+
+      try {
+        const res = await axios.post(
+            `${CF_API}/zones/${cfZoneId}/dns_records`,
+            {type: "TXT", name: cleanName === "@" ? customDomain : cleanName, content, ttl: 1},
+            {headers: cfAuthHeaders({"Content-Type": "application/json"})},
+        );
+        return {record: res.data.result};
+      } catch (error) {
+        const errs = error.response?.data?.errors || [];
+        console.error("addDomainDnsRecord error:", JSON.stringify(errs) || error.message);
+        throw new HttpsError("internal", errs[0]?.message || "Failed to add DNS record.");
+      }
+    },
+);
+
+exports.deleteDomainDnsRecord = onCall(
+    {secrets: [CF_API_TOKEN], invoker: "public"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+      const recordId = String(request.data?.recordId || "");
+      if (!recordId) throw new HttpsError("invalid-argument", "recordId is required");
+
+      const {cfZoneId} = await requireDelegatedZone(request.auth.uid);
+
+      try {
+        await axios.delete(
+            `${CF_API}/zones/${cfZoneId}/dns_records/${recordId}`,
+            {headers: cfAuthHeaders()},
+        );
+        return {success: true};
+      } catch (error) {
+        console.error("deleteDomainDnsRecord error:", error.response?.data || error.message);
+        throw new HttpsError("internal", "Failed to delete DNS record.");
+      }
+    },
+);
+
+// ── Google Search Console (platform-owned) ────────────────────────────────────
+// Rather than each customer connecting their own Google account — which would
+// mean every one of them hitting Google's "unverified app" warning (or being
+// blocked outright) until this app goes through Google's public verification
+// review — Bookrightly's own Google account is added as a verified owner of
+// each connected domain's Search Console property via a DNS TXT record, and
+// that ONE account is used server-side to read traffic for every customer's
+// domain. No customer ever sees a Google consent screen; the only OAuth grant
+// is the one-off admin connection below, done once by the platform owner.
+
+async function googleTokenRequest(params) {
+  const res = await axios.post(
+      "https://oauth2.googleapis.com/token",
+      new URLSearchParams({
+        client_id: GOOGLE_OAUTH_CLIENT_ID.value(),
+        client_secret: GOOGLE_OAUTH_CLIENT_SECRET.value(),
+        ...params,
+      }).toString(),
+      {headers: {"Content-Type": "application/x-www-form-urlencoded"}},
+  );
+  return res.data;
+}
+
+async function getAdminAccessToken() {
+  const ref = admin.firestore().collection("platformConfig").doc("googleSearchConsole");
+  const snap = await ref.get();
+  const doc = snap.data();
+  if (!doc?.refreshToken) {
+    throw new HttpsError("failed-precondition", "Google Search Console isn't connected on the platform yet.");
+  }
+  if (doc.accessToken && doc.accessTokenExpiry > Date.now() + 60000) {
+    return doc.accessToken;
+  }
+  try {
+    const tokens = await googleTokenRequest({refresh_token: doc.refreshToken, grant_type: "refresh_token"});
+    await ref.update({accessToken: tokens.access_token, accessTokenExpiry: Date.now() + tokens.expires_in * 1000});
+    return tokens.access_token;
+  } catch (error) {
+    console.error("getAdminAccessToken error:", error.response?.data || error.message);
+    throw new HttpsError("internal", "Google connection needs reconnecting on the platform side.");
+  }
+}
+
+// Step 1 of the ONE-TIME admin connection — visited directly in a browser by
+// the platform owner (not through the customer dashboard), gated by a secret
+// key rather than Firebase Auth since this isn't tied to any barber account.
+exports.adminGoogleAuthStart = onRequest(
+    {secrets: [GOOGLE_OAUTH_CLIENT_ID, ADMIN_ACCESS_KEY], invoker: "public"},
+    async (req, res) => {
+      if (req.query.key !== ADMIN_ACCESS_KEY.value()) {
+        return res.status(403).send("Forbidden");
+      }
+      const url = "https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({
+        client_id: GOOGLE_OAUTH_CLIENT_ID.value(),
+        redirect_uri: ADMIN_GOOGLE_REDIRECT_URI,
+        response_type: "code",
+        scope: GOOGLE_ADMIN_SCOPES,
+        access_type: "offline",
+        prompt: "consent",
+        state: ADMIN_ACCESS_KEY.value(),
+      }).toString();
+      res.redirect(url);
+    },
+);
+
+// Step 2 — Google redirects here with ?code&state. The admin key doubles as
+// the state token so this doesn't need any Firestore lookup to trust it.
+exports.adminGoogleOAuthCallback = onRequest(
+    {secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, ADMIN_ACCESS_KEY], invoker: "public"},
+    async (req, res) => {
+      const {code, state, error} = req.query;
+      if (error) return res.status(400).send(`Google returned an error: ${error}`);
+      if (state !== ADMIN_ACCESS_KEY.value()) return res.status(403).send("Forbidden");
+      if (!code) return res.status(400).send("Missing code");
+
+      try {
+        const tokens = await googleTokenRequest({
+          code: String(code),
+          redirect_uri: ADMIN_GOOGLE_REDIRECT_URI,
+          grant_type: "authorization_code",
+        });
+        if (!tokens.refresh_token) {
+          return res.status(400).send(
+              "Google didn't return a refresh token — this usually means Bookrightly already has a prior " +
+              "grant on file. Revoke access at https://myaccount.google.com/permissions and try again.",
+          );
+        }
+        await admin.firestore().collection("platformConfig").doc("googleSearchConsole").set({
+          refreshToken: tokens.refresh_token,
+          accessToken: tokens.access_token,
+          accessTokenExpiry: Date.now() + tokens.expires_in * 1000,
+          connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+        return res.send("Connected. You can close this tab.");
+      } catch (err) {
+        console.error("adminGoogleOAuthCallback error:", err.response?.data || err.message);
+        return res.status(500).send("Something went wrong connecting Google — check the function logs.");
+      }
+    },
+);
+
+// Requests the DNS TXT verification token for the caller's own connected
+// domain from Google, then tries to complete verification right away. For an
+// auto-connected (nameserver delegation) domain we control the DNS ourselves
+// via Cloudflare, so this adds the record and verifies in one call — no
+// customer action needed. For a manually-connected domain (DNS lives at the
+// owner's own registrar), the record is handed back for them to add
+// themselves, and calling this again afterwards completes it.
+exports.verifyDomainForSearchConsole = onCall(
+    {secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, CF_API_TOKEN], invoker: "public"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+      const uid = request.auth.uid;
+
+      const barberSnap = await admin.firestore().collection("barbers").doc(uid).get();
+      const barber = barberSnap.data();
+      const domain = barber?.customDomain;
+      const bookingSlug = barber?.bookingSlug;
+      if (!domain && !bookingSlug) throw new HttpsError("failed-precondition", "No booking page found.");
+
+      const accessToken = await getAdminAccessToken();
+      const privateRef = admin.firestore().collection("barbers").doc(uid)
+          .collection("private").doc("searchConsole");
+
+      // No custom domain — the booking page lives at bookrightly.co.uk/{slug}.
+      // bookrightly.co.uk itself is already a verified Domain property under
+      // this account, and Search Console automatically extends that
+      // verification to any URL-prefix property beneath it, so this can just
+      // register the property directly with no DNS/token dance at all.
+      if (!domain) {
+        const siteUrl = `https://bookrightly.co.uk/${bookingSlug}`;
+        try {
+          await axios.put(
+              `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}`,
+              {},
+              {headers: {"Authorization": `Bearer ${accessToken}`}},
+          );
+          await privateRef.set({status: "verified", verifiedAt: admin.firestore.FieldValue.serverTimestamp()}, {merge: true});
+          return {verified: true};
+        } catch (err) {
+          console.error("verifyDomainForSearchConsole sites.add (slug) error:", err.response?.data || err.message);
+          throw new HttpsError("internal", "Couldn't register your booking page with Search Console.");
+        }
+      }
+
+      let token;
+      try {
+        const tokenRes = await axios.post(
+            "https://www.googleapis.com/siteVerification/v1/token",
+            {site: {type: "INET_DOMAIN", identifier: domain}, verificationMethod: "DNS_TXT"},
+            {headers: {"Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json"}},
+        );
+        token = tokenRes.data.token;
+      } catch (err) {
+        console.error("verifyDomainForSearchConsole getToken error:", err.response?.data || err.message);
+        throw new HttpsError("internal", "Couldn't get a verification token from Google.");
+      }
+
+      if (barber.connectMethod === "delegation" && barber.cfZoneId) {
+        try {
+          await axios.post(
+              `${CF_API}/zones/${barber.cfZoneId}/dns_records`,
+              {type: "TXT", name: domain, content: token, ttl: 1},
+              {headers: cfAuthHeaders({"Content-Type": "application/json"})},
+          );
+        } catch (err) {
+          // Likely already added by a previous attempt at this same token — fine.
+          console.warn("verifyDomainForSearchConsole dns add:", err.response?.data || err.message);
+        }
+      }
+
+      try {
+        await axios.post(
+            "https://www.googleapis.com/siteVerification/v1/webResource?verificationMethod=DNS_TXT",
+            {site: {type: "INET_DOMAIN", identifier: domain}},
+            {headers: {"Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json"}},
+        );
+        // Ownership verification (above) and being registered as a Search
+        // Console property are two separate things in Google's system — this
+        // second call is what actually makes searchAnalytics.query work for
+        // the domain. PUT is idempotent, safe to call even if already added.
+        await axios.put(
+            `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(`sc-domain:${domain}`)}`,
+            {},
+            {headers: {"Authorization": `Bearer ${accessToken}`}},
+        );
+        await privateRef.set({status: "verified", verifiedAt: admin.firestore.FieldValue.serverTimestamp()}, {merge: true});
+        return {verified: true};
+      } catch (err) {
+        const manual = barber.connectMethod !== "delegation";
+        await privateRef.set({status: "pending", txtRecordName: "@", txtRecordValue: token}, {merge: true});
+        return {
+          verified: false,
+          txtRecord: manual ? {name: "@", value: token} : null,
+          message: manual ?
+            "Add this TXT record at your domain's DNS, then try again." :
+            "DNS is still updating — try again in a minute.",
+        };
+      }
+    },
+);
+
+exports.getSearchConsoleTraffic = onCall(
+    {secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET], invoker: "public"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+      const uid = request.auth.uid;
+
+      const barber = (await admin.firestore().collection("barbers").doc(uid).get()).data();
+      const domain = barber?.customDomain;
+      const bookingSlug = barber?.bookingSlug;
+      if (!domain && !bookingSlug) throw new HttpsError("failed-precondition", "No booking page found.");
+      const siteUrl = domain ? `sc-domain:${domain}` : `https://bookrightly.co.uk/${bookingSlug}`;
+      const displayName = domain || `bookrightly.co.uk/${bookingSlug}`;
+
+      const privateSnap = await admin.firestore().collection("barbers").doc(uid)
+          .collection("private").doc("searchConsole").get();
+      if (privateSnap.data()?.status !== "verified") {
+        throw new HttpsError("failed-precondition", "not_verified");
+      }
+
+      const accessToken = await getAdminAccessToken();
+
+      // Self-heals accounts marked "verified" before sites.add existed here —
+      // idempotent, safe to call every time.
+      await axios.put(
+          `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}`,
+          {},
+          {headers: {"Authorization": `Bearer ${accessToken}`}},
+      ).catch((err) => console.warn("getSearchConsoleTraffic sites.add:", err.response?.data || err.message));
+
+      // Search Console data typically lags 2-3 days; a 28-day window ending
+      // 3 days ago mirrors what the Search Console UI itself shows by default.
+      const end = new Date();
+      end.setDate(end.getDate() - 3);
+      const start = new Date(end);
+      start.setDate(start.getDate() - 27);
+      const fmt = (d) => d.toISOString().slice(0, 10);
+
+      try {
+        const res = await axios.post(
+            `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`,
+            {startDate: fmt(start), endDate: fmt(end), dimensions: ["date"], rowLimit: 1000},
+            {headers: {"Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json"}},
+        );
+        const rows = res.data.rows || [];
+        const totalClicks = rows.reduce((sum, r) => sum + r.clicks, 0);
+        const totalImpressions = rows.reduce((sum, r) => sum + r.impressions, 0);
+        return {
+          domain: displayName,
+          startDate: fmt(start),
+          endDate: fmt(end),
+          rows: rows.map((r) => ({date: r.keys[0], clicks: r.clicks, impressions: r.impressions, ctr: r.ctr, position: r.position})),
+          totals: {
+            clicks: totalClicks,
+            impressions: totalImpressions,
+            ctr: totalImpressions ? totalClicks / totalImpressions : 0,
+            position: rows.length ? rows.reduce((sum, r) => sum + r.position * r.impressions, 0) / (totalImpressions || 1) : 0,
+          },
+        };
+      } catch (err) {
+        console.error("getSearchConsoleTraffic error:", err.response?.data || err.message);
+        throw new HttpsError("internal", "Failed to fetch traffic data.");
+      }
+    },
+);
+
+// verifyDomainForSearchConsole registers a property (sites.add/webResource)
+// but nothing ever removed one — deleting an account or disconnecting a
+// custom domain left its Search Console property registered under the
+// platform's Google account forever, with no way for the customer to remove
+// it themselves (it's the platform's own Google account that owns it, not
+// theirs). resetDomainConnection (below) already deleted the *local*
+// barbers/{uid}/private/searchConsole tracking doc on disconnect, which gave
+// the impression of cleanup without ever actually releasing the property on
+// Google's side. Best-effort: a property that's already gone, or a token/API
+// failure, must never block account deletion or a domain disconnect.
+async function releaseSearchConsoleProperty(barberData) {
+  const domain = barberData?.customDomain;
+  const bookingSlug = barberData?.bookingSlug;
+  if (!domain && !bookingSlug) return {removed: false, reason: "no_property"};
+
+  const siteUrl = domain ? `sc-domain:${domain}` : `https://bookrightly.co.uk/${bookingSlug}`;
+
+  try {
+    const accessToken = await getAdminAccessToken();
+    await axios.delete(
+        `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}`,
+        {headers: {"Authorization": `Bearer ${accessToken}`}},
+    );
+    return {removed: true};
+  } catch (err) {
+    // 404 means it's already gone — not an error from the caller's POV.
+    if (err.response?.status === 404) return {removed: true};
+    console.error("releaseSearchConsoleProperty error:", err.response?.data || err.message);
+    return {removed: false, reason: "api_error"};
+  }
+}
+
+// Callable wrapper — used from account deletion, where the barber doc is
+// about to be deleted client-side and there's no other server-side hook to
+// run cleanup from.
+exports.removeSearchConsoleProperty = onCall(
+    {secrets: [GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET], invoker: "public"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+      const barber = (await admin.firestore().collection("barbers").doc(request.auth.uid).get()).data();
+      return releaseSearchConsoleProperty(barber);
+    },
+);
+
 // ── Bookrightly booking-link slugs (bookrightly.co.uk/{slug}) ────────────────
 // Mirrors src/utils/bookingSlug.js — Cloud Functions can't import Vite src/
 // modules directly. Keep both in sync if this list/logic ever changes.
@@ -478,7 +892,7 @@ const RESERVED_SLUGS = new Set([
   "booking-software", "pricing", "how-it-works", "blog", "tools", "terms",
   "privacy", "contact", "workout", "food-diary", "check-in", "par-q",
   "colour-approval", "quote-view", "queue", "food-generator", "client-portal",
-  "pt-book", "onboarding", "dashboard",
+  "pt-book", "onboarding", "dashboard", "starter-pack",
   "admin", "api", "account", "settings", "support", "help", "about",
   "bookrightly", "www", "register", "sitemap.xml", "robots.txt",
 ]);
@@ -508,46 +922,149 @@ function isValidSlugFormat(slug) {
 // real resource leak an owner has no way to clean up themselves. Read
 // server-side via the caller's own uid rather than trusting anything from
 // the client, matching every other domain-touching function here.
+// Shared Cloudflare-side cleanup for whichever domain-connect method the
+// caller used — deletes the delegated zone (auto method, which takes its
+// DNS, Worker custom domain attachment and certificate with it in one step)
+// or the custom_hostname records on the platform's shared zone (manual/
+// CNAME method). Doesn't touch Firestore — callers decide what to do there.
+async function releaseDomainResources(data) {
+  const domain = data.customDomain;
+  if (!domain) return;
+  if (data.connectMethod === "delegation" && data.cfZoneId) {
+    await axios.delete(
+        `${CF_API}/zones/${data.cfZoneId}`,
+        {headers: cfAuthHeaders()},
+    ).catch(() => {});
+  } else {
+    for (const host of [domain, `www.${domain}`]) {
+      const existing = await axios.get(
+          `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames?hostname=${encodeURIComponent(host)}`,
+          {headers: cfAuthHeaders()},
+      ).catch(() => null);
+      for (const h of (existing?.data?.result || [])) {
+        await axios.delete(
+            `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames/${h.id}`,
+            {headers: cfAuthHeaders()},
+        ).catch(() => {});
+      }
+    }
+  }
+}
+
 exports.releaseCustomDomain = onCall(
-    {secrets: [CF_API_TOKEN, CF_ZONE_ID], invoker: "public"},
+    {secrets: [CF_API_TOKEN, CF_ZONE_ID, GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET], invoker: "public"},
     async (request) => {
       if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
-      const uid = request.auth.uid;
+      const ref = admin.firestore().collection("barbers").doc(request.auth.uid);
 
-      const snap = await admin.firestore().collection("barbers").doc(uid).get();
+      // Runs unconditionally (not just when a domain is connected) since this
+      // is also the step account deletion calls to clean up everything
+      // domain-related before wiping the doc — a subcollection like this one
+      // isn't deleted automatically just because its parent doc is, and
+      // there's no client-side rule letting the owner delete it themselves.
+      await ref.collection("private").doc("searchConsole").delete().catch(() => {});
+
+      const snap = await ref.get();
       if (!snap.exists) return {released: false};
       const data = snap.data();
-      const domain = data.customDomain;
-      if (!domain) return {released: false};
+
+      // Releases the account's Search Console property (custom domain or
+      // bookrightly.co.uk/{slug}) regardless of whether a custom domain is
+      // connected — deleting the Firestore doc's own record of it (just
+      // above) never actually removed it from Google's side, leaving it
+      // registered under the platform's Google account forever with no way
+      // for the customer to remove it themselves.
+      await releaseSearchConsoleProperty(data).catch((e) =>
+        console.error("releaseCustomDomain search console cleanup error:", e.message));
+
+      // Uniqueness for bookrightly.co.uk/{slug} is enforced by a *separate*
+      // bookingSlugs/{slug} doc (claimBookingSlug), not the bookingSlug field
+      // on this doc — client rules block writing it directly (write: false,
+      // only this admin-SDK path can touch it), so deleting the account
+      // doc alone never freed it. Deleted outright (not the "released, 7-day
+      // reclaim cooldown" pattern claimBookingSlug uses when someone just
+      // changes their slug) since there's no still-existing owner here who'd
+      // want a window to reclaim it.
+      if (data.bookingSlug) {
+        await admin.firestore().doc(`bookingSlugs/${data.bookingSlug}`).delete().catch((e) =>
+          console.error("releaseCustomDomain slug release error:", e.message));
+      }
+
+      // Claiming a staff invite creates a *second*, top-level barbers/{uid}
+      // doc for that team member (needed so they get their own individual
+      // /barber/{uid} booking page) alongside the barbers/{ownerUid}/
+      // staff/{uid} subcollection entry. The client-side deletion flow can
+      // only delete that subcollection entry (its own doc's own rules) — a
+      // staff member's separate top-level doc, and their separate login,
+      // both require this same admin-privileged step to clean up, or they're
+      // orphaned forever with a shopId pointing at a now-deleted shop.
+      try {
+        const staffSnap = await ref.collection("staff").get();
+        for (const staffDoc of staffSnap.docs) {
+          const staffId = staffDoc.id;
+          await admin.firestore().doc(`barbers/${staffId}`).delete().catch((e) =>
+            console.error(`releaseCustomDomain staff doc cleanup (${staffId}):`, e.message));
+          await admin.auth().deleteUser(staffId).catch((e) => {
+            if (e.code !== "auth/user-not-found") {
+              console.error(`releaseCustomDomain staff auth cleanup (${staffId}):`, e.message);
+            }
+          });
+        }
+      } catch (e) {
+        console.error("releaseCustomDomain staff cleanup error:", e.message);
+      }
+
+      if (!data.customDomain) return {released: false};
 
       try {
-        if (data.connectMethod === "delegation" && data.cfZoneId) {
-          // Deleting the zone takes its DNS, Worker custom domain
-          // attachment and certificates with it in one step.
-          await axios.delete(
-              `${CF_API}/zones/${data.cfZoneId}`,
-              {headers: cfAuthHeaders()},
-          ).catch(() => {});
-        } else {
-          // CNAME method — a custom_hostname record on the platform's own
-          // shared zone, not a dedicated zone of its own.
-          for (const host of [domain, `www.${domain}`]) {
-            const existing = await axios.get(
-                `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames?hostname=${encodeURIComponent(host)}`,
-                {headers: cfAuthHeaders()},
-            ).catch(() => null);
-            for (const h of (existing?.data?.result || [])) {
-              await axios.delete(
-                  `${CF_API}/zones/${CF_ZONE_ID.value()}/custom_hostnames/${h.id}`,
-                  {headers: cfAuthHeaders()},
-              ).catch(() => {});
-            }
-          }
-        }
+        await releaseDomainResources(data);
       } catch (e) {
         console.error("releaseCustomDomain error:", e.message);
       }
       return {released: true};
+    },
+);
+
+// Lets an owner abandon a domain connection they got wrong (e.g. typed the
+// wrong TLD, so it can never activate) and start over — without waiting out
+// a connection that will never complete, or needing support to fix it by
+// hand. Unlike releaseCustomDomain above (only safe to leave Firestore
+// untouched there because the whole doc is deleted immediately after by the
+// caller), this clears the domain fields on the owner's own doc too, so the
+// dashboard resets back to the "connect a domain" form.
+exports.resetDomainConnection = onCall(
+    {secrets: [CF_API_TOKEN, CF_ZONE_ID, GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET], invoker: "public"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Login required");
+      const ref = admin.firestore().collection("barbers").doc(request.auth.uid);
+      const snap = await ref.get();
+      const data = snap.data();
+      if (!data?.customDomain) return {reset: true};
+
+      try {
+        await releaseDomainResources(data);
+      } catch (e) {
+        console.error("resetDomainConnection cleanup error:", e.message);
+      }
+
+      // Actually releases the property on Google's side — deleting only the
+      // local tracking doc below (as this used to do) just hid the leftover
+      // property from our own UI without ever removing it from Search Console.
+      await releaseSearchConsoleProperty(data).catch((e) =>
+        console.error("resetDomainConnection search console cleanup error:", e.message));
+
+      await ref.update({
+        customDomain: admin.firestore.FieldValue.delete(),
+        cfZoneId: admin.firestore.FieldValue.delete(),
+        nameservers: admin.firestore.FieldValue.delete(),
+        connectMethod: admin.firestore.FieldValue.delete(),
+        domainStatus: admin.firestore.FieldValue.delete(),
+        customHostnameId: admin.firestore.FieldValue.delete(),
+        verifiedAt: admin.firestore.FieldValue.delete(),
+      });
+      await ref.collection("private").doc("searchConsole").delete().catch(() => {});
+
+      return {reset: true};
     },
 );
 
@@ -656,6 +1173,134 @@ exports.claimBookingSlug = onCall({invoker: "public"}, async (request) => {
     return {slug};
   });
 });
+
+// Concierge onboarding — Dean sets up a live account on a prospect's behalf
+// (business profile + a working booking link already claimed) instead of
+// asking a cold contact to sit through signup + onboarding themselves. Gated
+// by ADMIN_ACCESS_KEY rather than request.auth (same pattern as the Google
+// OAuth admin routes above) since this is a one-person internal tool, not a
+// user-facing feature — no Firebase Auth session is expected to exist yet.
+exports.adminCreateAccount = onCall(
+    {secrets: [ADMIN_ACCESS_KEY], invoker: "public"},
+    async (request) => {
+      const {adminKey, businessName, businessType, ownerName, email, phone, plan} = request.data || {};
+      if (adminKey !== ADMIN_ACCESS_KEY.value()) {
+        throw new HttpsError("permission-denied", "Invalid admin key.");
+      }
+      if (!businessName || !ownerName || !email) {
+        throw new HttpsError("invalid-argument", "businessName, ownerName and email are required.");
+      }
+
+      const db = admin.firestore();
+
+      let userRecord;
+      try {
+        userRecord = await admin.auth().createUser({
+          email,
+          displayName: ownerName,
+          emailVerified: false,
+        });
+      } catch (err) {
+        if (err.code === "auth/email-already-exists") {
+          throw new HttpsError("already-exists", "An account with this email already exists.");
+        }
+        throw new HttpsError("internal", err.message);
+      }
+      const uid = userRecord.uid;
+
+      // Claim a booking slug from the business name up front, so the account
+      // is genuinely live and shareable the moment it's handed over — not
+      // something the owner still has to do themselves on first login.
+      const baseSlug = sanitizeSlug(businessName) || sanitizeSlug(ownerName) || "business";
+      let slug = baseSlug;
+      let claimed = false;
+      for (let suffix = 1; suffix <= 50 && !claimed; suffix++) {
+        const candidate = suffix === 1 ? baseSlug : `${baseSlug}-${suffix}`.slice(0, 30);
+        const validCandidate = isValidSlugFormat(candidate) && !RESERVED_SLUGS.has(candidate);
+        if (!validCandidate) {
+          continue;
+        }
+        const slugSnap = await db.doc(`bookingSlugs/${candidate}`).get();
+        if (!slugSnap.exists) {
+          slug = candidate;
+          claimed = true;
+        }
+      }
+      if (!claimed) {
+        slug = `${baseSlug}-${uid.slice(0, 6)}`.slice(0, 30);
+      }
+      await db.doc(`bookingSlugs/${slug}`).set({
+        barberId: uid,
+        claimedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Mirrors src/firebase/auth.jsx's signUpBarber — same shape as a normal
+      // owner signup, so nothing downstream has to special-case this account.
+      // Previously collapsed "basic"/"free" (then "mini") down to "full" here
+      // — a real bug, since an admin picking Basic or Free from the dropdown
+      // above got a Full account instead. Fixed to keep every plan distinct,
+      // matching src/config/plans.js.
+      const resolvedPlan = ["widget", "basic", "free"].includes(plan) ? plan : "full";
+      const isFreePlan = resolvedPlan === "free";
+      await db.doc(`barbers/${uid}`).set({
+        uid,
+        displayName: ownerName,
+        name: ownerName,
+        email,
+        phone: phone || "",
+        role: "owner",
+        shopId: uid,
+        businessType: businessType || "barber",
+        businessName,
+        services: [],
+        photoURL: "",
+        brandColor: "#2563EB",
+        plan: resolvedPlan,
+        // Free has no trial to start — it's free forever from day one.
+        subscriptionStatus: isFreePlan ? "free" : "trialing",
+        ...(isFreePlan ? {} : {
+          trialEndsAt: admin.firestore.Timestamp.fromDate(
+              new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+          ),
+        }),
+        bookingSlug: slug,
+        marketingOptIn: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        setupByAdmin: true,
+      });
+
+      // No password is ever set by this flow — the owner's first action is
+      // always to set their own. Using the public Identity Toolkit REST API
+      // (same one the client SDK's sendPasswordResetEmail calls, keyed by
+      // the project's public Web API key — not a secret, already shipped in
+      // the client bundle) instead of admin.auth().generatePasswordResetLink(),
+      // which needs the Cloud Function's runtime service account to hold
+      // "Service Account Token Creator" on itself (a signBlob permission
+      // 2nd-gen functions don't get by default) — unnecessary friction, and
+      // Firebase sends its own reset email directly this way, no link to
+      // relay through a second email ourselves.
+      const FIREBASE_WEB_API_KEY = "AIzaSyAG17iGR4EKlJO2I1L2Yn0S2jGQGBEtSVY";
+      await axios.post(
+          `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_WEB_API_KEY}`,
+          {requestType: "PASSWORD_RESET", email},
+      );
+
+      // Routed through the Worker's Resend setup so this sends from a real
+      // info@bookrightly.co.uk address instead of Dean's personal Gmail —
+      // Resend + the verified sending domain are only configured there.
+      // Best-effort: the account is already fully live even if this fails.
+      try {
+        await axios.post(
+            "https://bookrightly.co.uk/api/admin-send-account-email",
+            {adminKey, email, businessName, slug},
+        );
+      } catch (err) {
+        console.error("adminCreateAccount: welcome email failed:", err.message);
+      }
+
+      return {uid, slug, email};
+    },
+);
 
 exports.stripeWebhook = onRequest(
     {
@@ -958,33 +1603,18 @@ exports.createStripeInvoice = onCall(
     },
 );
 
-// ── Trial expiry — runs daily at 02:00 UTC ────────────────────────────────────
-// Finds any barber whose 30-day trial has ended and flips subscriptionStatus
-// from "trialing" to "past_due", which takes their public site offline until
-// they subscribe.
+// ── Trial expiry — DISABLED as of the Free-plan restructure ──────────────────
+// This used to flip subscriptionStatus to "past_due" on trial end, which
+// took the public site offline (see App.jsx's isTenantOffline) until the
+// business subscribed. Bookrightly no longer locks anyone out on trial end —
+// src/worker.js's handleTrialLifecycle (run from the Worker's own daily cron,
+// alongside booking reminders) now downgrades an unconverted trial to the
+// Free plan instead, keeping the page live. Left in place, disabled, rather
+// than deleted, so the history and reasoning stay visible; safe to remove
+// entirely in a future cleanup once the new path has been running a while.
 exports.checkTrialExpiry = onSchedule(
     {schedule: "every 24 hours", timeZone: "UTC", secrets: []},
     async () => {
-      const db = admin.firestore();
-      const now = admin.firestore.Timestamp.now();
-
-      const snap = await db
-          .collection("barbers")
-          .where("subscriptionStatus", "==", "trialing")
-          .where("trialEndsAt", "<=", now)
-          .get();
-
-      if (snap.empty) {
-        console.log("checkTrialExpiry: no expired trials found");
-        return;
-      }
-
-      const batch = db.batch();
-      snap.docs.forEach((doc) => {
-        batch.update(doc.ref, {subscriptionStatus: "past_due"});
-      });
-      await batch.commit();
-
-      console.log(`checkTrialExpiry: flipped ${snap.size} trial(s) to past_due`);
+      console.log("checkTrialExpiry: disabled — trial-end handling now lives in src/worker.js's handleTrialLifecycle");
     },
 );

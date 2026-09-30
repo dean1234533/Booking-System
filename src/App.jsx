@@ -1,6 +1,6 @@
 import { Suspense, lazy, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import "./styles/index.css";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, matchPath } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, matchPath } from "react-router-dom";
 import { Box, CircularProgress, ThemeProvider, createTheme, CssBaseline } from "@mui/material";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Helmet, HelmetProvider } from 'react-helmet-async';
@@ -25,15 +25,19 @@ const LegalPage         = lazy(() => import("./pages/LegalPage"));
 const ContactPage       = lazy(() => import("./pages/ContactPage"));
 const TenantHome        = lazy(() => import("./pages/TenantHome"));
 const BarberProfile     = lazy(() => import("./pages/BarberProfile"));
+const MinimalBookingPage = lazy(() => import("./pages/MinimalBookingPage"));
+const MiniBookingPage = lazy(() => import("./pages/MiniBookingPage"));
 const BookingForm       = lazy(() => import("./pages/BookingForm"));
 const Confirmation      = lazy(() => import("./pages/Confirmation"));
 const Dashboard         = lazy(() => import("./pages/Dashboard"));
 const Login             = lazy(() => import("./pages/Login"));
 const Signup             = lazy(() => import("./pages/Signup"));
+const AdminCreateAccount = lazy(() => import("./pages/AdminCreateAccount"));
 const StaffSignup       = lazy(() => import("./pages/StaffSignup"));
 const TenantLogin       = lazy(() => import("./pages/TenantLogin"));
 const TenantSignup      = lazy(() => import("./pages/TenantSignup"));
 const CancelBooking     = lazy(() => import("./pages/CancelBooking"));
+const ManageBooking     = lazy(() => import("./pages/ManageBooking"));
 const ReviewPage        = lazy(() => import("./pages/ReviewPage"));
 const PTBookingSite       = lazy(() => import("./pages/PTBookingSite"));
 const PTStaffProfile      = lazy(() => import("./pages/PTStaffProfile"));
@@ -66,6 +70,7 @@ const HowItWorksPage           = lazy(() => import("./pages/seo/HowItWorksPage")
 const DecoratorSoftwarePage    = lazy(() => import("./pages/seo/DecoratorSoftwarePage"));
 const BlogIndex                = lazy(() => import("./pages/blog/BlogIndex"));
 const BlogPost                 = lazy(() => import("./pages/blog/BlogPost"));
+const StarterPackGuide         = lazy(() => import("./pages/StarterPackGuide"));
 const NoShowCalculator         = lazy(() => import("./pages/tools/NoShowCalculator"));
 const RevenueCalculator        = lazy(() => import("./pages/tools/RevenueCalculator"));
 const PTRateCalculator         = lazy(() => import("./pages/tools/PTRateCalculator"));
@@ -94,8 +99,56 @@ function AppShell() {
   const [isFetchingTenant, setIsFetchingTenant] = useState(true);
   const hostname = window.location.hostname.toLowerCase();
   const location = useLocation();
-  
+  const navigate = useNavigate();
+
   const lastIdentifiedId = useRef(null);
+  // Which path the current tenantBarber/null value actually corresponds to.
+  // Without this, a client-side navigation straight into a /:bookingSlug
+  // route from a non-tenant page (e.g. clicking "Done" on /confirmation/:id)
+  // renders with the PREVIOUS page's stale tenantBarber (null) for one frame,
+  // before identifyTenant's effect has re-run for the new path — and the
+  // /:bookingSlug route was treating any falsy tenantBarber as "confirmed
+  // not found", immediately <Navigate>-ing to "/" before the real lookup
+  // ever got a chance to complete. Comparing against this instead of
+  // tenantBarber alone tells that route "still loading" vs. "genuinely
+  // doesn't exist".
+  const [identifiedPath, setIdentifiedPath] = useState(null);
+
+  // The installed PWA's manifest start_url is always "/" (the marketing
+  // homepage) — there's no way to point it at "wherever this install was
+  // launched from", so a business owner, PT client, or walk-in customer
+  // tapping the app icon always landed on the homepage instead of their
+  // dashboard/portal/queue. Track the last such route visited and, on a
+  // fresh standalone launch at "/", jump straight back into it.
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.startsWith("/dashboard") || path.startsWith("/client-portal/") || path.startsWith("/queue/")) {
+      try { localStorage.setItem("br_pwa_last_route", path + location.search); } catch {}
+    }
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+    if (!isStandalone || location.pathname !== "/") return;
+    try {
+      const lastRoute = localStorage.getItem("br_pwa_last_route");
+      if (lastRoute) navigate(lastRoute, { replace: true });
+    } catch {}
+    // Only relevant right when the installed app launches at "/" — deliberately
+    // not re-run on later in-app navigation back to "/".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // React Router doesn't reset scroll position on navigation by default —
+  // without this, following a link while scrolled partway down a page (e.g.
+  // the "Free Business Starter Pack" link from a scrolled dashboard card)
+  // lands on the new page at that same pixel offset instead of its top.
+  // Skip when a hash is present so in-page anchor links (e.g. "/#browse-
+  // section") still scroll to their target instead of being overridden.
+  useEffect(() => {
+    if (location.hash) return;
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   const platformDomains = [
     'bookrightly.co.uk',
@@ -190,6 +243,7 @@ function AppShell() {
         || (!isPlatformDomain ? `domain:${hostname}` : null);
 
       if (identifyKey && identifyKey === lastIdentifiedId.current && tenantBarber) {
+        setIdentifiedPath(path);
         setIsFetchingTenant(false);
         return;
       }
@@ -249,9 +303,11 @@ function AppShell() {
           });
         }
         lastIdentifiedId.current = identifyKey || hostname;
+        setIdentifiedPath(path);
       } else if (!isAuthPath) {
         setTenantBarber(null);
         lastIdentifiedId.current = null;
+        setIdentifiedPath(path);
       }
     } catch (err) {
       console.error("Tenant Lookup Error:", err);
@@ -276,14 +332,21 @@ function AppShell() {
   useEffect(() => {
     const logo = tenantBarber?.logoUrl;
     if (!logo) return;
+    const faviconUrl = isPlatformDomain ? logo : "/favicon.svg";
     document.querySelectorAll('link[rel="icon"]').forEach(el => {
-      el.setAttribute("href", logo);
-      el.removeAttribute("type");
+      el.setAttribute("href", faviconUrl);
+      if (isPlatformDomain) {
+        el.removeAttribute("type");
+        el.removeAttribute("sizes");
+      } else {
+        el.setAttribute("type", "image/svg+xml");
+        el.setAttribute("sizes", "any");
+      }
     });
     document.querySelectorAll('link[rel="apple-touch-icon"]').forEach(el => {
-      el.setAttribute("href", logo);
+      el.setAttribute("href", faviconUrl);
     });
-  }, [tenantBarber?.logoUrl]);
+  }, [tenantBarber?.logoUrl, isPlatformDomain]);
 
   const dynamicTheme = useMemo(() => {
     const selectedColor = tenantBarber?.brandColor || "#FF735C";
@@ -349,7 +412,7 @@ function AppShell() {
 
   const isDashboard    = location.pathname.startsWith('/dashboard');
   const isHomePage     = location.pathname === '/';
-  const isAuthPage     = location.pathname === '/login' || location.pathname === '/signup';
+  const isAuthPage     = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/admin/create-account';
   const isReviewPath   = location.pathname.startsWith('/review');
   const isOnboarding   = location.pathname.startsWith('/onboarding');
   const isWorkoutView  = location.pathname.startsWith('/workout')
@@ -380,7 +443,19 @@ function AppShell() {
 
   // Only apply alternative layout for genuine tenant routes —
   // never for /dashboard or /review (review has its own standalone layout)
-  const isAlternativeBookingLayout = !isDashboard && !isReviewPath && (
+  // Basic-plan accounts are excluded from every check below regardless of
+  // business type — MinimalBookingPage.jsx (used for Basic on any business
+  // type) never renders its own nav/footer, so without this exclusion a
+  // Basic account of any non-barber type ends up with neither the global
+  // shell nor its own — no nav or footer at all. This used to only be
+  // applied to the businessType-based check further down, while the
+  // path-based checks above it had no such exclusion — meaning visiting a
+  // Basic-plan decorator/hairdresser/plumber/trainer via its legacy
+  // /type/:id URL (which still matches these path strings even though
+  // renderTenantHome now correctly renders MinimalBookingPage there) still
+  // wrongly suppressed the nav. Fixed by gating the whole expression on
+  // plan !== "basic" once, up front.
+  const isAlternativeBookingLayout = !isDashboard && !isReviewPath && tenantBarber?.plan !== "basic" && (
     location.pathname.includes("/pt-booking/") ||
     location.pathname.includes("/decorator/") ||
     location.pathname.includes("/hairdresser/") ||
@@ -388,12 +463,20 @@ function AppShell() {
     // Non-barber tenant templates (PT/decorator/hairdresser) render their own
     // nav + footer, so hide the global shell whenever one is shown — including
     // the platform-domain /shop/:id view (where tenantBarber is the tenant).
-    (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber")
+    (tenantBarber && tenantBarber.businessType && tenantBarber.businessType !== "barber") ||
+    // Free-plan pages (MiniBookingPage.jsx) are deliberately standalone —
+    // no nav, no footer at all, not even the global TenantNav that Basic-
+    // plan pages still use.
+    tenantBarber?.plan === "free"
   );
 
-  // A lapsed subscription takes the public site offline (not the dashboard)
+  // A lapsed subscription takes the public site offline (not the dashboard).
+  // The Free plan is never taken offline for a stale subscriptionStatus —
+  // a lapsed trial moves to Free (see worker.js's handleTrialLifecycle) and
+  // must keep its page live, which is the entire point of that change.
   const isTenantOffline = Boolean(
-    !tenantBarber?.freeForever && (
+    !tenantBarber?.freeForever &&
+    tenantBarber?.plan !== "free" && (
       tenantBarber?.subscriptionStatus === "past_due" ||
       tenantBarber?.subscriptionStatus === "canceled"
     )
@@ -401,6 +484,8 @@ function AppShell() {
 
   // Choose the right landing component based on business type
   const renderTenantHome = (tenant) => {
+    if (tenant.plan === "free")                 return <MiniBookingPage tenant={tenant} />;
+    if (tenant.plan === "basic")               return <MinimalBookingPage tenant={tenant} />;
     if (tenant.businessType === "trainer")     return <PTBookingSite barber={tenant} profile={tenant} />;
     if (tenant.businessType === "decorator")   return <DecoratorTemplate tenantData={tenant} />;
     if (tenant.businessType === "hairdresser") return <HairdresserTemplate tenantData={tenant} />;
@@ -455,15 +540,28 @@ function AppShell() {
           }>
           <Routes>
             <Route path="/" element={(!isPlatformDomain && tenantBarber) ? (isTenantOffline ? <OfflinePage /> : renderTenantHome(tenantBarber)) : <Home />} />
+            {/* These four used to hardcode their Full-plan template directly,
+                bypassing renderTenantHome's plan check entirely — harmless
+                while Basic/Free were barber/hairdresser-only (this route
+                group never applied to them), but a real bug once the plan
+                restructure opened Basic/Free to every business type: a
+                Free-plan decorator/hairdresser/plumber/trainer visited via
+                one of these legacy URLs got the full template instead of
+                their actual plan's page. Now dispatches through
+                renderTenantHome like /shop/:tenantId already did. */}
             <Route path="/shop/:tenantId" element={renderLegacyTenantRoute(renderTenantHome)} />
-            <Route path="/pt-booking/:tenantId" element={renderLegacyTenantRoute(tenant => <PTBookingSite barber={tenant} profile={tenant} />)} />
+            <Route path="/pt-booking/:tenantId" element={renderLegacyTenantRoute(renderTenantHome)} />
             <Route path="/pt-booking/:tenantId/:staffId" element={isTenantOffline ? <OfflinePage /> : <PTStaffProfile tenant={tenantBarber} />} />
-            <Route path="/decorator/:tenantId" element={renderLegacyTenantRoute(tenant => <DecoratorTemplate tenantData={tenant} />)} />
+            <Route path="/decorator/:tenantId" element={renderLegacyTenantRoute(renderTenantHome)} />
             <Route path="/decorator/:tenantId/:staffId" element={isTenantOffline ? <OfflinePage /> : <DecoratorStaffProfile tenant={tenantBarber} />} />
-            <Route path="/hairdresser/:tenantId" element={renderLegacyTenantRoute(tenant => <HairdresserTemplate tenantData={tenant} />)} />
+            <Route path="/hairdresser/:tenantId" element={renderLegacyTenantRoute(renderTenantHome)} />
             <Route path="/hairdresser/:tenantId/:staffId" element={isTenantOffline ? <OfflinePage /> : <HairdresserStaffProfile tenant={tenantBarber} />} />
-            <Route path="/plumber/:tenantId" element={renderLegacyTenantRoute(tenant => <PlumberTemplate tenantData={tenant} />)} />
-            <Route path="/barber/:id" element={<BarberProfile tenant={tenantBarber} />} />
+            <Route path="/plumber/:tenantId" element={renderLegacyTenantRoute(renderTenantHome)} />
+            <Route path="/barber/:id" element={
+              tenantBarber?.plan === "free" ? <MiniBookingPage tenant={tenantBarber} /> :
+              tenantBarber?.plan === "basic" ? <MinimalBookingPage tenant={tenantBarber} /> :
+              <BarberProfile tenant={tenantBarber} />
+            } />
             <Route path="/book/:barberId/:slotId" element={<BookingForm tenant={tenantBarber} />} />
             <Route path="/confirmation/:bookingId?" element={<Confirmation />} />
             <Route path="/auth/outlook/callback" element={<OutlookCallback />} />
@@ -472,8 +570,10 @@ function AppShell() {
             <Route path="/review/:shopId/:barberId" element={<ReviewPage />} />
             <Route path="/login" element={tenantBarber ? <TenantLogin tenant={tenantBarber} /> : <Login />} />
             <Route path="/signup" element={tenantBarber ? <TenantSignup tenant={tenantBarber} /> : <Signup />} />
+            <Route path="/admin/create-account" element={<AdminCreateAccount />} />
             <Route path="/staff-signup/:shopId/:staffId" element={<StaffSignup />} />
             <Route path="/cancel-booking/:bookingId" element={<CancelBooking />} />
+            <Route path="/manage-booking/:bookingId" element={<ManageBooking />} />
             <Route path="/website-design/:industry/:city" element={<SeoLandingPage />} />
             <Route path="/compare"                           element={<ComparePage />} />
             <Route path="/fresha-alternative"             element={<FreshaAlternativePage />} />
@@ -486,6 +586,7 @@ function AppShell() {
             <Route path="/booking-software/decorators"    element={<DecoratorSoftwarePage />} />
             <Route path="/blog"                           element={<BlogIndex />} />
             <Route path="/blog/:slug"                     element={<BlogPost />} />
+            <Route path="/starter-pack"                   element={<StarterPackGuide />} />
             <Route path="/tools"                            element={<ToolsHub />} />
             <Route path="/tools/no-show-calculator"        element={<NoShowCalculator />} />
             <Route path="/tools/revenue-calculator"        element={<RevenueCalculator />} />
@@ -510,6 +611,7 @@ function AppShell() {
               path="/:bookingSlug"
               element={
                 isTenantOffline ? <OfflinePage /> :
+                identifiedPath !== location.pathname ? tenantLoading :
                 tenantBarber ? (
                   tenantBarber._redirectFromOldSlug
                     ? <Navigate to={`/${tenantBarber.bookingSlug}`} replace />

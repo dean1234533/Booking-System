@@ -82,7 +82,7 @@ export default function PTStaffProfile({ tenant }) {
         @media (max-width: 640px) { .ptsp-hero { grid-template-columns: 1fr !important; } }
       `}</style>
 
-      <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--mid)' }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--mid)', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 68 }}>
           <a href={`/pt-booking/${tenantId}`} style={{ fontFamily: displayFont, fontSize: 22, letterSpacing: '0.1em', color: 'var(--ink)', textDecoration: 'none' }}>{businessName}</a>
           <a href="#booking-section" style={{ padding: '9px 22px', background: brandColor, color: '#fff', borderRadius: 8, fontSize: 12, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none' }}>Book Now</a>

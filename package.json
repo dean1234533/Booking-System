@@ -9,11 +9,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:widget": "vite build --config vite.widget.config.js",
     "preview": "vite preview",
     "test": "vitest run",
-    "deploy": "vite build && wrangler deploy && firebase deploy --only hosting",
-    "deploy:worker": "vite build && wrangler deploy",
-    "deploy:hosting": "vite build && firebase deploy --only hosting"
+    "deploy": "vite build --config vite.widget.config.js && vite build && wrangler deploy && firebase deploy --only hosting",
+    "deploy:worker": "vite build --config vite.widget.config.js && vite build && wrangler deploy",
+    "deploy:hosting": "vite build --config vite.widget.config.js && vite build && firebase deploy --only hosting"
   },
   "dependencies": {
     "@emailjs/browser": "^4.3.3",

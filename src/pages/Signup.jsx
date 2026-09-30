@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, Grid,
-  IconButton, InputAdornment, LinearProgress, Stack, TextField, Typography,
+  IconButton, InputAdornment, LinearProgress, MenuItem, Select, Stack, TextField, Typography,
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon, ArrowForward as ArrowForwardIcon,
@@ -15,7 +15,6 @@ import { doc, getDoc } from "firebase/firestore";
 import AuthShell, { AUTH_GOLD } from "../components/auth/AuthShell";
 import { db } from "../firebase/config";
 import { signUpBarber } from "../firebase/auth";
-import { logFunnelEvent } from "../utils/funnelTracking";
 import { validatePassword, PASSWORD_HELP_TEXT } from "../utils/passwordValidation";
 
 const BUSINESS_TYPES = [
@@ -59,12 +58,12 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", specialty: "", password: "", confirm: "",
-    businessName: "", businessType: "barber", marketingOptIn: false,
+    businessName: "", businessType: "barber", marketingOptIn: false, plan: "full",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => { window.scrollTo(0, 0); logFunnelEvent("signup_view"); }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   function handleChange(event) {
     const value = event.target.type === "checkbox" ? event.target.checked : event.target.value;
@@ -73,7 +72,14 @@ export default function Signup() {
   }
 
   function selectBusinessType(value) {
+    // Every plan (Free/Basic/Widget/Full) is available to every business
+    // type now — see src/config/plans.js — so no plan reset is needed here.
     setForm(current => ({ ...current, businessType: value }));
+    setError(null);
+  }
+
+  function selectPlan(value) {
+    setForm(current => ({ ...current, plan: value }));
     setError(null);
   }
 
@@ -95,11 +101,9 @@ export default function Signup() {
   function handleNext() {
     const validationError = validateCurrentStep();
     if (validationError) {
-      logFunnelEvent("signup_step_error", { step, message: validationError });
       return setError(validationError);
     }
     setError(null);
-    logFunnelEvent("signup_step_completed", { step, nextStep: Math.min(2, step + 1), businessType: form.businessType });
     setStep(current => Math.min(2, current + 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -124,14 +128,16 @@ export default function Signup() {
     try {
       const user = await signUpBarber({
         ...form, role: "owner", shopId: "self",
-        brandColor: AUTH_GOLD, businessType: form.businessType,
+        brandColor: AUTH_GOLD, businessType: form.businessType, plan: form.plan,
       });
       await waitForBarberDoc(user.uid, "owner");
       fetch("/api/ping-google", { method: "POST" }).catch(() => {});
-      logFunnelEvent("signup_completed", { businessType: form.businessType, role: "owner" });
+      // Meta conversion event — lets ad campaigns eventually optimise toward
+      // real signups instead of just clicks, once there's enough volume for
+      // Meta to learn from (see index.html for the base Pixel).
+      try { window.fbq?.("track", "CompleteRegistration"); } catch {}
       navigate("/onboarding");
     } catch (signupError) {
-      logFunnelEvent("signup_error", { step, message: signupError.message || "unknown" });
       const message = signupError.code === "auth/password-does-not-meet-requirements"
         ? PASSWORD_HELP_TEXT
         : signupError.message || "We couldn’t create your account. Please try again.";
@@ -192,6 +198,41 @@ export default function Signup() {
                   );
                 })}
               </Grid>
+
+              <Box>
+                <Typography sx={{ fontWeight: 850, fontSize: ".78rem", mb: 1 }}>Do you already have a website?</Typography>
+                {(() => {
+                  const planOptions = [
+                    { value: "full", label: "Give me a full website", detail: "Your own branded booking page, hosted by Bookrightly — £10/mo after trial" },
+                    { value: "widget", label: "Just the booking tools", detail: "I already have a site — embed booking & queue on it instead — £5/mo after trial" },
+                    { value: "basic", label: "No — I'm on Instagram", detail: "A simple booking page — your services, prices and a link back to your Instagram — includes booking confirmation emails and reminders — £5/mo after trial" },
+                    { value: "free", label: "Just the free option", detail: "A bare page with your logo and booking slots, no deposits, no reminders — free forever, upgrade any time" },
+                  ];
+                  const selectedOption = planOptions.find(o => o.value === form.plan) || planOptions[0];
+                  return (
+                    <>
+                      <Select
+                        fullWidth
+                        value={selectedOption.value}
+                        onChange={(e) => selectPlan(e.target.value)}
+                        sx={{
+                          borderRadius: 2.5, bgcolor: "#fff", fontWeight: 850, fontSize: ".85rem",
+                          "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e1e4e9" },
+                        }}
+                      >
+                        {planOptions.map(option => (
+                          <MenuItem key={option.value} value={option.value} sx={{ fontWeight: 850, fontSize: ".85rem" }}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <Typography sx={{ color: "text.secondary", fontSize: ".72rem", lineHeight: 1.4, mt: 1 }}>
+                        {selectedOption.detail}
+                      </Typography>
+                    </>
+                  );
+                })()}
+              </Box>
             </Stack>
           )}
 

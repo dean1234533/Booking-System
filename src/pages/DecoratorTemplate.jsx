@@ -31,7 +31,10 @@ export const GlobalStyles = () => (
       backdrop-filter: blur(20px);
       border-bottom: 1px solid rgba(255,255,255,0.06);
       display: flex; justify-content: space-between; align-items: center;
-      padding: 0 clamp(1.5rem, 4vw, 3.5rem); height: 68px;
+      padding: 0 clamp(1.5rem, 4vw, 3.5rem);
+      min-height: calc(68px + env(safe-area-inset-top, 0px));
+      padding-top: env(safe-area-inset-top, 0px);
+      box-sizing: border-box;
     }
     .dt-nav-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
     .dt-nav-logo {
@@ -57,7 +60,7 @@ export const GlobalStyles = () => (
     .dt-nav-hamburger { display: none; background: none; border: none; cursor: pointer; padding: 6px; flex-direction: column; gap: 5px; }
     .dt-nav-hamburger span { display: block; width: 22px; height: 2px; background: #fff; border-radius: 2px; transition: all 0.25s; }
     .dt-mobile-menu {
-      display: none; position: fixed; top: 68px; left: 0; right: 0; z-index: 99;
+      display: none; position: fixed; top: calc(68px + env(safe-area-inset-top, 0px)); left: 0; right: 0; z-index: 99;
       background: rgba(10,10,10,0.98); backdrop-filter: blur(20px);
       border-bottom: 1px solid rgba(255,255,255,0.08); padding: 1.5rem 2rem;
       flex-direction: column; gap: 1rem;
@@ -247,7 +250,7 @@ export const GlobalStyles = () => (
       transition: color 0.2s;
     }
     .dt-footer-copy { font-size: 0.72rem; color: rgba(255,255,255,0.2); margin-top: 2rem; text-align: center; letter-spacing: 0.06em; }
-    .ba-slider { position: relative; width: 100%; aspect-ratio: 4/5; border-radius: 4px; overflow: hidden; cursor: col-resize; border: 1px solid var(--stone); touch-action: none; user-select: none; -webkit-user-select: none; }
+    .ba-slider { position: relative; width: 100%; aspect-ratio: 4/5; border-radius: 4px; overflow: hidden; cursor: col-resize; border: 1px solid var(--stone); touch-action: pan-y; user-select: none; -webkit-user-select: none; }
     .ba-handle { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; z-index: 10; }
     .ba-handle-knob {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -295,6 +298,8 @@ export const GlobalStyles = () => (
 const BeforeAfterSlider = ({ before, after }) => {
   const [sliderPos, setSliderPos] = useState(50);
   const containerRef = useRef(null);
+  const touchStart = useRef(null);
+  const touchAxis = useRef(null);
 
   const updatePos = (clientX) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -303,13 +308,33 @@ const BeforeAfterSlider = ({ before, after }) => {
     setSliderPos(Math.max(0, Math.min(100, x)));
   };
 
+  const handleTouchStart = (e) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+    touchAxis.current = null;
+  };
+
+  const handleTouchMove = (e) => {
+    const t = e.touches[0];
+    if (!touchAxis.current && touchStart.current) {
+      const dx = Math.abs(t.clientX - touchStart.current.x);
+      const dy = Math.abs(t.clientY - touchStart.current.y);
+      // Wait for a small, unambiguous movement before locking the gesture
+      // to an axis — lets a vertical swipe fall through to the page's
+      // native scroll instead of getting stuck on the slider.
+      if (dx < 6 && dy < 6) return;
+      touchAxis.current = dx > dy ? "x" : "y";
+    }
+    if (touchAxis.current === "x") updatePos(t.clientX);
+  };
+
   return (
     <div
       ref={containerRef}
       className="ba-slider"
       onMouseMove={e => updatePos(e.clientX)}
-      onTouchStart={e => updatePos(e.touches[0].clientX)}
-      onTouchMove={e => updatePos(e.touches[0].clientX)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
     >
       <div style={{ position: 'absolute', inset: 0 }}>
         <img src={after || '/images/demo/decorator/living-room-after.jpg'} alt="After" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -386,13 +411,16 @@ const DecoratorTemplate = ({ tenantData }) => {
   const brandColor    = tenantData?.brandColor  || "#2563eb";
   const businessName  = tenantData?.businessName || tenantData?.name || "Your Business";
   // Decorator has no deposit-gated booking on this page at all — just a
-  // quote form — so WhatsApp is always offered here, not gated on Stripe.
-  const whatsappUrl = getWhatsAppBookingUrl(tenantData?.whatsappNumber, businessName);
+  // quote form — so WhatsApp is always offered here, not gated on Stripe,
+  // only on the owner's own toggle.
+  const whatsappUrl = tenantData?.whatsappBookingEnabled !== false
+    ? getWhatsAppBookingUrl(tenantData?.whatsappNumber, businessName)
+    : null;
   const logo          = tenantData?.businessLogo || tenantData?.logoUrl || tenantData?.logo || null;
   const allTeam        = team;
 
   // Hero
-  const heroImage     = heroForProfile(tenantData, tenantData?.heroImage) || "/images/photo-output-13.jpg";
+  const heroImage     = heroForProfile(tenantData, tenantData?.heroImage || tenantData?.logoUrl || tenantData?.profilePic) || "/images/photo-output-13.jpg";
   const heroEyebrow   = tenantData?.heroTagline  || "London's Trusted Decorators";
   const heroLine1     = tenantData?.heroHeadingLine1 || "Home Painting,";
   const heroLine2     = tenantData?.heroHeadingLine2 || "Done Right.";

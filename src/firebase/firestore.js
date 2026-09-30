@@ -99,16 +99,30 @@ export const getAllBarbers = async () => {
   const rawData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
   return rawData.filter(barber => {
-    const hasValidName = 
-      barber.name && 
-      barber.name.trim().length > 1 && 
-      barber.name !== "undefined" && 
+    // A staff member claiming their invite goes through the same signup path
+    // as an owner, which always writes a top-level barbers/{uid} doc (needed
+    // for their own individual /barber/{uid} booking page) — without this,
+    // that doc's own valid `name` field let every team member also show up
+    // as their own separate marketplace listing, alongside their shop's.
+    if (barber.role === "staff") return false;
+
+    // Basic (£5) and Free (£0) accounts get a deliberately bare booking
+    // page — no services, no gallery, no reviews (Mini has no nav/footer at
+    // all) — not something that belongs in a marketplace grid meant to
+    // showcase full business pages. Marketplace exposure is a Full-plan
+    // benefit, not something these cheaper tiers pay for.
+    if (barber.plan === "basic" || barber.plan === "free") return false;
+
+    const hasValidName =
+      barber.name &&
+      barber.name.trim().length > 1 &&
+      barber.name !== "undefined" &&
       barber.name !== "null";
 
-    const hasValidBusiness = 
-      barber.businessName && 
-      barber.businessName.trim().length > 1 && 
-      barber.businessName !== "undefined" && 
+    const hasValidBusiness =
+      barber.businessName &&
+      barber.businessName.trim().length > 1 &&
+      barber.businessName !== "undefined" &&
       barber.businessName !== "null";
 
     return hasValidName || hasValidBusiness;
@@ -562,71 +576,6 @@ export const deleteNotepadCategory = async (trainerId, categoryId) => {
     await deleteDoc(categoryRef);
   } catch (error) {
     console.error("Failed to delete category:", error);
-    throw error;
-  }
-};
-
-// ─── CALENDAR SYNC ───────────────────────────
-
-export const getCalendarSettings = async (userId) => {
-  if (!userId) return null;
-  try {
-    const settingsRef = doc(db, "barbers", userId, "calendarSettings", "settings");
-    const snap = await getDoc(settingsRef);
-    return snap.exists() ? snap.data() : null;
-  } catch (error) {
-    console.error("Failed to fetch calendar settings:", error);
-    return null;
-  }
-};
-
-export const updateCalendarSettings = async (userId, settings) => {
-  if (!userId) throw new Error("Missing userId");
-  try {
-    const settingsRef = doc(db, "barbers", userId, "calendarSettings", "settings");
-    await setDoc(settingsRef, {
-      ...settings,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
-  } catch (error) {
-    console.error("Failed to update calendar settings:", error);
-    throw error;
-  }
-};
-
-export const saveCalendarTokens = async (userId, tokens) => {
-  if (!userId || !tokens) throw new Error("Missing userId or tokens");
-  try {
-    const settingsRef = doc(db, "barbers", userId, "calendarSettings", "settings");
-    await setDoc(settingsRef, {
-      googleAccessToken: tokens.access_token,
-      googleRefreshToken: tokens.refresh_token,
-      tokenExpiresAt: tokens.expiry_date,
-      googleCalendarId: tokens.calendar_id || "primary",
-      linkedEmail: tokens.email,
-      syncEnabled: true,
-      lastSyncedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
-  } catch (error) {
-    console.error("Failed to save calendar tokens:", error);
-    throw error;
-  }
-};
-
-export const disconnectCalendar = async (userId) => {
-  if (!userId) throw new Error("Missing userId");
-  try {
-    const settingsRef = doc(db, "barbers", userId, "calendarSettings", "settings");
-    await setDoc(settingsRef, {
-      googleAccessToken: null,
-      googleRefreshToken: null,
-      tokenExpiresAt: null,
-      syncEnabled: false,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
-  } catch (error) {
-    console.error("Failed to disconnect calendar:", error);
     throw error;
   }
 };

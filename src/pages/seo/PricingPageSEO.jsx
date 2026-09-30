@@ -7,15 +7,25 @@ import { BottomCTA, FAQSection, InternalLinks, SANS } from "./shared";
 
 const PLANS = [
   { name: "Barber / Hairdresser", short: "Hair & barber", price: "10", accent: "#2563EB", features: ["Branded booking website", "Live availability and deposits", "Services, portfolio and reviews", "Client history and notifications", "PWA and social booking link"] },
-  { name: "Personal Trainer", short: "Personal trainer", price: "15", accent: "#ff765c", features: ["Everything in Hair & barber", "PAR-Q and digital check-ins", "Food diary and workout plans", "Progress tracking and client portal", "Session and package payments"] },
+  { name: "Personal Trainer", short: "Personal trainer", price: "10", accent: "#ff765c", features: ["Everything in Hair & barber", "PAR-Q and digital check-ins", "Food diary and workout plans", "Progress tracking and client portal", "Session and package payments"] },
   { name: "Decorator / Trades", short: "Decorator", price: "10", accent: "#93C5FD", features: ["Branded project website", "Portfolio and quote requests", "Site-visit scheduling", "Colour approval workflow", "Reviews and service areas"] },
 ];
 
+// Cheaper alternatives to the full £10/mo plan above — a different shape
+// (not trade-specific feature sets, just "how much of the product do you
+// want"), so this is a lighter comparison strip rather than a 4th tab in
+// the PLANS picker above.
+const LITE_PLANS = [
+  { name: "Widget only", price: "5", desc: "Already have a website? Embed booking and live queue tools on it — no hosted page needed.", available: "Any business type" },
+  { name: "Basic", price: "5", desc: "No website — a simple booking page with your services, prices and a link back to your Instagram. Includes confirmation emails and reminders.", available: "Any business type" },
+  { name: "Free", price: "0", desc: "The cheapest way to take bookings online — a bare page with your logo and slots. No deposits, no reminders — free forever.", available: "Any business type" },
+];
+
 const FAQS = [
-  { q: "Is there a free trial?", a: "Yes. Every plan includes a 90-day free trial with no credit card required." },
+  { q: "Is there a free trial?", a: "Yes. Every paid plan includes a 90-day free trial with no credit card required. The Free plan doesn't need one — it's free forever." },
   { q: "Is there a contract?", a: "No. Pay month to month and cancel whenever you need to." },
   { q: "Does Bookrightly take commission?", a: "No commission, ever — not on a single booking. The only thing added at checkout is Stripe's own real card processing cost, which we don't mark up." },
-  { q: "What happens after the trial?", a: "Your dashboard locks until you subscribe — you won't be able to manage bookings, edit your page, or see enquiries. If it stays unpaid, your public booking page goes offline too, so clients can't reach it either." },
+  { q: "What happens after the trial?", a: "You're never locked out. If you don't subscribe, your dashboard and booking page simply move to the Free plan — you keep your page, your data and your booking link, you just lose paid features like deposits and reminder emails until you upgrade again." },
   { q: "Are there setup fees?", a: "No setup, onboarding or cancellation fees." },
 ];
 
@@ -65,6 +75,32 @@ export default function PricingPageSEO() {
             </Box>
           </Box>
 
+          {/* Cheaper alternatives — a different shape to the trade-tabs
+              plan above (not a feature set per trade, just "how much of
+              the product"), so a separate comparison strip rather than a
+              4th tab. */}
+          <Box sx={{ mt: { xs: 5, md: 6 } }}>
+            <Typography sx={{ color: "#ffffff77", fontSize: ".68rem", fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase", mb: 2 }}>
+              Want something lighter?
+            </Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" }, gap: 2 }}>
+              {LITE_PLANS.map(item => (
+                <Box key={item.name} sx={{ p: 3, borderRadius: 4, border: "1px solid #ffffff1f", bgcolor: "#191a20", display: "flex", flexDirection: "column" }}>
+                  <Typography sx={{ fontWeight: 900, fontSize: ".95rem" }}>{item.name}</Typography>
+                  <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5, mt: 1 }}>
+                    <Typography sx={{ fontSize: "2rem", fontWeight: 950, letterSpacing: "-.04em" }}>£{item.price}</Typography>
+                    <Typography sx={{ fontSize: ".8rem", color: "#ffffff77" }}>/mo</Typography>
+                  </Box>
+                  <Typography sx={{ color: "#ffffffaa", fontSize: ".82rem", lineHeight: 1.6, mt: 1.5, flex: 1 }}>{item.desc}</Typography>
+                  <Typography sx={{ color: "#ffffff55", fontSize: ".7rem", fontWeight: 700, mt: 2 }}>{item.available}</Typography>
+                </Box>
+              ))}
+            </Box>
+            <Typography sx={{ color: "#ffffff77", fontSize: ".78rem", mt: 2 }}>
+              Pick whichever fits when you sign up — paid plans start with a 90-day free trial, Free is free forever. After your trial, you keep a free booking page — you're never locked out.
+            </Typography>
+          </Box>
+
           <Box sx={{ mt: { xs: 7, md: 10 }, display: "grid", gridTemplateColumns: { xs: "1fr", md: ".8fr 1.2fr" }, gap: 5 }}>
             <Box><Typography sx={{ color: "#9da6ff", fontWeight: 900, fontSize: ".68rem", letterSpacing: ".14em", textTransform: "uppercase" }}>When you get paid</Typography><Typography sx={{ fontSize: { xs: "2.2rem", md: "3.5rem" }, fontWeight: 950, letterSpacing: "-.06em", lineHeight: 1, mt: 1.5 }}>Fees you can see at a glance.</Typography><Typography sx={{ color: "#ffffff77", lineHeight: 1.7, mt: 2 }}>A real £20 online booking from checkout to payout.</Typography></Box>
             <Box sx={{ bgcolor: "#f4f1e9", color: "#111116", borderRadius: "8px 36px 36px 36px", p: { xs: 3, md: 4 } }}>
@@ -77,6 +113,10 @@ export default function PricingPageSEO() {
 
       <Box sx={{ px: { xs: 2, md: 5 }, py: { xs: 8, md: 11 }, maxWidth: 1000, mx: "auto" }}>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: ".7fr 1.3fr" }, gap: 5 }}><Typography sx={{ fontSize: { xs: "2.2rem", md: "3.5rem" }, fontWeight: 950, letterSpacing: "-.06em", lineHeight: 1 }}>Straight answers.</Typography><FAQSection faqs={FAQS} /></Box>
+        <Typography sx={{ textAlign: "center", color: "#696a73", fontSize: ".85rem", mt: 5 }}>
+          Don't see your business type?{" "}
+          <a href="mailto:info@bookrightly.co.uk" style={{ color: "#2563EB", fontWeight: 700 }}>We can add it.</a>
+        </Typography>
         <InternalLinks current="/pricing" />
       </Box>
       <BottomCTA title="Put it to work for 90 days." sub="Build your page, open your diary and take real bookings before you pay anything." />

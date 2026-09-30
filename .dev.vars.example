@@ -1,0 +1,18 @@
+# Copy to .dev.vars for `wrangler dev`. In production set each with:
+#   npx wrangler secret put NAME
+# (VAPID_PUBLIC_KEY and VAPID_SUBJECT are plain vars in wrangler.jsonc.)
+
+# Web Push (already configured): private key as a JWK JSON string
+VAPID_PRIVATE_JWK={"kty":"EC","crv":"P-256","x":"...","y":"...","d":"..."}
+VAPID_PUBLIC_KEY=
+VAPID_SUBJECT=mailto:you@example.com
+
+# Reminder SMS (Full plan, last resort) — Twilio
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+
+# Resend bounce webhook signing secret (whsec_...) — /api/resend-webhook
+RESEND_WEBHOOK_SECRET=
+
+# Set to "true" to log every reminder chain decision and send NOTHING
+REMINDERS_DRY_RUN=false

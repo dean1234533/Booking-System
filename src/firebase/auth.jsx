@@ -30,7 +30,7 @@ export async function signUpBarber(data) {
   const {
     email, password, name, phone, specialty,
     bio, role, shopId, businessName, brandColor,
-    businessType, customDomain, marketingOptIn,
+    businessType, customDomain, marketingOptIn, plan,
   } = data;
 
   // 1. Create Auth Account
@@ -45,6 +45,7 @@ export async function signUpBarber(data) {
     name: name,
     email,
     phone: phone || "",
+    timezone: "Europe/London", // IANA zone used for all reminder scheduling (no UI to change yet)
     specialty: specialty || "",
     bio: bio || "",
     role: role || "staff",
@@ -60,10 +61,26 @@ export async function signUpBarber(data) {
   if (role === "owner") {
     profileData.businessName      = businessName || "My Business Space";
     profileData.customDomain      = customDomain || "";
-    profileData.subscriptionStatus = "trialing";
-    profileData.trialEndsAt        = Timestamp.fromDate(
-      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-    );
+    // "widget" accounts already have their own website and only want
+    // booking/queue tools embedded on it — they don't get the hosted-page
+    // tabs (Profile/Design/Domain, see Dashboard.jsx) and are billed less
+    // (see FinanceTab.jsx's getPricingLabel and worker.js's checkout).
+    // "basic" accounts have no website at all (Instagram-only) — they get a
+    // bare booking page (MinimalBookingPage.jsx) and an equally stripped
+    // dashboard, billed at the same lower rate as widget. "free" is £0 —
+    // no nav, no footer, no payment collection, just a logo and slots
+    // (MiniBookingPage.jsx) — see src/config/plans.js.
+    profileData.plan = plan === "widget" ? "widget" : plan === "basic" ? "basic" : plan === "free" ? "free" : "full";
+    // Free has no trial to start — it's free forever from day one, no card,
+    // nothing to convert. Every paid plan still gets the 90-day trial.
+    if (profileData.plan === "free") {
+      profileData.subscriptionStatus = "free";
+    } else {
+      profileData.subscriptionStatus = "trialing";
+      profileData.trialEndsAt        = Timestamp.fromDate(
+        new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+      );
+    }
 
     // Start every new account looking like the demo for its business type —
     // same curated hero/gallery photos, on the platform domain or a custom
@@ -90,6 +107,16 @@ export async function signUpBarber(data) {
       businessType: businessType || "barber", // Forward industry category context downstream to staff nodes
       photoURL: ""
     });
+  }
+
+  // Best-effort, never blocks signup — the Worker re-checks marketingOptIn
+  // against Firestore itself before sending, so it's safe to always call.
+  if (role === "owner" && profileData.marketingOptIn) {
+    fetch("/api/send-welcome-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid: user.uid }),
+    }).catch(() => {});
   }
 
   return user;
@@ -170,7 +197,16 @@ export async function deleteBarberProfile() {
       if (userData.role === "staff" && userData.shopId) {
         await deleteDoc(doc(db, "barbers", userData.shopId, "staff", user.uid));
       }
-      
+
+      // 2b. Release the account's Search Console property (if any) before the
+      // doc that names it is gone — best-effort, must not block deletion.
+      if (userData.customDomain || userData.bookingSlug) {
+        const { getFunctions, httpsCallable } = await import("firebase/functions");
+        const { getApp } = await import("firebase/app");
+        const removeProperty = httpsCallable(getFunctions(getApp(), "us-central1"), "removeSearchConsoleProperty");
+        await removeProperty().catch(() => {});
+      }
+
       // 3. Delete the main profile document
       await deleteDoc(doc(db, "barbers", user.uid));
     }

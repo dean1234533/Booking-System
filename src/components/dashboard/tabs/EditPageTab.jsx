@@ -415,7 +415,7 @@ function DecoratorPageSections({ profile, set, brandColor, barberId }) {
 }
 
 /* ── Hairdresser page sections ───────────────────────────────────────────── */
-function HairdresserPageSections({ profile, set, brandColor, barberId }) {
+function HairdresserPageSections({ profile, set, brandColor, barberId, isBasicPlan }) {
   const services =
     profile.services?.length > 0
       ? profile.services
@@ -454,38 +454,48 @@ function HairdresserPageSections({ profile, set, brandColor, barberId }) {
               onChange={(e) => set("heroCtaText", e.target.value)}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Main heading"
-              placeholder="Where Every"
-              value={profile.heroHeadingLine1 || ""}
-              onChange={(e) => set("heroHeadingLine1", e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Highlighted heading"
-              placeholder="Strand Shines"
-              value={profile.heroHeadingLine2 || ""}
-              onChange={(e) => set("heroHeadingLine2", e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Short introduction"
-              multiline
-              rows={2}
-              placeholder="Expert colour, precision cuts and transformative styling."
-              value={profile.heroSubtext || ""}
-              onChange={(e) => set("heroSubtext", e.target.value)}
-            />
-          </Grid>
+          {/* Main/Highlighted heading and Short introduction style
+              HairdresserTemplate.jsx's hero — MinimalBookingPage.jsx has a
+              simpler hero that just shows your business name, so these
+              never had any effect on Basic's page. */}
+          {!isBasicPlan && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Main heading"
+                placeholder="Where Every"
+                value={profile.heroHeadingLine1 || ""}
+                onChange={(e) => set("heroHeadingLine1", e.target.value)}
+              />
+            </Grid>
+          )}
+          {!isBasicPlan && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Highlighted heading"
+                placeholder="Strand Shines"
+                value={profile.heroHeadingLine2 || ""}
+                onChange={(e) => set("heroHeadingLine2", e.target.value)}
+              />
+            </Grid>
+          )}
+          {!isBasicPlan && (
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Short introduction"
+                multiline
+                rows={2}
+                placeholder="Expert colour, precision cuts and transformative styling."
+                value={profile.heroSubtext || ""}
+                onChange={(e) => set("heroSubtext", e.target.value)}
+              />
+            </Grid>
+          )}
           <Grid item xs={12}>
             <ImageField
               label="Main page image"
@@ -494,7 +504,13 @@ function HairdresserPageSections({ profile, set, brandColor, barberId }) {
               onChange={(v) => set("heroImage", v)}
               barberId={barberId}
               fieldKey="hero_image"
-              preview={{
+              preview={isBasicPlan ? {
+                eyebrow: profile.heroTagline || "Your local hair salon",
+                heading: profile.businessName || "Your salon",
+                button: profile.heroCtaText || "Book an appointment",
+                brandColor,
+                position: "center top",
+              } : {
                 eyebrow: profile.heroTagline || "Your local hair salon",
                 heading: profile.heroHeadingLine1 || "Hair that feels",
                 accent: profile.heroHeadingLine2 || "like you.",
@@ -510,26 +526,34 @@ function HairdresserPageSections({ profile, set, brandColor, barberId }) {
 
       <Section title="About your salon">
         <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Section Heading"
-              placeholder="Our story, your style"
-              value={profile.aboutHeading || ""}
-              onChange={(e) => set("aboutHeading", e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Pull Quote"
-              placeholder='"We believe great hair is the foundation of everyday confidence."'
-              value={profile.aboutQuote || ""}
-              onChange={(e) => set("aboutQuote", e.target.value)}
-            />
-          </Grid>
+          {/* Section Heading/Pull Quote/Photo style parts of
+              HairdresserTemplate.jsx's "About" section that
+              MinimalBookingPage.jsx doesn't have — it only ever reads the
+              plain body text below. */}
+          {!isBasicPlan && (
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Section Heading"
+                placeholder="Our story, your style"
+                value={profile.aboutHeading || ""}
+                onChange={(e) => set("aboutHeading", e.target.value)}
+              />
+            </Grid>
+          )}
+          {!isBasicPlan && (
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Pull Quote"
+                placeholder='"We believe great hair is the foundation of everyday confidence."'
+                value={profile.aboutQuote || ""}
+                onChange={(e) => set("aboutQuote", e.target.value)}
+              />
+            </Grid>
+          )}
           <Grid item xs={12}>
             <TextField
               fullWidth
@@ -541,30 +565,35 @@ function HairdresserPageSections({ profile, set, brandColor, barberId }) {
               onChange={(e) => set("aboutBody", e.target.value)}
             />
           </Grid>
-          <Grid item xs={12}>
-            <ImageField
-              label="Photo beside your story"
-              hint="Recommended: 3:4 portrait crop, min 800px wide"
-              value={profile.heroImageMobile || ""}
-              onChange={(v) => set("heroImageMobile", v)}
-              barberId={barberId}
-              fieldKey="about_image"
-            />
-          </Grid>
+          {!isBasicPlan && (
+            <Grid item xs={12}>
+              <ImageField
+                label="Photo beside your story"
+                hint="Recommended: 3:4 portrait crop, min 800px wide"
+                value={profile.heroImageMobile || ""}
+                onChange={(v) => set("heroImageMobile", v)}
+                barberId={barberId}
+                fieldKey="about_image"
+              />
+            </Grid>
+          )}
         </Grid>
       </Section>
 
       <Section title="Services on your page">
-        <Box mb={2}>
-          <ImageField
-            label="Photo beside your services"
-            hint="Appears beside your services list"
-            value={profile.servicesImage || ""}
-            onChange={(v) => set("servicesImage", v)}
-            barberId={barberId}
-            fieldKey="services_image"
-          />
-        </Box>
+        {/* MinimalBookingPage.jsx's services list is text-only, no image. */}
+        {!isBasicPlan && (
+          <Box mb={2}>
+            <ImageField
+              label="Photo beside your services"
+              hint="Appears beside your services list"
+              value={profile.servicesImage || ""}
+              onChange={(v) => set("servicesImage", v)}
+              barberId={barberId}
+              fieldKey="services_image"
+            />
+          </Box>
+        )}
         {services.map((svc, i) => (
           <Box
             key={i}
@@ -643,15 +672,20 @@ function HairdresserPageSections({ profile, set, brandColor, barberId }) {
         </Button>
       </Section>
 
-      <PortfolioSection
-        profile={profile}
-        set={set}
-        brandColor={brandColor}
-        barberId={barberId}
-        headingPlaceholder="Recent transformations"
-        subtextPlaceholder="Drag the slider on each image to reveal the difference a fresh cut and colour makes."
-      />
+      {!isBasicPlan && (
+        <PortfolioSection
+          profile={profile}
+          set={set}
+          brandColor={brandColor}
+          barberId={barberId}
+          headingPlaceholder="Recent transformations"
+          subtextPlaceholder="Drag the slider on each image to reveal the difference a fresh cut and colour makes."
+        />
+      )}
 
+      {/* The brand-colour trust strip this feeds doesn't exist on
+          MinimalBookingPage.jsx — Basic's page has no stat strip. */}
+      {!isBasicPlan && (
       <Section title="Business highlights">
         <Typography variant="body2" color="text.secondary" mb={2}>
           Three stats shown in the brand-colour strip beneath the hero.
@@ -687,12 +721,13 @@ function HairdresserPageSections({ profile, set, brandColor, barberId }) {
           ))}
         </Grid>
       </Section>
+      )}
     </>
   );
 }
 
 /* ── Barber page sections ────────────────────────────────────────────────── */
-function BarberPageSections({ profile, set, brandColor, barberId }) {
+function BarberPageSections({ profile, set, brandColor, barberId, isBasicPlan }) {
   const services =
     profile.services?.length > 0 ? profile.services : [{ name: "", price: "" }];
   const updateService = (i, field, val) => {
@@ -726,49 +761,61 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
               onChange={(e) => set("heroCtaText", e.target.value)}
             />
           </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Main heading"
-              placeholder={profile.businessName || "Your barber shop name"}
-              helperText="Leave blank to use your business name"
-              value={profile.heroHeadingLine1 || ""}
-              onChange={(e) => set("heroHeadingLine1", e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              size="small"
-              multiline
-              rows={2}
-              label="Short introduction"
-              placeholder="Sharp cuts, clean lines and a proper welcome."
-              value={profile.heroSubtext || ""}
-              onChange={(e) => set("heroSubtext", e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Rating line"
-              placeholder="5.0/5.0 Top Rated Excellence"
-              value={profile.heroReviewText || ""}
-              onChange={(e) => set("heroReviewText", e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Live queue button text"
-              placeholder="View Live Queue"
-              value={profile.queueCtaText || ""}
-              onChange={(e) => set("queueCtaText", e.target.value)}
-            />
-          </Grid>
+          {/* Main heading/Short introduction/Rating line/Live queue text
+              style parts of the full barber hero (and the live-queue
+              feature) that MinimalBookingPage.jsx doesn't have at all — its
+              heading is always the business name, with no live queue. */}
+          {!isBasicPlan && (
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Main heading"
+                placeholder={profile.businessName || "Your barber shop name"}
+                helperText="Leave blank to use your business name"
+                value={profile.heroHeadingLine1 || ""}
+                onChange={(e) => set("heroHeadingLine1", e.target.value)}
+              />
+            </Grid>
+          )}
+          {!isBasicPlan && (
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                size="small"
+                multiline
+                rows={2}
+                label="Short introduction"
+                placeholder="Sharp cuts, clean lines and a proper welcome."
+                value={profile.heroSubtext || ""}
+                onChange={(e) => set("heroSubtext", e.target.value)}
+              />
+            </Grid>
+          )}
+          {!isBasicPlan && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Rating line"
+                placeholder="5.0/5.0 Top Rated Excellence"
+                value={profile.heroReviewText || ""}
+                onChange={(e) => set("heroReviewText", e.target.value)}
+              />
+            </Grid>
+          )}
+          {!isBasicPlan && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Live queue button text"
+                placeholder="View Live Queue"
+                value={profile.queueCtaText || ""}
+                onChange={(e) => set("queueCtaText", e.target.value)}
+              />
+            </Grid>
+          )}
           <Grid item xs={12}>
             <ImageField
               label="Main hero image"
@@ -777,7 +824,12 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
               onChange={(v) => set("heroImage", v)}
               barberId={barberId}
               fieldKey="barber_hero_desktop"
-              preview={{
+              preview={isBasicPlan ? {
+                eyebrow: profile.heroTagline || "WELCOME TO",
+                heading: profile.businessName || "Your barber shop",
+                button: profile.heroCtaText || "BOOK NOW",
+                brandColor,
+              } : {
                 eyebrow: profile.heroTagline || "WELCOME TO",
                 heading: profile.heroHeadingLine1 || profile.businessName || "Your barber shop",
                 body: profile.heroSubtext || "Sharp cuts, clean lines and a proper welcome.",
@@ -786,41 +838,52 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
               }}
             />
           </Grid>
-          <Grid item xs={12}>
-            <ImageField
-              label="Mobile hero image (optional)"
-              hint="A portrait crop shown on phones. If empty, the main hero image is used."
-              value={profile.heroImageMobile || ""}
-              onChange={(v) => set("heroImageMobile", v)}
-              barberId={barberId}
-              fieldKey="barber_hero_mobile"
-            />
-          </Grid>
+          {/* MinimalBookingPage.jsx uses a single heroImage — no separate
+              mobile crop like the full template has. */}
+          {!isBasicPlan && (
+            <Grid item xs={12}>
+              <ImageField
+                label="Mobile hero image (optional)"
+                hint="A portrait crop shown on phones. If empty, the main hero image is used."
+                value={profile.heroImageMobile || ""}
+                onChange={(v) => set("heroImageMobile", v)}
+                barberId={barberId}
+                fieldKey="barber_hero_mobile"
+              />
+            </Grid>
+          )}
         </Grid>
       </Section>
 
       <Section title="About your barber shop">
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Small heading"
-              placeholder="OUR STORY"
-              value={profile.aboutTagline || ""}
-              onChange={(e) => set("aboutTagline", e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12} sm={8}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Story heading"
-              placeholder="East London craft, cut with intent."
-              value={profile.aboutHeading || ""}
-              onChange={(e) => set("aboutHeading", e.target.value)}
-            />
-          </Grid>
+          {/* Small heading/Story heading/Story button text style parts of
+              BarberProfile.jsx's "Our Story" section that MinimalBookingPage.jsx
+              doesn't have at all — it only ever reads the body text below. */}
+          {!isBasicPlan && (
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Small heading"
+                placeholder="OUR STORY"
+                value={profile.aboutTagline || ""}
+                onChange={(e) => set("aboutTagline", e.target.value)}
+              />
+            </Grid>
+          )}
+          {!isBasicPlan && (
+            <Grid item xs={12} sm={8}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Story heading"
+                placeholder="East London craft, cut with intent."
+                value={profile.aboutHeading || ""}
+                onChange={(e) => set("aboutHeading", e.target.value)}
+              />
+            </Grid>
+          )}
           <Grid item xs={12}>
             <TextField
               fullWidth
@@ -833,19 +896,24 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
               onChange={(e) => { set("aboutBody", e.target.value); set("aboutUs", e.target.value); }}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Story button text"
-              placeholder="MEET THE TEAM"
-              value={profile.aboutCtaText || ""}
-              onChange={(e) => set("aboutCtaText", e.target.value)}
-            />
-          </Grid>
+          {!isBasicPlan && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Story button text"
+                placeholder="MEET THE TEAM"
+                value={profile.aboutCtaText || ""}
+                onChange={(e) => set("aboutCtaText", e.target.value)}
+              />
+            </Grid>
+          )}
         </Grid>
       </Section>
 
+      {/* The dark trust strip this feeds doesn't exist on
+          MinimalBookingPage.jsx — Basic's page has no stat strip. */}
+      {!isBasicPlan && (
       <Section title="Business highlights">
         <Typography variant="body2" color="text.secondary" mb={2}>
           Four stats shown in the dark trust strip below the hero.
@@ -882,6 +950,7 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
           ))}
         </Grid>
       </Section>
+      )}
 
       <Section title="Services on your page">
         <Typography variant="body2" color="text.secondary" mb={2}>
@@ -928,15 +997,21 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
         </Button>
       </Section>
 
-      <PortfolioSection
-        profile={profile}
-        set={set}
-        brandColor={brandColor}
-        barberId={barberId}
-        headingPlaceholder="Recent work"
-        subtextPlaceholder="Drag the slider on each image to reveal the difference a professional cut makes."
-      />
+      {!isBasicPlan && (
+        <PortfolioSection
+          profile={profile}
+          set={set}
+          brandColor={brandColor}
+          barberId={barberId}
+          headingPlaceholder="Recent work"
+          subtextPlaceholder="Drag the slider on each image to reveal the difference a professional cut makes."
+        />
+      )}
 
+      {/* The sections below only style parts of BarberProfile.jsx that
+          Basic-plan accounts don't have (team grid, gallery, reviews) or
+          copy for sections MinimalBookingPage.jsx doesn't render at all. */}
+      {!isBasicPlan && (
       <Section title="Section headings and buttons">
         <Typography variant="body2" color="text.secondary" mb={2}>
           Change the wording used throughout the barber home page.
@@ -976,7 +1051,9 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
           ))}
         </Grid>
       </Section>
+      )}
 
+      {!isBasicPlan && (
       <Section title="The barber shop standard">
         <Grid container spacing={2}>
           {[
@@ -1009,7 +1086,9 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
           ))}
         </Grid>
       </Section>
+      )}
 
+      {!isBasicPlan && (
       <Section title="Team cards">
         <Grid container spacing={2}>
           {[
@@ -1024,7 +1103,9 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
           ))}
         </Grid>
       </Section>
+      )}
 
+      {!isBasicPlan && (
       <Section title="Navigation and footer">
         <Grid container spacing={2}>
           {[
@@ -1045,6 +1126,7 @@ function BarberPageSections({ profile, set, brandColor, barberId }) {
           ))}
         </Grid>
       </Section>
+      )}
     </>
   );
 }
@@ -2028,6 +2110,11 @@ export default function EditPageTab({
 }) {
   const set = (key, val) => setProfile((prev) => ({ ...prev, [key]: val }));
   const type = businessType || profile?.businessType || "barber";
+  // Basic-plan accounts render MinimalBookingPage.jsx, which has no gallery,
+  // team grid, or the many section-heading/standards copy fields that only
+  // matter on the full templates — hide those editor sections rather than
+  // let people fill in fields with no visible effect.
+  const isBasicPlan = profile.plan === "basic";
 
   const typeLabel =
     {
@@ -2143,7 +2230,12 @@ export default function EditPageTab({
             />
           </Grid>
 
-          {userRole.isOwner && (
+          {/* Address/Area both only ever mattered for the homepage
+              marketplace's location search (HomeRebuild.jsx) — Basic/Mini
+              accounts are excluded from that listing entirely, so these do
+              nothing for them anymore. Town/City below stays regardless —
+              it's what the Google search title actually reads. */}
+          {userRole.isOwner && !isBasicPlan && (
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Location / Address"
@@ -2155,7 +2247,7 @@ export default function EditPageTab({
             </Grid>
           )}
 
-          {userRole.isOwner && (
+          {userRole.isOwner && !isBasicPlan && (
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Area / Neighbourhood"
@@ -2165,6 +2257,20 @@ export default function EditPageTab({
                 fullWidth
                 size="small"
                 onChange={(e) => set("area", e.target.value)}
+              />
+            </Grid>
+          )}
+
+          {userRole.isOwner && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Town / City"
+                placeholder="e.g. Manchester"
+                helperText="Used in your page's Google search title (e.g. 'Barber in Manchester')"
+                value={profile.city || profile.location || ""}
+                fullWidth
+                size="small"
+                onChange={(e) => set("city", e.target.value)}
               />
             </Grid>
           )}
@@ -2207,7 +2313,11 @@ export default function EditPageTab({
             />
           </Grid>
 
-          {userRole.isOwner && (
+          {/* Basic-plan accounts get a real, single "About" editor further
+              down in BarberPageSections/HairdresserPageSections (the one
+              MinimalBookingPage.jsx actually reads) — showing this generic
+              field too just duplicated it under a second label. */}
+          {userRole.isOwner && !isBasicPlan && (
             <Grid item xs={12}>
               <TextField
                 label="About Us"
@@ -2226,13 +2336,13 @@ export default function EditPageTab({
 
       {/* ── Business-type specific public page content ── */}
       {type === "barber" && (
-        <BarberPageSections profile={profile} set={set} brandColor={brandColor} barberId={profile?.uid} />
+        <BarberPageSections profile={profile} set={set} brandColor={brandColor} barberId={profile?.uid} isBasicPlan={isBasicPlan} />
       )}
       {type === "decorator" && (
         <DecoratorPageSections profile={profile} set={set} brandColor={brandColor} barberId={profile?.uid} />
       )}
       {type === "hairdresser" && (
-        <HairdresserPageSections profile={profile} set={set} brandColor={brandColor} barberId={profile?.uid} />
+        <HairdresserPageSections profile={profile} set={set} brandColor={brandColor} barberId={profile?.uid} isBasicPlan={isBasicPlan} />
       )}
       {type === "trainer" && (
         <TrainerPageSections profile={profile} set={set} brandColor={brandColor} barberId={profile?.uid} />
@@ -2316,7 +2426,7 @@ export default function EditPageTab({
                 fullWidth
                 value={profile.whatsappNumber || ""}
                 onChange={(e) => set("whatsappNumber", e.target.value)}
-                helperText="Shows a 'Book via WhatsApp' button on your page. Leave blank to hide it."
+                helperText="Leave blank to hide the WhatsApp button entirely."
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -2328,6 +2438,22 @@ export default function EditPageTab({
                   ),
                 }}
               />
+            </Grid>
+          )}
+          {userRole.isOwner && profile.whatsappNumber && (
+            <Grid item xs={12} sm={6}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={profile.whatsappBookingEnabled !== false}
+                    onChange={(event) => set("whatsappBookingEnabled", event.target.checked)}
+                  />
+                }
+                label="Show 'Book via WhatsApp' next to normal booking"
+              />
+              <Typography variant="caption" color="text.secondary" display="block">
+                Turn off to keep this number saved but hide the button — e.g. if you only want clients booking through your normal slots.
+              </Typography>
             </Grid>
           )}
         </Grid>

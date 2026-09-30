@@ -8,9 +8,13 @@ import {
   Cancel as CancelIcon,
 } from "@mui/icons-material";
 
+import { bookingReminderSummary, indexLogs } from "../../../utils/reminderDisplay";
+
 export default function BookingsTab({
   bookings = [], isMobile, brandColor, handleCompleteBooking, handleCancelBooking,
+  reminderLogs = [], businessProfile = {},
 }) {
+  const logsByKey = indexLogs(reminderLogs);
   const todayStr = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
 
@@ -158,6 +162,24 @@ export default function BookingsTab({
                     ))}
                   </Grid>
                 </Grid>
+
+                {/* Reminders: e.g. "24h: push ✓ · Morning: email ✓" */}
+                {(() => {
+                  const rem = bookingReminderSummary(b, logsByKey, businessProfile);
+                  if (!rem.length) return null;
+                  return (
+                    <Grid item xs={12}>
+                      <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
+                        <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ minWidth: 80 }}>Reminders</Typography>
+                        {rem.map(r => (
+                          <Chip key={r.id} size="small" label={`${r.label}: ${r.text}`}
+                            color={r.status === "sent" ? "success" : r.status === "failed" ? "error" : "default"}
+                            variant={r.status === "sent" ? "filled" : "outlined"} sx={{ height: 22, fontSize: 11, fontWeight: 700 }} />
+                        ))}
+                      </Box>
+                    </Grid>
+                  );
+                })()}
 
                 {/* Notes */}
                 {(b.notes || b.additionalInfo) && (

@@ -1,9 +1,9 @@
 import React from "react";
 import { Box, Grid } from "@mui/material";
-import { SEOHero, Section, SectionHead, FeatureCard, StepCard, BottomCTA, FAQSection, DARK, SANS , InternalLinks } from "./shared";
+import { SEOHero, Section, SectionHead, FeatureCard, StepCard, BottomCTA, FAQSection, DARK, SANS , InternalLinks, PricingTiers } from "./shared";
 
 const FAQS = [
-  { q: "Is Bookrightly booking software free for barbers?", a: "Yes — 90-day free trial, no credit card required. After that it's £10/month flat with no commission on bookings." },
+  { q: "Is Bookrightly booking software free for barbers?", a: "Yes — there's a genuinely free plan with no time limit. The full branded website with deposits, portfolio and reviews is £10/month after a 90-day free trial, no commission ever either way." },
   { q: "Can I take deposits when clients book?", a: "Yes. Bookrightly integrates Stripe so you can collect a deposit at the point of booking, which reduces no-shows significantly." },
   { q: "Do clients need to download an app?", a: "No. Clients book directly through your Bookrightly page in any browser. They can optionally install it as a PWA on their home screen." },
   { q: "Can I add all my services and prices?", a: "Yes. Add as many services as you like — fades, hot towel shaves, kids cuts, beard trims — each with their own price, duration, and description." },
@@ -86,6 +86,11 @@ export default function BarberSoftwarePage() {
       </Section>
 
       <Section>
+        <SectionHead eyebrow="More options" title="Not ready for the full plan?" sub="Three lighter, cheaper ways to get started — all with a 90-day free trial." />
+        <PricingTiers />
+      </Section>
+
+      <Section dark>
         <SectionHead eyebrow="FAQ" title="Questions about barber booking software" />
         <Box sx={{ maxWidth: 700, mx: "auto" }}>
           <FAQSection faqs={FAQS} />

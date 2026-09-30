@@ -65,10 +65,17 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
       const { clientSecret, error: intentError } = await response.json();
       if (intentError) throw new Error(intentError);
 
+      // Stripe requires confirmParams.return_url even in "if_required" mode:
+      // automatic_payment_methods (enabled server-side in /api/create-intent)
+      // can select a payment method that redirects unconditionally (bank
+      // redirects, wallets), and Stripe needs somewhere to send the customer
+      // back to if that happens. Cards etc. still resolve inline with no
+      // redirect — this only matters for the methods that always redirect.
       const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
         elements,
         clientSecret,
         redirect: "if_required",
+        confirmParams: { return_url: window.location.href },
       });
 
       if (stripeError) {
@@ -104,22 +111,6 @@ export default function CheckoutForm({ appointmentDate, appointmentTime, barber,
         }
 
         const { bookingId } = await finalizeRes.json();
-
-        // Calendar Sync (if owner has Google Calendar connected) — fire and forget, non-blocking
-        fetch("/api/google-calendar/create-event", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId:       barberId,
-            bookingId:    bookingId,
-            clientEmail:  formData.email,
-            clientName:   formData.name,
-            date:         appointmentDate,
-            time:         appointmentTime,
-            service:      formData.haircutStyle || "Appointment",
-            barberName:   barber.name,
-          }),
-        }).catch(err => console.error("Calendar sync fail (non-critical):", err));
 
         // Outlook Calendar Sync — fire and forget, non-blocking
         fetch("/api/outlook/sync-booking", {

@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Grid, Typography } from "@mui/material";
-import { SEOHero, Section, SectionHead, FeatureCard, BottomCTA, FAQSection, DARK, SANS, GOLD , InternalLinks } from "./shared";
+import { SEOHero, Section, SectionHead, FeatureCard, BottomCTA, FAQSection, DARK, SANS, GOLD , InternalLinks, PricingTiers } from "./shared";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 
@@ -22,7 +22,7 @@ const FAQS = [
   { q: "Can I keep my existing clients when I move?", a: "Yes. Your existing clients can rebook directly at bookrightly.co.uk/your-name. You can share the link on Instagram, WhatsApp, or Google — no marketplace needed." },
   { q: "Is Bookrightly only for salons and beauty?", a: "No — that's one of the key differences. Bookrightly supports barbers, hairdressers, personal trainers, and decorators. Treatwell is beauty-only." },
   { q: "How long does it take to set up?", a: "Most professionals are fully set up in under 15 minutes. Add your services, set your availability, upload a photo, and your booking page is live." },
-  { q: "What does Bookrightly cost after the trial?", a: "£10/month for most business types, £15/month for personal trainers (who get additional features like PAR-Q forms, food diary, and a client portal)." },
+  { q: "What does Bookrightly cost after the trial?", a: "A full branded website is £10/month flat, whatever your business type — including personal trainers, who get PAR-Q forms, food diary, and a client portal at the same price. Lighter options start from £5/month, or stay on the Free plan forever." },
 ];
 
 export default function TreatwellAlternativePage() {
@@ -31,7 +31,7 @@ export default function TreatwellAlternativePage() {
       <SEOHero
         eyebrow="Treatwell Alternative UK"
         title="Stop giving Treatwell 30% of every booking"
-        subtitle="Treatwell takes a commission on every appointment. Bookrightly charges a flat £10–15/month — no percentage, no marketplace, no race to the bottom on price."
+        subtitle="Treatwell takes a commission on every appointment. Bookrightly charges a flat fee from £10/month, or nothing at all on the Free plan — no percentage, no marketplace, no race to the bottom on price."
       />
 
       <Section dark>
@@ -91,6 +91,11 @@ export default function TreatwellAlternativePage() {
             </Box>
           ))}
         </Box>
+      </Section>
+
+      <Section dark>
+        <SectionHead eyebrow="More options" title="Not ready for the full plan?" sub="Three lighter, cheaper ways to get started — all with a 90-day free trial." />
+        <PricingTiers />
       </Section>
 
       <Section>

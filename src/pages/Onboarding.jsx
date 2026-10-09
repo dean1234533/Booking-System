@@ -603,7 +603,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
 
   // Live slug availability check (debounced)
   useEffect(() => {
-    if (step !== 2) return;
+    if (step !== slugStepIndex) return;
     const clean = sanitizeSlug(slug);
     if (!clean) { setSlugStatus({ state: "idle", message: "" }); return; }
     if (!isValidSlugFormat(clean)) {

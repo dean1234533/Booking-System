@@ -9,11 +9,17 @@ import Stripe from "stripe";
 import { Resend } from "resend";
 import { arrayBufferToBase64, createSquareFaviconSvg } from "./utils/favicon";
 import { BLOG_POSTS } from "./pages/blog/posts.js";
-import { getPlan, normalizePlanId } from "./config/plans.js";
+import { getPlan, normalizePlanId, PLANS } from "./config/plans.js";
+import { LANDING_PAGES } from "./seo/landingPages.js";
 import {
   runReminderCron, handleClientPushSubscribe, handleClientPushStatus,
   handleReminderTest, handleResendWebhook,
 } from "./reminders/service.js";
+import {
+  handleChat, handleChatEvent, handleAdminChatLeads,
+  handleAdminChatLeadUpdate, handleAdminChatStats,
+} from "./chat/service.js";
+import { requireAdmin } from "./admin/requireAdmin.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -850,9 +856,8 @@ async function handleAdminSendAccountEmail(request, env) {
   catch { return json({ error: "Invalid JSON" }, 400); }
 
   const { adminKey, email, businessName, slug } = body ?? {};
-  if (!env.ADMIN_ACCESS_KEY || adminKey !== env.ADMIN_ACCESS_KEY) {
-    return json({ error: "Invalid admin key" }, 403);
-  }
+  const denied1 = await requireAdmin(request, env, adminDeps(), { adminKey });
+  if (denied1) return json({ error: denied1.error }, denied1.status);
   if (!email || !slug) return json({ error: "email and slug are required" }, 400);
 
   try {
@@ -1432,6 +1437,8 @@ async function sendBookingConfirmationEmail(env, { bookingId, customerEmail, cus
 // engine runs from the 5-minute cron in scheduled() below; these are the
 // Worker-side helpers it needs, injected so the module has no circular import.
 const reminderDeps = () => ({ json, verifyFirebaseUid, getFirebaseAdminToken, firestoreBase, sendWebPush, Resend });
+// Shared by every admin-key-gated Worker route — see src/admin/requireAdmin.js.
+const adminDeps = () => ({ firestoreBase, getFirebaseAdminToken });
 
 // POST /api/admin-run-reminders — runs the reminder engine on demand (Cron
 // Triggers can't be fired from outside the dashboard), gated by the same
@@ -1442,9 +1449,8 @@ async function handleAdminRunReminders(request, env) {
   let body;
   try { body = await request.json(); }
   catch { body = {}; }
-  if (!env.ADMIN_ACCESS_KEY || body.adminKey !== env.ADMIN_ACCESS_KEY) {
-    return json({ error: "Invalid admin key" }, 403);
-  }
+  const denied = await requireAdmin(request, env, adminDeps(), body);
+  if (denied) return json({ error: denied.error }, denied.status);
   const result = await runReminderCron(env, reminderDeps(), { dryRun: body.dryRun === true });
   return json(result);
 }
@@ -1615,9 +1621,8 @@ async function handleAdminRunTrialLifecycle(request, env) {
   let body;
   try { body = await request.json(); }
   catch { body = {}; }
-  if (!env.ADMIN_ACCESS_KEY || body.adminKey !== env.ADMIN_ACCESS_KEY) {
-    return json({ error: "Invalid admin key" }, 403);
-  }
+  const denied = await requireAdmin(request, env, adminDeps(), body);
+  if (denied) return json({ error: denied.error }, denied.status);
   const result = await handleTrialLifecycle(env);
   return json(result);
 }
@@ -1630,9 +1635,8 @@ async function handleAdminChurnFeedback(request, env) {
   let body;
   try { body = await request.json(); }
   catch { body = {}; }
-  if (!env.ADMIN_ACCESS_KEY || body.adminKey !== env.ADMIN_ACCESS_KEY) {
-    return json({ error: "Invalid admin key" }, 403);
-  }
+  const denied = await requireAdmin(request, env, adminDeps(), body);
+  if (denied) return json({ error: denied.error }, denied.status);
 
   const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
   const adminToken = await getFirebaseAdminToken(env);
@@ -1966,9 +1970,8 @@ async function handleAdminMaintainDemoSlots(request, env) {
   let body;
   try { body = await request.json(); }
   catch { body = {}; }
-  if (!env.ADMIN_ACCESS_KEY || body.adminKey !== env.ADMIN_ACCESS_KEY) {
-    return json({ error: "Invalid admin key" }, 403);
-  }
+  const denied = await requireAdmin(request, env, adminDeps(), body);
+  if (denied) return json({ error: denied.error }, denied.status);
   const result = await handleMaintainDemoSlots(env);
   return json(result);
 }
@@ -1976,101 +1979,10 @@ async function handleAdminMaintainDemoSlots(request, env) {
 // ── Homepage chatbot ──────────────────────────────────────────────────────────
 // Cloudflare Workers AI (free tier: 10,000 neurons/day) with a hardcoded
 // keyword-matched fallback for when the free quota runs out or the model
-// call fails for any other reason — Workers AI's own error handling is a
-// plain try/catch with no distinct "quota exceeded" code to special-case,
-// so a broad catch is the correct, idiomatic way to trigger the fallback.
-
-const CHAT_SYSTEM_PROMPT = `You are the help assistant on the Bookrightly homepage (bookrightly.co.uk), a UK booking SaaS for barbers, hairdressers, personal trainers, decorators, and plumbing/heating/electrical trades.
-
-Plans:
-- Full (£10/month) — any business type. Full branded website, dashboard, services, deposits via Stripe, reviews, PWA.
-- Widget (£5/month) — any business type. Embed booking and live queue tools on your own existing website, no hosted page.
-- Basic (£5/month) — any business type. A simple booking page with services, prices, and a link to your Instagram. Includes confirmation emails and reminders.
-- Free (£0, forever) — any business type. The cheapest option: a bare page with your logo and booking slots, on-screen confirmation only, no deposits, no reminders. No card, no trial needed.
-
-Every paid plan (Basic, Widget, Full) starts with a 90-day free trial, no credit card required. Free needs no trial — it's free forever from day one. No commission is ever taken on bookings — the only cost is Stripe's own card processing fee (~1.5%+20p), never marked up by Bookrightly. No setup fees, no contract, cancel anytime. If a paid trial ends without subscribing, the business is never locked out — their page just moves to the Free plan automatically, keeping their booking link and all their data. Setup typically takes under 15 minutes: add your business details and services, set your availability, and share your booking link.
-
-Answer briefly, like a chat bubble, not an essay. Stay on topic — if asked something unrelated to Bookrightly or booking software, politely redirect back to what Bookrightly does. If you don't know the answer, say so and point to bookrightly.co.uk/pricing or suggest contacting support rather than guessing.
-
-Reply in plain conversational text only, like a person typing a message — no markdown, no asterisks, no bullet points, no headings, no bold or italics.`;
-
-// Strips markdown formatting the model sometimes adds despite being told not
-// to (Workers AI's instruction-following on this is inconsistent) — the chat
-// UI renders plain text, so unstripped "**bold**"/"# heading" markers would
-// show up as literal asterisks/hashes instead of being rendered as styling.
-function stripMarkdown(text) {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/\*(.*?)\*/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^[-*]\s+/gm, "")
-    .replace(/`{1,3}([^`]*)`{1,3}/g, "$1");
-}
-
-// Keyword-matched canned answers, used only when the AI call fails (quota
-// exhausted, model error, etc.) — pulled from the same FAQ copy already on
-// the pricing/marketing pages so the bot never contradicts the rest of the site.
-const CHAT_FALLBACK_ANSWERS = [
-  { keywords: ["price", "pricing", "cost", "how much", "fee", "fees"], answer: "Full plan is £10/month for a complete branded website and dashboard. Cheaper options: Widget £5/month (embed on your own site), Basic £5/month, and Free — £0 forever. Paid plans have a 90-day free trial. Full breakdown at bookrightly.co.uk/pricing." },
-  { keywords: ["trial", "free", "card", "credit card"], answer: "Every paid plan includes a 90-day free trial with no credit card required. The Free plan needs no trial — it's free forever." },
-  { keywords: ["commission", "cut", "percentage", "take"], answer: "No commission, ever — not on a single booking. The only cost is Stripe's own card processing fee, which we never mark up." },
-  { keywords: ["contract", "cancel", "cancellation", "lock", "lock-in", "tie"], answer: "No contract — pay month to month and cancel whenever you need to. If a trial ends without subscribing, you're never locked out either — your page just moves to the Free plan." },
-  { keywords: ["setup", "set up", "onboarding", "how long", "get started"], answer: "Setup takes under 15 minutes — add your business details and services, set your availability, and share your booking link." },
-  { keywords: ["business type", "industry", "barber", "hairdresser", "salon", "trainer", "pt", "decorator", "plumber", "plumbing", "electrician", "heating"], answer: "Bookrightly supports barbers, hairdressers, personal trainers, decorators, and plumbing/heating/electrical trades — each with their own tailored booking page." },
-  { keywords: ["deposit", "payment", "stripe", "pay"], answer: "Deposits and payments are collected securely through Stripe, paid directly to your own account minus Stripe's standard processing fee. Deposits are available on Basic, Widget and Full — not on the Free plan." },
-  { keywords: ["free plan", "cheapest", "cheap", "no cost"], answer: "The Free plan is £0, forever — no card, no trial needed. A bare page with your logo and booking slots, on-screen confirmation only, no deposits, no reminders." },
-  { keywords: ["basic"], answer: "Basic is £5/month, any business type. A simple booking page with your services, prices, and a link to your Instagram, including confirmation emails and reminders." },
-  { keywords: ["widget", "embed", "own website", "existing website"], answer: "The Widget plan (£5/month, any business type) lets you embed booking and live queue tools directly into a website you already have." },
-  { keywords: ["app", "download", "install", "pwa"], answer: "Bookrightly works as an installable PWA — clients and business owners can add it to their home screen like a native app, no app store needed." },
-];
-
-function matchFallbackAnswer(message) {
-  const words = message.toLowerCase();
-  let best = null;
-  let bestScore = 0;
-  for (const entry of CHAT_FALLBACK_ANSWERS) {
-    const score = entry.keywords.reduce((acc, kw) => acc + (words.includes(kw) ? 1 : 0), 0);
-    if (score > bestScore) { bestScore = score; best = entry; }
-  }
-  return best
-    ? best.answer
-    : "I'm not totally sure on that one — check bookrightly.co.uk/pricing for the full details, or reach out to support and we'll help directly.";
-}
-
-// POST /api/chat — { message, history }. history is the prior turns of this
-// conversation (already capped client-side), replayed to the model for
-// context; capped again here as a defensive limit.
-async function handleChat(request, env) {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
-
-  let body;
-  try { body = await request.json(); }
-  catch { return json({ error: "Invalid JSON body" }, 400); }
-
-  const message = (body?.message || "").toString().trim();
-  const history = Array.isArray(body?.history) ? body.history.slice(-6) : [];
-
-  if (!message) return json({ error: "Missing message" }, 400);
-  if (message.length > 500) {
-    return json({ reply: "That message is a bit long for the chat — try asking in a shorter sentence, or email support directly.", source: "fallback" });
-  }
-
-  try {
-    const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8", {
-      messages: [
-        { role: "system", content: CHAT_SYSTEM_PROMPT },
-        ...history.filter(m => m?.role && m?.content).map(m => ({ role: m.role, content: String(m.content).slice(0, 500) })),
-        { role: "user", content: message },
-      ],
-    });
-    const reply = stripMarkdown(result?.response?.trim() || "");
-    if (!reply) throw new Error("Empty response from model");
-    return json({ reply, source: "ai" });
-  } catch (err) {
-    console.error("[chat] falling back:", err.message);
-    return json({ reply: matchFallbackAnswer(message), source: "fallback" });
-  }
-}
+// call fails for any other reason. Lead capture, session analytics, rate
+// limiting, and the admin views all live in src/chat/ — see there for the
+// real logic; this file just injects the Worker-only deps it needs.
+const chatDeps = () => ({ json, firestoreBase, getFirebaseAdminToken, Resend });
 
 async function finalizeBookingRecords({ env, paymentIntentId, slotId, barberId, formData, date, time, intent }) {
   const base = firestoreBase(env.VITE_FIREBASE_PROJECT_ID);
@@ -3022,6 +2934,119 @@ async function fetchStaffSEO(shopId, staffId, projectId) {
   }
 }
 
+// Escapes text dropped into the HTML built below — landing page copy lives
+// in src/seo/landingPages.js as plain strings, not JSX, so nothing already
+// escapes it the way React would.
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// Builds the real, readable HTML for a src/seo/landingPages.js entry, meant
+// to be injected inside the empty <div id="root">. This is the part the
+// pre-existing seoPages title/description injection (below) never did: a
+// crawler that doesn't run JavaScript — GPTBot, PerplexityBot, and often a
+// first, uncached Googlebot pass — was seeing title/meta tags but a
+// completely empty page body. React's createRoot() replaces this markup
+// once it hydrates, so it only has to look acceptable for the moment before
+// that happens, not be pixel perfect — hence the small inline <style> block
+// scoped to #bk-seo-fallback.
+function buildLandingBodyHtml(path) {
+  const page = LANDING_PAGES[path];
+  if (!page) return "";
+  const { h1, intro, features = [], faq = [], cta } = page;
+  const otherPages = Object.keys(LANDING_PAGES).filter(p => p !== path);
+
+  const featuresHtml = features.map(f => `
+      <section>
+        <h2>${escapeHtml(f.h2)}</h2>
+        <p>${escapeHtml(f.p)}</p>
+      </section>`).join("");
+
+  const faqHtml = faq.length ? `
+      <h2>Frequently asked questions</h2>
+      <dl>${faq.map(f => `
+        <dt>${escapeHtml(f.q)}</dt>
+        <dd>${escapeHtml(f.a)}</dd>`).join("")}
+      </dl>` : "";
+
+  const linksHtml = otherPages.map(p =>
+    `<a href="${p}">${escapeHtml(LANDING_PAGES[p].h1)}</a>`
+  ).join("");
+
+  return `
+    <div id="bk-seo-fallback">
+      <style>
+        #bk-seo-fallback{font-family:'DM Sans',sans-serif;max-width:760px;margin:0 auto;padding:96px 24px 48px;color:#111116;line-height:1.65}
+        #bk-seo-fallback h1{font-size:2.4rem;font-weight:900;letter-spacing:-.03em;line-height:1.1;margin:0 0 20px}
+        #bk-seo-fallback h2{font-size:1.3rem;font-weight:800;margin:32px 0 8px}
+        #bk-seo-fallback p,#bk-seo-fallback dd{color:#4b4b55;margin:0 0 8px}
+        #bk-seo-fallback dt{font-weight:800;margin-top:16px}
+        #bk-seo-fallback dd{margin-bottom:0}
+        #bk-seo-fallback a{color:#2563EB;font-weight:700;text-decoration:none}
+        #bk-seo-fallback .bk-cta{display:inline-block;margin-top:28px;padding:14px 28px;background:#2563EB;color:#fff;border-radius:99px;font-weight:800}
+        #bk-seo-fallback nav{display:flex;flex-wrap:wrap;gap:16px;margin-top:40px;padding-top:24px;border-top:1px solid #e5e5ea}
+      </style>
+      <h1>${escapeHtml(h1)}</h1>
+      <p>${escapeHtml(intro)}</p>
+      ${cta ? `<a class="bk-cta" href="${cta.href}">${escapeHtml(cta.text)}</a>` : ""}
+      ${featuresHtml}
+      ${faqHtml}
+      <nav aria-label="More Bookrightly pages">${linksHtml}</nav>
+    </div>`;
+}
+
+function buildLandingFaqLdJson(path) {
+  const faq = LANDING_PAGES[path]?.faq;
+  if (!faq?.length) return null;
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+  });
+}
+
+// Full treatment for the trade landing pages: body HTML plus its own
+// SoftwareApplication + FAQPage JSON-LD. The homepage ("/") instead calls
+// buildLandingBodyHtml/buildLandingFaqLdJson directly (see the Launchpadly
+// badge block below) since it already builds a richer Organization +
+// SoftwareApplication graph of its own — adding this function's version too
+// would put two competing SoftwareApplication blocks on one page.
+function renderLandingPage(response, path, nonce) {
+  const page = LANDING_PAGES[path];
+  if (!page) return response;
+
+  const canon = `https://bookrightly.co.uk${path}`;
+  const { title, metaDescription: desc } = page;
+  const html = buildLandingBodyHtml(path);
+  const faqLdJson = buildLandingFaqLdJson(path);
+
+  const softwareLdJson = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: title,
+    url: canon,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    description: desc,
+    offers: {
+      "@type": "Offer",
+      price: String(PLANS.free.priceGBP),
+      priceCurrency: "GBP",
+      description: `Free plan available; paid plans from £${PLANS.basic.priceGBP}/month with a ${PLANS.full.trialDays}-day free trial.`,
+    },
+    publisher: { "@type": "Organization", name: "Bookrightly", url: "https://bookrightly.co.uk" },
+  });
+
+  const rewriter = new HTMLRewriter()
+    .on("#root", { element: el => el.append(html, { html: true }) })
+    .on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${softwareLdJson}</script>`, { html: true }) });
+  if (faqLdJson) rewriter.on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${faqLdJson}</script>`, { html: true }) });
+
+  return rewriter.transform(response);
+}
+
 function injectBusinessSEO(response, { name, specialty, type, city, image, canonicalUrl, faviconUrl = image }, nonce) {
   const typeLabel = type || "Professional";
   const title     = city
@@ -3169,16 +3194,18 @@ Sitemap: https://bookrightly.co.uk/sitemap.xml`,
 async function handleDynamicSitemap(env) {
   const projectId = env.VITE_FIREBASE_PROJECT_ID;
   const base      = "https://bookrightly.co.uk";
+  const lastmod = new Date().toISOString().slice(0, 10);
   const staticUrls = [
     "/", "/login", "/signup", "/privacy", "/terms",
     "/compare", "/pricing", "/how-it-works", "/blog",
     "/fresha-alternative", "/treatwell-alternative",
     "/booking-software/barbers", "/booking-software/salons",
     "/booking-software/personal-trainers", "/booking-software/decorators",
+    "/booking-software/electricians",
     "/tools", "/tools/no-show-calculator", "/tools/revenue-calculator",
     "/tools/pt-rate-calculator", "/tools/service-pricing-calculator",
     "/contact",
-  ].map(p => `\n  <url><loc>${base}${p}</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`).join("");
+  ].map(p => `\n  <url><loc>${base}${p}</loc><lastmod>${lastmod}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`).join("");
 
   // Derived from the real post list rather than hand-maintained — a
   // hardcoded copy here silently drifted out of date twice (two live posts
@@ -3325,7 +3352,15 @@ async function handleFetch(request, env, ctx, nonce) {
       case "/api/admin-maintain-demo-slots":
         return handleAdminMaintainDemoSlots(request, env);
       case "/api/chat":
-        return handleChat(request, env);
+        return handleChat(request, env, chatDeps());
+      case "/api/chat-event":
+        return handleChatEvent(request, env, chatDeps());
+      case "/api/admin-chat-leads":
+        return handleAdminChatLeads(request, env, chatDeps());
+      case "/api/admin-chat-lead-update":
+        return handleAdminChatLeadUpdate(request, env, chatDeps());
+      case "/api/admin-chat-stats":
+        return handleAdminChatStats(request, env, chatDeps());
       case "/api/stripe-webhook":
         return handleStripeWebhook(request, env);
       case "/api/send-push":
@@ -3395,6 +3430,7 @@ async function handleFetch(request, env, ctx, nonce) {
 - [Salon booking software](https://bookrightly.co.uk/booking-software/salons)
 - [Personal trainer booking software](https://bookrightly.co.uk/booking-software/personal-trainers)
 - [Decorator booking software](https://bookrightly.co.uk/booking-software/decorators)
+- [Electrician booking software](https://bookrightly.co.uk/booking-software/electricians)
 
 ## Blog
 
@@ -3441,6 +3477,63 @@ async function handleFetch(request, env, ctx, nonce) {
         // 3. Cloudflare SSL Challenge Bypass
         if (url.pathname.startsWith("/.well-known/cf-custom-hostname-challenge/")) {
           return fetch(request);
+        }
+
+        // 3z. Static video files — serve with real byte-range support.
+        // Confirmed by hand: Firebase Hosting itself returns "Accept-Ranges:
+        // bytes", but a Range request proxied through this Worker always
+        // came back a plain 200 with no Accept-Ranges at all — Cloudflare's
+        // edge cache treats the proxied response as one cacheable blob and
+        // ignores Range semantics entirely. Mobile Safari and Chrome refuse
+        // to play video without real 206 Partial Content support, so
+        // without this the video silently fails to play on phones while
+        // working fine on desktop (which tolerates a full download).
+        // Reads the whole (small, a few MB) file once per edge location —
+        // cached for a day via the Cache API — then serves exact byte
+        // slices per request, bypassing whatever Cloudflare's zone-level
+        // cache does with Range headers.
+        if (url.pathname.startsWith("/videos/") && /\.(mp4|webm|mov)$/i.test(url.pathname)) {
+          const originUrl = `https://booking-system-cdce0.web.app${url.pathname}`;
+          const cacheKey = new Request(originUrl);
+          let full = await caches.default.match(cacheKey);
+          if (!full) {
+            full = await fetch(originUrl, { cf: { cacheTtl: 86400, cacheEverything: true } });
+            if (full.ok) ctx.waitUntil(caches.default.put(cacheKey, full.clone()));
+          }
+          if (!full.ok) return full;
+
+          const buf = await full.arrayBuffer();
+          const total = buf.byteLength;
+          const contentType = full.headers.get("content-type") || "video/mp4";
+          const range = request.headers.get("Range");
+          const baseHeaders = {
+            "Content-Type": contentType,
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=86400",
+          };
+
+          if (!range) {
+            return new Response(buf, { status: 200, headers: { ...baseHeaders, "Content-Length": String(total) } });
+          }
+
+          const match = /bytes=(\d*)-(\d*)/.exec(range);
+          let start = match?.[1] ? parseInt(match[1], 10) : 0;
+          let end = match?.[2] ? parseInt(match[2], 10) : total - 1;
+          if (Number.isNaN(start) || start < 0) start = 0;
+          if (Number.isNaN(end) || end >= total) end = total - 1;
+          if (start > end) {
+            return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${total}` } });
+          }
+
+          const slice = buf.slice(start, end + 1);
+          return new Response(slice, {
+            status: 206,
+            headers: {
+              ...baseHeaders,
+              "Content-Length": String(slice.byteLength),
+              "Content-Range": `bytes ${start}-${end}/${total}`,
+            },
+          });
         }
 
 
@@ -3689,15 +3782,24 @@ async function handleFetch(request, env, ctx, nonce) {
               },
             ],
           });
-          return new HTMLRewriter()
+          // Real, readable homepage copy (h1, intro, feature sections, FAQ)
+          // straight in <div id="root"> — see buildLandingBodyHtml's comment
+          // above for why. Its FAQPage JSON-LD goes in <head> alongside the
+          // Organization/SoftwareApplication graph already built above; the
+          // SoftwareApplication half of renderLandingPage is skipped here on
+          // purpose since orgLdJson already covers it for this page.
+          const homeFaqLdJson = buildLandingFaqLdJson("/");
+          const rewriter = new HTMLRewriter()
+            .on("#root", { element: el => el.append(buildLandingBodyHtml("/"), { html: true }) })
             .on("body", {
               element: el => el.append(
                 `<a href="https://launchpadly.co/startup/bookrightly?ref=badge" target="_blank" rel="noopener noreferrer" data-launchpadly-badge="bookrightly" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;">Proudly listed on Launchpadly Startup Directory</a>`,
                 { html: true },
               ),
             })
-            .on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${orgLdJson}</script>`, { html: true }) })
-            .transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
+            .on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${orgLdJson}</script>`, { html: true }) });
+          if (homeFaqLdJson) rewriter.on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${homeFaqLdJson}</script>`, { html: true }) });
+          return rewriter.transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
         }
 
         // 6b. Compare page SEO injection
@@ -3740,18 +3842,12 @@ async function handleFetch(request, env, ctx, nonce) {
             title: "Treatwell Alternative UK — Stop Giving Away 30% | Bookrightly",
             desc:  "Treatwell takes 20–30% of every booking. Bookrightly charges from £10/month with no commission, or start free. Switch today and keep what you earn. 90-day free trial on paid plans.",
           },
-          "/booking-software/barbers": {
-            title: "Barber Booking Software UK — Online Booking for Barbers | Bookrightly",
-            desc:  "The best online booking system for UK barbers. Custom profile, Stripe deposits, real-time slots, and client reviews — from £10/month, or free to start. 90-day free trial on paid plans.",
-          },
-          "/booking-software/salons": {
-            title: "Salon Booking Software UK — Online Booking for Hair Salons | Bookrightly",
-            desc:  "Online booking software for UK hair salons. Branded page, treatment menu, Stripe deposits, before & after portfolio — from £10/month, or start free. No commission.",
-          },
-          "/booking-software/personal-trainers": {
-            title: "Personal Trainer Booking Software UK — PAR-Q, Plans & Payments | Bookrightly",
-            desc:  "Booking and client management for UK PTs. PAR-Q forms, food diary, check-ins, workout plans, Stripe payments — from £10/month, or free to start. 90-day free trial on paid plans.",
-          },
+          // Trade landing pages (/booking-software/barbers, /salons,
+          // /personal-trainers, /decorators, /electricians) are NOT listed
+          // here any more — they're in src/seo/landingPages.js and handled
+          // by the LANDING_PAGES branch just below this object, which does
+          // the same title/meta/JSON-LD work this map does PLUS injects
+          // real body HTML into <div id="root"> (see renderLandingPage).
           "/pricing": {
             title: "Bookrightly Pricing — Free Plan, No Commission | UK Booking Software",
             desc:  "Simple pricing for UK professionals: Free forever, Basic or Widget from £5/month, or a full branded website from £10/month. No commission, ever. 90-day free trial on paid plans, no card needed.",
@@ -3770,10 +3866,6 @@ async function handleFetch(request, env, ctx, nonce) {
           "/how-it-works": {
             title: "How Bookrightly Works — Online Booking for UK Professionals",
             desc:  "See how Bookrightly works from sign-up to first booking. Set up your branded page, add services, open your schedule, and go live in under an hour.",
-          },
-          "/booking-software/decorators": {
-            title: "Decorator Booking Software UK — Quotes, Portfolio & Site Visits | Bookrightly",
-            desc:  "Online booking software for UK decorators and tradespeople. Portfolio page, quote request form, site visit booking, colour approval — from £10/month, or free to start. No commission.",
           },
           "/blog": {
             title: "Bookrightly Blog — Advice for UK Service Professionals",
@@ -3934,6 +4026,30 @@ async function handleFetch(request, env, ctx, nonce) {
             }
             return rewriter.transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
           }
+        }
+
+        // 6c-0. Trade landing pages — real body HTML (not just meta tags),
+        // see renderLandingPage/src/seo/landingPages.js. Checked ahead of
+        // the plain seoPages map below since these paths were removed from
+        // that map once this took over handling them. "/" is excluded —
+        // it's already handled above in the Launchpadly badge block.
+        if (url.pathname !== "/" && LANDING_PAGES[url.pathname] && response.headers.get("content-type")?.includes("text/html")) {
+          const noCache = new Headers(response.headers);
+          noCache.set("Cache-Control", "no-store, no-cache, must-revalidate");
+          ctx.waitUntil(caches.default.delete(request).catch(() => {}));
+          const canon = `https://bookrightly.co.uk${url.pathname}`;
+          const { title, metaDescription: desc } = LANDING_PAGES[url.pathname];
+          const response2 = new HTMLRewriter()
+            .on("title", { element: el => el.setInnerContent(title) })
+            .on('meta[name="description"]',        { element: el => el.setAttribute("content", desc) })
+            .on('meta[property="og:title"]',       { element: el => el.setAttribute("content", title) })
+            .on('meta[property="og:description"]', { element: el => el.setAttribute("content", desc) })
+            .on('meta[property="og:url"]',         { element: el => el.setAttribute("content", canon) })
+            .on('meta[name="twitter:title"]',      { element: el => el.setAttribute("content", title) })
+            .on('meta[name="twitter:description"]',{ element: el => el.setAttribute("content", desc) })
+            .on('link[rel="canonical"]', { element: el => el.setAttribute("href", canon) })
+            .transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
+          return renderLandingPage(response2, url.pathname, nonce);
         }
 
         const seoPageData = seoPages[url.pathname];

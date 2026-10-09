@@ -38,6 +38,9 @@
     "crons": ["*/5 * * * *"]
   },
   "vars": {
+    // Where the homepage chatbot (src/chat/service.js) emails a new lead
+    // notification — see "New Bookrightly lead: ..." in that file.
+    "ADMIN_NOTIFICATION_EMAIL": "deanburt1308@gmail.com",
     "VAPID_PUBLIC_KEY": "BJuBUftoLDPz1W6i2V6IaxGrSF2yKNDvjmcho8rloEaCfrlaIgfGyEzxbjI0MbcUgobhN6lC06DaHMXXAGIwlks",
     "VAPID_SUBJECT": "mailto:Deanburt1308@gmail.com"
   },

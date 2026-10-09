@@ -4,6 +4,7 @@ const {onCall, HttpsError, onRequest} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {defineSecret} = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const {requireAdmin} = require("./adminAuth");
 // stripe, nodemailer and axios are heavy to require (~5s combined) and pushed
 // cold module-load past the Cloud Functions 10s analysis timeout on deploy.
 // Load them lazily. axios is wrapped in a Proxy so existing `axios.get/post/put`
@@ -620,9 +621,9 @@ async function getAdminAccessToken() {
 exports.adminGoogleAuthStart = onRequest(
     {secrets: [GOOGLE_OAUTH_CLIENT_ID, ADMIN_ACCESS_KEY], invoker: "public"},
     async (req, res) => {
-      if (req.query.key !== ADMIN_ACCESS_KEY.value()) {
-        return res.status(403).send("Forbidden");
-      }
+      const auth = await requireAdmin(req.ip, req.query.key, ADMIN_ACCESS_KEY.value());
+      if (auth.locked) return res.status(429).send("Too many attempts. Try again later.");
+      if (!auth.ok) return res.status(401).send("Forbidden");
       const url = "https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({
         client_id: GOOGLE_OAUTH_CLIENT_ID.value(),
         redirect_uri: ADMIN_GOOGLE_REDIRECT_URI,
@@ -643,7 +644,9 @@ exports.adminGoogleOAuthCallback = onRequest(
     async (req, res) => {
       const {code, state, error} = req.query;
       if (error) return res.status(400).send(`Google returned an error: ${error}`);
-      if (state !== ADMIN_ACCESS_KEY.value()) return res.status(403).send("Forbidden");
+      const auth = await requireAdmin(req.ip, state, ADMIN_ACCESS_KEY.value());
+      if (auth.locked) return res.status(429).send("Too many attempts. Try again later.");
+      if (!auth.ok) return res.status(401).send("Forbidden");
       if (!code) return res.status(400).send("Missing code");
 
       try {
@@ -1184,9 +1187,9 @@ exports.adminCreateAccount = onCall(
     {secrets: [ADMIN_ACCESS_KEY], invoker: "public"},
     async (request) => {
       const {adminKey, businessName, businessType, ownerName, email, phone, plan} = request.data || {};
-      if (adminKey !== ADMIN_ACCESS_KEY.value()) {
-        throw new HttpsError("permission-denied", "Invalid admin key.");
-      }
+      const auth = await requireAdmin(request.rawRequest?.ip, adminKey, ADMIN_ACCESS_KEY.value());
+      if (auth.locked) throw new HttpsError("resource-exhausted", "Too many attempts. Try again later.");
+      if (!auth.ok) throw new HttpsError("permission-denied", "Invalid admin key.");
       if (!businessName || !ownerName || !email) {
         throw new HttpsError("invalid-argument", "businessName, ownerName and email are required.");
       }

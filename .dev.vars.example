@@ -16,3 +16,8 @@ RESEND_WEBHOOK_SECRET=
 
 # Set to "true" to log every reminder chain decision and send NOTHING
 REMINDERS_DRY_RUN=false
+
+# Gates every /api/admin-* endpoint (reminders, churn feedback, chat leads).
+# Generate a random 32+ character value — never reuse a password. See
+# src/chat/adminAuth.js for the lockout/constant-time check on top of this.
+ADMIN_ACCESS_KEY=

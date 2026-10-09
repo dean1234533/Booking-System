@@ -77,7 +77,7 @@ export default function PTSoftwarePage() {
           ].map((item) => (
             <Box key={item} sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5, textAlign: "left" }}>
               <Box sx={{ width: 6, height: 6, bgcolor: "#2563EB", borderRadius: "50%", flexShrink: 0 }} />
-              <Box component="span" sx={{ fontSize: "0.87rem", color: "rgba(255,255,255,0.7)" }}>{item}</Box>
+              <Box component="span" sx={{ fontSize: "0.87rem", color: "#696A73" }}>{item}</Box>
             </Box>
           ))}
         </Box>

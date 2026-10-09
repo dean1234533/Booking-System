@@ -17,7 +17,7 @@ export function SEOHero({ eyebrow, title, subtitle, cta = "Start free — 90 day
       <Box sx={{ maxWidth: 1180, mx: "auto", display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.15fr .85fr" }, gap: { xs: 4, md: 8 }, alignItems: "end" }}>
         <Box>
           {eyebrow && <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", fontWeight: 900, letterSpacing: "0.15em", textTransform: "uppercase", color: GOLD, mb: 2 }}>{eyebrow}</Typography>}
-          <Typography sx={{ fontFamily: SERIF, color: "#111116", fontSize: { xs: "2.8rem", md: "5.6rem" }, fontWeight: 950, letterSpacing: "-.075em", lineHeight: .9 }}>{title}</Typography>
+          <Typography component="h1" sx={{ fontFamily: SERIF, color: "#111116", fontSize: { xs: "2.8rem", md: "5.6rem" }, fontWeight: 950, letterSpacing: "-.075em", lineHeight: .9 }}>{title}</Typography>
         </Box>
         <Box sx={{ pb: 1 }}>
           <Typography sx={{ fontSize: "1rem", color: "#696A73", maxWidth: 540, lineHeight: 1.75, mb: 3 }}>{subtitle}</Typography>
@@ -118,6 +118,7 @@ export function InternalLinks({ current }) {
     { label: "Salon booking software", path: "/booking-software/salons" },
     { label: "PT booking software", path: "/booking-software/personal-trainers" },
     { label: "Decorator software", path: "/booking-software/decorators" },
+    { label: "Electrician software", path: "/booking-software/electricians" },
     { label: "Fresha alternative", path: "/fresha-alternative" },
     { label: "Treatwell alternative", path: "/treatwell-alternative" },
     { label: "Pricing", path: "/pricing" },

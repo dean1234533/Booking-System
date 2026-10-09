@@ -4,6 +4,7 @@
 // atomic increments — both needed for idempotent reminders and usage caps.
 export function enc(v) {
   if (v === null || v === undefined) return { nullValue: null };
+  if (v instanceof Date) return { timestampValue: v.toISOString() }; // Firestore TTL policies only fire on a real Timestamp field, not a string
   if (typeof v === "string") return { stringValue: v };
   if (typeof v === "boolean") return { booleanValue: v };
   if (typeof v === "number") return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };

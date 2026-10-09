@@ -354,6 +354,35 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── Homepage chatbot: leads, session analytics, rate limiting ─────────────
+    // "if false" here means NO client Firestore SDK read/write ever succeeds
+    // for these collections — not "non-admins are blocked", literally no one,
+    // not even an authenticated Firebase user, not even the platform's own
+    // owner account. The only door in is the Worker's service-account admin
+    // token (src/reminders/fsrest.js's fsClient), which authenticates as a
+    // trusted server identity that bypasses these rules entirely — the same
+    // mechanism already used for churnFeedback/reminderLogs above. The admin
+    // page (/admin/chat-leads, src/pages/AdminChatLeads.jsx) never touches
+    // Firestore directly; it calls /api/admin-chat-* on the Worker, which
+    // re-checks ADMIN_ACCESS_KEY on every single call before it ever reaches
+    // this data. See that page's own comment for the full chain, including
+    // why the dashboard UI itself doesn't render until the Worker has
+    // confirmed the key server-side.
+    match /chatLeads/{leadId} {
+      allow read, write: if false;
+    }
+    match /chatSessions/{sessionId} {
+      allow read, write: if false;
+    }
+    match /chatRateLimits/{ipHash} {
+      allow read, write: if false;
+    }
+    // Per-IP lockout tracking for the admin-chat-* endpoints above — see
+    // src/chat/adminAuth.js. Same "no one, ever, via client SDK" model.
+    match /adminAuthAttempts/{ipHash} {
+      allow read, write: if false;
+    }
+
     // ── Deny everything else ──────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

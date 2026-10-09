@@ -56,9 +56,16 @@ export default function Signup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  // ?plan= and ?sessionId= — set when the homepage chatbot's "Start free"
+  // button sends someone here (see src/components/ChatWidget.jsx), so the
+  // plan it recommended is already selected, and the chat session can be
+  // marked signed_up once the account actually exists.
+  const initialParams = new URLSearchParams(window.location.search);
+  const chatSessionId = initialParams.get("sessionId") || null;
   const [form, setForm] = useState({
     name: "", email: "", phone: "", specialty: "", password: "", confirm: "",
-    businessName: "", businessType: "barber", marketingOptIn: false, plan: "full",
+    businessName: "", businessType: "barber", marketingOptIn: false,
+    plan: ["free", "basic", "widget", "full"].includes(initialParams.get("plan")) ? initialParams.get("plan") : "full",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -136,6 +143,12 @@ export default function Signup() {
       // real signups instead of just clicks, once there's enough volume for
       // Meta to learn from (see index.html for the base Pixel).
       try { window.fbq?.("track", "CompleteRegistration"); } catch {}
+      if (chatSessionId) {
+        fetch("/api/chat-event", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: chatSessionId, event: "signed_up" }),
+        }).catch(() => {});
+      }
       navigate("/onboarding");
     } catch (signupError) {
       const message = signupError.code === "auth/password-does-not-meet-requirements"

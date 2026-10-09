@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, CircularProgress,
   Container, Grid, IconButton, InputBase, Paper, Stack, Typography,
@@ -9,6 +9,7 @@ import {
   ContentCut as CutIcon, ExpandMore as ExpandIcon, FitnessCenter as FitnessIcon,
   Language as WebsiteIcon, LocationOn as LocationIcon, MyLocation as LocateIcon,
   Payments as PaymentsIcon, People as PeopleIcon, Search as SearchIcon,
+  PlayArrowRounded as PlayIcon,
   Star as StarIcon, Storefront as StoreIcon, TrendingUp as GrowthIcon,
   Verified as VerifiedIcon, PhotoLibrary as GalleryIcon, WhatsApp as WhatsAppIcon,
   Groups as TeamIcon, Plumbing as PlumbingIcon, Lock as LockIcon, Code as CodeIcon,
@@ -91,34 +92,84 @@ function Label({ children, light = false }) {
   return <Typography sx={{ color: light ? P.acid : P.blue, fontWeight: 950, fontSize: ".68rem", letterSpacing: ".14em", textTransform: "uppercase" }}>{children}</Typography>;
 }
 
-function WorkspaceVisual() {
-  const slots = [["09:30", "Alex Morgan", "Consultation"], ["12:00", "Sam Taylor", "Signature service"], ["15:30", "Jordan Lee", "Follow-up"]];
+function HowItWorksVideo() {
+  const videoRef = useRef(null);
+  const [started, setStarted] = useState(false);
+
+  const play = async () => {
+    try {
+      await videoRef.current?.play();
+    } catch {
+      // Fall back to native controls if the browser blocks the play request.
+      setStarted(true);
+    }
+  };
+
+  const onEnded = event => {
+    setStarted(false);
+    event.target.load();
+  };
+
   return (
-    <Box sx={{ position: "relative", minHeight: { xs: "auto", md: 560 }, display: { xs: "flex", md: "grid" }, flexDirection: { xs: "column", md: "initial" }, placeItems: { md: "center" }, gap: { xs: 1.4, md: 0 }, pt: { xs: 1, md: 0 } }}>
-      <Box sx={{ display: { xs: "none", md: "block" }, position: "absolute", width: "78%", height: "75%", borderRadius: "50%", bgcolor: P.mist, filter: "blur(2px)" }} />
-      <Paper sx={{ order: { xs: 2, md: "initial" }, position: "relative", width: { xs: "100%", md: "82%" }, bgcolor: P.ink, color: "#fff", p: { xs: 2, sm: 2.5 }, borderRadius: { xs: 4, md: 5 }, transform: { xs: "none", md: "rotate(-3deg)" }, boxShadow: { xs: "0 22px 55px rgba(17,17,22,.2)", md: "0 38px 80px rgba(17,17,22,.28)" }, border: "1px solid rgba(255,255,255,.12)" }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-          <Typography sx={{ fontWeight: 950, fontSize: ".82rem" }}>Today</Typography>
-          <Chip label="4 bookings" size="small" sx={{ bgcolor: P.acid, color: P.ink, fontWeight: 900 }} />
+    <Box sx={{ position: "relative", py: { xs: 1, md: 3 }, px: { xs: 0, md: 1.5 } }}>
+      <Box aria-hidden="true" sx={{ position: "absolute", inset: { xs: "8% -7% -5% 6%", md: "0 -8% -2% 5%" }, bgcolor: P.mist, borderRadius: "48% 52% 45% 55%", transform: "rotate(-7deg)" }} />
+      <Paper
+        elevation={0}
+        sx={{
+          position: "relative", overflow: "hidden", borderRadius: { xs: 3.5, sm: 4.5 },
+          bgcolor: P.ink, border: "1px solid rgba(17,17,22,.12)",
+          boxShadow: "0 34px 80px rgba(17,17,22,.24), 0 8px 24px rgba(17,17,22,.12)",
+          transform: { xs: "none", md: "perspective(1200px) rotateY(-2deg) rotateZ(.6deg)" },
+          transition: "transform .35s ease, box-shadow .35s ease",
+          "&:hover": { transform: { md: "perspective(1200px) rotateY(0) rotateZ(0) translateY(-3px)" }, boxShadow: "0 40px 90px rgba(17,17,22,.28), 0 10px 28px rgba(17,17,22,.14)" },
+        }}
+      >
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: { xs: 1.5, sm: 2 }, py: 1.25, bgcolor: "#17171D", color: "#fff" }}>
+          <Stack direction="row" spacing={.65} alignItems="center">
+            {[P.coral, "#F5C451", "#65C67A"].map(colour => <Box key={colour} sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: colour }} />)}
+            <Typography sx={{ pl: .7, color: "rgba(255,255,255,.58)", fontSize: ".58rem", fontWeight: 900, letterSpacing: ".1em", textTransform: "uppercase" }}>Bookrightly setup</Typography>
+          </Stack>
+          <Chip label="23 sec" size="small" sx={{ height: 22, bgcolor: "rgba(147,197,253,.14)", color: P.acid, fontWeight: 950, fontSize: ".58rem", letterSpacing: ".06em", textTransform: "uppercase" }} />
         </Stack>
-        <Typography sx={{ color: "rgba(255,255,255,.46)", fontSize: ".62rem", textTransform: "uppercase", letterSpacing: ".1em" }}>Monday, 17 August</Typography>
-        <Typography sx={{ fontWeight: 950, fontSize: { xs: "1.6rem", sm: "2rem" }, letterSpacing: "-.04em", mt: .6 }}>Good morning, Jamie.</Typography>
-        <Stack spacing={1} sx={{ mt: 3 }}>
-          {slots.map((slot, index) => (
-            <Box key={slot[0]} sx={{ display: "grid", gridTemplateColumns: "55px 1fr auto", gap: 1.2, alignItems: "center", p: 1.35, borderRadius: 2.5, bgcolor: index === 0 ? P.blue : "rgba(255,255,255,.06)" }}>
-              <Typography sx={{ color: "#fff", fontSize: { xs: ".92rem", md: ".9rem" }, fontWeight: 950 }}>{slot[0]}</Typography>
-              <Box><Typography sx={{ fontSize: ".7rem", fontWeight: 900 }}>{slot[1]}</Typography><Typography sx={{ color: "rgba(255,255,255,.45)", fontSize: ".55rem" }}>{slot[2]}</Typography></Box>
-              <Box sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: index === 0 ? P.acid : P.coral }} />
+
+        <Box sx={{ position: "relative", bgcolor: "#050509", aspectRatio: "16/9", overflow: "hidden" }}>
+          <Box
+            ref={videoRef}
+            component="video"
+            src="/videos/how-it-works.mp4"
+            poster="/videos/how-it-works-poster.jpg"
+            controls={started}
+            playsInline
+            preload="metadata"
+            onPlay={() => setStarted(true)}
+            onEnded={onEnded}
+            sx={{ width: "100%", height: "100%", display: "block", objectFit: "cover" }}
+          />
+          {!started && (
+            <Box sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "linear-gradient(180deg, rgba(17,17,22,.02), rgba(17,17,22,.22))" }}>
+              <IconButton
+                aria-label="Play the 23 second Bookrightly setup tour"
+                onClick={play}
+                sx={{
+                  width: { xs: 66, sm: 78 }, height: { xs: 66, sm: 78 }, bgcolor: P.blue, color: "#fff",
+                  border: "6px solid rgba(255,255,255,.9)", boxShadow: "0 16px 38px rgba(17,17,22,.32)",
+                  transition: "transform .2s ease, background-color .2s ease",
+                  "&:hover": { bgcolor: P.blueDark, transform: "scale(1.06)" },
+                }}
+              >
+                <PlayIcon sx={{ ml: .4, fontSize: { xs: 34, sm: 42 } }} />
+              </IconButton>
             </Box>
-          ))}
+          )}
+        </Box>
+
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} sx={{ px: { xs: 1.7, sm: 2.2 }, py: 1.45, color: "#fff" }}>
+          <Box>
+            <Typography sx={{ fontSize: { xs: ".72rem", sm: ".8rem" }, fontWeight: 950 }}>See the full setup</Typography>
+            <Typography sx={{ mt: .15, color: "rgba(255,255,255,.46)", fontSize: ".58rem" }}>Account → booking link → live diary</Typography>
+          </Box>
+          <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: P.acid, boxShadow: `0 0 0 5px ${P.acid}22`, flexShrink: 0 }} />
         </Stack>
-      </Paper>
-      <Paper sx={{ order: { xs: 1, md: "initial" }, position: { xs: "relative", md: "absolute" }, top: { md: 55 }, right: { md: -10 }, width: { xs: "100%", md: "auto" }, p: { xs: 1.5, md: 1.7 }, borderRadius: 3, transform: { xs: "none", md: "rotate(5deg)" }, boxShadow: { xs: "none", md: "0 18px 45px rgba(17,17,22,.16)" }, border: { xs: `1px solid ${P.line}`, md: "none" }, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Typography sx={{ color: P.muted, fontSize: ".6rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: ".08em" }}>This week</Typography>
-        <Typography sx={{ fontSize: { xs: "1.1rem", md: "1.3rem" }, fontWeight: 950, color: P.blue }}>£1,240</Typography>
-      </Paper>
-      <Paper sx={{ order: { xs: 3, md: "initial" }, position: { xs: "relative", md: "absolute" }, bottom: { md: 45 }, left: { md: -10 }, width: { xs: "100%", md: "auto" }, p: { xs: 1.4, md: 1.6 }, borderRadius: 3, bgcolor: P.acid, transform: { xs: "none", md: "rotate(-4deg)" }, boxShadow: { xs: "none", md: "0 18px 45px rgba(17,17,22,.14)" }, textAlign: { xs: "center", md: "left" } }}>
-        <Typography sx={{ fontSize: ".72rem", fontWeight: 950 }}>New booking received ✓</Typography>
       </Paper>
     </Box>
   );
@@ -284,7 +335,9 @@ function HomeRebuild({ tenant }) {
                 <Box component="img" src="/images/stripe/powered-by-stripe-blurple.svg" alt="Powered by Stripe" sx={{ height: 18, display: "block" }} />
               </Stack>
             </Grid>
-            <Grid item xs={12} md={6}><WorkspaceVisual /></Grid>
+            <Grid item xs={12} md={6}>
+              <HowItWorksVideo />
+            </Grid>
           </Grid>
         </Container>
       </Box>

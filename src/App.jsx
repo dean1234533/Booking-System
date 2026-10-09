@@ -33,6 +33,7 @@ const Dashboard         = lazy(() => import("./pages/Dashboard"));
 const Login             = lazy(() => import("./pages/Login"));
 const Signup             = lazy(() => import("./pages/Signup"));
 const AdminCreateAccount = lazy(() => import("./pages/AdminCreateAccount"));
+const AdminChatLeads     = lazy(() => import("./pages/AdminChatLeads"));
 const StaffSignup       = lazy(() => import("./pages/StaffSignup"));
 const TenantLogin       = lazy(() => import("./pages/TenantLogin"));
 const TenantSignup      = lazy(() => import("./pages/TenantSignup"));
@@ -68,6 +69,7 @@ const PTSoftwarePage           = lazy(() => import("./pages/seo/PTSoftwarePage")
 const PricingPageSEO           = lazy(() => import("./pages/seo/PricingPageSEO"));
 const HowItWorksPage           = lazy(() => import("./pages/seo/HowItWorksPage"));
 const DecoratorSoftwarePage    = lazy(() => import("./pages/seo/DecoratorSoftwarePage"));
+const ElectricianSoftwarePage  = lazy(() => import("./pages/seo/ElectricianSoftwarePage"));
 const BlogIndex                = lazy(() => import("./pages/blog/BlogIndex"));
 const BlogPost                 = lazy(() => import("./pages/blog/BlogPost"));
 const StarterPackGuide         = lazy(() => import("./pages/StarterPackGuide"));
@@ -412,7 +414,7 @@ function AppShell() {
 
   const isDashboard    = location.pathname.startsWith('/dashboard');
   const isHomePage     = location.pathname === '/';
-  const isAuthPage     = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/admin/create-account';
+  const isAuthPage     = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/admin/create-account' || location.pathname === '/admin/chat-leads';
   const isReviewPath   = location.pathname.startsWith('/review');
   const isOnboarding   = location.pathname.startsWith('/onboarding');
   const isWorkoutView  = location.pathname.startsWith('/workout')
@@ -522,7 +524,7 @@ function AppShell() {
         
         {!isDashboard && !isOnboarding && !isAuthPage && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
           tenantBarber ? (
-            <TenantNav 
+            <TenantNav
               key={`nav-${location.pathname}`} 
               tenant={tenantBarber} 
               businessType={tenantBarber.businessType} 
@@ -571,6 +573,7 @@ function AppShell() {
             <Route path="/login" element={tenantBarber ? <TenantLogin tenant={tenantBarber} /> : <Login />} />
             <Route path="/signup" element={tenantBarber ? <TenantSignup tenant={tenantBarber} /> : <Signup />} />
             <Route path="/admin/create-account" element={<AdminCreateAccount />} />
+            <Route path="/admin/chat-leads" element={<AdminChatLeads />} />
             <Route path="/staff-signup/:shopId/:staffId" element={<StaffSignup />} />
             <Route path="/cancel-booking/:bookingId" element={<CancelBooking />} />
             <Route path="/manage-booking/:bookingId" element={<ManageBooking />} />
@@ -584,6 +587,7 @@ function AppShell() {
             <Route path="/pricing"                        element={<PricingPageSEO />} />
             <Route path="/how-it-works"                   element={<HowItWorksPage />} />
             <Route path="/booking-software/decorators"    element={<DecoratorSoftwarePage />} />
+            <Route path="/booking-software/electricians"  element={<ElectricianSoftwarePage />} />
             <Route path="/blog"                           element={<BlogIndex />} />
             <Route path="/blog/:slug"                     element={<BlogPost />} />
             <Route path="/starter-pack"                   element={<StarterPackGuide />} />
@@ -626,7 +630,7 @@ function AppShell() {
 
         {!isDashboard && !isOnboarding && !isAuthPage && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
           tenantBarber ? (
-            <TenantFooter 
+            <TenantFooter
               key={`footer-${location.pathname}`} 
               tenant={tenantBarber} 
               businessType={tenantBarber.businessType} 

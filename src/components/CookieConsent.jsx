@@ -37,11 +37,11 @@ export default function CookieConsent() {
     if (!visible) return undefined;
     const el = ref.current;
     if (!el) return undefined;
-    const apply = () => { document.body.style.paddingBottom = `${el.offsetHeight}px`; };
+    const apply = () => { document.body.style.paddingBottom = `${el.offsetHeight}px`; document.documentElement.style.setProperty("--br-cookie-height", `${el.offsetHeight}px`); };
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(el);
-    return () => { ro.disconnect(); document.body.style.paddingBottom = ""; };
+    return () => { ro.disconnect(); document.body.style.paddingBottom = ""; document.documentElement.style.removeProperty("--br-cookie-height"); };
   }, [visible]);
 
   function accept() {

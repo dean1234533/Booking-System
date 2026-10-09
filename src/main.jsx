@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import './styles/index.css';
-import App from "./App.jsx";
+
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
 // Microsoft Clarity — session recordings/heatmaps. Same reasoning as the
@@ -78,10 +78,18 @@ if ("serviceWorker" in navigator) {
     .catch(() => {});
 })();
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>
-);
+// Ad traffic avoids downloading dashboard, tenant identification and Firebase.
+const entry = window.location.pathname.startsWith("/go/")
+  ? import("./ads/AdEntry.jsx")
+  : import("./App.jsx");
+entry.then(({ default: Entry }) => {
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <React.StrictMode><ErrorBoundary><Entry /></ErrorBoundary></React.StrictMode>
+  );
+}).catch(error => {
+  console.error("Unable to load Bookrightly", error);
+  // Keep server-rendered ad content and working signup links if a chunk fails.
+  if (!document.getElementById("root").hasChildNodes()) {
+    document.getElementById("root").textContent = "Unable to load this page. Please refresh to try again.";
+  }
+});

@@ -14,6 +14,7 @@ import { auth, db } from "./config";
 import {
   doc, setDoc, deleteDoc, serverTimestamp, getDoc, Timestamp,
 } from "firebase/firestore";
+import { captureAttribution } from "../ads/tracking.js";
 import { DEMO_HERO_IMAGES, DEMO_PORTFOLIOS } from "../data/demoPortfolios";
 
 // Without this, sendEmailVerification() falls back to Firebase's bare
@@ -40,6 +41,7 @@ export async function signUpBarber(data) {
 
   // 2. Prepare Profile Data
   const profileData = {
+    ...captureAttribution(),
     uid: user.uid,
     displayName: name,
     name: name,

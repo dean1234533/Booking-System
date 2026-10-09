@@ -31,6 +31,7 @@ const BookingForm       = lazy(() => import("./pages/BookingForm"));
 const Confirmation      = lazy(() => import("./pages/Confirmation"));
 const Dashboard         = lazy(() => import("./pages/Dashboard"));
 const Login             = lazy(() => import("./pages/Login"));
+const AdLandingPage = lazy(() => import("./pages/AdLandingPage"));
 const Signup             = lazy(() => import("./pages/Signup"));
 const AdminCreateAccount = lazy(() => import("./pages/AdminCreateAccount"));
 const AdminChatLeads     = lazy(() => import("./pages/AdminChatLeads"));
@@ -414,6 +415,7 @@ function AppShell() {
 
   const isDashboard    = location.pathname.startsWith('/dashboard');
   const isHomePage     = location.pathname === '/';
+  const isAdPage = location.pathname.startsWith("/go/");
   const isAuthPage     = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/admin/create-account' || location.pathname === '/admin/chat-leads';
   const isReviewPath   = location.pathname.startsWith('/review');
   const isOnboarding   = location.pathname.startsWith('/onboarding');
@@ -522,7 +524,7 @@ function AppShell() {
 
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         
-        {!isDashboard && !isOnboarding && !isAuthPage && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
+        {!isAdPage && !isDashboard && !isOnboarding && !isAuthPage && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
           tenantBarber ? (
             <TenantNav
               key={`nav-${location.pathname}`} 
@@ -581,6 +583,7 @@ function AppShell() {
             <Route path="/compare"                           element={<ComparePage />} />
             <Route path="/fresha-alternative"             element={<FreshaAlternativePage />} />
             <Route path="/treatwell-alternative"          element={<TreatwellAlternativePage />} />
+            <Route path="/go/:audience" element={<AdLandingPage />} />
             <Route path="/booking-software/barbers"       element={<BarberSoftwarePage />} />
             <Route path="/booking-software/salons"        element={<SalonSoftwarePage />} />
             <Route path="/booking-software/personal-trainers" element={<PTSoftwarePage />} />
@@ -628,7 +631,7 @@ function AppShell() {
           </Suspense>
         </Box>
 
-        {!isDashboard && !isOnboarding && !isAuthPage && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
+        {!isAdPage && !isDashboard && !isOnboarding && !isAuthPage && !isAlternativeBookingLayout && !isReviewPath && !isWorkoutView && (
           tenantBarber ? (
             <TenantFooter
               key={`footer-${location.pathname}`} 

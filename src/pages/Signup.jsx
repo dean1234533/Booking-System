@@ -1,3 +1,6 @@
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../firebase/config";
+import { captureAttribution, trackAdEvent } from "../ads/tracking.js";
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -61,16 +64,17 @@ export default function Signup() {
   // plan it recommended is already selected, and the chat session can be
   // marked signed_up once the account actually exists.
   const initialParams = new URLSearchParams(window.location.search);
+  const isAdSignup = initialParams.get("ad") === "1" && BUSINESS_TYPES.some(item => item.value === initialParams.get("type"));
   const chatSessionId = initialParams.get("sessionId") || null;
   const [form, setForm] = useState({
     name: "", email: "", phone: "", specialty: "", password: "", confirm: "",
-    businessName: "", businessType: "barber", marketingOptIn: false,
+    businessName: "", businessType: BUSINESS_TYPES.some(item => item.value === initialParams.get("type")) ? initialParams.get("type") : "barber", marketingOptIn: false,
     plan: ["free", "basic", "widget", "full"].includes(initialParams.get("plan")) ? initialParams.get("plan") : "full",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => { window.scrollTo(0, 0); captureAttribution(); }, []);
 
   function handleChange(event) {
     const value = event.target.type === "checkbox" ? event.target.checked : event.target.value;
@@ -142,7 +146,7 @@ export default function Signup() {
       // Meta conversion event — lets ad campaigns eventually optimise toward
       // real signups instead of just clicks, once there's enough volume for
       // Meta to learn from (see index.html for the base Pixel).
-      try { window.fbq?.("track", "CompleteRegistration"); } catch {}
+      trackAdEvent("CompleteRegistration", { content_category: form.businessType, plan: form.plan });
       if (chatSessionId) {
         fetch("/api/chat-event", {
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -159,6 +163,42 @@ export default function Signup() {
       setLoading(false);
     }
   }
+
+  async function handleAdSignup(event) {
+    event.preventDefault();
+    if (loading) return;
+    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) return setError("Enter a valid email address.");
+    setLoading(true); setError(null);
+    try {
+      // A cryptographically random credential is never displayed or stored locally.
+      // The owner chooses their own password through Firebase's email recovery flow.
+      const random = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, "0")).join("");
+      const user = await signUpBarber({ email: form.email.trim(), password: `Br!9${random}`, name: form.email.trim().split("@")[0], businessName: "My business", businessType: form.businessType, plan: form.plan, role: "owner", shopId: "self", brandColor: "#2563EB" });
+      await waitForBarberDoc(user.uid, "owner");
+      trackAdEvent("CompleteRegistration", { content_category: form.businessType, plan: form.plan });
+      let passwordSetupPending = false;
+      try {
+        await sendPasswordResetEmail(auth, form.email.trim(), { url: "https://bookrightly.co.uk/login" });
+      } catch {
+        // The active session can finish onboarding; login also offers password recovery.
+        passwordSetupPending = true;
+      }
+      navigate("/onboarding", { state: { passwordSetupPending } });
+    } catch (signupError) {
+      setError(signupError.code === "auth/email-already-in-use" ? "An account already exists for this email. Log in or use Forgot password to access it." : signupError.message || "We couldn’t create your account. Please try again.");
+    } finally { setLoading(false); }
+  }
+
+  if (isAdSignup) return <AuthShell eyebrow={form.plan === "free" ? "Free forever · No card needed" : "90 days free · No card needed"} title="Your booking page starts here." description="Sign up with your email. Add your business details, services and hours next.">
+    <Box component="form" onSubmit={handleAdSignup} sx={{ maxWidth: 440, mx: "auto" }}>
+      <Typography component="h1" sx={{ fontSize: 28, fontWeight: 800, mb: 1 }}>{form.plan === "free" ? "Create my free booking page" : "Try Full free for 90 days"}</Typography>
+      <Typography sx={{ mb: 3, color: "text.secondary" }}>No card needed. We’ll email you a link to set a password for your next login.</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <TextField label="Email address" name="email" type="email" autoComplete="email" required fullWidth value={form.email} onChange={handleChange} disabled={loading} />
+      <Button type="submit" variant="contained" fullWidth disabled={loading} sx={{ mt: 2, py: 1.75, bgcolor: "#2563EB", color: "white" }}>{loading ? "Creating your page…" : "Create my booking page"}</Button>
+      <Typography sx={{ mt: 2, fontSize: 13 }}>Already have an account? <Link to="/login">Log in</Link></Typography>
+    </Box>
+  </AuthShell>;
 
   const selectedType = BUSINESS_TYPES.find(item => item.value === form.businessType);
   const title = step === 0 ? "What kind of business are you?" : step === 1 ? "Tell us the essentials" : "Secure your account";

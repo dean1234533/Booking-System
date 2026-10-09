@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { CircularProgress, TextField, MenuItem, Select, InputLabel, FormControl, Alert } from "@mui/material";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
@@ -512,6 +512,7 @@ function addDays(dateStr, days) {
 /* ── Main Onboarding component ── */
 export default function Onboarding({ brandColor: brandColorProp }) {
   const navigate = useNavigate();
+  const { state: signupState } = useLocation();
   const { barber: authUser } = useAuth();
   const [step, setStep] = useState(0);
   const [key, setKey] = useState(0);
@@ -1027,6 +1028,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
 
             {current.body}
 
+            {signupState?.passwordSetupPending && <Alert severity="info" sx={{ mb: 2, maxWidth: 420 }}>Your account is ready, but the password setup email could not be sent. You can finish setup now. Before your next login, use “Forgot password” on the login page.</Alert>}
             {error && <Alert severity="error" sx={{ mb: 2, maxWidth: 420 }}>{error}</Alert>}
 
             {current.onNext && (

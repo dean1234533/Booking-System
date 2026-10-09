@@ -5,6 +5,7 @@
  * Handles all /api/* routes, then proxy-routes tenants to Firebase static hosting.
  */
 
+import { AD_CSS, getAdPage, renderAdPage } from "./ads/content.js";
 import Stripe from "stripe";
 import { Resend } from "resend";
 import { arrayBufferToBase64, createSquareFaviconSvg } from "./utils/favicon";
@@ -2798,7 +2799,7 @@ const RESERVED_SLUGS_WORKER = new Set([
   "shop", "pt-booking", "decorator", "hairdresser", "barber", "book",
   "confirmation", "auth", "review", "login", "signup", "cancel-booking", "manage-booking", "m",
   "website-design", "compare", "fresha-alternative", "treatwell-alternative",
-  "booking-software", "pricing", "how-it-works", "blog", "tools", "terms",
+  "go", "booking-software", "pricing", "how-it-works", "blog", "tools", "terms",
   "privacy", "contact", "workout", "food-diary", "check-in", "par-q",
   "colour-approval", "quote-view", "queue", "food-generator", "client-portal",
   "pt-book", "onboarding", "dashboard",
@@ -3694,6 +3695,31 @@ async function handleFetch(request, env, ctx, nonce) {
               nonce
             );
           }
+        }
+
+        // Paid-ad pages share content with React and deliberately stay out of LANDING_PAGES/sitemap.
+        const adPage = getAdPage(url.pathname);
+        if (PLATFORM_HOSTS.has(url.hostname) && url.pathname.startsWith("/go/") && adPage && response.headers.get("content-type")?.includes("text/html")) {
+          const headers = new Headers(response.headers);
+          headers.set("Cache-Control", "no-store");
+          headers.set("X-Robots-Tag", "noindex");
+          const title = "Stop taking bookings in your DMs. | Bookrightly";
+          const desc = `Get your own free ${adPage.noun} booking page. Clients pick a time and book themselves — no back and forth.`;
+          const canonical = `https://bookrightly.co.uk${url.pathname.replace(/\/$/, "")}`;
+          return new HTMLRewriter()
+            .on("title", { element: el => el.setInnerContent(title) })
+            .on('meta[name="description"]', { element: el => el.setAttribute("content", desc) })
+            .on('meta[property="og:title"]', { element: el => el.setAttribute("content", title) })
+            .on('meta[property="og:description"]', { element: el => el.setAttribute("content", desc) })
+            .on('meta[property="og:url"]', { element: el => el.setAttribute("content", canonical) })
+            .on('meta[name="twitter:title"]', { element: el => el.setAttribute("content", title) })
+            .on('meta[name="twitter:description"]', { element: el => el.setAttribute("content", desc) })
+            .on('link[rel="canonical"]', { element: el => el.setAttribute("href", canonical) })
+            .on('meta[name="robots"]', { element: el => el.remove() })
+            .on('link[href*="fonts.bunny.net"]', { element: el => el.remove() })
+            .on('head', { element: el => el.append(`<meta name="robots" content="noindex"><style nonce="${nonce}">${AD_CSS}</style>`, { html: true }) })
+            .on('#root', { element: el => el.setInnerContent(renderAdPage(adPage, url.search), { html: true }) })
+            .transform(new Response(response.body, { status: response.status, headers }));
         }
 
         // 6. Business-page SEO injection

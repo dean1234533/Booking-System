@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "project": {
+    "name": "booking-system",
+    "productType": "UK multi-industry booking SaaS",
+    "stack": [
+      "react",
+      "mui",
+      "vite"
+    ]
+  },
+  "sources": {
+    "tokens": [],
+    "components": [
+      "src/pages/seo/shared.jsx",
+      "src/components/Footer.jsx"
+    ],
+    "assets": [
+      "public/brand",
+      "public/images"
+    ],
+    "instructions": [
+      "CLAUDE.md"
+    ]
+  },
+  "design": {
+    "colorMode": "light",
+    "colors": {
+      "primary": "#2563EB",
+      "surface": "#F5F3ED",
+      "alternate": "#EAF2FF",
+      "text": "#111116"
+    },
+    "typography": {
+      "family": "DM Sans"
+    },
+    "spacing": {},
+    "radius": {},
+    "shadows": {},
+    "motion": {},
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [],
+    "preferredPrimitives": [
+      "MUI Box, Typography, Grid",
+      "SEOHero, Section, FeatureCard, FAQSection, InternalLinks"
+    ],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [
+      "Preserve existing marketing design and actual plan capabilities",
+      "Use crawlable links and keyboard accessible FAQ controls"
+    ],
+    "avoid": []
+  },
+  "decisions": [],
+  "evidence": [
+    {
+      "fact": "project.instructions",
+      "source": "CLAUDE.md"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v3",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:vite",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-10-14T07:22:16.422Z"
+}

@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavig
 import { Box, CircularProgress, ThemeProvider, createTheme, CssBaseline } from "@mui/material";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Helmet, HelmetProvider } from 'react-helmet-async';
+import { LANDING_PAGES } from './seo/landingPages.js';
+import { PUBLIC_PAGE_META } from './seo/featurePages.js';
 import Home from "./pages/HomeRebuild";
 import { RESERVED_SLUGS } from "./utils/bookingSlug";
 
@@ -70,6 +72,7 @@ const PTSoftwarePage           = lazy(() => import("./pages/seo/PTSoftwarePage")
 const PricingPageSEO           = lazy(() => import("./pages/seo/PricingPageSEO"));
 const HowItWorksPage           = lazy(() => import("./pages/seo/HowItWorksPage"));
 const DecoratorSoftwarePage    = lazy(() => import("./pages/seo/DecoratorSoftwarePage"));
+const FeaturePage = lazy(() => import("./pages/seo/FeaturePage"));
 const ElectricianSoftwarePage  = lazy(() => import("./pages/seo/ElectricianSoftwarePage"));
 const BlogIndex                = lazy(() => import("./pages/blog/BlogIndex"));
 const BlogPost                 = lazy(() => import("./pages/blog/BlogPost"));
@@ -437,6 +440,11 @@ function AppShell() {
     return "Bookrightly | The Multi-Industry Appointment Booking Network";
   }, [tenantBarber]);
 
+  const seoPath = location.pathname.replace(/\/+$/, '') || '/';
+  const marketingPage = isPlatformDomain ? LANDING_PAGES[seoPath] : null;
+  const publicMeta = isPlatformDomain ? PUBLIC_PAGE_META[seoPath] : null;
+  const hasMarketingCanonical = isPlatformDomain && (marketingPage || publicMeta || ['/pricing', '/how-it-works', '/blog', '/tools/no-show-calculator'].includes(seoPath) || seoPath.startsWith('/blog/'));
+
   if (isFetchingTenant) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", bgcolor: "#000" }}>
@@ -519,7 +527,9 @@ function AppShell() {
     <ThemeProvider theme={dynamicTheme}>
       <CssBaseline />
       <Helmet>
-        <title>{computedPageTitle}</title>
+        <title>{marketingPage?.title || publicMeta?.title || computedPageTitle}</title>
+        {publicMeta && <meta name="description" content={publicMeta.desc} />}
+        {hasMarketingCanonical && <link rel="canonical" href={`https://bookrightly.co.uk${seoPath}`} />}
       </Helmet>
 
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -581,6 +591,8 @@ function AppShell() {
             <Route path="/manage-booking/:bookingId" element={<ManageBooking />} />
             <Route path="/website-design/:industry/:city" element={<SeoLandingPage />} />
             <Route path="/compare"                           element={<ComparePage />} />
+            <Route path="/features/:feature" element={<FeaturePage />} />
+            <Route path="/booksy-alternative" element={<FeaturePage />} />
             <Route path="/fresha-alternative"             element={<FreshaAlternativePage />} />
             <Route path="/treatwell-alternative"          element={<TreatwellAlternativePage />} />
             <Route path="/go/:audience" element={<AdLandingPage />} />

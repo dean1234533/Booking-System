@@ -8,9 +8,10 @@ import react from "@vitejs/plugin-react";
 // page would need to resolve, no chunk splitting to fetch separately).
 // Deliberately excludes MUI/react-router — see src/widget/App.jsx.
 export default defineConfig({
+  cacheDir: process.env.VITE_CACHE_DIR || 'node_modules/.vite',
   plugins: [react()],
   build: {
-    outDir: "public",
+    outDir: process.env.WIDGET_OUTPUT_DIR || "public",
     emptyOutDir: false,
     // Rebuilding widget.js during dev via `vite build --watch` would race
     // with the main app's own asset writes into public/ — only ever build

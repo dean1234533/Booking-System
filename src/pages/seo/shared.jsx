@@ -1,6 +1,9 @@
 import React from "react";
 import { Box, Typography, Stack, Grid } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useLocation, Link as RouterLink } from "react-router-dom";
+import { Helmet } from 'react-helmet-async';
+import { LANDING_PAGES } from '../../seo/landingPages.js';
+import { FEATURE_LINKS } from '../../seo/featurePages.js';
 import AppIcon from "../../components/AppIcon";
 
 export const GOLD  = "#2563EB";
@@ -11,9 +14,11 @@ export const SERIF = "'DM Sans', sans-serif";
 export const SANS  = "'DM Sans', sans-serif";
 
 export function SEOHero({ eyebrow, title, subtitle, cta = "Start free — 90 days", sx = {} }) {
-  const navigate = useNavigate();
+  const path = useLocation().pathname.replace(/\/+$/, '') || '/';
+  const page = LANDING_PAGES[path];
   return (
     <Box sx={{ pt: { xs: 12, md: 16 }, pb: { xs: 7, md: 9 }, px: { xs: 2, md: 5 }, position: "relative", overflow: "hidden", bgcolor: DARK, ...sx }}>
+      {page && <Helmet><title>{page.title}</title><meta name="description" content={page.metaDescription} /><link rel="canonical" href={`https://bookrightly.co.uk${path}`} /></Helmet>}
       <Box sx={{ maxWidth: 1180, mx: "auto", display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.15fr .85fr" }, gap: { xs: 4, md: 8 }, alignItems: "end" }}>
         <Box>
           {eyebrow && <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", fontWeight: 900, letterSpacing: "0.15em", textTransform: "uppercase", color: GOLD, mb: 2 }}>{eyebrow}</Typography>}
@@ -22,8 +27,8 @@ export function SEOHero({ eyebrow, title, subtitle, cta = "Start free — 90 day
         <Box sx={{ pb: 1 }}>
           <Typography sx={{ fontSize: "1rem", color: "#696A73", maxWidth: 540, lineHeight: 1.75, mb: 3 }}>{subtitle}</Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-            <CTAButton onClick={() => navigate("/signup")}>{cta}</CTAButton>
-            <GhostButton onClick={() => navigate("/compare")}>Compare tools</GhostButton>
+            <CTAButton href="/signup">{cta}</CTAButton>
+            <GhostButton href="/compare">Compare tools</GhostButton>
           </Stack>
         </Box>
       </Box>
@@ -31,17 +36,17 @@ export function SEOHero({ eyebrow, title, subtitle, cta = "Start free — 90 day
   );
 }
 
-export function CTAButton({ children, onClick }) {
+export function CTAButton({ children, onClick, href }) {
   return (
-    <Box component="button" onClick={onClick} sx={{ px: 4, py: 1.75, bgcolor: GOLD, color: "#fff", fontFamily: SANS, fontWeight: 900, fontSize: "0.9rem", borderRadius: 99, border: "none", cursor: "pointer", boxShadow: "0 12px 30px rgba(37,99,235,.22)", "&:hover": { bgcolor: "#1D4ED8" } }}>
+    <Box component={href ? RouterLink : "button"} to={href} onClick={onClick} sx={{ px: 4, py: 1.75, bgcolor: GOLD, color: "#fff", fontFamily: SANS, fontWeight: 900, fontSize: "0.9rem", borderRadius: 99, border: "none", cursor: "pointer", textDecoration: 'none', textAlign: 'center', boxShadow: "0 12px 30px rgba(37,99,235,.22)", "&:hover": { bgcolor: "#1D4ED8" }, '&:focus-visible': { outline: '3px solid #111116', outlineOffset: 3 } }}>
       {children}
     </Box>
   );
 }
 
-export function GhostButton({ children, onClick }) {
+export function GhostButton({ children, onClick, href }) {
   return (
-    <Box component="button" onClick={onClick} sx={{ px: 4, py: 1.75, bgcolor: "#fff", color: "#111116", fontFamily: SANS, fontWeight: 850, fontSize: "0.9rem", borderRadius: 99, border: "1px solid #DEDDD8", cursor: "pointer", "&:hover": { borderColor: GOLD } }}>
+    <Box component={href ? RouterLink : "button"} to={href} onClick={onClick} sx={{ px: 4, py: 1.75, bgcolor: "#fff", color: "#111116", fontFamily: SANS, fontWeight: 850, fontSize: "0.9rem", borderRadius: 99, border: "1px solid #DEDDD8", cursor: "pointer", textDecoration: 'none', textAlign: 'center', "&:hover": { borderColor: GOLD }, '&:focus-visible': { outline: '3px solid #2563EB', outlineOffset: 3 } }}>
       {children}
     </Box>
   );
@@ -60,7 +65,7 @@ export function SectionHead({ eyebrow, title, sub }) {
     <Box sx={{ textAlign: "left", mb: 6, display: { md: "grid" }, gridTemplateColumns: { md: sub ? "1fr .7fr" : "1fr" }, gap: 4, alignItems: "end" }}>
       <Box>
       {eyebrow && <Typography sx={{ fontFamily: SANS, fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: GOLD, mb: 1.5 }}>{eyebrow}</Typography>}
-      <Typography sx={{ fontFamily: SERIF, fontSize: { xs: "2.2rem", md: "3.6rem" }, fontWeight: 950, letterSpacing: "-.065em", lineHeight: 1 }}>{title}</Typography>
+      <Typography component="h2" sx={{ fontFamily: SERIF, fontSize: { xs: "2.2rem", md: "3.6rem" }, fontWeight: 950, letterSpacing: "-.065em", lineHeight: 1 }}>{title}</Typography>
       </Box>
       {sub && <Typography sx={{ color: "#696A73", fontSize: "0.9rem", maxWidth: 590, lineHeight: 1.8 }}>{sub}</Typography>}
     </Box>
@@ -69,9 +74,9 @@ export function SectionHead({ eyebrow, title, sub }) {
 
 export function FeatureCard({ icon, title, body }) {
   return (
-    <Box sx={{ bgcolor: "#fff", border: "1px solid #DEDDD8", borderRadius: "7px 30px 30px 30px", p: 3.5, minHeight: 240, height: "100%", display: "flex", flexDirection: "column", boxShadow: "none", "&:hover": { bgcolor: "#111116", color: "#fff", transform: "translateY(-4px) rotate(-.3deg)", "& p": { color: "inherit" } }, transition: "all 0.25s" }}>
+    <Box sx={{ bgcolor: "#fff", border: "1px solid #DEDDD8", borderRadius: "7px 30px 30px 30px", p: 3.5, minHeight: 240, height: "100%", display: "flex", flexDirection: "column", boxShadow: "none", "&:hover": { bgcolor: "#111116", color: "#fff", transform: "translateY(-4px) rotate(-.3deg)", "& p, & h3": { color: "inherit" } }, transition: "all 0.25s" }}>
       {icon && <Box sx={{ width: 48, height: 48, borderRadius: "50%", bgcolor: "#EAF2FF", color: GOLD, display: "grid", placeItems: "center", "& svg": { fontSize: 25 } }}>{React.isValidElement(icon) ? icon : <AppIcon name={icon} />}</Box>}
-      <Typography sx={{ fontFamily: SANS, fontWeight: 900, fontSize: "1rem", mt: "auto", mb: 1.5, color: "#111116" }}>{title}</Typography>
+      <Typography component="h3" sx={{ fontFamily: SANS, fontWeight: 900, fontSize: "1rem", mt: "auto", mb: 1.5, color: "#111116" }}>{title}</Typography>
       <Typography sx={{ color: "#696A73", fontSize: "0.84rem", lineHeight: 1.75 }}>{body}</Typography>
     </Box>
   );
@@ -88,13 +93,12 @@ export function StepCard({ number, title, body }) {
 }
 
 export function BottomCTA({ title, sub }) {
-  const navigate = useNavigate();
   return (
     <Box sx={{ py: { xs: 10, md: 14 }, px: { xs: 3, md: 5 }, textAlign: "center", position: "relative", overflow: "hidden", bgcolor: "#111116", color: "#fff" }}>
       <Box sx={{ position: "absolute", width: 500, height: 500, borderRadius: "50%", bgcolor: "rgba(37,99,235,.15)", right: -250, top: -300, pointerEvents: "none" }} />
       <Typography sx={{ position: "relative", fontFamily: SERIF, fontSize: { xs: "2rem", md: "3.2rem" }, fontWeight: 950, letterSpacing: "-.06em", mb: 2, maxWidth: 700, mx: "auto" }}>{title}</Typography>
       <Typography sx={{ position: "relative", color: "rgba(255,255,255,.5)", fontSize: "0.95rem", mb: 5, maxWidth: 500, mx: "auto", lineHeight: 1.8 }}>{sub}</Typography>
-      <CTAButton onClick={() => navigate("/signup")}>Get started free</CTAButton>
+      <CTAButton href="/signup">Get started free</CTAButton>
       <Typography sx={{ mt: 3, fontSize: "0.78rem", color: "rgba(255,255,255,0.25)" }}>
         Don't see your industry?{" "}
         <Box
@@ -112,8 +116,9 @@ export function BottomCTA({ title, sub }) {
 }
 
 export function InternalLinks({ current }) {
-  const navigate = useNavigate();
   const links = [
+    ...FEATURE_LINKS,
+    { label: "Booksy alternative", path: "/booksy-alternative" },
     { label: "Barber booking software", path: "/booking-software/barbers" },
     { label: "Salon booking software", path: "/booking-software/salons" },
     { label: "PT booking software", path: "/booking-software/personal-trainers" },
@@ -137,8 +142,8 @@ export function InternalLinks({ current }) {
         {links.map((l) => (
           <Box
             key={l.path}
-            component="span"
-            onClick={() => navigate(l.path)}
+            component={RouterLink}
+            to={l.path}
             sx={{ fontSize: "0.8rem", color: "#696A73", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3, "&:hover": { color: GOLD } }}
           >
             {l.label}
@@ -161,7 +166,6 @@ export const TIERS = [
 ];
 
 export function PricingTiers() {
-  const navigate = useNavigate();
   return (
     <Box>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 2 }}>
@@ -179,7 +183,7 @@ export function PricingTiers() {
       </Box>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ sm: "center" }} sx={{ mt: 3 }}>
         <Typography sx={{ color: "#696A73", fontSize: "0.85rem" }}>Paid plans start with a 90-day free trial, Free is free forever — pick whichever fits when you sign up. After your trial, you keep a free booking page — you're never locked out.</Typography>
-        <Box component="span" onClick={() => navigate("/pricing")} sx={{ color: GOLD, fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3, whiteSpace: "nowrap" }}>
+        <Box component={RouterLink} to="/pricing" sx={{ color: GOLD, fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3, whiteSpace: "nowrap" }}>
           Full pricing breakdown →
         </Box>
       </Stack>
@@ -193,11 +197,11 @@ export function FAQSection({ faqs }) {
     <Box>
       {faqs.map((faq, i) => (
         <Box key={i} sx={{ borderBottom: "1px solid #DEDDD8" }}>
-          <Box onClick={() => setOpen(open === i ? null : i)} sx={{ py: 2.5, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
+          <Box component="button" type="button" aria-expanded={open === i} aria-controls={`seo-faq-${i}`} onClick={() => setOpen(open === i ? null : i)} sx={{ py: 2.5, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, width: '100%', bgcolor: 'transparent', border: 0, textAlign: 'left', '&:focus-visible': { outline: '2px solid #2563EB' } }}>
             <Typography sx={{ fontFamily: SANS, fontWeight: 850, fontSize: "0.92rem", color: "#111116" }}>{faq.q}</Typography>
             <Typography sx={{ color: GOLD, fontSize: "1.2rem", flexShrink: 0 }}>{open === i ? "−" : "+"}</Typography>
           </Box>
-          {open === i && <Typography sx={{ color: "#696A73", fontSize: "0.85rem", lineHeight: 1.8, pb: 2.5 }}>{faq.a}</Typography>}
+          <Box id={`seo-faq-${i}`} hidden={open !== i}><Typography sx={{ color: "#696A73", fontSize: "0.85rem", lineHeight: 1.8, pb: 2.5 }}>{faq.a}</Typography></Box>
         </Box>
       ))}
     </Box>

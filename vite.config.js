@@ -4,6 +4,8 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  cacheDir: process.env.VITE_CACHE_DIR || 'node_modules/.vite',
+  publicDir: process.env.BUILD_PUBLIC_DIR || 'public',
   plugins: [
     react(),
     VitePWA({
@@ -91,7 +93,8 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "dist",
+    outDir: process.env.BUILD_OUTPUT_DIR || "dist",
+    emptyOutDir: true,
     sourcemap: false,
     rollupOptions: {
       output: {

@@ -15,20 +15,23 @@
 // same way it already imports src/config/plans.js and src/pages/blog/posts.js.
 
 import { PLANS } from "../config/plans.js";
+import { FEATURE_PAGES, COMPARISON_PAGES } from './featurePages.js';
 
 const fullPrice  = PLANS.full.priceGBP;
 const basicPrice = PLANS.basic.priceGBP;
 const trialDays  = PLANS.full.trialDays;
 
 export const LANDING_PAGES = {
+  ...FEATURE_PAGES,
+  ...COMPARISON_PAGES,
   "/": {
-    title: "Bookrightly — Online Booking Software for UK Service Professionals",
-    metaDescription: `Bookrightly is UK booking software for barbers, hairdressers, personal trainers, decorators and trades. Your own branded booking page, deposits, no commission ever. Free plan, or ${trialDays}-day free trial on paid plans.`,
-    h1: "Booking software for UK service professionals",
-    intro: "Bookrightly gives barbers, hairdressers, personal trainers, decorators and trades their own branded online booking page — real-time availability, Stripe deposits to stop no-shows, and a client dashboard. No commission on a single booking, ever.",
+    title: "Online Booking Software UK | Bookrightly",
+    metaDescription: `Online booking software for UK barbers, salons, PTs and trades. Branded pages, deposits and reminders on paid plans. Free plan or ${trialDays}-day paid trial.`,
+    h1: "UK booking software. Fewer no-shows.",
+    intro: "Bookrightly gives barbers, hairdressers, personal trainers, decorators and trades their own branded online booking page — real-time availability, Stripe deposits to help reduce no-shows, and a client dashboard. No commission on a single booking, ever.",
     features: [
       { h2: "Your own branded booking page", p: "Every business gets a public profile at bookrightly.co.uk/your-name — your logo, services, prices and photos, with a live Book Now button. No marketplace listing you alongside competitors." },
-      { h2: "Deposits that stop no-shows", p: `Take a Stripe deposit the moment someone books. Businesses using deposits see no-shows drop sharply — and there's no commission on top, ever, at £${fullPrice}/month flat.` },
+      { h2: "Deposits to help reduce no-shows", p: `Take a Stripe deposit the moment someone books. Deposits add a financial commitment to a booking — and there's no commission on top, ever, at £${fullPrice}/month flat.` },
       { h2: "Built for five trades, not one", p: "Barbers get walk-in live queues, hairdressers get treatment menus and portfolios, personal trainers get PAR-Q forms and workout plans, decorators get quote requests and colour approval, trades get fixed-slot call-outs." },
       { h2: "Free plan, or 90 days free on paid plans", p: `Start on the Free plan with no time limit, or try any paid plan free for ${trialDays} days with no card required. If you don't upgrade, you keep your page — you're never locked out.` },
     ],
@@ -50,7 +53,7 @@ export const LANDING_PAGES = {
     features: [
       { h2: "Your own branded shop page", p: "A full public profile with your shop name, logo, hero image, service menu with prices, reviews, and a Book Now button." },
       { h2: "Live walk-in queue", p: "Clients join a live queue from their phone instead of standing around — you call them up when their turn is near, and walk-ins and bookings share the same real-time list." },
-      { h2: "Deposit collection at booking", p: "Connected via Stripe. Clients pay a deposit when they book, which goes straight to your account minus the standard Stripe fee. No-shows become rare." },
+      { h2: "Deposit collection at booking", p: "Connected via Stripe. Clients pay a deposit when they book, which goes straight to your account minus the standard Stripe fee. A deposit adds commitment to the appointment." },
       { h2: "Reviews on your page", p: "Happy clients can leave a review directly on your Bookrightly page, building social proof for every new visitor." },
       { h2: "Booking notifications", p: "Get notified the moment a new booking comes in — a push notification, no app required on the client side." },
       { h2: "Installs like an app", p: "Clients can add your Bookrightly page to their phone's home screen. It opens instantly and works offline." },
@@ -69,7 +72,7 @@ export const LANDING_PAGES = {
     title: "Salon Booking Software UK — Online Booking for Hair Salons | Bookrightly",
     metaDescription: `Online booking software for UK hair salons. Branded page, treatment menu, Stripe deposits, before & after portfolio — from £${fullPrice}/month, or start free. No commission.`,
     h1: "Online booking software for UK hair salons",
-    intro: "Give your salon a professional booking page — no marketplace, no 30% commission, no chasing clients over Instagram DM. Just a clean booking flow, a treatment menu, and deposits.",
+    intro: "Give your salon a professional booking page — direct booking links, clear plan prices, less back-and-forth over Instagram DM. Just a clean booking flow, a treatment menu, and deposits.",
     features: [
       { h2: "A full treatment menu with prices", p: "List every treatment — cuts, colours, balayage, keratin, blowdrys — each with its own price, duration and description." },
       { h2: "Before & after portfolio", p: "Show off colour corrections and transformations directly on your public profile, building trust before a client ever books." },
@@ -82,7 +85,7 @@ export const LANDING_PAGES = {
       { q: "Can I list all my salon treatments and prices?", a: "Yes. Add every treatment — cuts, colours, balayage, keratin, blowdrys — each with its own price, duration and description." },
       { q: "Do clients need an account to book?", a: "No. Clients book directly on your public salon page — no sign-up required on their end." },
       { q: "Can I collect a deposit to reduce no-shows?", a: "Yes. Stripe is built in. You set the deposit amount per service, and clients pay it at the point of booking." },
-      { q: "How is this different from Treatwell?", a: "Treatwell takes 20–30% commission on every booking. Bookrightly charges a flat monthly fee. At 20 bookings a week, that difference is thousands of pounds per year." },
+      { q: "How is this different from Treatwell?", a: "Treatwell says commission applies to a client’s first appointment and repeat bookings are commission-free. Bookrightly adds no booking commission; paid plans have a flat monthly price and Stripe’s processing charges apply separately." },
     ],
     cta: { text: "Try free for 90 days", href: "/signup" },
   },

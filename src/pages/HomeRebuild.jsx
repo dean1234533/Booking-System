@@ -15,6 +15,8 @@ import {
   Groups as TeamIcon, Plumbing as PlumbingIcon, Lock as LockIcon, Code as CodeIcon,
 } from "@mui/icons-material";
 import { Helmet } from "react-helmet-async";
+import { LANDING_PAGES } from "../seo/landingPages.js";
+import { FEATURE_LINKS } from "../seo/featurePages.js";
 import { Link, useNavigate } from "react-router-dom";
 import BarberCard from "../components/BarberCard";
 import ChatWidget from "../components/ChatWidget";
@@ -311,8 +313,8 @@ function HomeRebuild({ tenant }) {
   return (
     <Box sx={{ bgcolor: P.paper, color: P.ink, overflowX: "hidden", "& > footer": { display: "none" } }}>
       <Helmet>
-        <title>Bookrightly | Business, Beautifully Run</title>
-        <meta name="description" content="Websites, bookings, clients and payments in one workspace built for UK service professionals — or embed booking and live queue tools into a website you already have. Start free for 90 days." />
+        <title>{LANDING_PAGES["/"].title}</title>
+        <meta name="description" content={LANDING_PAGES["/"].metaDescription} />
         <link rel="canonical" href="https://bookrightly.co.uk/" />
       </Helmet>
 
@@ -322,7 +324,7 @@ function HomeRebuild({ tenant }) {
           <Grid container spacing={{ xs: 4, md: 7 }} alignItems="center">
             <Grid item xs={12} md={6}>
               <Label>Business software without the busywork</Label>
-              <Typography component="h1" sx={{ mt: 1.5, fontSize: { xs: "3.2rem", sm: "4.8rem", lg: "6rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .88, maxWidth: 760 }}>No-shows cost you money.<Box component="span" sx={{ color: P.blue, display: "block" }}>Deposits fix that.</Box></Typography>
+              <Typography component="h1" sx={{ mt: 1.5, fontSize: { xs: "3.2rem", sm: "4.8rem", lg: "6rem" }, fontWeight: 950, letterSpacing: "-.08em", lineHeight: .88, maxWidth: 760 }}>UK booking software.<Box component="span" sx={{ color: P.blue, display: "block" }}>Fewer no-shows.</Box></Typography>
               <Typography sx={{ mt: 3, maxWidth: 560, color: P.muted, fontSize: { xs: ".96rem", md: "1.08rem" }, lineHeight: 1.75 }}>Bookrightly takes the deposit when they book, so the ones who don't show up don't cost you a wasted slot — plus your website, diary and clients in one workspace.</Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} sx={{ mt: 3.5 }}>
                 <Button variant="contained" onClick={() => navigate("/signup")} endIcon={<ArrowIcon />} sx={{ bgcolor: P.blue, color: "#fff", borderRadius: 99, minHeight: 56, px: 3.2, fontWeight: 950, "&:hover": { bgcolor: P.blueDark } }}>Start 90 days free</Button>
@@ -437,6 +439,15 @@ function HomeRebuild({ tenant }) {
       <Box sx={{ bgcolor: P.paper, py: { xs: 8, md: 11 } }}><Container maxWidth="lg"><Grid container spacing={{ xs: 4, md: 8 }}><Grid item xs={12} md={4}><Label>Good to know</Label><Typography component="h2" sx={{ mt: 1, fontSize: { xs: "2.2rem", md: "3.3rem" }, fontWeight: 950, letterSpacing: "-.065em", lineHeight: 1 }}>Questions,<br />answered plainly.</Typography><Button component={Link} to="/contact" sx={{ mt: 2, p: 0, color: P.blue, fontWeight: 950 }}>Talk to us</Button></Grid><Grid item xs={12} md={8}>{FAQS.map(item => <Accordion key={item[0]} disableGutters elevation={0} sx={{ bgcolor: "transparent", borderBottom: "1px solid " + P.line, "&:before": { display: "none" } }}><AccordionSummary expandIcon={<ExpandIcon />} sx={{ px: 0, py: 1 }}><Typography sx={{ fontWeight: 900 }}>{item[0]}</Typography></AccordionSummary><AccordionDetails sx={{ px: 0, pb: 2.5 }}><Typography sx={{ color: P.muted, fontSize: ".85rem", lineHeight: 1.75 }}>{item[1]}</Typography></AccordionDetails></Accordion>)}</Grid></Grid></Container></Box>
 
       <Box sx={{ bgcolor: P.paper, pb: 5 }}><Container maxWidth="lg"><Box sx={{ bgcolor: P.coral, borderRadius: { xs: 4, md: 6 }, p: { xs: 4, sm: 6, md: 8 }, position: "relative", overflow: "hidden" }}><Typography aria-hidden="true" sx={{ position: "absolute", right: -10, top: -80, fontSize: "16rem", fontWeight: 950, color: "rgba(255,255,255,.12)", lineHeight: 1 }}>B</Typography><Grid container spacing={3} alignItems="center" sx={{ position: "relative" }}><Grid item xs={12} md={8}><Typography sx={{ fontSize: { xs: "2.2rem", md: "3.7rem" }, fontWeight: 950, letterSpacing: "-.07em", lineHeight: .98 }}>Your next booking should not depend on you checking your messages.</Typography></Grid><Grid item xs={12} md={4} sx={{ textAlign: { md: "right" } }}><Button variant="contained" onClick={() => navigate("/signup")} endIcon={<ArrowIcon />} sx={{ bgcolor: P.ink, color: "#fff", borderRadius: 99, minHeight: 56, px: 3.2, fontWeight: 950, "&:hover": { bgcolor: P.blueDark } }}>Start 90 days free</Button><Typography sx={{ mt: 1, fontSize: ".68rem", fontWeight: 800 }}>No card required</Typography></Grid></Grid></Box></Container></Box>
+
+      <Box sx={{ bgcolor: P.paper, px: { xs: 2, md: 5 }, py: 6 }}>
+        <Container maxWidth="lg">
+          <Typography component="h2" sx={{ color: P.ink, fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 900, mb: 3 }}>Explore Bookrightly’s booking tools</Typography>
+          <Stack direction="row" useFlexGap flexWrap="wrap" spacing={2}>
+            {FEATURE_LINKS.map(item => <Link key={item.path} to={item.path} style={{ color: P.blue, fontWeight: 800, textUnderlineOffset: 4 }}>{item.label}</Link>)}
+          </Stack>
+        </Container>
+      </Box>
 
       <Box component="footer" sx={{ bgcolor: P.ink, color: "#fff", py: 6 }}><Container maxWidth="lg"><Grid container spacing={4}><Grid item xs={12} md={6}><BrandMark inverse /><Typography sx={{ mt: 2, maxWidth: 420, color: "rgba(255,255,255,.42)", fontSize: ".78rem", lineHeight: 1.75 }}>The working system for independent UK service professionals.</Typography></Grid><Grid item xs={6} md={2}><Label light>Platform</Label><Stack spacing={1.1} sx={{ mt: 1.5 }}>{[["Sign up", "/signup"], ["Log in", "/login"], ["Pricing", "/pricing"]].map(item => <Link key={item[0]} to={item[1]} style={{ color: "rgba(255,255,255,.58)", textDecoration: "none", fontSize: ".78rem" }}>{item[0]}</Link>)}</Stack></Grid><Grid item xs={6} md={2}><Label light>Learn</Label><Stack spacing={1.1} sx={{ mt: 1.5 }}>{[["How it works", "/how-it-works"], ["Blog", "/blog"], ["Contact", "/contact"]].map(item => <Link key={item[0]} to={item[1]} style={{ color: "rgba(255,255,255,.58)", textDecoration: "none", fontSize: ".78rem" }}>{item[0]}</Link>)}</Stack></Grid><Grid item xs={12} md={2}><Label light>Support</Label><Typography component="a" href="https://mail.google.com/mail/?view=cm&fs=1&to=info@bookrightly.co.uk" target="_blank" rel="noopener noreferrer" sx={{ display: "block", mt: 1.5, color: "rgba(255,255,255,.58)", textDecoration: "none", fontSize: ".78rem" }}>Email us</Typography></Grid></Grid><Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} sx={{ mt: 5, pt: 3, borderTop: "1px solid rgba(255,255,255,.09)" }}><Typography sx={{ color: "rgba(255,255,255,.28)", fontSize: ".68rem" }}>© {new Date().getFullYear()} Bookrightly</Typography><Stack direction="row" spacing={2}><Link to="/terms" style={{ color: "rgba(255,255,255,.4)", fontSize: ".68rem" }}>Terms</Link><Link to="/privacy" style={{ color: "rgba(255,255,255,.4)", fontSize: ".68rem" }}>Privacy</Link></Stack></Stack></Container></Box>
 

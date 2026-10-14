@@ -91,6 +91,8 @@ npm run deploy   # vite build (app + embeddable widget) → wrangler deploy → 
 
 Always run the full command — the Worker and hosting are expected to stay in sync, never deployed independently.
 
+The deployment script builds the widget before the app, then deploys the same output to both hosts. Set `BUILD_OUTPUT_DIR` and `VITE_CACHE_DIR` to external-drive paths to keep build artifacts and caches outside the checkout. `npm run deploy -- --prepare-only` builds without publishing; `--skip-build` publishes an already reviewed build. Firebase Hosting uses the project in `.firebaserc`.
+
 Firestore rules and indexes deploy separately, only when they've changed:
 
 ```bash

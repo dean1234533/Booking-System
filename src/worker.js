@@ -1,3 +1,4 @@
+import { PUBLIC_PAGE_META } from './seo/featurePages.js';
 /**
  * src/worker.js
  *
@@ -2798,7 +2799,7 @@ const BUSINESS_ROUTE_RE = /^\/(barber|shop|pt-book|pt-booking|hairdresser|decora
 const RESERVED_SLUGS_WORKER = new Set([
   "shop", "pt-booking", "decorator", "hairdresser", "barber", "book",
   "confirmation", "auth", "review", "login", "signup", "cancel-booking", "manage-booking", "m",
-  "website-design", "compare", "fresha-alternative", "treatwell-alternative",
+  "website-design", "features", "booksy-alternative", "compare", "fresha-alternative", "treatwell-alternative",
   "go", "booking-software", "pricing", "how-it-works", "blog", "tools", "terms",
   "privacy", "contact", "workout", "food-diary", "check-in", "par-q",
   "colour-approval", "quote-view", "queue", "food-generator", "client-portal",
@@ -2994,6 +2995,7 @@ function buildLandingBodyHtml(path) {
       ${cta ? `<a class="bk-cta" href="${cta.href}">${escapeHtml(cta.text)}</a>` : ""}
       ${featuresHtml}
       ${faqHtml}
+      ${page.sources ? `<section><h2>Current provider information</h2><p>Comparison reviewed 14 October 2026.</p>${page.sources.map(source => `<p><a href="${escapeHtml(source.url)}">${escapeHtml(source.label)}</a></p>`).join("")}</section>` : ""}
       <nav aria-label="More Bookrightly pages">${linksHtml}</nav>
     </div>`;
 }
@@ -3026,7 +3028,8 @@ function renderLandingPage(response, path, nonce) {
   const softwareLdJson = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: title,
+    "@id": "https://bookrightly.co.uk/#software",
+    name: "Bookrightly",
     url: canon,
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
@@ -3196,8 +3199,8 @@ async function handleDynamicSitemap(env) {
   const projectId = env.VITE_FIREBASE_PROJECT_ID;
   const base      = "https://bookrightly.co.uk";
   const lastmod = new Date().toISOString().slice(0, 10);
-  const staticUrls = [
-    "/", "/login", "/signup", "/privacy", "/terms",
+  const staticUrls = [...new Set([
+    ...Object.keys(LANDING_PAGES), "/privacy", "/terms",
     "/compare", "/pricing", "/how-it-works", "/blog",
     "/fresha-alternative", "/treatwell-alternative",
     "/booking-software/barbers", "/booking-software/salons",
@@ -3206,7 +3209,7 @@ async function handleDynamicSitemap(env) {
     "/tools", "/tools/no-show-calculator", "/tools/revenue-calculator",
     "/tools/pt-rate-calculator", "/tools/service-pricing-calculator",
     "/contact",
-  ].map(p => `\n  <url><loc>${base}${p}</loc><lastmod>${lastmod}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`).join("");
+  ])].map(p => `\n  <url><loc>${base}${p}</loc><lastmod>${lastmod}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`).join("");
 
   // Derived from the real post list rather than hand-maintained — a
   // hardcoded copy here silently drifted out of date twice (two live posts
@@ -3815,7 +3818,14 @@ async function handleFetch(request, env, ctx, nonce) {
           // SoftwareApplication half of renderLandingPage is skipped here on
           // purpose since orgLdJson already covers it for this page.
           const homeFaqLdJson = buildLandingFaqLdJson("/");
+          const homePage = LANDING_PAGES["/"];
           const rewriter = new HTMLRewriter()
+            .on("title", { element: el => el.setInnerContent(homePage.title) })
+            .on('meta[name="description"]', { element: el => el.setAttribute("content", homePage.metaDescription) })
+            .on('meta[property="og:title"]', { element: el => el.setAttribute("content", homePage.title) })
+            .on('meta[property="og:description"]', { element: el => el.setAttribute("content", homePage.metaDescription) })
+            .on('meta[name="twitter:title"]', { element: el => el.setAttribute("content", homePage.title) })
+            .on('meta[name="twitter:description"]', { element: el => el.setAttribute("content", homePage.metaDescription) })
             .on("#root", { element: el => el.append(buildLandingBodyHtml("/"), { html: true }) })
             .on("body", {
               element: el => el.append(
@@ -3828,22 +3838,18 @@ async function handleFetch(request, env, ctx, nonce) {
           return rewriter.transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
         }
 
-        // 6b. Compare page SEO injection
-        if (url.pathname === "/compare" && response.headers.get("content-type")?.includes("text/html")) {
-          const title = "Bookrightly vs Fresha, Treatwell & Bark — Why UK Professionals Switch";
-          const desc  = "Honest comparison: Bookrightly vs Fresha, Treatwell, Bark.com, and Mindbody. From free, no commission ever, your own branded page, and a 90-day free trial on paid plans.";
-          const canon = "https://bookrightly.co.uk/compare";
-          const ldJson = JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebPage",
-            name: title,
-            description: desc,
-            url: canon,
-            publisher: { "@type": "Organization", name: "Bookrightly", url: "https://bookrightly.co.uk" },
-          });
+        // 6c-0. Trade landing pages — real body HTML (not just meta tags),
+        // see renderLandingPage/src/seo/landingPages.js. Checked ahead of
+        // the plain seoPages map below since these paths were removed from
+        // that map once this took over handling them. "/" is excluded —
+        // it's already handled above in the Launchpadly badge block.
+        if (url.pathname !== "/" && LANDING_PAGES[url.pathname] && response.headers.get("content-type")?.includes("text/html")) {
           const noCache = new Headers(response.headers);
           noCache.set("Cache-Control", "no-store, no-cache, must-revalidate");
-          return new HTMLRewriter()
+          ctx.waitUntil(caches.default.delete(request).catch(() => {}));
+          const canon = `https://bookrightly.co.uk${url.pathname}`;
+          const { title, metaDescription: desc } = LANDING_PAGES[url.pathname];
+          const response2 = new HTMLRewriter()
             .on("title", { element: el => el.setInnerContent(title) })
             .on('meta[name="description"]',        { element: el => el.setAttribute("content", desc) })
             .on('meta[property="og:title"]',       { element: el => el.setAttribute("content", title) })
@@ -3851,23 +3857,16 @@ async function handleFetch(request, env, ctx, nonce) {
             .on('meta[property="og:url"]',         { element: el => el.setAttribute("content", canon) })
             .on('meta[name="twitter:title"]',      { element: el => el.setAttribute("content", title) })
             .on('meta[name="twitter:description"]',{ element: el => el.setAttribute("content", desc) })
-            // index.html hardcodes a canonical tag pointed at bookrightly.co.uk/
-            // — update it rather than appending a second, conflicting one.
             .on('link[rel="canonical"]', { element: el => el.setAttribute("href", canon) })
-            .on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${ldJson}</script>`, { html: true }) })
             .transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
+          return renderLandingPage(response2, url.pathname, nonce);
         }
+
 
         // 6c. SEO injection for programmatic SEO pages
         const seoPages = {
-          "/fresha-alternative": {
-            title: "Fresha Alternative UK — Bookrightly | Keep 100% of Your Earnings",
-            desc:  "Tired of Fresha's marketplace fees? Bookrightly is the Fresha alternative that gives UK professionals a branded booking page from £10/month, or a free plan to start — no commission ever.",
-          },
-          "/treatwell-alternative": {
-            title: "Treatwell Alternative UK — Stop Giving Away 30% | Bookrightly",
-            desc:  "Treatwell takes 20–30% of every booking. Bookrightly charges from £10/month with no commission, or start free. Switch today and keep what you earn. 90-day free trial on paid plans.",
-          },
+          ...PUBLIC_PAGE_META,
+
           // Trade landing pages (/booking-software/barbers, /salons,
           // /personal-trainers, /decorators, /electricians) are NOT listed
           // here any more — they're in src/seo/landingPages.js and handled
@@ -4054,30 +4053,6 @@ async function handleFetch(request, env, ctx, nonce) {
           }
         }
 
-        // 6c-0. Trade landing pages — real body HTML (not just meta tags),
-        // see renderLandingPage/src/seo/landingPages.js. Checked ahead of
-        // the plain seoPages map below since these paths were removed from
-        // that map once this took over handling them. "/" is excluded —
-        // it's already handled above in the Launchpadly badge block.
-        if (url.pathname !== "/" && LANDING_PAGES[url.pathname] && response.headers.get("content-type")?.includes("text/html")) {
-          const noCache = new Headers(response.headers);
-          noCache.set("Cache-Control", "no-store, no-cache, must-revalidate");
-          ctx.waitUntil(caches.default.delete(request).catch(() => {}));
-          const canon = `https://bookrightly.co.uk${url.pathname}`;
-          const { title, metaDescription: desc } = LANDING_PAGES[url.pathname];
-          const response2 = new HTMLRewriter()
-            .on("title", { element: el => el.setInnerContent(title) })
-            .on('meta[name="description"]',        { element: el => el.setAttribute("content", desc) })
-            .on('meta[property="og:title"]',       { element: el => el.setAttribute("content", title) })
-            .on('meta[property="og:description"]', { element: el => el.setAttribute("content", desc) })
-            .on('meta[property="og:url"]',         { element: el => el.setAttribute("content", canon) })
-            .on('meta[name="twitter:title"]',      { element: el => el.setAttribute("content", title) })
-            .on('meta[name="twitter:description"]',{ element: el => el.setAttribute("content", desc) })
-            .on('link[rel="canonical"]', { element: el => el.setAttribute("href", canon) })
-            .transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));
-          return renderLandingPage(response2, url.pathname, nonce);
-        }
-
         const seoPageData = seoPages[url.pathname];
         if (seoPageData && response.headers.get("content-type")?.includes("text/html")) {
           const { title, desc, faq } = seoPageData;
@@ -4168,6 +4143,7 @@ async function handleFetch(request, env, ctx, nonce) {
         if (path === "/sw.js" || path === "/sw-v3.js" || path === "/registerSW.js" || path === "/index.html" || path === "/" || !path.includes(".")) {
           const headers = new Headers(response.headers);
           headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+          if (PLATFORM_HOSTS.has(url.hostname) && ["/login", "/signup"].includes(path)) headers.set("X-Robots-Tag", "noindex, follow");
           ctx.waitUntil(caches.default.delete(request).catch(() => {}));
           return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
         }

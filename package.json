@@ -12,7 +12,7 @@
     "build:widget": "vite build --config vite.widget.config.js",
     "preview": "vite preview",
     "test": "vitest run",
-    "deploy": "vite build --config vite.widget.config.js && vite build && wrangler deploy && firebase deploy --only hosting",
+    "deploy": "node scripts/deploy.mjs",
     "deploy:worker": "vite build --config vite.widget.config.js && vite build && wrangler deploy",
     "deploy:hosting": "vite build --config vite.widget.config.js && vite build && firebase deploy --only hosting"
   },

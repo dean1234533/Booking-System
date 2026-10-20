@@ -7,7 +7,7 @@ import { BrandMark } from "./Nav";
 const GROUPS = [
   { title: "Features", links: [["Booking deposits", "/features/booking-deposits"], ["Appointment reminders", "/features/appointment-reminders"], ["Booking widget", "/features/booking-widget"], ["Walk-in queue", "/features/walk-in-queue"], ["Branded booking page", "/features/branded-booking-page"]] },
   { title: "Product", links: [["Pricing", "/pricing"], ["Compare", "/compare"], ["How it works", "/how-it-works"], ["Tools", "/tools"]] },
-  { title: "For your work", links: [["Barbers", "/booking-software/barbers"], ["Hair salons", "/booking-software/salons"], ["Personal trainers", "/booking-software/personal-trainers"], ["Decorators", "/booking-software/decorators"], ["Plumbing & heating", "/signup"]] },
+  { title: "For your work", links: [["Barbers", "/booking-software/barbers"], ["Hair salons", "/booking-software/salons"], ["Personal trainers", "/booking-software/personal-trainers"], ["Decorators", "/booking-software/decorators"], ["Plumbing & heating", "/booking-software/plumbers"]] },
   { title: "Company", links: [["Blog", "/blog"], ["Contact", "/contact"], ["Privacy", "/privacy"], ["Terms", "/terms"]] },
 ];
 

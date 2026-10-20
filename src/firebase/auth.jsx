@@ -15,7 +15,7 @@ import {
   doc, setDoc, deleteDoc, serverTimestamp, getDoc, Timestamp,
 } from "firebase/firestore";
 import { captureAttribution } from "../ads/tracking.js";
-import { DEMO_HERO_IMAGES, DEMO_PORTFOLIOS } from "../data/demoPortfolios";
+import { DEMO_HERO_IMAGES } from "../data/demoPortfolios";
 
 // Without this, sendEmailVerification() falls back to Firebase's bare
 // default: the verification link's landing page is unbranded, and there's
@@ -84,15 +84,11 @@ export async function signUpBarber(data) {
       );
     }
 
-    // Start every new account looking like the demo for its business type —
-    // same curated hero/gallery photos, on the platform domain or a custom
-    // domain — rather than a blank page until they get around to uploading
-    // their own. They can replace any of these later from the dashboard.
+    // Start every new account with the demo's generic hero photo for its
+    // business type rather than a blank page. The before/after gallery is NOT
+    // seeded: stock "transformations" would be shown as the owner's own work.
     const demoImages = DEMO_HERO_IMAGES[profileData.businessType];
     if (demoImages) Object.assign(profileData, demoImages);
-    if (DEMO_PORTFOLIOS[profileData.businessType]) {
-      profileData.portfolioItems = DEMO_PORTFOLIOS[profileData.businessType];
-    }
   }
 
   // 3. Save to main 'barbers' collection

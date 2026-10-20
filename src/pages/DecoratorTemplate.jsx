@@ -5,7 +5,7 @@ import { db } from "../firebase/config";
 import { getFontFamily, loadGoogleFont } from "../utils/fontOptions";
 import { getWhatsAppBookingUrl } from "../utils/whatsapp";
 import { Star, CheckCircle2, ChevronLeft, ChevronRight, Mail, MapPin, Phone } from 'lucide-react';
-import { heroForProfile, portfolioForProfile } from '../data/demoPortfolios';
+import { heroForProfile, isDemoProfile, portfolioForProfile } from '../data/demoPortfolios';
 
 /* ─── Global style injection ─────────────────────────────── */
 export const GlobalStyles = () => (
@@ -421,25 +421,28 @@ const DecoratorTemplate = ({ tenantData }) => {
 
   // Hero
   const heroImage     = heroForProfile(tenantData, tenantData?.heroImage || tenantData?.logoUrl || tenantData?.profilePic) || "/images/photo-output-13.jpg";
-  const heroEyebrow   = tenantData?.heroTagline  || "London's Trusted Decorators";
+  // Invented claims (London, review counts, years, projects) only appear on the
+  // demo decorator; a real business gets neutral copy until the owner edits it.
+  const isDemoCopy    = isDemoProfile(tenantData);
+  const heroEyebrow   = tenantData?.heroTagline  || (isDemoCopy ? "London's Trusted Decorators" : (tenantData?.location || "Painting & decorating"));
   const heroLine1     = tenantData?.heroHeadingLine1 || "Home Painting,";
   const heroLine2     = tenantData?.heroHeadingLine2 || "Done Right.";
-  const heroSub       = tenantData?.heroSubtext  || "Fully insured. Results guaranteed. Professional painting and decorating services tailored to your home.";
+  const heroSub       = tenantData?.heroSubtext  || (isDemoCopy ? "Fully insured. Results guaranteed. Professional painting and decorating services tailored to your home." : "Painting and decorating for your home. Tell us about the job and get a free, no-obligation quote.");
   const heroCta       = tenantData?.heroCtaText  || "Get Your Free Quote";
-  const heroReview    = tenantData?.heroReviewText || "Rated by 30+ Homeowners";
+  const heroReview    = tenantData?.heroReviewText || (isDemoCopy ? "Rated by 30+ Homeowners" : "");
 
   // About
   const aboutTagline  = tenantData?.aboutTagline || "Who We Are";
   const aboutHeading  = tenantData?.aboutHeading || "Craft, care & a flawless finish";
-  const aboutBody     = tenantData?.aboutBody    || tenantData?.aboutUs || "With over 10 years of experience in high-end residential painting and decorating, I pride myself on meticulous prep work and a flawless finish. Whether it's a single feature wall or a complete property refresh, I treat every home as if it were my own.";
+  const aboutBody     = tenantData?.aboutBody    || tenantData?.aboutUs || (isDemoCopy ? "With over 10 years of experience in high-end residential painting and decorating, I pride myself on meticulous prep work and a flawless finish. Whether it's a single feature wall or a complete property refresh, I treat every home as if it were my own." : "Tell us about your project and we'll get back to you with a free, no-obligation quote.");
 
   // Stats
   const stats = [
-    { num: tenantData?.stat1Value || "10+",  label: tenantData?.stat1Label || "Years of experience" },
-    { num: tenantData?.stat2Value || "200+", label: tenantData?.stat2Label || "Projects completed" },
-    { num: tenantData?.stat3Value || "30+",  label: tenantData?.stat3Label || "Five-star reviews" },
-    { num: tenantData?.stat4Value || "100%", label: tenantData?.stat4Label || "Satisfaction guaranteed" },
-  ];
+    { num: tenantData?.stat1Value || (isDemoCopy ? "10+" : ""),  label: tenantData?.stat1Label || "Years of experience" },
+    { num: tenantData?.stat2Value || (isDemoCopy ? "200+" : ""), label: tenantData?.stat2Label || "Projects completed" },
+    { num: tenantData?.stat3Value || (isDemoCopy ? "30+" : ""),  label: tenantData?.stat3Label || "Five-star reviews" },
+    { num: tenantData?.stat4Value || (isDemoCopy ? "100%" : ""), label: tenantData?.stat4Label || "Satisfaction guaranteed" },
+  ].filter(s => s.num);
 
   // Services
   const servicesHeading = tenantData?.servicesHeading || "Everything your home needs";
@@ -457,12 +460,7 @@ const DecoratorTemplate = ({ tenantData }) => {
   // Portfolio
   const portfolioHeading = tenantData?.portfolioHeading || "Recent transformations";
   const portfolioSubtext = tenantData?.portfolioSubtext || "Drag the slider on each image to reveal the difference a professional finish makes.";
-  const savedPortfolio   = (tenantData?.portfolioItems || []).length > 0
-    ? tenantData.portfolioItems
-    : [
-        { before: "/images/demo/decorator/living-room-before.jpg", after: "/images/demo/decorator/living-room-after.jpg", label: "Living Room Refinish" },
-        { before: "/images/demo/decorator/kitchen-before.jpg", after: "/images/demo/decorator/kitchen-after.jpg", label: "Kitchen Preparation & Paint" },
-      ];
+  const savedPortfolio   = tenantData?.portfolioItems || [];
   const portfolioItems   = portfolioForProfile(tenantData, savedPortfolio);
 
   // Legal
@@ -565,12 +563,12 @@ const DecoratorTemplate = ({ tenantData }) => {
                 View Our Work
               </button>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
+            {heroReview && <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
               <div className="dt-hero-badge">
                 <div style={{ display: 'flex', color: '#f59e0b' }}>{[...Array(5)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}</div>
                 <span>{heroReview}</span>
               </div>
-            </div>
+            </div>}
           </div>
           <div className="dt-hero-scroll" onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}>
             <div className="dt-hero-scroll-line" />
@@ -627,7 +625,7 @@ const DecoratorTemplate = ({ tenantData }) => {
         </section>
 
         {/* ── PORTFOLIO ── */}
-        <section id="portfolio" className="dt-portfolio">
+        {portfolioItems.length > 0 && <section id="portfolio" className="dt-portfolio">
           <div className="dt-portfolio-header">
             <div>
               <span className="dt-section-label">Portfolio</span>
@@ -644,7 +642,7 @@ const DecoratorTemplate = ({ tenantData }) => {
               </div>
             ))}
           </div>
-        </section>
+        </section>}
 
         {/* ── TEAM ── */}
         {allTeam.length > 0 && (
@@ -744,7 +742,7 @@ const DecoratorTemplate = ({ tenantData }) => {
               <h2 className="dt-section-title">Request a free quote</h2>
               <p className="dt-contact-sub">Tell us about your project and we'll be in touch within 24 hours to discuss your vision and provide a no-obligation quote.</p>
               <div className="dt-contact-perks">
-                {["No call centres — speak directly with the decorator", "Free, no-obligation quote within 24 hours", "Fully insured and 100% satisfaction guaranteed"].map((p, i) => (
+                {(isDemoCopy ? ["No call centres — speak directly with the decorator", "Free, no-obligation quote within 24 hours", "Fully insured and 100% satisfaction guaranteed"] : ["No call centres — speak directly with the decorator", "Free, no-obligation quote"]).map((p, i) => (
                   <div key={i} className="dt-contact-perk">
                     <div className="dt-contact-dot" style={{ backgroundColor: brandColor }}></div>
                     {p}

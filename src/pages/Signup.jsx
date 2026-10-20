@@ -104,7 +104,6 @@ export default function Signup() {
     if (step === 2) {
       const passwordError = validatePassword(form.password);
       if (passwordError) return passwordError;
-      if (form.password !== form.confirm) return "Passwords do not match.";
     }
     return null;
   }
@@ -320,12 +319,6 @@ export default function Signup() {
                 type={showPassword ? "text" : "password"} value={form.password} onChange={handleChange}
                 autoComplete="new-password" helperText={PASSWORD_HELP_TEXT}
                 InputProps={{ endAdornment: <InputAdornment position="end"><IconButton aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(value => !value)}>{showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}</IconButton></InputAdornment> }}
-              />
-              <TextField
-                label="Confirm password" name="confirm" fullWidth required
-                type={showPassword ? "text" : "password"} value={form.confirm} onChange={handleChange}
-                autoComplete="new-password" error={Boolean(form.confirm && form.password !== form.confirm)}
-                helperText={form.confirm && form.password !== form.confirm ? "Passwords don’t match yet." : " "}
               />
               <Box sx={{ p: 2, borderRadius: 2.5, bgcolor: AUTH_GOLD + "0d", border: "1px solid " + AUTH_GOLD + "44" }}>
                 <Typography sx={{ fontWeight: 850, fontSize: ".78rem" }}>Your 90-day free trial</Typography>

@@ -124,6 +124,7 @@ export function InternalLinks({ current }) {
     { label: "PT booking software", path: "/booking-software/personal-trainers" },
     { label: "Decorator software", path: "/booking-software/decorators" },
     { label: "Electrician software", path: "/booking-software/electricians" },
+    { label: "Plumber & heating software", path: "/booking-software/plumbers" },
     { label: "Fresha alternative", path: "/fresha-alternative" },
     { label: "Treatwell alternative", path: "/treatwell-alternative" },
     { label: "Pricing", path: "/pricing" },

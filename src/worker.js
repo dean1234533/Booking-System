@@ -3205,7 +3205,7 @@ async function handleDynamicSitemap(env) {
     "/fresha-alternative", "/treatwell-alternative",
     "/booking-software/barbers", "/booking-software/salons",
     "/booking-software/personal-trainers", "/booking-software/decorators",
-    "/booking-software/electricians",
+    "/booking-software/electricians", "/booking-software/plumbers",
     "/tools", "/tools/no-show-calculator", "/tools/revenue-calculator",
     "/tools/pt-rate-calculator", "/tools/service-pricing-calculator",
     "/contact",
@@ -3435,6 +3435,7 @@ async function handleFetch(request, env, ctx, nonce) {
 - [Personal trainer booking software](https://bookrightly.co.uk/booking-software/personal-trainers)
 - [Decorator booking software](https://bookrightly.co.uk/booking-software/decorators)
 - [Electrician booking software](https://bookrightly.co.uk/booking-software/electricians)
+- [Plumber and heating booking software](https://bookrightly.co.uk/booking-software/plumbers)
 
 ## Blog
 

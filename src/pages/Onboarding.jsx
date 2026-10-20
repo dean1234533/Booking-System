@@ -509,6 +509,20 @@ function addDays(dateStr, days) {
   return result.toISOString().split("T")[0];
 }
 
+// "09:00".."17:00" every `stepMins` -> ["09:00","09:30",...]; the last slot
+// must finish by closing time. Step is clamped to 15–240 mins.
+function slotTimes(start, end, stepMins) {
+  const toMins = t => { const [h, m] = String(t || "").split(":").map(Number); return h * 60 + (m || 0); };
+  const step = Math.min(240, Math.max(15, Number(stepMins) || 30));
+  const s = toMins(start), e = toMins(end);
+  if (!Number.isFinite(s) || !Number.isFinite(e) || e <= s) return [start || "09:00"];
+  const out = [];
+  for (let t = s; t + step <= e; t += step) {
+    out.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
+  }
+  return out.length ? out : [start];
+}
+
 /* ── Main Onboarding component ── */
 export default function Onboarding({ brandColor: brandColorProp }) {
   const navigate = useNavigate();
@@ -748,18 +762,31 @@ export default function Onboarding({ brandColor: brandColorProp }) {
     try {
       if (enabledDays.length > 0) {
         const today = new Date();
+        const pad = n => String(n).padStart(2, "0");
+        const localToday = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+        const nowHHMM = `${pad(today.getHours())}:${pad(today.getMinutes())}`;
         const jobs = [];
         // Next 28 days — simple weekly pattern, repeated for 4 weeks.
         for (let i = 0; i < 28; i++) {
-          const date = addDays(today.toISOString().split("T")[0], i);
+          const date = addDays(localToday, i);
           const weekday = new Date(date + "T00:00:00").getDay();
           const dayCfg = enabledDays.find(d => DAY_INDEX[d.key] === weekday);
           if (dayCfg) {
             const cfg = days[dayCfg.key];
-            jobs.push(addSlot({ barberId: authUser.uid, shopId: authUser.uid, date, time: cfg.start }));
+            // One slot per service-length step between opening and closing time.
+            for (const time of slotTimes(cfg.start, cfg.end, serviceDuration)) {
+              // Don't offer times that have already passed today.
+              if (i === 0 && time <= nowHHMM) continue;
+              jobs.push(addSlot({ barberId: authUser.uid, shopId: authUser.uid, date, time }));
+            }
           }
         }
         await Promise.all(jobs);
+        // Show the hours on the public page too, not just in the diary.
+        const hoursText = enabledDays
+          .map(d => `${d.label}: ${days[d.key].start} – ${days[d.key].end}`)
+          .join("\n");
+        await updateBarber(authUser.uid, { openingHours: hoursText });
       }
       goNext();
     } catch (e) {

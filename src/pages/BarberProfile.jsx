@@ -243,11 +243,12 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
   // (statBar1Num) to show at all, so a business without it just had no stat
   // bar instead of the same generic-but-presentable numbers the homepage
   // template already falls back to.
+  // Only the demo shop shows invented numbers; a real business shows what its owner entered.
   const statBar = [
-    { num: barber?.statBar1Num || "10+", label: barber?.statBar1Label || "Years of craft" },
-    { num: barber?.statBar2Num || "5.0", label: barber?.statBar2Label || "Client rating" },
-    { num: barber?.statBar3Num || "7",   label: barber?.statBar3Label || "Days a week" },
-  ];
+    { num: barber?.statBar1Num || (barber?.isDemo ? "10+" : ""), label: barber?.statBar1Label || "Years of craft" },
+    { num: barber?.statBar2Num || (barber?.isDemo ? "5.0" : ""), label: barber?.statBar2Label || "Client rating" },
+    { num: barber?.statBar3Num || (barber?.isDemo ? "7" : ""),   label: barber?.statBar3Label || "Days a week" },
+  ].filter(s => s.num);
 
   // Gallery photos live on the shop's own account too — same reason as the
   // social links above, a staff member's individual doc has no portfolio of
@@ -458,7 +459,7 @@ export default function BarberProfile({ tenant: initialTenant, barberId: barberI
       </Box>
 
       {/* ── Stats bar ── */}
-      {statBar && (
+      {statBar.length > 0 && (
         <Box sx={{
           bgcolor: "#111",
           borderTop: `3px solid ${brandColor}`,

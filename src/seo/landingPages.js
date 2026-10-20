@@ -134,6 +134,27 @@ export const LANDING_PAGES = {
     cta: { text: "Try free for 90 days", href: "/signup" },
   },
 
+  "/booking-software/plumbers": {
+    title: "Plumber & Heating Engineer Booking Software UK — Call-Outs, Quotes & Invoices | Bookrightly",
+    metaDescription: `Online booking software for UK plumbers and heating engineers. Boiler services, call-out requests with photos, quotes, job planner and invoices — from £${fullPrice}/month, or free to start. No commission.`,
+    h1: "Online booking software for UK plumbers and heating engineers",
+    intro: "A branded page where customers book boiler services and fixed-price jobs, or send a call-out request with photos of the problem — with your call-out fee and hourly rate shown upfront, and quotes, a day planner and invoices in the same dashboard.",
+    features: [
+      { h2: "Book boiler services and fixed jobs online", p: "List services with a known duration and price — boiler services, safety checks, tap and cistern repairs — so customers book a real appointment instead of leaving a voicemail." },
+      { h2: "Call-out requests with photos", p: "For leaks, breakdowns and anything that needs a look first, customers describe the problem, urgency and upload photos. You get it by email and in your dashboard, ready to quote or schedule." },
+      { h2: "Call-out fee and rates shown upfront", p: "Show your call-out fee, hourly rate, minimum charge and emergency rate on your page so you only get enquiries from people happy with the price." },
+      { h2: "Areas covered", p: "List the towns or postcodes you work in and your travel radius, so customers outside your area don't waste your time." },
+      { h2: "Quotes, day planner and invoices", p: "Turn an enquiry into a quote, a scheduled job and a VAT-ready invoice with paid, unpaid and overdue tracking — no spreadsheets." },
+    ],
+    faq: [
+      { q: "Is Bookrightly free for plumbers and heating engineers?", a: `You get a ${trialDays}-day free trial with no credit card required, and there's a free plan that never expires. Paid plans have no commission on any job or invoice.` },
+      { q: "Can customers book a boiler service online?", a: "Yes. List boiler services and other fixed-duration work as bookable slots, so customers pick a real appointment time." },
+      { q: "What about emergency leaks and breakdowns?", a: "Customers send a call-out request with the problem, urgency and photos. You receive it instantly and can quote, schedule or call them back." },
+      { q: "Can I show my call-out fee and hourly rate?", a: "Yes. Your standard charges display on your public page before anyone enquires." },
+      { q: "Does it handle quotes and invoices?", a: "Yes. Enquiries convert into quotes, scheduled jobs and VAT-ready invoices with payment status tracking." },
+    ],
+    cta: { text: "Start free for 90 days", href: "/signup" },
+  },
   "/booking-software/electricians": {
     title: "Electrician Booking Software UK — Call-Outs & Fixed-Slot Inspections | Bookrightly",
     metaDescription: `Online booking software for UK electricians. Fixed-slot inspections, call-out requests, standard charges shown upfront, service areas covered — from £${fullPrice}/month, or free to start. No commission.`,

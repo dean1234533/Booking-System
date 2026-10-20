@@ -424,14 +424,17 @@ export default function HairdresserTemplate({ tenantData }) {
 
   /* ── Content with fallbacks ── */
   const heroImage    = heroForProfile(tenantData, tenantData?.heroImage || tenantData?.logoUrl || tenantData?.profilePic) || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=2069&auto=format&fit=crop';
-  const heroEyebrow  = tenantData?.heroTagline || 'London\'s Premier Hair Salon';
+  // Invented claims (London, awards, years, client counts) are only shown on the
+  // demo salon. A real business gets neutral copy until the owner fills their own in.
+  const isDemoCopy   = isDemoProfile(tenantData);
+  const heroEyebrow  = tenantData?.heroTagline || (isDemoCopy ? 'London\'s Premier Hair Salon' : (tenantData?.location || tenantData?.address || 'Hair salon'));
   const heroLine1    = tenantData?.heroHeadingLine1 || 'Where Every';
   const heroLine2    = tenantData?.heroHeadingLine2 || 'Strand Shines';
   const heroSub      = tenantData?.heroSubtext || 'Expert colour, precision cuts and transformative styling. Your most confident hair starts with us.';
   const heroCta      = tenantData?.heroCtaText || 'Book Your Appointment';
   const aboutHeading = tenantData?.aboutHeading || 'Our story, your style';
   const aboutQuote   = tenantData?.aboutQuote   || '"We believe great hair is the foundation of everyday confidence."';
-  const aboutBody    = tenantData?.aboutBody || tenantData?.aboutUs || 'Founded on the belief that every person deserves hair they love, our salon brings together award-winning stylists dedicated to the craft. From precision cuts to transformative colour, every visit is tailored to you.';
+  const aboutBody    = tenantData?.aboutBody || tenantData?.aboutUs || (isDemoCopy ? 'Founded on the belief that every person deserves hair they love, our salon brings together award-winning stylists dedicated to the craft. From precision cuts to transformative colour, every visit is tailored to you.' : 'Book online in seconds. Choose a service, pick a time that suits you and we will see you in the chair.');
   const servicesImg  = tenantData?.servicesImage || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1974&auto=format&fit=crop';
   const aboutImg     = tenantData?.heroImageMobile || 'https://images.unsplash.com/photo-1600948836101-f9ffda59d250?q=80&w=2036&auto=format&fit=crop';
   const portfolioHeading = tenantData?.portfolioHeading || 'Recent transformations';
@@ -440,12 +443,13 @@ export default function HairdresserTemplate({ tenantData }) {
   const isDemoTenant     = isDemoProfile(tenantData);
 
   const stats = [
-    { num: tenantData?.stat1Value || '12+',  label: tenantData?.stat1Label || 'Years of expertise' },
-    { num: tenantData?.stat2Value || '5.0★', label: tenantData?.stat2Label || 'Average rating' },
-    { num: tenantData?.stat3Value || '400+', label: tenantData?.stat3Label || 'Happy clients monthly' },
-  ];
+    { num: tenantData?.stat1Value || (isDemoCopy ? '12+' : ''),  label: tenantData?.stat1Label || 'Years of expertise' },
+    { num: tenantData?.stat2Value || (isDemoCopy ? '5.0★' : ''), label: tenantData?.stat2Label || 'Average rating' },
+    { num: tenantData?.stat3Value || (isDemoCopy ? '400+' : ''), label: tenantData?.stat3Label || 'Happy clients monthly' },
+  ].filter(s => s.num);
 
-  const services = (tenantData?.services?.length > 0 ? tenantData.services : [
+  // Sample prices are demo-only; a real business with no services yet shows none.
+  const services = (tenantData?.services?.length > 0 ? tenantData.services : !isDemoCopy ? [] : [
     { name: 'Cut & Blow Dry',         duration: '60 min',  price: 65  },
     { name: 'Full Colour',            duration: '2 hrs',   price: 110 },
     { name: 'Highlights / Balayage',  duration: '2.5 hrs', price: 145 },
@@ -570,14 +574,14 @@ export default function HairdresserTemplate({ tenantData }) {
         </section>
 
         {/* ─── STATS BAR ─── */}
-        <div className="hs-stats" style={{ background: '#111' }}>
+        {stats.length > 0 && <div className="hs-stats" style={{ background: '#111' }}>
           {stats.map((s, i) => (
             <div key={i} className="hs-stat">
               <span className="hs-stat-num">{s.num}</span>
               <span className="hs-stat-label">{s.label}</span>
             </div>
           ))}
-        </div>
+        </div>}
 
         {/* ─── SERVICES ─── */}
         <section id="services" className="hs-services">

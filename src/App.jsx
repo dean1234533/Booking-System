@@ -74,6 +74,7 @@ const HowItWorksPage           = lazy(() => import("./pages/seo/HowItWorksPage")
 const DecoratorSoftwarePage    = lazy(() => import("./pages/seo/DecoratorSoftwarePage"));
 const FeaturePage = lazy(() => import("./pages/seo/FeaturePage"));
 const ElectricianSoftwarePage  = lazy(() => import("./pages/seo/ElectricianSoftwarePage"));
+const PlumberSoftwarePage      = lazy(() => import("./pages/seo/PlumberSoftwarePage"));
 const BlogIndex                = lazy(() => import("./pages/blog/BlogIndex"));
 const BlogPost                 = lazy(() => import("./pages/blog/BlogPost"));
 const StarterPackGuide         = lazy(() => import("./pages/StarterPackGuide"));
@@ -603,6 +604,7 @@ function AppShell() {
             <Route path="/how-it-works"                   element={<HowItWorksPage />} />
             <Route path="/booking-software/decorators"    element={<DecoratorSoftwarePage />} />
             <Route path="/booking-software/electricians"  element={<ElectricianSoftwarePage />} />
+            <Route path="/booking-software/plumbers"      element={<PlumberSoftwarePage />} />
             <Route path="/blog"                           element={<BlogIndex />} />
             <Route path="/blog/:slug"                     element={<BlogPost />} />
             <Route path="/starter-pack"                   element={<StarterPackGuide />} />

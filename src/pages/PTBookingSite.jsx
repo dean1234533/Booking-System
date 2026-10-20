@@ -11,7 +11,7 @@ import RateReviewIcon from '@mui/icons-material/RateReview';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
 import { getWhatsAppBookingUrl } from '../utils/whatsapp';
 import AppIcon from '../components/AppIcon';
-import { heroForProfile, portfolioForProfile } from '../data/demoPortfolios';
+import { heroForProfile, isDemoProfile, portfolioForProfile } from '../data/demoPortfolios';
 
 /* ─── Google Fonts ─────────────────────────────────────────── */
 const fontLink = document.createElement('link');
@@ -635,10 +635,10 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
 
   /* ── Stats bar — editable from Dashboard > Website tab ── */
   const statBar = [
-    { num: profile?.statBar1Num || '100+', label: profile?.statBar1Label || 'Happy Clients' },
-    { num: profile?.statBar2Num || '5.0★', label: profile?.statBar2Label || 'Average Rating' },
-    { num: profile?.statBar3Num || 'Pro',  label: profile?.statBar3Label || 'Certified Trainer' },
-  ];
+    { num: profile?.statBar1Num || (isDemoProfile(profile) ? '100+' : ''), label: profile?.statBar1Label || 'Happy Clients' },
+    { num: profile?.statBar2Num || (isDemoProfile(profile) ? '5.0★' : ''), label: profile?.statBar2Label || 'Average Rating' },
+    { num: profile?.statBar3Num || (isDemoProfile(profile) ? 'Pro' : ''),  label: profile?.statBar3Label || 'Certified Trainer' },
+  ].filter(s => s.num);
 
   const specializations = (profile?.specializations?.length > 0 ? profile.specializations : null) || [
     { title: 'Strength & Conditioning', description: 'Build raw power and muscular endurance through proven compound lifting and progressive overload.' },
@@ -757,7 +757,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
       </section>
 
       {/* ══════════ STATS BAR ══════════ */}
-      <FadeIn>
+      {statBar.length > 0 && <FadeIn>
         <section style={{ background: '#111', padding: 'clamp(20px,4vw,36px) clamp(16px,4vw,24px)' }}>
           <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: isSmall ? '1fr' : 'repeat(3, 1fr)', gap: isSmall ? 0 : 16, textAlign: 'center' }}>
             {statBar.map((s, i) => (
@@ -771,7 +771,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
             ))}
           </div>
         </section>
-      </FadeIn>
+      </FadeIn>}
 
       {/* ══════════ ABOUT ══════════ */}
       <FadeIn>

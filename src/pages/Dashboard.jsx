@@ -1485,7 +1485,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       {/* WhatsApp support button */}
       <Box
         component="a"
-        href="https://wa.me/447752300937?text=Hi%2C%20I%20need%20help%20with%20my%20Bookriightly%20dashboard"
+        href="https://wa.me/447752300937?text=Hi%2C%20I%20need%20help%20with%20my%20Bookrightly%20dashboard"
         target="_blank"
         rel="noopener noreferrer"
         sx={{

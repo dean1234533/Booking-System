@@ -121,15 +121,13 @@ export function isDemoProfile(profile) {
 }
 
 /** Seeded demo accounts always show the curated set, so the demo stays
- * controlled and consistent. Real customer accounts show their own saved
- * portfolio/hero when they have one — otherwise they get the same curated
- * placeholder (matched to their business type) rather than an empty section,
- * on both the platform domain and any custom domain, until they upload their
- * own. */
+ * controlled and consistent. Real customer accounts show only their own saved
+ * portfolio; the section is hidden until they upload some. */
 export function portfolioForProfile(profile, fallback = []) {
   if (isDemoProfile(profile)) return DEMO_PORTFOLIOS[profile?.businessType] || fallback;
-  if (fallback?.length) return fallback;
-  return DEMO_PORTFOLIOS[profile?.businessType] || fallback;
+  // Real businesses only ever show their own work — stock before/afters
+  // presented as someone's real results would mislead their customers.
+  return fallback || [];
 }
 
 export function heroForProfile(profile, fallback = "", field = "heroImage") {

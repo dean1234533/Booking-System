@@ -580,6 +580,13 @@ export default function Onboarding({ brandColor: brandColorProp }) {
   useEffect(() => {
     if (step >= steps.length && !completedLoggedRef.current) {
       completedLoggedRef.current = true;
+      // Without this flag, any later visit to /onboarding (a bookmark, the
+      // browser back button, or a session hiccup that bounces an
+      // already-finished owner through /login and back) restarted the
+      // entire multi-step wizard from scratch instead of recognising the
+      // account was already live — found by walking through onboarding as
+      // a real user and landing back on step 1 after a re-login.
+      if (authUser?.uid) updateBarber(authUser.uid, { onboardingComplete: true }).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
@@ -592,6 +599,7 @@ export default function Onboarding({ brandColor: brandColorProp }) {
         const snap = await getDoc(doc(db, "barbers", authUser.uid));
         if (snap.exists()) {
           const data = snap.data();
+          if (data.onboardingComplete) { navigate("/dashboard", { replace: true }); return; }
           setBusinessName(data.businessName || data.name || "");
           setBusinessType(data.businessType || "barber");
           setPlan(data.plan || "full");
@@ -724,7 +732,17 @@ export default function Onboarding({ brandColor: brandColorProp }) {
       setClaimedSlug(res.data.slug);
       goNext();
     } catch (e) {
-      setError(e.message?.replace(/^.*claimBookingSlug:\s*/, "") || "Couldn't claim that link — please try a different one.");
+      // Firebase's callable-functions client only ever surfaces a genuine
+      // HttpsError's own message (e.g. "This link is already taken.") when
+      // the function threw one deliberately — any *unhandled* server-side
+      // exception gets flattened to code/message "internal" instead, since
+      // Firebase deliberately never leaks a real stack trace to the client.
+      // Showing that raw word to a user reads as a broken page, not an
+      // error — seen live on a genuinely available slug ("industrial-barbers"),
+      // so this is a real path, not just a defensive guard.
+      setError(e.code === "internal" || e.message === "internal"
+        ? "Something went wrong claiming that link — please try again in a moment, or try a different one."
+        : e.message || "Couldn't claim that link — please try a different one.");
     } finally {
       setSaving(false);
     }

@@ -1146,35 +1146,48 @@ exports.claimBookingSlug = onCall({invoker: "public"}, async (request) => {
   const barberRef = db.doc(`barbers/${uid}`);
   const RECLAIM_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-  return db.runTransaction(async (tx) => {
-    const [slugSnap, barberSnap] = await Promise.all([tx.get(slugRef), tx.get(barberRef)]);
-    if (!barberSnap.exists) throw new HttpsError("not-found", "Account not found.");
+  try {
+    return await db.runTransaction(async (tx) => {
+      const [slugSnap, barberSnap] = await Promise.all([tx.get(slugRef), tx.get(barberRef)]);
+      if (!barberSnap.exists) throw new HttpsError("not-found", "Account not found.");
 
-    if (slugSnap.exists) {
-      const data = slugSnap.data();
-      const isOwnCurrentSlug = data.barberId === uid;
-      const isReleasedLongEnoughAgo = !data.barberId && data.releasedAt &&
-        (Date.now() - data.releasedAt.toMillis()) > RECLAIM_COOLDOWN_MS;
-      if (!isOwnCurrentSlug && !isReleasedLongEnoughAgo) {
-        throw new HttpsError("already-exists", "This link is already taken.");
+      if (slugSnap.exists) {
+        const data = slugSnap.data();
+        const isOwnCurrentSlug = data.barberId === uid;
+        const isReleasedLongEnoughAgo = !data.barberId && data.releasedAt &&
+          (Date.now() - data.releasedAt.toMillis()) > RECLAIM_COOLDOWN_MS;
+        if (!isOwnCurrentSlug && !isReleasedLongEnoughAgo) {
+          throw new HttpsError("already-exists", "This link is already taken.");
+        }
       }
-    }
 
-    const prevSlug = barberSnap.data().bookingSlug;
-    if (prevSlug && prevSlug !== slug) {
-      tx.set(db.doc(`bookingSlugs/${prevSlug}`), {
-        barberId: null,
-        releasedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      tx.update(barberRef, {
-        previousBookingSlugs: admin.firestore.FieldValue.arrayUnion(prevSlug),
-      });
-    }
+      const prevSlug = barberSnap.data().bookingSlug;
+      if (prevSlug && prevSlug !== slug) {
+        tx.set(db.doc(`bookingSlugs/${prevSlug}`), {
+          barberId: null,
+          releasedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        tx.update(barberRef, {
+          previousBookingSlugs: admin.firestore.FieldValue.arrayUnion(prevSlug),
+        });
+      }
 
-    tx.set(slugRef, {barberId: uid, claimedAt: admin.firestore.FieldValue.serverTimestamp()});
-    tx.update(barberRef, {bookingSlug: slug});
-    return {slug};
-  });
+      tx.set(slugRef, {barberId: uid, claimedAt: admin.firestore.FieldValue.serverTimestamp()});
+      tx.update(barberRef, {bookingSlug: slug});
+      return {slug};
+    });
+  } catch (err) {
+    // A deliberate HttpsError above (already-exists, not-found) already has
+    // a clear client-facing message — only an exception neither of those
+    // branches threw reaches here, and Firebase flattens THAT to the bare,
+    // unhelpful code+message "internal" on the client with the real cause
+    // thrown away. Logging it here is the only way to diagnose a repeat —
+    // seen live once already on a transaction for an otherwise-available
+    // slug, cause unconfirmed since nothing had logged it up to this point.
+    if (err instanceof HttpsError) throw err;
+    console.error("claimBookingSlug unhandled error", {uid, slug, error: err});
+    throw new HttpsError("internal", "Something went wrong claiming that link. Please try again.");
+  }
 });
 
 // Concierge onboarding — Dean sets up a live account on a prospect's behalf

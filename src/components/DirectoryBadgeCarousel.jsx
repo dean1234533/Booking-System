@@ -140,11 +140,14 @@ export default function DirectoryBadgeCarousel() {
           // height:auto alone has nothing to resolve against for a badge
           // whose own markup gives its <img> no width/height (Turbo0's SVG
           // is one) — it was rendering at a real 0x0 despite loading fine
-          // (confirmed live: naturalWidth 300, rendered rect 0x0), making
-          // an otherwise-working badge show as an empty box. A fixed height
-          // always gives the image a real box; width:auto + objectFit then
-          // sizes it proportionally from whatever natural ratio it has.
-          "& img": { maxWidth: "100%", width: "auto", height: 40, maxHeight: 40, objectFit: "contain" },
+          // (confirmed live: naturalWidth 300, rendered rect 0x0). minHeight
+          // gives that case a floor to render from. A *forced* width/height
+          // (tried first) fixed it but also shrank SourceForge's badge,
+          // which sizes correctly today from its own width="125" attribute
+          // — overriding width to "auto" in CSS beats that HTML attribute
+          // and broke it. Floor/ceiling only, nothing forced, so an image
+          // that already sizes itself correctly is left alone.
+          "& img": { maxWidth: "100%", height: "auto", minHeight: 32, maxHeight: 64, objectFit: "contain" },
           "& a": { color: "#fff" }, m: 0, p: 0, listStyle: "none", display: "flex", gap: 2, overflowX: "auto", scrollSnapType: "x mandatory", scrollbarWidth: "thin", scrollbarColor: "#93C5FD #ffffff0a", "&:focus-visible": { outline: "2px solid #93C5FD", outlineOffset: 3 },
         }} />
     </Box>

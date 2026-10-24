@@ -81,6 +81,24 @@
     <noscript><img height="1" width="1" style="display:none"
       src="https://www.facebook.com/tr?id=1120787196951057&amp;ev=PageView&amp;noscript=1" /></noscript>
     <div id="root"></div>
+    <!-- Twelve Tools badge — deliberately a plain, permanent, VISIBLE
+         element outside #root, not something React's DirectoryBadgeCarousel
+         injects/swaps via a client-side fetch. Their own verification
+         checker explicitly warns that a JS-injected badge "may not be
+         detected" — exactly what the carousel does (removes the
+         server-rendered fallback, then re-renders from an async fetch),
+         which is the likely reason their checker kept reporting "not
+         detected" even once the badge was confirmed live via direct fetch
+         each time. createRoot() only ever touches #root's children, so this
+         survives hydration untouched. Kept genuinely visible (not hidden
+         off-screen) since their own instructions say "on your homepage or
+         footer" and a hidden badge would be the kind of thing a stricter
+         checker flags as gaming the requirement rather than meeting it. -->
+    <div style="position:fixed;left:8px;bottom:8px;z-index:100;line-height:0">
+      <a href="https://twelve.tools" target="_blank" rel="noopener noreferrer">
+        <img src="https://twelve.tools/badge0-white.svg" alt="Featured on Twelve Tools" width="148" height="40" />
+      </a>
+    </div>
     <!-- Capture install prompt before React mounts so it's never missed -->
     <script>
       window.addEventListener('beforeinstallprompt', function(e) {

@@ -1,3 +1,4 @@
+import { getDirectoryBadgeItems, badgeFallbackHtml } from "./seo/directoryBadges.js";
 import { PUBLIC_PAGE_META } from './seo/featurePages.js';
 /**
  * src/worker.js
@@ -3393,6 +3394,11 @@ async function handleFetch(request, env, ctx, nonce) {
         return PLATFORM_HOSTS.has(url.hostname)
           ? handleDynamicSitemap(env)
           : handleCustomDomainSitemap(url.hostname);
+      case "/api/directory-badges": {
+        if (request.method !== "GET") return new Response("Method not allowed", { status: 405 });
+        const html = await getDirectoryBadgeItems();
+        return new Response(JSON.stringify({ html }), { headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+      }
       case "/robots.txt":
         return handleRobotsTxt(url.hostname);
 
@@ -3758,14 +3764,8 @@ async function handleFetch(request, env, ctx, nonce) {
           }
         }
 
-        // 6a2. Launchpadly badge — homepage only. The visible badge already
-        // rendered by Footer.jsx only exists after React hydrates, but
-        // directory verifiers (Launchpadly included) fetch the page's raw
-        // HTML without running JavaScript, so they never see it. Inject the
-        // same link server-side, visually hidden so it doesn't duplicate the
-        // real one a human sees — this is a standard "present in the DOM,
-        // invisible on screen" pattern (same technique as screen-reader-only
-        // text), not different content shown to bots vs. people.
+        // Homepage badges are real, visible HTML for both visitors and
+        // directory verifiers. React moves the same items into the footer.
         if (
           (url.hostname === "bookrightly.co.uk" || url.hostname === "www.bookrightly.co.uk") &&
           url.pathname === "/" &&
@@ -3820,6 +3820,7 @@ async function handleFetch(request, env, ctx, nonce) {
           // purpose since orgLdJson already covers it for this page.
           const homeFaqLdJson = buildLandingFaqLdJson("/");
           const homePage = LANDING_PAGES["/"];
+          const directoryBadgeItems = await getDirectoryBadgeItems();
           const rewriter = new HTMLRewriter()
             .on("title", { element: el => el.setInnerContent(homePage.title) })
             .on('meta[name="description"]', { element: el => el.setAttribute("content", homePage.metaDescription) })
@@ -3828,12 +3829,7 @@ async function handleFetch(request, env, ctx, nonce) {
             .on('meta[name="twitter:title"]', { element: el => el.setAttribute("content", homePage.title) })
             .on('meta[name="twitter:description"]', { element: el => el.setAttribute("content", homePage.metaDescription) })
             .on("#root", { element: el => el.append(buildLandingBodyHtml("/"), { html: true }) })
-            .on("body", {
-              element: el => el.append(
-                `<a href="https://launchpadly.co/startup/bookrightly?ref=badge" target="_blank" rel="noopener noreferrer" data-launchpadly-badge="bookrightly" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;">Proudly listed on Launchpadly Startup Directory</a>`,
-                { html: true },
-              ),
-            })
+            .on("body", { element: el => el.append(badgeFallbackHtml(directoryBadgeItems), { html: true }) })
             .on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${orgLdJson}</script>`, { html: true }) });
           if (homeFaqLdJson) rewriter.on("head", { element: el => el.append(`<script type="application/ld+json" nonce="${nonce}">${homeFaqLdJson}</script>`, { html: true }) });
           return rewriter.transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers: noCache }));

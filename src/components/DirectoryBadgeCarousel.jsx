@@ -34,8 +34,7 @@ function SourceForgeBadge() {
   );
 }
 
-// Only published listings belong here. Add new directory badges after the
-// listing is approved, using the directory's issued badge and destination.
+// The server supplies sanitised directory embeds and working destinations.
 export default function DirectoryBadgeCarousel() {
   const trackRef = useRef(null);
   const [serverItems, setServerItems] = useState(() =>
@@ -70,6 +69,25 @@ export default function DirectoryBadgeCarousel() {
     };
   }, [serverItems]);
 
+  useEffect(() => {
+    const track = trackRef.current;
+    const showImageFallback = (image) => {
+      if (image.tagName !== "IMG" || !track.contains(image)) return;
+      const link = image.closest("a");
+      if (!link) return;
+      const label = document.createElement("span");
+      label.textContent = image.alt || link.hostname;
+      image.replaceWith(label);
+    };
+    const onError = (event) => showImageFallback(event.target);
+    track.addEventListener("error", onError, true);
+    // Images can fail before React mounts or before this listener is installed.
+    track.querySelectorAll("img").forEach(image => {
+      if (image.complete && image.naturalWidth === 0) showImageFallback(image);
+    });
+    return () => track.removeEventListener("error", onError, true);
+  }, [serverItems]);
+
   const move = (direction) => {
     const track = trackRef.current;
     track.scrollBy({ left: direction * track.clientWidth, behavior: reduceMotion ? "auto" : "smooth" });
@@ -77,7 +95,8 @@ export default function DirectoryBadgeCarousel() {
   const cardStyles = {
     flex: "0 0 248px", minWidth: 0, scrollSnapAlign: "start",
     border: "1px solid #ffffff26", borderRadius: 2, p: 2,
-    display: "flex", flexDirection: "column", justifyContent: "center", gap: 1.5,
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    textAlign: "center", gap: 1.5,
     minHeight: 112, bgcolor: "#ffffff06",
     "& a:focus-visible": { outline: "2px solid #93C5FD", outlineOffset: 4 },
   };

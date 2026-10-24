@@ -15,11 +15,36 @@ export function cleanBadgeStyle(value) {
   }).filter(Boolean).join(";");
 }
 
+// Exact provider-issued URLs that currently return 404. Keep the directory
+// link usable until the provider publishes a listing with a working URL.
+const UNPUBLISHED_LINKS = new Set([
+  "https://postyourstartup.co/startup/bookrightly",
+  "https://bunny.directory/product/bookrightly",
+  "https://findly.tools/bookrightly",
+  "https://nicklaunches.com/products/bookrightly/",
+  "https://easydofollow.dev/productivity/bookrightly",
+  "https://easylaunch.dev/productivity/bookrightly.co",
+  "https://startupbenchmarks.com/product/bookrightly.co",
+]);
+const UNAVAILABLE_IMAGES = new Map([
+  ["https://postyourstartup.co/api/badge/bookrightly", "PostYourStartup"],
+  ["https://bunny.directory/product/bookrightly/badge.svg", "Bunny Directory"],
+]);
+
 export function sanitizeBadgeElement(element) {
   if (!TAGS.has(element.tagName.toLowerCase())) { element.remove(); return; }
+  if (element.tagName.toLowerCase() === "img") {
+    const src = [...element.attributes].find(([name]) => name.toLowerCase() === "src")?.[1];
+    const label = UNAVAILABLE_IMAGES.get(src?.split("?")[0]);
+    if (label) { element.replace(label); return; }
+  }
   for (const [name, value] of [...element.attributes]) {
     const key = name.toLowerCase();
-    if (key === "style") {
+    if (key === "href" && UNPUBLISHED_LINKS.has(value.trim().replace(/^http:/i, "https:").split("?")[0])) {
+      element.setAttribute(name, new URL(value.replace(/^http:/i, "https:")).origin + "/");
+    } else if (key === "src" && value === "https://nextbigproduct.com/assets/badge/copythathq.svg?theme=light") {
+      element.setAttribute(name, "https://nextbigproduct.com/assets/badge/bookrightly.svg?theme=light");
+    } else if (key === "style") {
       element.setAttribute(name, cleanBadgeStyle(value));
     } else if ((key === "href" || key === "src") && /^http:\/\//i.test(value.trim())) {
       // Some issued embeds still use HTTP. Keep badges usable on HTTPS pages.
@@ -60,6 +85,12 @@ export async function readBadgeFeed(response) {
 }
 
 // These listings already exist, or have accepted the badge commitment.
+// Twelve Tools is deliberately NOT hardcoded here even though it needed a
+// manual badge to pass their 24h verification check (tried plain link, then
+// their badge2-dark.svg — both "not detected" by their checker despite
+// being confirmed live via direct fetch each time) — the live Submitator
+// feed below started serving their own official badge0-white.svg entry on
+// its own, so a local copy here would just duplicate it in the footer.
 const LOCAL_ITEMS = `
 <li><a href="https://launchpadly.co/startup/bookrightly?ref=badge" target="_blank" rel="noopener noreferrer" data-launchpadly-badge="bookrightly">Proudly listed on Launchpadly Startup Directory</a></li>
 <li><a href="https://sourceforge.net/software/product/Bookrightly/" target="_blank" rel="noopener noreferrer"><img src="https://b.sf-syn.com/badge_img/4133962/light-default?variant_id=sf" alt="Bookrightly Reviews on SourceForge" width="125"></a></li>

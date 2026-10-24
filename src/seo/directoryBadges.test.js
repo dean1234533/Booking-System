@@ -5,6 +5,7 @@ function element(tagName, attributes) {
   const attrs = new Map(Object.entries(attributes));
   return { tagName, attributes: [...attrs], attrs, removed: false,
     remove() { this.removed = true; },
+    replace(text) { this.replacement = text; },
     removeAttribute(name) { attrs.delete(name); },
     setAttribute(name, value) { attrs.set(name, value); },
   };
@@ -25,6 +26,24 @@ describe("directory badge feed boundaries", () => {
     const oldEmbed = element("img", { src: "http://easydofollow.dev/badge/easydofollow-badge-light.svg" });
     sanitizeBadgeElement(oldEmbed);
     expect(oldEmbed.attrs.get("src")).toBe("https://easydofollow.dev/badge/easydofollow-badge-light.svg");
+  });
+
+  it("repairs unavailable provider assets and unpublished listing URLs", () => {
+    const link = element("a", { href: "https://findly.tools/bookrightly?utm_source=bookrightly" });
+    sanitizeBadgeElement(link);
+    expect(link.attrs.get("href")).toBe("https://findly.tools/");
+    const oldLink = element("a", { href: "http://easydofollow.dev/productivity/bookrightly" });
+    sanitizeBadgeElement(oldLink);
+    expect(oldLink.attrs.get("href")).toBe("https://easydofollow.dev/");
+    const futureListing = element("a", { href: "https://findly.tools/bookrightly-new" });
+    sanitizeBadgeElement(futureListing);
+    expect(futureListing.attrs.get("href")).toBe("https://findly.tools/bookrightly-new");
+    const missingImage = element("img", { src: "https://bunny.directory/product/bookrightly/badge.svg?theme=light" });
+    sanitizeBadgeElement(missingImage);
+    expect(missingImage.replacement).toBe("Bunny Directory");
+    const wrongProduct = element("img", { src: "https://nextbigproduct.com/assets/badge/copythathq.svg?theme=light" });
+    sanitizeBadgeElement(wrongProduct);
+    expect(wrongProduct.attrs.get("src")).toContain("/bookrightly.svg");
   });
 
   it("removes active embeds and CSS that could obscure the page", () => {

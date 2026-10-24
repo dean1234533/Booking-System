@@ -96,7 +96,8 @@ const LOCAL_ITEMS = `
 <li><a href="https://sourceforge.net/software/product/Bookrightly/" target="_blank" rel="noopener noreferrer"><img src="https://b.sf-syn.com/badge_img/4133962/light-default?variant_id=sf" alt="Bookrightly Reviews on SourceForge" width="125"></a></li>
 <li><a href="https://neeed.directory" target="_blank" rel="noopener noreferrer"><img src="https://neeed.directory/badges/neeed-badge-light.svg" alt="Featured on neeed.directory" width="139"></a></li>
 <li><a href="https://lift-off.sh" target="_blank" rel="noopener noreferrer" title="LiftOff launch badge"><img src="https://lift-off.sh/images/badges/badgeLaunchedDark.webp" alt="LiftOff launch badge" width="200"></a></li>
-<li><a href="https://huzzler.so/products/Mx5XZHP28v/bookrightly?utm_source=huzzler_product_website&amp;utm_medium=badge&amp;utm_campaign=free_listing" target="_blank" rel="noopener noreferrer"><img src="https://huzzler.so/assets/images/embeddable-badges/featured.png" alt="Huzzler Embed Badge" width="159" height="55"></a></li>`;
+<li><a href="https://huzzler.so/products/Mx5XZHP28v/bookrightly?utm_source=huzzler_product_website&amp;utm_medium=badge&amp;utm_campaign=free_listing" target="_blank" rel="noopener noreferrer"><img src="https://huzzler.so/assets/images/embeddable-badges/featured.png" alt="Huzzler Embed Badge" width="159" height="55"></a></li>
+<li><a href="https://apprater.net/a/bookrightly" target="_blank" rel="noopener noreferrer"><img src="https://apprater.net/badge/bookrightly.svg" alt="Bookrightly on AppRater" height="40" loading="lazy"></a></li>`;
 
 export async function getDirectoryBadgeItems() {
   try {

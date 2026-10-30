@@ -186,6 +186,15 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == barberId;
       }
 
+      // ── Notification feed — written by Cloud Functions, trainer reads/marks read ──
+      match /notifications/{notifId} {
+        allow read: if request.auth != null && request.auth.uid == barberId;
+        allow update: if request.auth != null && request.auth.uid == barberId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow delete: if request.auth != null && request.auth.uid == barberId;
+        allow create: if false;
+      }
+
       // ── Automation schedules + sent history — owner only ───────────────────
       match /automationSchedules/{scheduleId} {
         allow read, write: if request.auth != null && request.auth.uid == barberId;

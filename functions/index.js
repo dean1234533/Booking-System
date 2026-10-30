@@ -10,6 +10,9 @@ const nodemailer = require("nodemailer");
 
 admin.initializeApp();
 
+// Firestore-triggered notifications (admin + trainer)
+Object.assign(exports, require("./notifications"));
+
 const CF_API_TOKEN = defineSecret("API_TOKEN");
 const CF_ZONE_ID = defineSecret("ZONE_ID");
 const STRIPE_SECRET = defineSecret("STRIPE_SECRET_KEY");

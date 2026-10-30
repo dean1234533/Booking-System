@@ -522,6 +522,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
       <DashboardHeader
         profile={profile}
+        uid={barber?.uid}
         profilePreview={profilePreview}
         brandColor={brandColor}
         uploading={uploading}

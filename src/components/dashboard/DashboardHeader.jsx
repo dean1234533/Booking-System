@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Avatar, Typography, IconButton, Button, CircularProgress, Tooltip, Stack } from "@mui/material";
+import NotificationBell from "./NotificationBell";
 import { Logout as LogoutIcon, Save as SaveIcon } from "@mui/icons-material";
 
 const SERIF = "'Playfair Display', serif";
@@ -13,7 +14,7 @@ function contrastColor(hex) {
 }
 
 export default function DashboardHeader({
-  profile, setProfile, profilePreview, brandColor, uploading, handleLogout, handleSaveProfile
+  profile, setProfile, uid, profilePreview, brandColor, uploading, handleLogout, handleSaveProfile
 }) {
   const saveTextColor = contrastColor(brandColor);
 
@@ -114,6 +115,7 @@ export default function DashboardHeader({
 
         {/* ── Right: logout + save ── */}
         <Box sx={{ display: "flex", gap: { xs: 0.75, sm: 1 }, alignItems: "center" }}>
+          <NotificationBell uid={uid} brandColor={brandColor} />
           <IconButton
             onClick={handleLogout}
             size="small"

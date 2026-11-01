@@ -809,4 +809,74 @@ export const BLOG_POSTS = [
       },
     ],
   },
+  {
+    slug: "get-your-barbershop-found-on-google",
+    title: "How to Get Your Barbershop or Salon Found on Google (Without an SEO Agency)",
+    description: "A practical, jargon-free checklist for UK barbers and salon owners to show up when locals search for a haircut near them — Google Business Profile, your booking link, reviews and a few on-page basics.",
+    date: "2026-11-01",
+    readTime: "5 min",
+    category: "Marketing",
+    content: [
+      {
+        type: "intro",
+        text: "Most new clients don't find a barber through an ad. They type 'barber near me' or 'hair salon [town]' into Google, look at the first few results, and book whoever looks open, trusted and easy to book. You don't need an agency to be one of them — you need a handful of basics done properly.",
+      },
+      {
+        type: "h2",
+        text: "1. Claim and fill in your Google Business Profile",
+      },
+      {
+        type: "p",
+        text: "This is the single biggest lever for a local business. Add your exact address and opening hours, pick the right primary category (Barber shop, Hair salon), upload real photos of your work and your chair, and list your services with prices. Keep your hours accurate, including bank holidays — wrong hours are the fastest way to lose a client's trust.",
+      },
+      {
+        type: "h2",
+        text: "2. Put your booking link on your profile",
+      },
+      {
+        type: "p",
+        text: "Add your booking page as the profile's booking and website link, and use the same link in your Instagram bio. The fewer steps between 'I like this barber' and 'I've booked', the more of those searches turn into appointments.",
+      },
+      {
+        type: "h2",
+        text: "3. Ask every happy client for a review",
+      },
+      {
+        type: "p",
+        text: "Reviews are what push you above the shop down the road. Send the review link in your post-appointment message, and reply to every review — good or bad — in a calm, professional tone. A steady trickle of recent reviews beats a burst of old ones.",
+      },
+      {
+        type: "h2",
+        text: "4. Keep your name, address and phone number identical everywhere",
+      },
+      {
+        type: "p",
+        text: "Your business name, address and phone number should read exactly the same on Google, Instagram, Facebook, your website and any directory listing. Inconsistencies make it harder for Google to be confident which business is yours.",
+      },
+      {
+        type: "h2",
+        text: "5. Make your website say what you do and where",
+      },
+      {
+        type: "p",
+        text: "A page title like 'Barber in [Town] — Skin Fades, Beard Trims, Kids Cuts' tells both people and Google what you offer. Put your services, prices, area and a clear booking button on the page, and make sure it loads quickly on a phone — that's where most of your searches come from.",
+      },
+      {
+        type: "p-html",
+        html: "If you'd like a plain-English walkthrough of the on-page side — titles, descriptions, headings and what to check first — <a href=\"https://seosmart.app/?utm_source=bookrightly.co.uk&amp;utm_medium=referral\" target=\"_blank\" rel=\"noopener\">seosmart's SEO tools and guides</a> are a useful place to start, and free to try before you commit to anything.",
+      },
+      {
+        type: "h2",
+        text: "6. Be consistent, not perfect",
+      },
+      {
+        type: "p",
+        text: "Post fresh photos, answer reviews and keep your hours up to date. Local search rewards businesses that look alive. Twenty minutes a week is plenty.",
+      },
+      {
+        type: "cta",
+        text: "Bookrightly gives every barber, hairdresser and PT a branded booking page you can put straight on your Google Business Profile and Instagram bio — with deposits and reminders built in. Free plan, no time limit.",
+      },
+    ],
+  },
 ];

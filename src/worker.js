@@ -3911,6 +3911,7 @@ async function handleFetch(request, env, ctx, nonce) {
           "free-business-starter-pack-google-directories-search-console": { title: "The Free Business Starter Pack: Google, Directories & Tracking Your Traffic | Bookrightly", desc: "How to set up Google Business Profile, which free directories to list your business on, and how to track your traffic with Google Search Console once you have a custom domain." },
           "cv-guide-barbers-stylists-personal-trainers-2026": { title: "How Barbers, Stylists and Personal Trainers Should Write a CV in 2026 | Bookrightly", desc: "A practical UK CV guide for barbers, stylists and personal trainers, covering measurable results, ATS-friendly formatting, tailoring and cover notes.", author: { name: "RankResume", url: "https://rankresume.io/" } },
           "turning-instagram-comments-into-bookings": { title: "Turning Instagram Comments Into Booked Appointments | Bookrightly", desc: "\"How much for this?\" and \"DM me\" comments are enquiries, not bookings. Here's how to stop losing them between the comment and the calendar." },
+          "get-your-barbershop-found-on-google": { title: "How to Get Your Barbershop or Salon Found on Google | Bookrightly", desc: "A practical, jargon-free checklist for UK barbers and salon owners to show up when locals search for a haircut near them." },
           "add-online-booking-to-existing-website-without-rebuilding": { title: "You Already Have a Website — Add Booking Without Rebuilding It | Bookrightly", desc: "Rebuilding a WordPress or Wix site just to get booking software isn't necessary. Here's how to add live booking, and a live queue, to a website you already have." },
         };
         if (url.pathname.startsWith("/blog/") && response.headers.get("content-type")?.includes("text/html")) {
@@ -4042,6 +4043,23 @@ async function handleFetch(request, env, ctx, nonce) {
                   `<h3>Deposits handle the money side — the process still matters</h3>` +
                   `<p>A deposit fixes the incentive problem, but it doesn't fix a confirmation message clients can't find or a reminder sent too close to your cancellation deadline to actually act on. For the operational side — how to word a booking confirmation, when exactly to time a reminder against your notice period, and how to actually measure your no-show rate before and after you change anything — <a href="https://opsmavix.com/blog/how-to-reduce-salon-no-shows/" target="_blank" rel="noopener">OpsMavix's guide to reducing salon no-shows</a> covers it well, with message templates you can adapt directly.</p>` +
                   `</div>`,
+                  { html: true },
+                ),
+              });
+            }
+            // Mirror the real article into the raw HTML so no-JS checkers
+            // (link-exchange verifiers, crawlers) can read it, generated from
+            // posts.js so it can never drift from what React renders.
+            if (slug === "get-your-barbershop-found-on-google") {
+              const esc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+              const post = BLOG_POSTS.find(p => p.slug === slug);
+              const body = (post?.content || []).map(b =>
+                b.type === "h2" ? `<h2>${esc(b.text)}</h2>`
+                : b.type === "p-html" ? `<p>${b.html}</p>`
+                : `<p>${esc(b.text)}</p>`).join("");
+              rewriter.on("body", {
+                element: el => el.append(
+                  `<div style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);"><h1>${esc(post?.title || "")}</h1>${body}</div>`,
                   { html: true },
                 ),
               });

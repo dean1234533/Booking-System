@@ -9,7 +9,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const DEFAULT_SLUGS = ["cut-admin-barbershop-salon-ai-tools"];
+const DEFAULT_SLUGS = ["cut-admin-barbershop-salon-ai-tools", "get-your-barbershop-found-on-google"];
 const slugs = process.argv.slice(2).length ? process.argv.slice(2) : DEFAULT_SLUGS;
 const { BLOG_POSTS } = await import(pathToFileURL(`${root}/src/pages/blog/posts.js`).href);
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

@@ -3912,6 +3912,7 @@ async function handleFetch(request, env, ctx, nonce) {
           "cv-guide-barbers-stylists-personal-trainers-2026": { title: "How Barbers, Stylists and Personal Trainers Should Write a CV in 2026 | Bookrightly", desc: "A practical UK CV guide for barbers, stylists and personal trainers, covering measurable results, ATS-friendly formatting, tailoring and cover notes.", author: { name: "RankResume", url: "https://rankresume.io/" } },
           "turning-instagram-comments-into-bookings": { title: "Turning Instagram Comments Into Booked Appointments | Bookrightly", desc: "\"How much for this?\" and \"DM me\" comments are enquiries, not bookings. Here's how to stop losing them between the comment and the calendar." },
           "get-your-barbershop-found-on-google": { title: "How to Get Your Barbershop or Salon Found on Google | Bookrightly", desc: "A practical, jargon-free checklist for UK barbers and salon owners to show up when locals search for a haircut near them." },
+          "cut-admin-barbershop-salon-ai-tools": { title: "Too Many Tools, Not Enough Chair Time: Cut Admin With AI | Bookrightly", desc: "Booking, reminders, social posts and follow-ups — here's a practical way for barbers and salon owners to cut the admin, and where AI tools genuinely help." },
           "add-online-booking-to-existing-website-without-rebuilding": { title: "You Already Have a Website — Add Booking Without Rebuilding It | Bookrightly", desc: "Rebuilding a WordPress or Wix site just to get booking software isn't necessary. Here's how to add live booking, and a live queue, to a website you already have." },
         };
         if (url.pathname.startsWith("/blog/") && response.headers.get("content-type")?.includes("text/html")) {
@@ -4050,7 +4051,7 @@ async function handleFetch(request, env, ctx, nonce) {
             // Mirror the real article into the raw HTML so no-JS checkers
             // (link-exchange verifiers, crawlers) can read it, generated from
             // posts.js so it can never drift from what React renders.
-            if (slug === "get-your-barbershop-found-on-google") {
+            if (slug === "get-your-barbershop-found-on-google" || slug === "cut-admin-barbershop-salon-ai-tools") {
               const esc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
               const post = BLOG_POSTS.find(p => p.slug === slug);
               const body = (post?.content || []).map(b =>

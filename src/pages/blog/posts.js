@@ -879,4 +879,66 @@ export const BLOG_POSTS = [
       },
     ],
   },
+  {
+    slug: "cut-admin-barbershop-salon-ai-tools",
+    title: "Too Many Tools, Not Enough Chair Time: How Barbers and Salon Owners Can Cut Admin With AI",
+    description: "Booking, reminders, social posts, follow-ups, invoices — most barbers and salon owners juggle a different app for each. Here's a practical way to cut the admin, and where AI tools genuinely help.",
+    date: "2026-11-05",
+    readTime: "5 min",
+    category: "Marketing",
+    content: [
+      {
+        type: "intro",
+        text: "Ask a barber or salon owner what takes up their evenings and it's rarely the cutting. It's the admin around it: replying to enquiries, chasing deposits, posting on Instagram, following up with clients who haven't rebooked, and keeping track of it all across five or six different apps. The goal isn't to automate everything — it's to give yourself the hours back for the work clients actually pay you for.",
+      },
+      {
+        type: "h2",
+        text: "1. Count the tools you actually use",
+      },
+      {
+        type: "p",
+        text: "Write down every app and subscription you touch in a normal week: booking, messaging, social scheduling, email, payments, spreadsheets. Most small businesses find they're paying for overlapping tools, and copying the same information between them by hand. That copy-and-paste time is the first thing to cut.",
+      },
+      {
+        type: "h2",
+        text: "2. Let your booking page do the repetitive work",
+      },
+      {
+        type: "p",
+        text: "A good booking page answers the questions you get asked every day — services, prices, availability, how to pay a deposit — without you typing a reply. Automatic reminders and deposits cut no-shows, and a live queue or waitlist fills the gaps when someone cancels. This is the highest-value automation for any appointment business, and it doesn't need AI at all.",
+      },
+      {
+        type: "h2",
+        text: "3. Use AI for first drafts, not final decisions",
+      },
+      {
+        type: "p",
+        text: "Where AI tools genuinely help a small business is the blank page: a first draft of a caption, a reply to an enquiry, a follow-up message to a client who hasn't been in for eight weeks. You still read it, change it to sound like you, and press send. If a tool wants to publish things on your behalf without you seeing them first, be cautious — your name is on every post.",
+      },
+      {
+        type: "h2",
+        text: "4. Keep your own voice",
+      },
+      {
+        type: "p",
+        text: "Clients book a barber they feel they know. Whatever tool you use, make sure the finished message still sounds like you — your phrasing, your local references, your photos of your actual work. Generic copy is easy to spot and easy to scroll past.",
+      },
+      {
+        type: "p-html",
+        html: "If you'd like one place to handle sales, marketing and operations tasks rather than a separate app for each, <a href=\"https://wysera.ai/?utm_source=bookrightly.co.uk&amp;utm_medium=referral\" target=\"_blank\" rel=\"noopener\">Wysera</a> is an AI platform built for small businesses that says it replaces several of those tools with one subscription, and that nothing ships until you approve it. It's worth a look to see whether that way of working suits your shop.",
+      },
+      {
+        type: "h2",
+        text: "5. Review once a month",
+      },
+      {
+        type: "p",
+        text: "Every month, check what you're still paying for and what you actually used. Cancel what you didn't, and note how many admin hours you saved. If a tool isn't giving you time back, it's costing you money.",
+      },
+      {
+        type: "cta",
+        text: "Bookrightly gives every barber, hairdresser and PT a branded booking page with deposits, reminders and a live queue built in — so the repetitive admin handles itself. Free plan, no time limit.",
+      },
+    ],
+  },
 ];

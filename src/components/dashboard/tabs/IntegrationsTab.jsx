@@ -9,6 +9,7 @@ import SyncIcon           from "@mui/icons-material/Sync";
 import CodeIcon           from "@mui/icons-material/Code";
 import ContentCopyIcon    from "@mui/icons-material/ContentCopy";
 import DeleteIcon         from "@mui/icons-material/DeleteOutline";
+import DownloadIcon       from "@mui/icons-material/Download";
 import {
   initiateOutlookConnect,
   getOutlookTokens,
@@ -19,7 +20,7 @@ import {
 import { collection, getDocs, doc, updateDoc, query, where } from "firebase/firestore";
 import { db } from "../../../firebase/config";
 
-export default function IntegrationsTab({ barber, brandColor = "#2563EB", isBarber = false, plan = "full", handleDeleteProfile }) {
+export default function IntegrationsTab({ barber, brandColor = "#2563EB", isBarber = false, plan = "full", handleDeleteProfile, handleExportData }) {
   const uid = barber?.uid;
   const [outlook,    setOutlook]    = useState(null);
   const [loading,    setLoading]    = useState(true);
@@ -268,6 +269,17 @@ export default function IntegrationsTab({ barber, brandColor = "#2563EB", isBarb
           way to reach it. */}
       {plan === "widget" && handleDeleteProfile && (
         <>
+          <Divider sx={{ my: 3 }} />
+          {handleExportData && (
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={handleExportData}
+              sx={{ mb: 3 }}
+            >
+              Export My Data
+            </Button>
+          )}
           <Divider sx={{ my: 3 }} />
           <Typography variant="subtitle2" color="error" fontWeight={700} gutterBottom>
             Danger Zone

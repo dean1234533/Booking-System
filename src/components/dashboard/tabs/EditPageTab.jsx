@@ -16,6 +16,7 @@ import {
 import {
   AccessTime as AccessTimeIcon,
   Delete as DeleteIcon,
+  Download as DownloadIcon,
   Instagram as InstagramIcon,
   Facebook as FacebookIcon,
   AddCircle as AddCircleIcon,
@@ -2105,6 +2106,7 @@ export default function EditPageTab({
   setProfileFile,
   setProfilePreview,
   handleDeleteProfile,
+  handleExportData,
   handleImageChange,
   businessType,
 }) {
@@ -2528,6 +2530,25 @@ export default function EditPageTab({
             </Grid>
           </Grid>
         </Section>
+      )}
+
+      {/* ── Your data ── */}
+      <Divider sx={{ my: 4 }} />
+      <Typography variant="subtitle2" gutterBottom fontWeight={700}>
+        Your Data
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        Download a copy of your profile, website content and client information at any time — as JSON, under UK GDPR data portability.
+      </Typography>
+      {handleExportData && (
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportData}
+          sx={{ mb: 3 }}
+        >
+          Export My Data
+        </Button>
       )}
 
       {/* ── Danger Zone ── */}

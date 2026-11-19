@@ -309,6 +309,59 @@ function YesNo({ value, onChange, brand }) {
   );
 }
 
+// ── PIN gate ─────────────────────────────────────────────────────────────────
+// The portal link alone is guessable/forwardable with nothing else required —
+// this asks for the 4-digit PIN the trainer shares separately (e.g. by text)
+// before showing any plan content. Checked client-side against the already-
+// fetched client doc, so it's a privacy deterrent against a stray/forwarded
+// link, not cryptographic access control — the data itself is still reached
+// the same (public-read) way the rest of this portal's links already work.
+function PinGate({ client, trainer, onUnlock }) {
+  const [pin, setPin]     = useState("");
+  const [error, setError] = useState(false);
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (pin.trim() === String(client.portalPin)) onUnlock();
+    else { setError(true); setPin(""); }
+  };
+
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#0d0d0d", display: "flex", alignItems: "center", justifyContent: "center", p: 3 }}>
+      <Box component="form" onSubmit={submit} sx={{ width: "100%", maxWidth: 340, textAlign: "center" }}>
+        {trainer?.logoUrl && (
+          <Box component="img" src={trainer.logoUrl} alt="" sx={{ height: 44, mb: 2, mx: "auto", display: "block", borderRadius: 1.5 }} />
+        )}
+        <Typography sx={{ color: "#fff", fontFamily: SANS, fontWeight: 800, fontSize: "1.1rem", mb: 0.5 }}>
+          Hi {client.customerName?.split(" ")[0] || "there"}
+        </Typography>
+        <Typography sx={{ color: "rgba(255,255,255,0.45)", fontFamily: SANS, fontSize: ".85rem", mb: 3 }}>
+          Enter the PIN {trainer?.businessName || "your trainer"} sent you to open your portal.
+        </Typography>
+        <TextField
+          autoFocus
+          value={pin}
+          onChange={(e) => { setPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setError(false); }}
+          placeholder="••••"
+          inputProps={{ inputMode: "numeric", maxLength: 4, style: { textAlign: "center", letterSpacing: "0.5em", fontSize: "1.4rem", color: "#fff" } }}
+          error={error}
+          helperText={error ? "That PIN doesn't match — try again." : " "}
+          FormHelperTextProps={{ sx: { color: error ? "#ff6b6b" : "transparent", textAlign: "center" } }}
+          sx={{
+            mb: 2,
+            "& .MuiOutlinedInput-root": { bgcolor: "#161616" },
+            "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.15)" },
+          }}
+        />
+        <Button type="submit" fullWidth variant="contained" disabled={pin.length !== 4}
+          sx={{ bgcolor: "#2563EB", fontWeight: 800, py: 1.2, "&:hover": { bgcolor: "#1d4fd0" } }}>
+          Unlock my portal
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
 // ── Main portal ───────────────────────────────────────────────────────────────
 export default function ClientPortal() {
   const { trainerId, clientId } = useParams();
@@ -320,6 +373,9 @@ export default function ClientPortal() {
   const [nutritionPlan,  setNutritionPlan]  = useState(null);
   const [section,        setSection]        = useState("home");
   const [mobileMore,     setMobileMore]     = useState(null);
+  const [unlocked,       setUnlocked]       = useState(() => {
+    try { return sessionStorage.getItem(`bk_portal_unlocked_${clientId}`) === "1"; } catch { return false; }
+  });
 
   // Progress
   const [progressLog,  setProgressLog]  = useState([]);
@@ -583,6 +639,19 @@ export default function ClientPortal() {
       <Box sx={{ minHeight: "100vh", bgcolor: "#0d0d0d", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Typography sx={{ color: "rgba(255,255,255,0.4)", fontFamily: SANS }}>Portal not found. Check your link.</Typography>
       </Box>
+    );
+  }
+
+  if (client.portalPin && !unlocked) {
+    return (
+      <PinGate
+        client={client}
+        trainer={trainer}
+        onUnlock={() => {
+          try { sessionStorage.setItem(`bk_portal_unlocked_${clientId}`, "1"); } catch {}
+          setUnlocked(true);
+        }}
+      />
     );
   }
 

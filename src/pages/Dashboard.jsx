@@ -34,7 +34,7 @@ import { useNavigate }  from "react-router-dom";
 
 import {
   updateBarber, addSlot, getProfessionalSlots,
-  deleteSlot, uploadBarberImage,
+  deleteSlot, uploadBarberImage, exportAccountData,
 } from "../firebase/firestore";
 import { deleteBarberAccountData } from "../utils/deleteHelper";
 import { getBarberEmail, getStoredFee } from "../utils/bookingHelpers";
@@ -346,6 +346,25 @@ export default function Dashboard({ tenant: initialTenant = null }) {
       navigate("/");
     } catch (err) {
       setToast("Failed to delete profile: " + err.message);
+    } finally { setDataLoading(false); }
+  };
+
+  // UK GDPR data portability — self-serve alternative to emailing
+  // privacy@bookrightly.co.uk and waiting on a manual response.
+  const handleExportData = async () => {
+    try {
+      setDataLoading(true);
+      const data = await exportAccountData(barber.uid);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bookrightly-export-${barber.uid}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setToast("Your data has been downloaded.");
+    } catch (err) {
+      setToast("Failed to export data: " + err.message);
     } finally { setDataLoading(false); }
   };
 
@@ -1269,6 +1288,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
             profilePreview={profilePreview}
             setProfileFile={setProfileFile} setProfilePreview={setProfilePreview}
             handleDeleteProfile={handleDeleteProfile}
+            handleExportData={handleExportData}
             handleImageChange={handleImageChange}
             businessType={profile.businessType}
           />
@@ -1282,6 +1302,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
               logoPreview={logoPreview} setLogoFile={setLogoFile} setLogoPreview={setLogoPreview}
               handleImageChange={handleImageChange}
               handleDeleteProfile={handleDeleteProfile}
+              handleExportData={handleExportData}
             />
           </TabPanel>
         )}
@@ -1476,7 +1497,7 @@ export default function Dashboard({ tenant: initialTenant = null }) {
 
         {/* Integrations — all business types */}
         <TabPanel value={tab} index={tabIdx("integrations")}>
-          <IntegrationsTab barber={barber} brandColor={brandColor} isBarber={isBarber} plan={profile.plan || "full"} handleDeleteProfile={handleDeleteProfile} />
+          <IntegrationsTab barber={barber} brandColor={brandColor} isBarber={isBarber} plan={profile.plan || "full"} handleDeleteProfile={handleDeleteProfile} handleExportData={handleExportData} />
         </TabPanel>
 
         </Box>

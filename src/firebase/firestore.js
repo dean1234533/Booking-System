@@ -631,6 +631,7 @@ export const getOrCreateClient = async (trainerId, bookingId, clientData) => {
       createdAt: new Date().toISOString(),
       lastSessionDate: null,
       totalSessions: 0,
+      portalPin: generatePortalPin(),
       ...clientData,
     };
 
@@ -678,6 +679,11 @@ export const getClientsList = async (trainerId) => {
   }
 };
 
+// A 4-digit PIN a client enters once to unlock their portal in this browser
+// (see ClientPortal.jsx) — the portal link alone is otherwise guessable/
+// forwardable with nothing else required.
+const generatePortalPin = () => String(Math.floor(1000 + Math.random() * 9000));
+
 // Manually create a client (not tied to a booking) — for adding clients by hand
 export const createClient = async (trainerId, clientData) => {
   if (!trainerId) throw new Error("Missing trainerId");
@@ -692,6 +698,7 @@ export const createClient = async (trainerId, clientData) => {
       lastSessionDate: null,
       totalSessions: 0,
       source: "manual",
+      portalPin: generatePortalPin(),
     };
     const docRef = await addDoc(clientsRef, newClientData);
     return { id: docRef.id, ...newClientData };
@@ -699,6 +706,14 @@ export const createClient = async (trainerId, clientData) => {
     console.error("Failed to create client:", error);
     throw error;
   }
+};
+
+// Issue a client a new portal PIN (first-time setup, or after it's been shared too widely).
+export const regeneratePortalPin = async (trainerId, clientId) => {
+  if (!trainerId || !clientId) throw new Error("Missing trainerId or clientId");
+  const pin = generatePortalPin();
+  await setDoc(doc(db, "barbers", trainerId, "clients", clientId), { portalPin: pin }, { merge: true });
+  return pin;
 };
 
 // Delete a client record
@@ -1100,6 +1115,69 @@ export const recordAutomationSend = async (trainerId, scheduleId, sendData) => {
     throw error;
   }
 };
+// ── Account data export (client info + website content, UK GDPR portability) ──
+// Self-serve alternative to the manual privacy@bookrightly.co.uk request —
+// walks every subcollection an owner can legitimately read for their own
+// account and returns one plain JSON-serialisable object. Best-effort per
+// subcollection: a business type that never used a given subcollection (e.g.
+// a barber has no "quotes") just comes back empty rather than failing the
+// whole export.
+const EXPORT_SUBCOLLECTIONS = [
+  "reviews", "ptSlots", "enquiries", "quotes", "invoices",
+  "workoutPlans", "checkInSubmissions", "parQSubmissions", "foodDiarySubmissions",
+  "automationSchedules",
+];
+const CLIENT_SUBCOLLECTIONS = ["messages", "activities", "progressEntries", "nutritionPlans"];
+
+export async function exportAccountData(uid) {
+  if (!uid) throw new Error("Missing uid");
+
+  const profileSnap = await getDoc(doc(db, "barbers", uid));
+  const profile = profileSnap.exists() ? { id: profileSnap.id, ...profileSnap.data() } : null;
+
+  const data = { exportedAt: new Date().toISOString(), uid, profile };
+
+  for (const name of EXPORT_SUBCOLLECTIONS) {
+    try {
+      const snap = await getDocs(collection(db, "barbers", uid, name));
+      data[name] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch {
+      data[name] = []; // Not used by this business type, or not readable — skip rather than fail.
+    }
+  }
+
+  // Clients are nested, each with their own small subcollections.
+  try {
+    const clientsSnap = await getDocs(collection(db, "barbers", uid, "clients"));
+    data.clients = await Promise.all(
+      clientsSnap.docs.map(async (clientDoc) => {
+        const client = { id: clientDoc.id, ...clientDoc.data() };
+        for (const sub of CLIENT_SUBCOLLECTIONS) {
+          try {
+            const subSnap = await getDocs(collection(db, "barbers", uid, "clients", clientDoc.id, sub));
+            client[sub] = subSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          } catch {
+            client[sub] = [];
+          }
+        }
+        return client;
+      })
+    );
+  } catch {
+    data.clients = [];
+  }
+
+  // Top-level slots collection is shared across business types and keyed by barberId, not a subcollection.
+  try {
+    const slotsSnap = await getDocs(query(collection(db, "slots"), where("barberId", "==", uid)));
+    data.slots = slotsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch {
+    data.slots = [];
+  }
+
+  return data;
+}
+
 // ── Notifications ─────────────────────────────────────────────────────────────
 // Writes a notification to the owner's inbox and fires a push (best-effort).
 export async function createNotification(barberId, { type, title, body, data = {} }) {

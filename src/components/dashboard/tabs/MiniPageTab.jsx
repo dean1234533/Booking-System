@@ -1,6 +1,7 @@
 import React from "react";
 import { Paper, Grid, Typography, Box, Avatar, Button, TextField, Divider } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DownloadIcon from "@mui/icons-material/Download";
 
 // The entire "handle booking and the logo upload" dashboard surface for
 // Free-plan accounts (£0, MinimalBookingPage.jsx-adjacent but even
@@ -15,6 +16,7 @@ export default function MiniPageTab({
   logoPreview, setLogoFile, setLogoPreview,
   handleImageChange,
   handleDeleteProfile,
+  handleExportData,
 }) {
   const set = (key, val) => setProfile(p => ({ ...p, [key]: val }));
 
@@ -78,6 +80,18 @@ export default function MiniPageTab({
           />
         </Grid>
       </Grid>
+
+      <Divider sx={{ my: 4 }} />
+      {handleExportData && (
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportData}
+          sx={{ mb: 3 }}
+        >
+          Export My Data
+        </Button>
+      )}
 
       <Divider sx={{ my: 4 }} />
       <Typography variant="subtitle2" color="error" gutterBottom fontWeight={700}>

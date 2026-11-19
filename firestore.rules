@@ -250,9 +250,12 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == barberId;
       }
 
-      // ── Clients (PT feature) — owner only ──────────────────────────────────
+      // ── Clients (PT feature) — public read so the client portal link works
+      //    (ClientPortal.jsx does an unauthenticated read of this exact doc);
+      //    writes stay owner-only so only the trainer edits a client's profile.
       match /clients/{clientId} {
-        allow read, write: if request.auth != null && request.auth.uid == barberId;
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == barberId;
 
         // ── Client messages ───────────────────────────────────────────────────
         match /messages/{messageId} {
@@ -275,10 +278,11 @@ service cloud.firestore {
           allow create, update, delete: if request.auth != null && request.auth.uid == barberId;
         }
 
-        // ── Progress entries — clients write anonymously via client portal ─────
+        // ── Progress entries — clients read their own history and log new
+        //    entries anonymously via the client portal; only the trainer edits/deletes ─
         match /progressEntries/{entryId} {
-          allow create: if true;
-          allow read, update, delete: if request.auth != null && request.auth.uid == barberId;
+          allow read, create: if true;
+          allow update, delete: if request.auth != null && request.auth.uid == barberId;
         }
       }
 

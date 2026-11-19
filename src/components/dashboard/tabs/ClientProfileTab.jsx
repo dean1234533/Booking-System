@@ -13,6 +13,7 @@ import SearchIcon         from "@mui/icons-material/Search";
 import EmailIcon          from "@mui/icons-material/Email";
 import PhoneIcon          from "@mui/icons-material/Phone";
 import LinkIcon           from "@mui/icons-material/Link";
+import LockResetIcon      from "@mui/icons-material/LockReset";
 import CheckIcon          from "@mui/icons-material/Check";
 import AssignmentIcon     from "@mui/icons-material/Assignment";
 import TrendingUpIcon     from "@mui/icons-material/TrendingUp";
@@ -22,7 +23,7 @@ import RestaurantMenuIcon from "@mui/icons-material/RestaurantMenu";
 import PeopleIcon         from "@mui/icons-material/People";
 import {
   getClientsList, createClient, deleteClient,
-  getClientProfile, saveClientProfile,
+  getClientProfile, saveClientProfile, regeneratePortalPin,
 } from "../../../firebase/firestore";
 import {
   collection, getDocs, query, orderBy, limit,
@@ -189,8 +190,9 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
 
   const handleCopyPortalLink = async () => {
     const url = `${SITE_URL}/client-portal/${trainerId}/${selectedId}`;
+    const pinLine = clientProfile?.portalPin ? `\nTheir PIN: ${clientProfile.portalPin}` : "";
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(`${url}${pinLine}`);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2500);
     } catch { prompt("Copy this link:", url); }
@@ -198,9 +200,19 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
 
   const handleWhatsApp = () => {
     if (clientProfile?.customerPhone) {
-      const msg = encodeURIComponent(`Hi ${clientProfile.customerName}, here's your training portal: ${SITE_URL}/client-portal/${trainerId}/${selectedId}`);
+      const pinLine = clientProfile?.portalPin ? ` Your PIN: ${clientProfile.portalPin}` : "";
+      const msg = encodeURIComponent(`Hi ${clientProfile.customerName}, here's your training portal: ${SITE_URL}/client-portal/${trainerId}/${selectedId}.${pinLine}`);
       window.open(`https://wa.me/${clientProfile.customerPhone.replace(/\D/g, "")}?text=${msg}`, "_blank");
     }
+  };
+
+  const handleRegeneratePin = async () => {
+    if (!trainerId || !selectedId) return;
+    try {
+      const pin = await regeneratePortalPin(trainerId, selectedId);
+      setClientProfile(prev => ({ ...prev, portalPin: pin }));
+      setClients(prev => prev.map(c => c.id === selectedId ? { ...c, portalPin: pin } : c));
+    } catch (err) { setError("Failed to issue a new PIN: " + err.message); }
   };
 
   if (!trainerId) return <Box sx={{ p: 2 }}><Alert severity="warning">PT profile not found.</Alert></Box>;
@@ -362,12 +374,18 @@ export default function ClientProfileTab({ barber, profile, brandColor, trainerI
                     {clientProfile.customerPhone && (
                       <Chip icon={<PhoneIcon />} label={clientProfile.customerPhone} size="small" variant="outlined" />
                     )}
+                    {clientProfile.portalPin && (
+                      <Chip label={`Portal PIN: ${clientProfile.portalPin}`} size="small" color="primary" variant="outlined" />
+                    )}
                   </Stack>
                 </Box>
                 <Stack direction="row" spacing={1} flexWrap="wrap" gap={1} sx={{ flexShrink: 0 }}>
                   <Button size="small" variant="outlined" startIcon={linkCopied ? <CheckIcon /> : <LinkIcon />}
                     onClick={handleCopyPortalLink} color={linkCopied ? "success" : "primary"}>
                     {linkCopied ? "Copied!" : "Portal Link"}
+                  </Button>
+                  <Button size="small" variant="outlined" startIcon={<LockResetIcon />} onClick={handleRegeneratePin}>
+                    {clientProfile.portalPin ? "New PIN" : "Set PIN"}
                   </Button>
                   <Button size="small" variant="outlined" color="success" startIcon={<WhatsAppIcon />}
                     onClick={handleWhatsApp} disabled={!clientProfile.customerPhone}>

@@ -727,9 +727,9 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: `url('${heroBackground}')`,
-          backgroundSize: 'cover', backgroundPosition: 'center', opacity: isMobile ? 0.5 : 0.25,
+          backgroundSize: 'cover', backgroundPosition: 'center', opacity: isMobile ? 0.7 : 0.55,
         }} />
-        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(105deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 60%, ${brandColor}22 100%)` }} />
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(105deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 60%, ${brandColor}22 100%)` }} />
         <div style={{ position: 'absolute', left: 0, top: '15%', bottom: '15%', width: 4, background: brandColor, borderRadius: '0 4px 4px 0' }} />
 
         <div style={{ position: 'relative', zIndex: 2, maxWidth: 1200, margin: '0 auto', padding: 'clamp(60px,8vw,120px) clamp(24px,5vw,80px)', width: '100%' }}>

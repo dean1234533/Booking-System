@@ -26,6 +26,9 @@ if (!process.argv.includes('--skip-build')) {
   cpSync(join(root, 'public'), publicOutput, { recursive: true, filter: (source) => !/(?:^|\/)\.(?:_|DS_Store)/.test(source) });
   copyFileSync(join(widgetOutput, 'widget.js'), join(publicOutput, 'widget.js'));
   run('npm', ['run', 'build']);
+  // Firebase Hosting serves the SPA shell for every blog URL, so write static copies of
+  // posts that carry agreed external links (link exchanges) for no-JS crawlers/checkers.
+  run('node', [join(root, 'scripts/prerender-blog-posts.mjs')]);
 }
 if (!existsSync(join(output, 'index.html')) || !existsSync(join(output, 'widget.js'))) {
   throw new Error('The reviewed app and widget build must exist before deployment.');

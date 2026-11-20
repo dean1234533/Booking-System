@@ -928,7 +928,7 @@ const DecoratorTemplate = ({ tenantData }) => {
                 onMouseEnter={e => { e.currentTarget.style.color = brandColor; e.currentTarget.style.borderColor = brandColor; }}
                 onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
               >Pro Login</span>
-              <a href="#" style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }}
+              <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.color = brandColor}
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.18)'}
               >↑ Back to top</a>

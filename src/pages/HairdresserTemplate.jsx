@@ -510,7 +510,7 @@ export default function HairdresserTemplate({ tenantData }) {
 
         {/* ─── NAV ─── */}
         <nav className="hs-nav">
-          <a href="#" className="hs-nav-brand" style={{ color: brandColor, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hs-nav-brand" style={{ color: brandColor, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             {logo && <img src={logo} alt="Logo" style={{ height: 32, display: 'block', borderRadius: '50%', objectFit: 'cover' }} />}
             <span>{businessName}</span>
           </a>

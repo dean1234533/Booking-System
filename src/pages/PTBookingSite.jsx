@@ -681,7 +681,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
       {/* ══════════ NAV ══════════ */}
       <header style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--mid)', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 68 }}>
-          <a href="#" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
             {logo && <img src={logo} alt="logo" style={{ height: 36, borderRadius: '50%', objectFit: 'cover' }} />}
             {(
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
@@ -1071,7 +1071,7 @@ export default function PTBookingSite({ profile, barber, reviews: propReviews = 
               >
                 Professional Login
               </span>
-              <a href="#" style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }}
+              <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.color = brandColor}
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.18)'}
               >↑ Back to top</a>

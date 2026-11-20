@@ -1572,6 +1572,11 @@ async function handleTrialLifecycle(env) {
   for (const row of rows) {
     const barberId = row.document.name.split("/").pop();
     const f = row.document.fields || {};
+    // Lifetime/comped accounts (freeForever) never lose their plan to a lapsed
+    // trial — their subscriptionStatus can sit at "trialing" indefinitely
+    // (no Stripe subscription exists to move it on), so without this check
+    // this job would wrongly downgrade them to Free every time it runs.
+    if (f.freeForever?.booleanValue) continue;
     const planId = normalizePlanId(f.plan?.stringValue || "full");
     const plan = getPlan(planId);
     const trialEndsIso = f.trialEndsAt?.timestampValue;
